@@ -1,0 +1,38 @@
+{
+  "skill_name": "stepdown-rule",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Refactor the Python module in `evals/files/report_builder.py` so the code reads cleanly from top to bottom. Keep the behavior the same, preserve the main story of the module, and return the revised code plus a brief rationale for the structure.",
+      "expected_output": "A refactored Python module with a clear top-level orchestration function, lower-level helpers for loading, transforming, formatting, and writing, plus a short explanation of how the structure reads top to bottom.",
+      "expectations": [
+        "The output isolates row normalization into its own helper instead of mixing it with CSV filtering.",
+        "The top-level function delegates loading, normalization, aggregation, formatting, and writing to separate helpers.",
+        "The response includes a brief rationale for the structure."
+      ],
+      "files": ["evals/files/report_builder.py"]
+    },
+    {
+      "id": 1,
+      "prompt": "Refactor the TypeScript function in `evals/files/reset_flow.ts` so the control flow is easier to follow. Keep the behavior the same, make the function read top to bottom, and return the revised code plus a brief rationale for the decomposition.",
+      "expected_output": "A TypeScript rewrite with a shallow orchestration function and helpers for validation, lookup, token creation, persistence, and notification, plus a short explanation of why the layers are ordered that way.",
+      "expectations": [
+        "The output splits validation, lookup, token creation, persistence, and email sending into separate helpers rather than leaving persistence and notification inline.",
+        "The top-level function reads as a short orchestration layer and keeps low-level reset-token mutation and side effects out of the main block.",
+        "The response includes a brief rationale for the decomposition."
+      ],
+      "files": ["evals/files/reset_flow.ts"]
+    },
+    {
+      "id": 2,
+      "prompt": "Refactor the JavaScript utility in `evals/files/sync_prices.js` so it reads like a clear narrative. Preserve the behavior, keep the main flow readable, and return the revised code plus a brief rationale.",
+      "expected_output": "A JavaScript rewrite with a clear top-level sync function and helpers for fetching, collecting updates, applying changes, and logging, plus a brief rationale.",
+      "expectations": [
+        "The output extracts a helper for deciding whether a price needs updating rather than doing the comparison inline in the loop.",
+        "The output isolates applying updates in a separate helper rather than doing DB writes directly in the main loop.",
+        "The response includes a brief rationale."
+      ],
+      "files": ["evals/files/sync_prices.js"]
+    }
+  ]
+}
