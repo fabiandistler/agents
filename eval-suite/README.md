@@ -4,14 +4,18 @@ Minimal A/B harness to measure what a skill, MCP, or AGENTS.md does to the R
 code that opencode generates. Each task is run twice — once with a baseline
 config, once with a configured config — and graded with `lintr` + `testthat`.
 
+The suite ships 33 tasks: 4 custom tasks with `testthat` test suites, and 29
+tasks imported from the [tidyverse/vitals ARE benchmark](https://github.com/tidyverse/vitals/tree/main/data-raw)
+covering tidyverse, ggplot2, and r-lib R coding challenges.
+
 ## Layout
 
 ```
 tasks/<id>/
-  task.yaml     # id, title, prompt (inline), expectations (for the LLM judge)
+  task.yaml     # id, title, prompt, expectations OR target (for the LLM judge)
   setup.R       # optional, runs in workdir before opencode (creates inputs)
   target.R      # optional, copied into workdir (e.g. function under test)
-  tests.R       # testthat file run against the produced solution.R
+  tests.R       # optional, testthat file run against the produced solution.R
 configs/<name>/
   flags         # optional, extra CLI flags passed to opencode (e.g. --pure)
   model         # optional, model override passed as -m <model> to opencode
@@ -89,8 +93,14 @@ Each run writes a `meta.json` with the full environment snapshot:
 ## LLM judge
 
 After `lintr` + `testthat`, `judge.R` asks `claude` (via the local CLI) to
-evaluate each `solution.R` against the `expectations` listed in the task's
-`task.yaml`. Each expectation is graded pass/fail with a short evidence quote.
+evaluate each `solution.R`. Two grading modes are supported:
+
+- **Expectations mode** — task.yaml has an `expectations` list; each item is
+  graded pass/fail with a short evidence quote.
+- **Target mode** — task.yaml has a `target` (reference solution + grading
+  notes) instead of `expectations`; the judge derives 3–5 concrete criteria
+  from the target and evaluates the solution against them.
+
 Result lands in `runs/<ts>/<config>/<task>/judge.json`.
 
 The judge is automatically skipped when:
@@ -106,7 +116,8 @@ Override the judge model with `JUDGE_MODEL=claude-...` (default
 `claude-sonnet-4-5`). Each `judge.json` records `judge_model` and
 `judge_prompt_sha256` so reruns can detect drift.
 
-Cost: ~1 API call per (config, task), so the default 2 × 4 = 8 calls per run.
+Cost: ~1 API call per (config, task), so the default 2 × 33 = 66 calls per run.
+Use `--task <id>` to run a subset.
 
 ## HTML viewer
 
@@ -122,10 +133,23 @@ open runs/<ts>/viewer.html            # macOS
 ## Adding a task
 
 1. `mkdir tasks/05-foo && cd tasks/05-foo`
-2. Write `task.yaml` with `id`, `title`, `prompt`, and `expectations` (a list
-   of pass/fail criteria the LLM judge will evaluate)
-3. Write `tests.R` — `testthat` expectations against `solution.R`
+2. Write `task.yaml` with `id`, `title`, `prompt`, and either:
+   - `expectations` — explicit list of pass/fail criteria the LLM judge evaluates, or
+   - `target` — a reference solution / grading rubric; the judge derives criteria from it
+3. Optional: `tests.R` — `testthat` expectations against `solution.R` (objective score; tasks without it are judge-only)
 4. Optional: `setup.R` to create input data, `target.R` to ship a fn-under-test
+
+### Importing tasks from vitals
+
+`import_vitals.R` is a one-shot script that downloads the 29 ARE tasks from
+`tidyverse/vitals` and creates a `tasks/<slug>/` directory for each. Re-running
+is safe (idempotent, skips existing dirs):
+
+```sh
+Rscript import_vitals.R
+```
+
+Imported tasks use the `target` grading mode and have no `tests.R`.
 
 ## Mock mode (for testing the harness itself)
 
