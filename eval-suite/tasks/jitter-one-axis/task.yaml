@@ -1,0 +1,13 @@
+id: jitter-one-axis
+title: 'jitter-one-axis'
+prompt: |
+  How do I jitter points with ggplot2 only with respect to the x axis, leaving the y values unchanged?
+  
+  Write your solution as valid R code to `solution.R`.
+target: |
+  Either set `geom_jitter(height = 0)` or 
+  `geom_point(position = position_jitter(height = 0))`.
+domain: Data analysis
+task_type: New code
+source: ~
+knowledge: tidyverse

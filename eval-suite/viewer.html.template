@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Eval results</title>
+<style>
+  :root {
+    --bg: #fafafa; --fg: #222; --muted: #666; --line: #ddd;
+    --pass: #1a7f37; --fail: #c62828; --skip: #999; --warn: #a36a00;
+    --code-bg: #f4f4f4;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+         background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem; }
+  h1 { margin-top: 0; font-size: 1.4rem; }
+  h2 { margin: 1.5rem 0 0.5rem; font-size: 1.05rem; color: var(--muted); font-weight: 600; }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
+  .tabs { display: flex; gap: 0.25rem; margin: 1rem 0; flex-wrap: wrap; }
+  .tabs button {
+    background: white; border: 1px solid var(--line); padding: 0.4rem 0.7rem;
+    cursor: pointer; font-size: 0.85rem; border-radius: 4px;
+  }
+  .tabs button.active { background: #222; color: white; border-color: #222; }
+  .grid { display: grid; gap: 1rem;
+          grid-template-columns: repeat(var(--n-configs, 2), 1fr); }
+  .col { background: white; border: 1px solid var(--line); border-radius: 6px;
+         padding: 0.8rem; min-width: 0; }
+  .col h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+  .badges { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px;
+           font-size: 0.75rem; font-weight: 600; }
+  .badge.pass { background: #e6f4ea; color: var(--pass); }
+  .badge.fail { background: #fdecea; color: var(--fail); }
+  .badge.skip { background: #eee; color: var(--skip); }
+  .badge.warn { background: #fff4e0; color: var(--warn); }
+  .badge.neutral { background: #eef; color: #335; }
+  pre { background: var(--code-bg); border: 1px solid var(--line); padding: 0.6rem;
+        border-radius: 4px; overflow: auto; font-size: 0.8rem; max-height: 28rem;
+        margin: 0; white-space: pre; }
+  .prompt-box { background: white; border: 1px solid var(--line);
+                border-radius: 6px; padding: 0.6rem 0.8rem; margin-bottom: 0.6rem;
+                font-size: 0.85rem; white-space: pre-wrap; max-height: 14rem;
+                overflow: auto; }
+  details { margin-top: 0.5rem; font-size: 0.85rem; }
+  details summary { cursor: pointer; color: var(--muted); }
+  ul.expectations { padding-left: 1.2rem; margin: 0.4rem 0 0; }
+  ul.expectations li { margin: 0.3rem 0; }
+  ul.expectations .ev { color: var(--muted); font-style: italic;
+                        font-size: 0.78rem; display: block; margin-top: 0.1rem; }
+  .icon { display: inline-block; width: 1rem; text-align: center; }
+  .icon.pass { color: var(--pass); }
+  .icon.fail { color: var(--fail); }
+  .icon.unknown { color: var(--skip); }
+  .meta-grid { font-size: 0.75rem; color: var(--muted);
+               display: grid; grid-template-columns: max-content 1fr; gap: 0.1rem 0.6rem; }
+  .meta-grid dt { font-weight: 600; }
+  .summary-table { border-collapse: collapse; margin-top: 0.5rem; }
+  .summary-table th, .summary-table td {
+    border: 1px solid var(--line); padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+  .summary-table th { background: #f0f0f0; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1 id="title">Eval results</h1>
+<div class="meta" id="run-meta"></div>
+
+<h2>Overall</h2>
+<table class="summary-table" id="summary"></table>
+
+<div class="tabs" id="task-tabs"></div>
+
+<div id="task-content"></div>
+
+<script>
+const DATA = /*__EMBEDDED_DATA__*/null;
+
+function badge(text, kind) {
+  const span = document.createElement("span");
+  span.className = "badge " + kind;
+  span.textContent = text;
+  return span;
+}
+
+function el(tag, attrs, children) {
+  const n = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    if (k === "class") n.className = attrs[k];
+    else if (k === "text") n.textContent = attrs[k];
+    else n.setAttribute(k, attrs[k]);
+  }
+  if (children) for (const c of children) if (c) n.appendChild(c);
+  return n;
+}
+
+function renderSummary(data) {
+  const t = document.getElementById("summary");
+  const head = el("tr", null, [
+    el("th", { text: "config" }),
+    el("th", { text: "tests passed" }),
+    el("th", { text: "tests total" }),
+    el("th", { text: "lint" }),
+    el("th", { text: "judge passed" }),
+    el("th", { text: "judge total" }),
+  ]);
+  t.appendChild(head);
+  for (const cfg of data.configs) {
+    let tp = 0, tt = 0, lint = 0, jp = 0, jt = 0, jSeen = false;
+    for (const task of data.tasks) {
+      const r = task.results[cfg];
+      if (!r) continue;
+      tp += r.score.tests_pass || 0;
+      tt += r.score.tests_total || 0;
+      lint += r.score.n_lint || 0;
+      if (r.judge && !r.judge.skipped && r.judge.summary) {
+        jp += r.judge.summary.passed || 0;
+        jt += r.judge.summary.total || 0;
+        jSeen = true;
+      }
+    }
+    t.appendChild(el("tr", null, [
+      el("td", { text: cfg }),
+      el("td", { text: String(tp) }),
+      el("td", { text: String(tt) }),
+      el("td", { text: String(lint) }),
+      el("td", { text: jSeen ? String(jp) : "—" }),
+      el("td", { text: jSeen ? String(jt) : "—" }),
+    ]));
+  }
+}
+
+function renderTaskTabs(data) {
+  const wrap = document.getElementById("task-tabs");
+  data.tasks.forEach((task, idx) => {
+    const b = el("button", { text: task.id });
+    if (idx === 0) b.classList.add("active");
+    b.onclick = () => {
+      document.querySelectorAll("#task-tabs button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      renderTaskContent(task, data.configs);
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function renderJudge(judge) {
+  if (!judge) return el("div", { text: "(no judge.json)", class: "meta" });
+  if (judge.skipped) {
+    return el("div", null, [
+      badge("judge: skipped", "skip"),
+      el("div", { class: "meta", text: judge.reason || "" }),
+    ]);
+  }
+  const s = judge.summary || {};
+  const total = s.total || 0;
+  const passed = s.passed || 0;
+  const det = el("details");
+  det.appendChild(el("summary", { text: `${passed}/${total} expectations passed` }));
+  const ul = el("ul", { class: "expectations" });
+  for (const e of (judge.expectations || [])) {
+    const icon = e.passed === true ? "✓" : e.passed === false ? "✗" : "?";
+    const cls  = e.passed === true ? "pass" : e.passed === false ? "fail" : "unknown";
+    const li = el("li", null, [
+      el("span", { class: "icon " + cls, text: icon }),
+      document.createTextNode(" " + (e.text || "")),
+      e.evidence ? el("span", { class: "ev", text: "evidence: " + e.evidence }) : null,
+    ]);
+    ul.appendChild(li);
+  }
+  det.appendChild(ul);
+  return det;
+}
+
+function renderConfigCol(cfg, r) {
+  const col = el("div", { class: "col" });
+  col.appendChild(el("h3", { text: cfg }));
+
+  const badges = el("div", { class: "badges" });
+  if (r.score.tests_total) {
+    const passed = r.score.tests_pass === r.score.tests_total;
+    badges.appendChild(badge(
+      `${r.score.tests_pass}/${r.score.tests_total} tests`,
+      passed ? "pass" : "fail"));
+  }
+  if (typeof r.score.n_lint === "number") {
+    badges.appendChild(badge(
+      `${r.score.n_lint} lint`,
+      r.score.n_lint === 0 ? "pass" : "warn"));
+  }
+  if (r.score.parses === false) badges.appendChild(badge("parse error", "fail"));
+  if (r.judge && !r.judge.skipped && r.judge.summary) {
+    const s = r.judge.summary;
+    badges.appendChild(badge(
+      `judge ${s.passed}/${s.total}`,
+      s.total > 0 && s.passed === s.total ? "pass" :
+      s.passed > 0 ? "warn" : "fail"));
+  } else if (r.judge && r.judge.skipped) {
+    badges.appendChild(badge("judge skipped", "skip"));
+  }
+  col.appendChild(badges);
+
+  col.appendChild(renderJudge(r.judge));
+
+  const sol = r.solution || "(no solution.R produced)";
+  col.appendChild(el("pre", { text: sol }));
+
+  if (r.meta) {
+    const dl = el("dl", { class: "meta-grid" });
+    const fields = ["model", "opencode_version", "pure_mode", "skills_enabled", "duration_s"];
+    for (const f of fields) {
+      if (r.meta[f] === undefined) continue;
+      dl.appendChild(el("dt", { text: f }));
+      dl.appendChild(el("dd", { text: String(r.meta[f]) }));
+    }
+    const det = el("details");
+    det.appendChild(el("summary", { text: "meta" }));
+    det.appendChild(dl);
+    col.appendChild(det);
+  }
+  return col;
+}
+
+function renderTaskContent(task, configs) {
+  const wrap = document.getElementById("task-content");
+  wrap.innerHTML = "";
+  wrap.appendChild(el("h2", { text: task.title || task.id }));
+  wrap.appendChild(el("div", { class: "prompt-box", text: task.prompt || "" }));
+  const grid = el("div", { class: "grid" });
+  grid.style.setProperty("--n-configs", String(configs.length));
+  for (const cfg of configs) {
+    const r = task.results[cfg];
+    if (r) grid.appendChild(renderConfigCol(cfg, r));
+    else grid.appendChild(el("div", { class: "col", text: cfg + ": (missing)" }));
+  }
+  wrap.appendChild(grid);
+}
+
+if (DATA) {
+  document.getElementById("title").textContent = "Eval results — " + DATA.run;
+  document.getElementById("run-meta").textContent =
+    `${DATA.tasks.length} tasks × ${DATA.configs.length} configs`;
+  renderSummary(DATA);
+  renderTaskTabs(DATA);
+  if (DATA.tasks[0]) renderTaskContent(DATA.tasks[0], DATA.configs);
+}
+</script>
+</body>
+</html>

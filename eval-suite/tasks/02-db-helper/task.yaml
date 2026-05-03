@@ -1,0 +1,27 @@
+id: 02-db-helper
+title: DBI helper with parameterised SQL query
+prompt: |
+  Write a function `get_orders(con, customer_id, since_date)` and save it to
+  `solution.R` in the current working directory.
+
+  The function queries an `orders` table with columns:
+    - `id`           INTEGER
+    - `customer_id`  INTEGER
+    - `order_date`   TEXT (ISO date)
+    - `amount`       REAL
+
+  It must return a `data.frame` of orders for the given customer_id with
+  `order_date >= since_date`, sorted by `order_date` ascending.
+
+  Requirements:
+    - Use the `DBI` package.
+    - Use **parameterised queries** (e.g. `DBI::dbGetQuery(con, sql, params = list(...))`
+      or `dbBind`). Do not interpolate values into the SQL string.
+    - Return a `data.frame` (a tibble or data.table is also fine).
+    - Do not open or close the connection inside the function.
+expectations:
+  - "Uses parameterised SQL (params = list(...) or dbBind, with ? or named placeholders)"
+  - "Does NOT interpolate customer_id or since_date into the SQL string via paste/paste0/sprintf/glue"
+  - "Filters on customer_id AND order_date >= since_date and orders by order_date ascending"
+  - "Does not open or close the database connection inside the function"
+  - "Code is concise and SQL is readable (e.g. line-broken or quoted cleanly)"
