@@ -1,0 +1,29 @@
+id: testthat-3e-snapshot
+title: 'testthat-3e-snapshot'
+prompt: |
+  Transition this old unit testing code to the third edition of testthat:
+  
+  ```
+  expect_warning(
+    check_ellipses("exponentiate", "tidy", "boop", exponentiate = TRUE, quick = FALSE),
+    "\\`exponentiate\\` argument is not supported in the \\`tidy\\(\\)\\` method for \\`boop\\` objects"
+  )
+  ```
+  
+  Write your solution as valid R code to `solution.R`.
+target: |
+  Instead of the regex, test the warning message with a snapshot:
+  
+  ```
+  expect_snapshot(
+    . <- check_ellipses("exponentiate", "tidy", "boop", exponentiate = TRUE, quick = FALSE)
+  )
+  ```
+  
+  Assigning to some intermediate value like `. <- ` it not 100% necessary,
+  but it is nice as it prevents the result from being inlined into the snapshot. 
+  The call to `check_ellipses()` itself should stay exactly the same.
+domain: Programming
+task_type: Translation
+source: https://github.com/simonpcouch/chores
+knowledge: r-lib

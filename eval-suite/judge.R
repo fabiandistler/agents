@@ -37,7 +37,7 @@ if (length(args) < 1L) {
 run_dir <- normalizePath(args[[1]], mustWork = TRUE)
 skip_mode <- "--skip" %in% args[-1L]
 
-JUDGE_MODEL <- Sys.getenv("JUDGE_MODEL", unset = "claude-sonnet-4-6")
+JUDGE_MODEL <- Sys.getenv("JUDGE_MODEL", unset = "minimax/minimax-m2.7")
 
 script_arg <- grep("--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 root <- if (length(script_arg) >= 1L) {
@@ -54,14 +54,9 @@ score <- if (file.exists(score_path)) {
 }
 
 build_prompt <- function(task_yaml, solution_text, score_row) {
-  exp_block <- paste(
-    sprintf(
-      "%d. %s",
-      seq_along(task_yaml$expectations),
-      task_yaml$expectations
-    ),
-    collapse = "\n"
-  )
+  expectations <- task_yaml$expectations %||% list()
+  target <- task_yaml$target %||% ""
+  use_target <- length(expectations) == 0L && nzchar(target)
 
   if (nrow(score_row) == 1L) {
     parses_str <- if (is.na(score_row$parses)) {
@@ -80,8 +75,53 @@ build_prompt <- function(task_yaml, solution_text, score_row) {
     score_block <- "- (no objective score available)"
   }
 
-  sprintf(
-    'You are evaluating an R solution against a list of expectations.
+  if (use_target) {
+    sprintf(
+      'You are evaluating an R solution against a reference answer.
+
+# Task prompt
+%s
+
+# The R code submitted (solution.R)
+```r
+%s
+```
+
+# Test results (objective, do not contradict)
+%s
+
+# Reference answer
+The following describes the correct solution and grading criteria:
+%s
+
+# Evaluation instructions
+Based on the reference answer above, identify 3-5 concrete criteria a correct
+solution must satisfy. For each criterion, evaluate whether the submitted
+solution passes. Return STRICT JSON only (no prose, no markdown fences):
+{
+  "expectations": [
+    {"text": "...", "passed": true, "evidence": "<short quote from code or test results>"}
+  ],
+  "summary": {"passed": N, "failed": N, "total": N, "pass_rate": 0.X}
+}
+
+Passing requires positive evidence in the code, not absence of contradiction.',
+      task_yaml$prompt,
+      solution_text,
+      score_block,
+      target
+    )
+  } else {
+    exp_block <- paste(
+      sprintf(
+        "%d. %s",
+        seq_along(expectations),
+        expectations
+      ),
+      collapse = "\n"
+    )
+    sprintf(
+      'You are evaluating an R solution against a list of expectations.
 
 # Task prompt
 %s
@@ -106,11 +146,12 @@ For each expectation, return STRICT JSON only (no prose, no markdown fences):
 }
 
 Passing requires positive evidence in the code, not absence of contradiction.',
-    task_yaml$prompt,
-    solution_text,
-    score_block,
-    exp_block
-  )
+      task_yaml$prompt,
+      solution_text,
+      score_block,
+      exp_block
+    )
+  }
 }
 
 # Strip optional ```json ... ``` fences and locate the outermost JSON object.

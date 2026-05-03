@@ -1,0 +1,75 @@
+id: implement-nse-arg
+title: 'implement-nse-arg'
+prompt: |
+  Add a `name` argument after `dataset` that defaults to the name of the `dataset` object in the calling env.
+  
+  ```
+  task_create <- function(
+      dataset,
+      # TODO: maybe it doesn't need to be associated with a dir at all?
+      dir = inspect_log_dir()
+  ) {
+    check_dataset(dataset)
+  
+    dataset$id <- seq_len(nrow(dataset))
+  
+    res <-
+      structure(
+        dataset,
+        class = c("task", class(tibble::new_tibble(list())))
+      )
+  
+    attr(res, "dir") <- dir
+  
+    res
+  }
+  ```
+  
+  Store it as a `name` attribute in `res`.
+  
+  e.g. in:
+  
+  ```
+  x <- task_create(dataset = eval)
+  ```
+  
+  `attr(x, "name)` would be `"eval"`.
+  
+  Write your solution as valid R code to `solution.R`.
+target: |
+  ```
+  task_create <- function(
+      dataset,
+      name = deparse(substitute(dataset)),
+      dir = inspect_log_dir()
+  ) {
+    force(name)
+    check_dataset(dataset)
+  
+    dataset$id <- seq_len(nrow(dataset))
+  
+    res <-
+      structure(
+        dataset,
+        class = c("task", class(tibble::new_tibble(list())))
+      )
+  
+    attr(res, "name") <- name
+    attr(res, "dir") <- dir
+  
+    res
+  }
+  ```
+  
+  Notably:
+  
+  * `name` should default to `deparse(substitute(dataset))` or something similar
+  * `name` needs be `force()`d, or somehow evaluated, before 
+    `check_dataset(dataset)` so that the substitution works correctly.
+  * At some point, the `name` attribute is set to the value.
+  * The rest of the function should be unaffected, e.g. no comments added to 
+    code that existed already.
+domain: Programming
+task_type: New code
+source: https://github.com/simonpcouch/rinspect
+knowledge: base R
