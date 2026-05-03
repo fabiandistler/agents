@@ -37,7 +37,7 @@ if (length(args) < 1L) {
 run_dir <- normalizePath(args[[1]], mustWork = TRUE)
 skip_mode <- "--skip" %in% args[-1L]
 
-JUDGE_MODEL <- Sys.getenv("JUDGE_MODEL", unset = "minimax/minimax-m2.7")
+JUDGE_MODEL <- Sys.getenv("JUDGE_MODEL", unset = "claude-sonnet-4-20250514")
 
 script_arg <- grep("--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 root <- if (length(script_arg) >= 1L) {
