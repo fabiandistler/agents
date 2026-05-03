@@ -61,7 +61,15 @@ run_one() {
 
   echo "[run] $config / $task   (workdir: $work)"
 
-  cp "$ROOT/configs/$config/AGENTS.md" "$work/AGENTS.md"
+  local flags_file="$ROOT/configs/$config/flags"
+  local opencode_flags=""
+  local flags_json="[]"
+  if [[ -f "$flags_file" ]]; then
+    opencode_flags="$(cat "$flags_file")"
+    flags_json="[$(echo "$opencode_flags" | tr ' \n' '\0' | xargs -0 printf '"%s",' | sed 's/,$//')]"
+  fi
+
+  [[ -f "$ROOT/configs/$config/AGENTS.md" ]] && cp "$ROOT/configs/$config/AGENTS.md" "$work/AGENTS.md"
   [[ -f "$task_dir/target.R" ]] && cp "$task_dir/target.R" "$work/"
   if [[ -f "$task_dir/setup.R" ]]; then
     (cd "$work" && Rscript "$task_dir/setup.R" >/dev/null 2>&1) || {
@@ -82,7 +90,7 @@ run_one() {
       exit_code=127
     fi
   else
-    (cd "$work" && "$OPENCODE_BIN" run "$prompt") \
+    (cd "$work" && "$OPENCODE_BIN" run $opencode_flags "$prompt") \
       > "$out_dir/opencode.stdout" 2> "$out_dir/opencode.stderr" \
       || exit_code=$?
   fi
@@ -98,6 +106,7 @@ run_one() {
 {
   "config": "$config",
   "task": "$task",
+  "opencode_flags": $flags_json,
   "started_at": $start_ts,
   "ended_at": $end_ts,
   "duration_s": $((end_ts - start_ts)),
