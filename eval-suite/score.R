@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Score an eval run: for each (config, task), run lintr on solution.R and
-# execute the task's tests.R against it. Writes results.csv and a markdown
-# summary to runs/<ts>/results.{csv,md}, and prints the markdown to stdout.
+# execute the task's tests.R against it. Writes raw per-(config, task) data to
+# runs/<ts>/score.csv. Aggregation/comparison happens in aggregate.R.
 
 suppressPackageStartupMessages({
   library(testthat)
@@ -111,60 +111,6 @@ results$pass_rate <- ifelse(
   NA_real_,
   results$tests_pass / results$tests_total
 )
-write.csv(results, file.path(run_dir, "results.csv"), row.names = FALSE)
-
-# ----- markdown summary -----
-md <- c(sprintf("# Eval results — %s\n", basename(run_dir)))
-
-# per-task comparison
-tasks <- sort(unique(results$task))
-md <- c(md, "## Per-task pass rate\n")
-hdr <- c("task", configs)
-md <- c(md, paste0("| ", paste(hdr, collapse = " | "), " |"))
-md <- c(md, paste0("|", paste(rep("---", length(hdr)), collapse = "|"), "|"))
-for (t in tasks) {
-  cells <- vapply(configs, function(cfg) {
-    r <- results[results$task == t & results$config == cfg, ]
-    if (nrow(r) == 0L) return("—")
-    if (!isTRUE(r$has_solution)) return("**no file**")
-    if (!is.na(r$test_run_error)) return("**test crash**")
-    sprintf("%d/%d (%d lint)", r$tests_pass, r$tests_total, r$n_lint)
-  }, character(1))
-  md <- c(md, paste0("| ", t, " | ", paste(cells, collapse = " | "), " |"))
-}
-
-# overall
-md <- c(md, "\n## Overall\n")
-md <- c(md, "| config | tasks | total tests | passed | failed | errored | lint warnings |")
-md <- c(md, "|---|---|---|---|---|---|---|")
-for (cfg in configs) {
-  r <- results[results$config == cfg, ]
-  md <- c(md, sprintf("| %s | %d | %d | %d | %d | %d | %d |",
-    cfg, nrow(r),
-    sum(r$tests_total, na.rm = TRUE),
-    sum(r$tests_pass,  na.rm = TRUE),
-    sum(r$tests_fail,  na.rm = TRUE),
-    sum(r$tests_error, na.rm = TRUE),
-    sum(r$n_lint,      na.rm = TRUE)
-  ))
-}
-
-# delta if exactly 2 configs
-if (length(configs) == 2L) {
-  a <- configs[1]; b <- configs[2]
-  ra <- results[results$config == a, c("task", "tests_pass", "tests_total", "n_lint")]
-  rb <- results[results$config == b, c("task", "tests_pass", "tests_total", "n_lint")]
-  m  <- merge(ra, rb, by = "task", suffixes = paste0(".", c(a, b)))
-  m$delta_passed <- m[[paste0("tests_pass.", b)]] - m[[paste0("tests_pass.", a)]]
-  m$delta_lint   <- m[[paste0("n_lint.", b)]]    - m[[paste0("n_lint.", a)]]
-  md <- c(md, sprintf("\n## Delta (%s − %s)\n", b, a))
-  md <- c(md, "| task | Δ passed tests | Δ lint warnings |")
-  md <- c(md, "|---|---|---|")
-  for (i in seq_len(nrow(m))) {
-    md <- c(md, sprintf("| %s | %+d | %+d |",
-      m$task[i], m$delta_passed[i], m$delta_lint[i]))
-  }
-}
-
-writeLines(md, file.path(run_dir, "results.md"))
-writeLines(md)
+write.csv(results, file.path(run_dir, "score.csv"), row.names = FALSE)
+message(sprintf("[score] %d (config, task) rows -> %s",
+                nrow(results), file.path(run_dir, "score.csv")))

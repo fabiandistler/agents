@@ -8,7 +8,7 @@ config, once with a configured config — and graded with `lintr` + `testthat`.
 
 ```
 tasks/<id>/
-  prompt.md     # what opencode is asked to do
+  task.yaml     # id, title, prompt (inline), expectations (for the LLM judge)
   setup.R       # optional, runs in workdir before opencode (creates inputs)
   target.R      # optional, copied into workdir (e.g. function under test)
   tests.R       # testthat file run against the produced solution.R
@@ -16,11 +16,17 @@ configs/<name>/
   flags         # optional, extra CLI flags passed to opencode (e.g. --pure)
   model         # optional, model override passed as -m <model> to opencode
   AGENTS.md     # optional, dropped into the workdir as ./AGENTS.md
-runs/<ts>/<config>/<task>/
-  solution.R    # what opencode produced
-  meta.json     # timing, model, environment snapshot, exit code
-  test.json     # testthat results
-  lint.json     # lintr results
+runs/<ts>/
+  score.csv         # raw lintr+testthat counts per (config, task)
+  results.csv       # score.csv + judge counts merged
+  results.md        # markdown summary (per-task, overall, delta)
+  viewer.html       # self-contained HTML viewer (open in browser)
+  <config>/<task>/
+    solution.R      # what opencode produced
+    meta.json       # timing, model, environment snapshot, exit code
+    judge.json      # LLM-judge expectations + evidence
+    opencode.stdout # captured stdout from opencode run
+    opencode.stderr # captured stderr from opencode run
 ```
 
 ## Running
@@ -32,12 +38,18 @@ runs/<ts>/<config>/<task>/
 # only one task, only one config
 ./run.sh --task 03-pkg-state-env --config with-skill
 
-# replay a previous run's scoring without invoking opencode
+# skip the LLM judge step
+./run.sh --no-judge
+
+# replay scoring + judge + aggregation + viewer over an existing run
 ./run.sh --score-only runs/2026-05-02_19-30-00
 ```
 
-Then `Rscript score.R runs/<ts>` prints a markdown comparison table and writes
-`results.csv`.
+`run.sh` orchestrates four phases after each opencode call:
+`score.R` (lintr + testthat → `score.csv`) →
+`judge.R` (LLM judge → `<config>/<task>/judge.json`) →
+`aggregate.R` (merge → `results.{csv,md}`) →
+`generate_viewer.R` (`viewer.html`).
 
 ## Wiring opencode + your skill
 
@@ -74,10 +86,44 @@ Each run writes a `meta.json` with the full environment snapshot:
 | `exit_code` | opencode exit code |
 | `mock` | `true` when run via `OPENCODE_MOCK_DIR` |
 
+## LLM judge
+
+After `lintr` + `testthat`, `judge.R` asks `claude` (via the local CLI) to
+evaluate each `solution.R` against the `expectations` listed in the task's
+`task.yaml`. Each expectation is graded pass/fail with a short evidence quote.
+Result lands in `runs/<ts>/<config>/<task>/judge.json`.
+
+The judge is automatically skipped when:
+
+- `--no-judge` is passed (or `NO_JUDGE=1`)
+- `OPENCODE_MOCK_DIR` is set (mock mode)
+- the `claude` binary is not on `PATH`
+
+In skip cases, `judge.R` still writes a stub `judge.json` with `skipped: true`
+so downstream aggregation and the viewer handle it uniformly.
+
+Override the judge model with `JUDGE_MODEL=claude-...` (default
+`claude-sonnet-4-5`). Each `judge.json` records `judge_model` and
+`judge_prompt_sha256` so reruns can detect drift.
+
+Cost: ~1 API call per (config, task), so the default 2 × 4 = 8 calls per run.
+
+## HTML viewer
+
+`generate_viewer.R` writes `runs/<ts>/viewer.html` — a self-contained file
+(no CDN, no server) showing per-task side-by-side: solution code, test/lint
+badges, expandable judge expectations with evidence. Open it directly:
+
+```sh
+xdg-open runs/<ts>/viewer.html        # Linux
+open runs/<ts>/viewer.html            # macOS
+```
+
 ## Adding a task
 
 1. `mkdir tasks/05-foo && cd tasks/05-foo`
-2. Write `prompt.md` (what opencode should produce, in which file)
+2. Write `task.yaml` with `id`, `title`, `prompt`, and `expectations` (a list
+   of pass/fail criteria the LLM judge will evaluate)
 3. Write `tests.R` — `testthat` expectations against `solution.R`
 4. Optional: `setup.R` to create input data, `target.R` to ship a fn-under-test
 
@@ -85,4 +131,5 @@ Each run writes a `meta.json` with the full environment snapshot:
 
 If `OPENCODE_MOCK_DIR` is set, the runner copies fixtures from
 `$OPENCODE_MOCK_DIR/<config>/<task>/solution.R` instead of calling opencode.
-Useful for verifying `score.R` end-to-end without burning tokens.
+The judge is skipped automatically. Useful for verifying `score.R`,
+`aggregate.R`, and `generate_viewer.R` end-to-end without burning tokens.

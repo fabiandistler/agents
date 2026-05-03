@@ -8,11 +8,13 @@
 #   ./run.sh --config with-skill              # all tasks, one config
 #   ./run.sh --task 01-dt-aggregate --config baseline
 #   ./run.sh --score-only runs/<ts>           # just re-score an existing run
+#   ./run.sh --no-judge                       # skip the LLM judge step
 #
 # Mock mode (no opencode call):
 #   OPENCODE_MOCK_DIR=fixtures ./run.sh
 #   The runner will copy fixtures/<config>/<task>/solution.R instead of
 #   shelling out to opencode. Useful for testing the harness itself.
+#   The judge is also skipped in mock mode.
 
 set -euo pipefail
 
@@ -22,6 +24,7 @@ cd "$ROOT"
 TASK_FILTER=""
 CONFIG_FILTER=""
 SCORE_ONLY=""
+NO_JUDGE="${NO_JUDGE:-}"
 OPENCODE_BIN="${OPENCODE_BIN:-opencode}"
 
 while [[ $# -gt 0 ]]; do
@@ -29,13 +32,35 @@ while [[ $# -gt 0 ]]; do
     --task)        TASK_FILTER="$2"; shift 2 ;;
     --config)      CONFIG_FILTER="$2"; shift 2 ;;
     --score-only)  SCORE_ONLY="$2"; shift 2 ;;
-    -h|--help)     sed -n '2,17p' "$0"; exit 0 ;;
+    --no-judge)    NO_JUDGE=1; shift ;;
+    -h|--help)     sed -n '2,18p' "$0"; exit 0 ;;
     *)             echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done
 
+# Run scoring + judge + aggregation + viewer over an existing run dir.
+finalize() {
+  local run_dir="$1"
+  echo "[run] scoring..."
+  Rscript score.R "$run_dir"
+
+  if [[ -z "$NO_JUDGE" && -z "${OPENCODE_MOCK_DIR:-}" ]] && command -v claude &>/dev/null; then
+    echo "[run] judging..."
+    Rscript judge.R "$run_dir"
+  else
+    echo "[run] skipping judge (NO_JUDGE, mock mode, or claude not on PATH)"
+    Rscript judge.R "$run_dir" --skip
+  fi
+
+  echo "[run] aggregating..."
+  Rscript aggregate.R "$run_dir"
+
+  echo "[run] viewer..."
+  Rscript generate_viewer.R "$run_dir"
+}
+
 if [[ -n "$SCORE_ONLY" ]]; then
-  Rscript score.R "$SCORE_ONLY"
+  finalize "$SCORE_ONLY"
   exit $?
 fi
 
@@ -115,7 +140,8 @@ run_one() {
     }
   fi
 
-  local prompt; prompt="$(cat "$task_dir/prompt.md")"
+  local prompt
+  prompt="$(Rscript -e 'suppressWarnings(Sys.setlocale("LC_ALL","C.UTF-8")); cat(yaml::yaml.load(paste(readLines(commandArgs(TRUE)[1], encoding="UTF-8", warn=FALSE), collapse="\n"))$prompt)' "$task_dir/task.yaml")"
   local start_ts end_ts exit_code=0
 
   start_ts=$(date +%s)
@@ -173,5 +199,4 @@ for config in $CONFIGS; do
   done
 done
 
-echo "[run] scoring..."
-Rscript score.R "$RUN_DIR"
+finalize "$RUN_DIR"
