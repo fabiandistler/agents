@@ -55,22 +55,20 @@ score_one <- function(config, task, sol_path, tests_path, work_setup_files) {
   # Generate the inputs setup.R produces (input.csv etc.) inside tdir
   setup_R <- file.path(dirname(tests_path), "setup.R")
   if (file.exists(setup_R)) {
-    old <- setwd(tdir); on.exit(setwd(old), add = TRUE)
-    tryCatch(source(setup_R, local = TRUE), error = function(e) {
-      message("setup.R failed in scoring: ", conditionMessage(e))
-    })
-    setwd(old); on.exit()
-    on.exit(unlink(tdir, recursive = TRUE), add = TRUE)
+    withr::with_dir(tdir, tryCatch(
+      source(setup_R, local = TRUE),
+      error = function(e) message("setup.R failed in scoring: ", conditionMessage(e))
+    ))
   }
 
-  res <- tryCatch({
-    old <- setwd(tdir); on.exit(setwd(old), add = TRUE)
-    reporter <- testthat::SilentReporter$new()
-    r <- testthat::test_file(file.path(tdir, "tests.R"),
-                             reporter = reporter, stop_on_failure = FALSE)
-    setwd(old); on.exit()
-    r
-  }, error = function(e) e)
+  res <- tryCatch(
+    withr::with_dir(tdir, {
+      reporter <- testthat::SilentReporter$new()
+      testthat::test_file(file.path(tdir, "tests.R"),
+                          reporter = reporter, stop_on_failure = FALSE)
+    }),
+    error = function(e) e
+  )
 
   if (inherits(res, "error")) {
     out$test_run_error <- conditionMessage(res)
@@ -106,6 +104,7 @@ for (config in configs) {
   }
 }
 
+if (length(rows) == 0L) stop("no results found in: ", run_dir)
 results <- do.call(rbind, lapply(rows, as.data.frame))
 results$pass_rate <- ifelse(
   is.na(results$tests_total) | results$tests_total == 0,
@@ -168,4 +167,4 @@ if (length(configs) == 2L) {
 }
 
 writeLines(md, file.path(run_dir, "results.md"))
-cat(paste(md, collapse = "\n"), "\n", sep = "")
+writeLines(md)

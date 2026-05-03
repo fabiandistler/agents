@@ -44,7 +44,7 @@ RUN_DIR="runs/$TS"
 mkdir -p "$RUN_DIR"
 echo "[run] writing to $RUN_DIR"
 
-list_dirs() { ls -1 "$1" 2>/dev/null | sort; }
+list_dirs() { find "$1" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | sort; }
 
 CONFIGS=$(list_dirs configs)
 TASKS=$(list_dirs tasks)
@@ -69,6 +69,44 @@ run_one() {
     flags_json="[$(echo "$opencode_flags" | tr ' \n' '\0' | xargs -0 printf '"%s",' | sed 's/,$//')]"
   fi
 
+  local oc_config="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
+  local model_json='"unknown"'
+  local plugins_json="[]"
+  local mcp_json="[]"
+  if [[ -f "$oc_config" ]] && command -v jq &>/dev/null; then
+    local raw_model
+    raw_model=$(jq -r '.model // .small_model // empty' "$oc_config")
+    [[ -n "$raw_model" ]] && model_json="\"$raw_model\""
+    plugins_json=$(jq -c '[.plugin // [] | .[]]' "$oc_config")
+    mcp_json=$(jq -c '[.mcp // {} | keys[]]' "$oc_config")
+  fi
+
+  local extra_flags=""
+  local config_model_file="$ROOT/configs/$config/model"
+  if [[ -f "$config_model_file" ]]; then
+    local config_model
+    config_model=$(tr -d '[:space:]' < "$config_model_file")
+    model_json="\"$config_model\""
+    extra_flags="-m $config_model"
+  fi
+
+  local pure_mode=false
+  if echo " $opencode_flags " | grep -qw -- '--pure'; then
+    pure_mode=true
+    plugins_json="[]"
+    mcp_json="[]"
+  fi
+
+  local skills_enabled=false
+  local context_files_json="[]"
+  if [[ -f "$ROOT/configs/$config/AGENTS.md" ]]; then
+    skills_enabled=true
+    context_files_json='["AGENTS.md"]'
+  fi
+
+  local oc_version="unknown"
+  oc_version=$("$OPENCODE_BIN" --version 2>/dev/null | head -1 | tr -d '[:space:]') || true
+
   [[ -f "$ROOT/configs/$config/AGENTS.md" ]] && cp "$ROOT/configs/$config/AGENTS.md" "$work/AGENTS.md"
   [[ -f "$task_dir/target.R" ]] && cp "$task_dir/target.R" "$work/"
   if [[ -f "$task_dir/setup.R" ]]; then
@@ -90,11 +128,13 @@ run_one() {
       exit_code=127
     fi
   else
-    (cd "$work" && "$OPENCODE_BIN" run $opencode_flags "$prompt") \
+    (cd "$work" && "$OPENCODE_BIN" run $opencode_flags $extra_flags "$prompt") \
       > "$out_dir/opencode.stdout" 2> "$out_dir/opencode.stderr" \
       || exit_code=$?
   fi
   end_ts=$(date +%s)
+  local mock_val
+  mock_val=$([ -n "${OPENCODE_MOCK_DIR:-}" ] && echo true || echo false)
 
   if [[ -f "$work/solution.R" ]]; then
     cp "$work/solution.R" "$out_dir/solution.R"
@@ -107,11 +147,18 @@ run_one() {
   "config": "$config",
   "task": "$task",
   "opencode_flags": $flags_json,
+  "model": $model_json,
+  "opencode_version": "$oc_version",
+  "pure_mode": $pure_mode,
+  "plugins": $plugins_json,
+  "mcp_servers": $mcp_json,
+  "skills_enabled": $skills_enabled,
+  "context_files": $context_files_json,
   "started_at": $start_ts,
   "ended_at": $end_ts,
   "duration_s": $((end_ts - start_ts)),
   "exit_code": $exit_code,
-  "mock": ${OPENCODE_MOCK_DIR:+true}${OPENCODE_MOCK_DIR:-false}
+  "mock": $mock_val
 }
 JSON
 

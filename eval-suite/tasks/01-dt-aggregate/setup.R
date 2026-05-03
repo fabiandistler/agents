@@ -1,5 +1,5 @@
 suppressPackageStartupMessages(library(data.table))
-set.seed(1)
+withr::local_seed(1)
 dt <- data.table(
   region   = sample(c("north", "south", "east", "west"), 40, replace = TRUE),
   product  = sample(c("alpha", "beta", "gamma"), 40, replace = TRUE),

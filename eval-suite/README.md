@@ -13,10 +13,12 @@ tasks/<id>/
   target.R      # optional, copied into workdir (e.g. function under test)
   tests.R       # testthat file run against the produced solution.R
 configs/<name>/
-  AGENTS.md     # dropped into the workdir as ./AGENTS.md before opencode runs
+  flags         # optional, extra CLI flags passed to opencode (e.g. --pure)
+  model         # optional, model override passed as -m <model> to opencode
+  AGENTS.md     # optional, dropped into the workdir as ./AGENTS.md
 runs/<ts>/<config>/<task>/
   solution.R    # what opencode produced
-  meta.json     # timing, exit code
+  meta.json     # timing, model, environment snapshot, exit code
   test.json     # testthat results
   lint.json     # lintr results
 ```
@@ -48,8 +50,29 @@ get loaded is up to you — typical options:
 - Or load the skill via your global opencode config and leave `AGENTS.md` as
   a bare opt-in marker.
 
-`configs/baseline/AGENTS.md` is the control. Keep it minimal — anything in it
-is something the skill cannot get credit for.
+The `baseline` config uses `--pure` (via `configs/baseline/flags`) to disable
+all plugins and MCP servers, giving a clean control without any skill influence.
+
+## meta.json fields
+
+Each run writes a `meta.json` with the full environment snapshot:
+
+| Field | Description |
+|---|---|
+| `config` | Config name |
+| `task` | Task ID |
+| `opencode_flags` | Flags from the config's `flags` file |
+| `model` | Model used (`configs/<name>/model` → global opencode config) |
+| `opencode_version` | Version of the opencode binary |
+| `pure_mode` | `true` when `--pure` is in flags (plugins + MCP disabled) |
+| `plugins` | Active plugins (empty when `pure_mode`) |
+| `mcp_servers` | Active MCP server names (empty when `pure_mode`) |
+| `skills_enabled` | `true` when `AGENTS.md` was injected |
+| `context_files` | List of context files copied into the workdir |
+| `started_at` / `ended_at` | Unix timestamps |
+| `duration_s` | Wall-clock seconds |
+| `exit_code` | opencode exit code |
+| `mock` | `true` when run via `OPENCODE_MOCK_DIR` |
 
 ## Adding a task
 
