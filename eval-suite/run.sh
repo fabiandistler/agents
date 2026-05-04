@@ -67,6 +67,7 @@ fi
 TS="$(date +%Y-%m-%d_%H-%M-%S)"
 RUN_DIR="runs/$TS"
 mkdir -p "$RUN_DIR"
+trap 'rm -rf "$ROOT/$RUN_DIR/.work"' EXIT
 echo "[run] writing to $RUN_DIR"
 
 list_dirs() { find "$1" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | sort; }
@@ -150,6 +151,8 @@ run_one() {
   local pure_mode=false
   if echo " $opencode_flags " | grep -qw -- '--pure'; then
     pure_mode=true
+    plugins_json="[]"
+    mcp_json="[]"
   fi
 
   local skills_enabled=false
@@ -208,13 +211,9 @@ run_one() {
       exit_code=127
     fi
   else
-    if ! check_agents_walkup "$work"; then
-      exit_code=126
-    else
-      (cd "$work" && env -i "${env_args[@]}" "$OPENCODE_BIN" run $opencode_flags $extra_flags "$prompt") \
-        > "$out_dir/opencode.stdout" 2> "$out_dir/opencode.stderr" \
-        || exit_code=$?
-    fi
+    (cd "$work" && env -i "${env_args[@]}" "$OPENCODE_BIN" run $opencode_flags $extra_flags "$prompt") \
+      > "$out_dir/opencode.stdout" 2> "$out_dir/opencode.stderr" \
+      || exit_code=$?
   fi
   end_ts=$(date +%s)
   local mock_val
@@ -250,6 +249,11 @@ JSON
   rm -rf "$work"
 }
 
+if ! check_agents_walkup "$ROOT/$RUN_DIR/.work"; then
+  echo "[run] aborting: AGENTS.md leak detected above sandbox" >&2
+  exit 1
+fi
+
 for config in $CONFIGS; do
   [[ -d "configs/$config" ]] || { echo "no such config: $config" >&2; exit 2; }
   for task in $TASKS; do
@@ -260,6 +264,6 @@ done
 
 # Drop the transient sandbox parent so score.R/judge.R/generate_viewer.R see
 # only real config directories under runs/<ts>/.
-rm -rf "$RUN_DIR/.work"
+rm -rf "$ROOT/$RUN_DIR/.work"
 
 finalize "$RUN_DIR"

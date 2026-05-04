@@ -112,9 +112,9 @@ if ("baseline" %in% configs) {
   for (b in others) {
     rb <- results[results$config == b, cols]
     m  <- merge(ra, rb, by = "task", suffixes = c(".baseline", paste0(".", b)))
-    m$delta_passed <- m[[paste0("tests_pass.", b)]] - m$tests_pass.baseline
-    m$delta_lint   <- m[[paste0("n_lint.",      b)]] - m$n_lint.baseline
-    m$delta_judge  <- m[[paste0("judge_pass.",  b)]] - m$judge_pass.baseline
+    m$delta_passed <- m[[paste0("tests_pass.", b)]] - m[["tests_pass.baseline"]]
+    m$delta_lint   <- m[[paste0("n_lint.",      b)]] - m[["n_lint.baseline"]]
+    m$delta_judge  <- m[[paste0("judge_pass.",  b)]] - m[["judge_pass.baseline"]]
     md <- c(md, sprintf("\n## Delta (%s − baseline)\n", b))
     md <- c(md, "| task | Δ passed tests | Δ lint warnings | Δ judge passed |")
     md <- c(md, "|---|---|---|---|")

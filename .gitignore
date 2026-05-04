@@ -1,2 +1,3 @@
 eval-suite/.claude/settings.local.json
 .memsearch/*
+.claude/settings.local.json
