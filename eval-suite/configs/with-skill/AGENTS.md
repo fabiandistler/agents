@@ -6,7 +6,7 @@ code.
 
 Before writing code, consult the skill at:
 
-  ~/.agents/r-package-dev/SKILL.md
+  ~/.agents/skills/r-package-dev/SKILL.md
 
 Apply its conventions where they are relevant to the task (package-private
 state, namespace hygiene, no `library()` in package code, testthat patterns,
