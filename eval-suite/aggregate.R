@@ -103,24 +103,27 @@ for (cfg in configs) {
   ))
 }
 
-# delta if exactly 2 configs (b - a, where a is the alphabetically first config)
-if (length(configs) == 2L) {
-  a <- configs[1]; b <- configs[2]
+# Per non-baseline config: a delta table against `baseline`.
+# Skipped if `baseline` is not among the configs.
+if ("baseline" %in% configs) {
+  others <- setdiff(configs, "baseline")
   cols <- c("task", "tests_pass", "tests_total", "n_lint", "judge_pass", "judge_total")
-  ra <- results[results$config == a, cols]
-  rb <- results[results$config == b, cols]
-  m  <- merge(ra, rb, by = "task", suffixes = paste0(".", c(a, b)))
-  m$delta_passed <- m[[paste0("tests_pass.", b)]] - m[[paste0("tests_pass.", a)]]
-  m$delta_lint   <- m[[paste0("n_lint.",      b)]] - m[[paste0("n_lint.",      a)]]
-  m$delta_judge  <- m[[paste0("judge_pass.",  b)]] - m[[paste0("judge_pass.",  a)]]
-  md <- c(md, sprintf("\n## Delta (%s − %s)\n", b, a))
-  md <- c(md, "| task | Δ passed tests | Δ lint warnings | Δ judge passed |")
-  md <- c(md, "|---|---|---|---|")
-  for (i in seq_len(nrow(m))) {
-    dj <- m$delta_judge[i]
-    md <- c(md, sprintf("| %s | %+d | %+d | %s |",
-      m$task[i], m$delta_passed[i], m$delta_lint[i],
-      if (is.na(dj)) "—" else sprintf("%+d", dj)))
+  ra <- results[results$config == "baseline", cols]
+  for (b in others) {
+    rb <- results[results$config == b, cols]
+    m  <- merge(ra, rb, by = "task", suffixes = c(".baseline", paste0(".", b)))
+    m$delta_passed <- m[[paste0("tests_pass.", b)]] - m$tests_pass.baseline
+    m$delta_lint   <- m[[paste0("n_lint.",      b)]] - m$n_lint.baseline
+    m$delta_judge  <- m[[paste0("judge_pass.",  b)]] - m$judge_pass.baseline
+    md <- c(md, sprintf("\n## Delta (%s − baseline)\n", b))
+    md <- c(md, "| task | Δ passed tests | Δ lint warnings | Δ judge passed |")
+    md <- c(md, "|---|---|---|---|")
+    for (i in seq_len(nrow(m))) {
+      dj <- m$delta_judge[i]
+      md <- c(md, sprintf("| %s | %+d | %+d | %s |",
+        m$task[i], m$delta_passed[i], m$delta_lint[i],
+        if (is.na(dj)) "—" else sprintf("%+d", dj)))
+    }
   }
 }
 

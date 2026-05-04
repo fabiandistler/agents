@@ -1,8 +1,10 @@
 # R-Code Eval Suite for opencode
 
-Minimal A/B harness to measure what a skill, MCP, or AGENTS.md does to the R
-code that opencode generates. Each task is run twice — once with a baseline
-config, once with a configured config — and graded with `lintr` + `testthat`.
+Minimal harness to measure what a skill, MCP, plugin, or AGENTS.md does to
+the R code that opencode generates. Each task is run once per config (one is
+expected to be `baseline`, the rest are whatever you want to compare against)
+and graded with `lintr` + `testthat`. With `baseline` present, the aggregator
+emits a per-config delta table against it.
 
 The suite ships 33 tasks: 4 custom tasks with `testthat` test suites, and 29
 tasks imported from the [tidyverse/vitals ARE benchmark](https://github.com/tidyverse/vitals/tree/main/data-raw)
@@ -20,6 +22,7 @@ configs/<name>/
   flags         # optional, extra CLI flags passed to opencode (e.g. --pure)
   model         # optional, model override passed as -m <model> to opencode
   AGENTS.md     # optional, dropped into the workdir as ./AGENTS.md
+  opencode.json # optional, per-config opencode config (mcp/plugin/provider/...)
 runs/<ts>/
   score.csv         # raw lintr+testthat counts per (config, task)
   results.csv       # score.csv + judge counts merged
@@ -55,19 +58,59 @@ runs/<ts>/
 `aggregate.R` (merge → `results.{csv,md}`) →
 `generate_viewer.R` (`viewer.html`).
 
-## Wiring opencode + your skill
+## Configuring what each arm tests
 
-The runner is opencode-agnostic on purpose: it just sets up a workdir, drops
-`AGENTS.md` into it, and shells out to `opencode run "<prompt>"`. How skills
-get loaded is up to you — typical options:
+The runner is opencode-agnostic: for each config it sets up a sandboxed
+workdir, drops the configured artifacts into it, and shells out to
+`opencode run "<prompt>"`. Each `configs/<name>/` directory can contain any
+combination of:
 
-- Edit `configs/with-skill/AGENTS.md` to inline-reference the skill, e.g.
-  `Follow the skill at ~/.agents/r-package-dev/SKILL.md`.
-- Or load the skill via your global opencode config and leave `AGENTS.md` as
-  a bare opt-in marker.
+| File | Effect |
+|---|---|
+| `flags` | Extra CLI flags appended to `opencode run` (e.g. `--pure`) |
+| `model` | Model name; passed as `-m <model>` (overrides anything in `opencode.json`) |
+| `AGENTS.md` | Dropped into the workdir as `./AGENTS.md` so opencode loads it |
+| `opencode.json` | Per-config opencode config; copied into the run's sandboxed `XDG_CONFIG_HOME/opencode/opencode.json`. Lets you declare `mcp`, `plugin`, `provider`, `instructions`, `mode`, etc. per config |
 
-The `baseline` config uses `--pure` (via `configs/baseline/flags`) to disable
-all plugins and MCP servers, giving a clean control without any skill influence.
+The `baseline` config carries only `flags` with `--pure` and nothing else, so
+the sandboxed opencode sees no AGENTS.md, no MCP, no plugins, and no provider
+overrides — a clean control.
+
+Examples of what you can A/B-test by adding a new `configs/<name>/`:
+
+- **Skill via AGENTS.md** — `configs/with-skill/AGENTS.md` (current example).
+- **MCP server** — `configs/with-mcp-fetch/opencode.json` containing
+  ```json
+  { "$schema": "https://opencode.ai/config.json",
+    "mcp": { "fetch": { "type": "local", "command": ["uvx", "mcp-server-fetch"] } } }
+  ```
+- **Plugin** — `configs/with-plugin-x/opencode.json` with a `plugin` array.
+- **Alternate provider/model** — `configs/with-haiku/opencode.json` setting
+  `provider`/`model`.
+
+You can mix artifacts (e.g. an `AGENTS.md` plus an `opencode.json` with an
+MCP) to test combined effects.
+
+## Isolation guarantees
+
+For each `(config, task)` pair the runner builds a sandbox before invoking
+opencode, so the user's host environment cannot taint the run:
+
+- **Workdir**: `runs/<ts>/.work/<config>-<task>/` (controlled, not `/tmp`).
+- **`env -i` allowlist**: only `PATH`, `USER`, `LANG`, `LC_ALL`, `TERM` and the
+  API-key vars (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`,
+  `GOOGLE_API_KEY`, `GEMINI_API_KEY`) are forwarded. Everything else —
+  including all `OPENCODE_*` and `CLAUDE_*` host vars — is dropped.
+- **`HOME` and `XDG_CONFIG_HOME`** are pinned to a per-run sandbox dir, so
+  opencode never reads `~/.config/opencode/opencode.json` from the host.
+- **AGENTS.md walk-up check**: before the run, the parent chain of the workdir
+  is scanned for stray `AGENTS.md` files. If any exists, the run aborts with
+  a clear error rather than silently picking it up.
+- **`--pure`** in the baseline `flags` is kept as belt-and-suspenders even
+  though the XDG sandbox already prevents user-config loading.
+
+If you need additional env vars to reach opencode (e.g. an API base URL),
+extend `ENV_ALLOWLIST_BASE` / `ENV_ALLOWLIST_KEYS` at the top of `run.sh`.
 
 ## meta.json fields
 
@@ -80,10 +123,11 @@ Each run writes a `meta.json` with the full environment snapshot:
 | `opencode_flags` | Flags from the config's `flags` file |
 | `model` | Model used (`configs/<name>/model` → global opencode config) |
 | `opencode_version` | Version of the opencode binary |
-| `pure_mode` | `true` when `--pure` is in flags (plugins + MCP disabled) |
-| `plugins` | Active plugins (empty when `pure_mode`) |
-| `mcp_servers` | Active MCP server names (empty when `pure_mode`) |
+| `pure_mode` | `true` when `--pure` is in flags |
+| `plugins` | Plugins declared in the config's `opencode.json` (empty when none) |
+| `mcp_servers` | MCP server names declared in the config's `opencode.json` (empty when none) |
 | `skills_enabled` | `true` when `AGENTS.md` was injected |
+| `opencode_config_used` | `true` when the config supplied an `opencode.json` |
 | `context_files` | List of context files copied into the workdir |
 | `started_at` / `ended_at` | Unix timestamps |
 | `duration_s` | Wall-clock seconds |
@@ -116,8 +160,9 @@ Override the judge model with `JUDGE_MODEL=claude-...` (default
 `claude-sonnet-4-5`). Each `judge.json` records `judge_model` and
 `judge_prompt_sha256` so reruns can detect drift.
 
-Cost: ~1 API call per (config, task), so the default 2 × 33 = 66 calls per run.
-Use `--task <id>` to run a subset.
+Cost: ~1 API call per (config, task). With the shipped 2 configs and 33 tasks
+that's 66 calls per run; adding a third config (e.g. `with-mcp`) makes it 99.
+Use `--task <id>` or `--config <name>` to run a subset.
 
 ## HTML viewer
 

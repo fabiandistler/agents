@@ -77,12 +77,41 @@ TASKS=$(list_dirs tasks)
 [[ -n "$CONFIG_FILTER" ]] && CONFIGS="$CONFIG_FILTER"
 [[ -n "$TASK_FILTER"   ]] && TASKS="$TASK_FILTER"
 
+# Env vars forwarded to the sandboxed opencode process. Anything not in this
+# list is dropped via `env -i` so OPENCODE_*, CLAUDE_*, and similar host vars
+# cannot leak into the eval. API keys are forwarded only if set.
+ENV_ALLOWLIST_BASE=(PATH USER LANG LC_ALL TERM)
+ENV_ALLOWLIST_KEYS=(ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GOOGLE_API_KEY GEMINI_API_KEY)
+
+# Walks from `dir`'s parent up to / and aborts if any AGENTS.md exists along
+# the way. opencode walks up from CWD to merge AGENTS.md files; an unexpected
+# one above the workdir would silently taint a "vanilla" baseline.
+check_agents_walkup() {
+  local dir="$1"
+  dir="$(dirname "$dir")"
+  while [[ "$dir" != "/" && -n "$dir" ]]; do
+    if [[ -f "$dir/AGENTS.md" ]]; then
+      echo "[run] AGENTS.md leak above workdir: $dir/AGENTS.md" >&2
+      echo "[run]   opencode walk-up would pick this up. Move/remove it before running." >&2
+      return 1
+    fi
+    dir="$(dirname "$dir")"
+  done
+  if [[ -f "/AGENTS.md" ]]; then
+    echo "[run] AGENTS.md leak: /AGENTS.md" >&2
+    return 1
+  fi
+  return 0
+}
+
 run_one() {
   local config="$1" task="$2"
   local task_dir="$ROOT/tasks/$task"
   local out_dir="$ROOT/$RUN_DIR/$config/$task"
-  local work; work="$(mktemp -d)"
-  mkdir -p "$out_dir"
+  local work="$ROOT/$RUN_DIR/.work/$config-$task"
+  local xdg="$work/.xdg"
+  rm -rf "$work"
+  mkdir -p "$out_dir" "$work" "$xdg/opencode"
 
   echo "[run] $config / $task   (workdir: $work)"
 
@@ -94,16 +123,19 @@ run_one() {
     flags_json="[$(echo "$opencode_flags" | tr ' \n' '\0' | xargs -0 printf '"%s",' | sed 's/,$//')]"
   fi
 
-  local oc_config="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
+  # Source-of-truth for plugins/mcp/model is the per-config opencode.json
+  # (copied into the sandboxed XDG below). The user's global opencode config
+  # is intentionally NOT consulted — it never reaches the sandboxed run.
+  local cfg_oc_json="$ROOT/configs/$config/opencode.json"
   local model_json='"unknown"'
   local plugins_json="[]"
   local mcp_json="[]"
-  if [[ -f "$oc_config" ]] && command -v jq &>/dev/null; then
+  if [[ -f "$cfg_oc_json" ]] && command -v jq &>/dev/null; then
     local raw_model
-    raw_model=$(jq -r '.model // .small_model // empty' "$oc_config")
+    raw_model=$(jq -r '.model // .small_model // empty' "$cfg_oc_json")
     [[ -n "$raw_model" ]] && model_json="\"$raw_model\""
-    plugins_json=$(jq -c '[.plugin // [] | .[]]' "$oc_config")
-    mcp_json=$(jq -c '[.mcp // {} | keys[]]' "$oc_config")
+    plugins_json=$(jq -c '[.plugin // [] | .[]]' "$cfg_oc_json")
+    mcp_json=$(jq -c '[.mcp // {} | keys[]]' "$cfg_oc_json")
   fi
 
   local extra_flags=""
@@ -118,21 +150,29 @@ run_one() {
   local pure_mode=false
   if echo " $opencode_flags " | grep -qw -- '--pure'; then
     pure_mode=true
-    plugins_json="[]"
-    mcp_json="[]"
   fi
 
   local skills_enabled=false
-  local context_files_json="[]"
+  local opencode_config_used=false
+  local -a context_files=()
   if [[ -f "$ROOT/configs/$config/AGENTS.md" ]]; then
     skills_enabled=true
-    context_files_json='["AGENTS.md"]'
+    context_files+=("AGENTS.md")
+  fi
+  if [[ -f "$cfg_oc_json" ]]; then
+    opencode_config_used=true
+    context_files+=("opencode.json")
+  fi
+  local context_files_json="[]"
+  if (( ${#context_files[@]} > 0 )); then
+    context_files_json="[$(printf '"%s",' "${context_files[@]}" | sed 's/,$//')]"
   fi
 
   local oc_version="unknown"
   oc_version=$("$OPENCODE_BIN" --version 2>/dev/null | head -1 | tr -d '[:space:]') || true
 
   [[ -f "$ROOT/configs/$config/AGENTS.md" ]] && cp "$ROOT/configs/$config/AGENTS.md" "$work/AGENTS.md"
+  [[ -f "$cfg_oc_json" ]] && cp "$cfg_oc_json" "$xdg/opencode/opencode.json"
   [[ -f "$task_dir/target.R" ]] && cp "$task_dir/target.R" "$work/"
   if [[ -f "$task_dir/setup.R" ]]; then
     (cd "$work" && Rscript "$task_dir/setup.R" >/dev/null 2>&1) || {
@@ -144,6 +184,20 @@ run_one() {
   prompt="$(Rscript -e 'suppressWarnings(Sys.setlocale("LC_ALL","C.UTF-8")); cat(yaml::yaml.load(paste(readLines(commandArgs(TRUE)[1], encoding="UTF-8", warn=FALSE), collapse="\n"))$prompt)' "$task_dir/task.yaml")"
   local start_ts end_ts exit_code=0
 
+  # Build the sandboxed env. Only allowlisted vars survive; XDG_CONFIG_HOME
+  # and HOME are pinned to $xdg so opencode cannot read user-level config.
+  local -a env_args=()
+  local v val
+  for v in "${ENV_ALLOWLIST_BASE[@]}"; do
+    val="$(printenv "$v" 2>/dev/null || true)"
+    [[ -n "$val" ]] && env_args+=("$v=$val")
+  done
+  for v in "${ENV_ALLOWLIST_KEYS[@]}"; do
+    val="$(printenv "$v" 2>/dev/null || true)"
+    [[ -n "$val" ]] && env_args+=("$v=$val")
+  done
+  env_args+=("HOME=$xdg" "XDG_CONFIG_HOME=$xdg")
+
   start_ts=$(date +%s)
   if [[ -n "${OPENCODE_MOCK_DIR:-}" ]]; then
     local fixture="$ROOT/$OPENCODE_MOCK_DIR/$config/$task/solution.R"
@@ -154,9 +208,13 @@ run_one() {
       exit_code=127
     fi
   else
-    (cd "$work" && "$OPENCODE_BIN" run $opencode_flags $extra_flags "$prompt") \
-      > "$out_dir/opencode.stdout" 2> "$out_dir/opencode.stderr" \
-      || exit_code=$?
+    if ! check_agents_walkup "$work"; then
+      exit_code=126
+    else
+      (cd "$work" && env -i "${env_args[@]}" "$OPENCODE_BIN" run $opencode_flags $extra_flags "$prompt") \
+        > "$out_dir/opencode.stdout" 2> "$out_dir/opencode.stderr" \
+        || exit_code=$?
+    fi
   fi
   end_ts=$(date +%s)
   local mock_val
@@ -179,6 +237,7 @@ run_one() {
   "plugins": $plugins_json,
   "mcp_servers": $mcp_json,
   "skills_enabled": $skills_enabled,
+  "opencode_config_used": $opencode_config_used,
   "context_files": $context_files_json,
   "started_at": $start_ts,
   "ended_at": $end_ts,
@@ -198,5 +257,9 @@ for config in $CONFIGS; do
     run_one "$config" "$task"
   done
 done
+
+# Drop the transient sandbox parent so score.R/judge.R/generate_viewer.R see
+# only real config directories under runs/<ts>/.
+rm -rf "$RUN_DIR/.work"
 
 finalize "$RUN_DIR"
