@@ -113,6 +113,7 @@ run_one() {
   local xdg="$work/.xdg"
   rm -rf "$work"
   mkdir -p "$out_dir" "$work" "$xdg/opencode"
+  [[ -d "$HOME/.agents" ]] && cp -r "$HOME/.agents" "$xdg/.agents"
 
   echo "[run] $config / $task   (workdir: $work)"
 
