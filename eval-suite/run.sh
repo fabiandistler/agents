@@ -10,6 +10,14 @@
 #   ./run.sh --score-only runs/<ts>           # just re-score an existing run
 #   ./run.sh --no-judge                       # skip the LLM judge step
 #
+# Configuration via env:
+#   OPENCODE_BIN     Probandee CLI (default: opencode). The eval suite is
+#                    designed around opencode's `run --pure` flag, so other
+#                    coder CLIs are not drop-in replacements here.
+#   JUDGE_CLI        CLI used by judge.R for LLM-as-judge scoring
+#                    (default: claude). Independent of OPENCODE_BIN — you
+#                    can evaluate any probandee with any judge.
+#
 # Mock mode (no opencode call):
 #   OPENCODE_MOCK_DIR=fixtures ./run.sh
 #   The runner will copy fixtures/<config>/<task>/solution.R instead of
@@ -26,6 +34,7 @@ CONFIG_FILTER=""
 SCORE_ONLY=""
 NO_JUDGE="${NO_JUDGE:-}"
 OPENCODE_BIN="${OPENCODE_BIN:-opencode}"
+JUDGE_CLI="${JUDGE_CLI:-claude}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,11 +53,11 @@ finalize() {
   echo "[run] scoring..."
   Rscript score.R "$run_dir"
 
-  if [[ -z "$NO_JUDGE" && -z "${OPENCODE_MOCK_DIR:-}" ]] && command -v claude &>/dev/null; then
-    echo "[run] judging..."
-    Rscript judge.R "$run_dir"
+  if [[ -z "$NO_JUDGE" && -z "${OPENCODE_MOCK_DIR:-}" ]] && command -v "$JUDGE_CLI" &>/dev/null; then
+    echo "[run] judging with $JUDGE_CLI..."
+    JUDGE_CLI="$JUDGE_CLI" Rscript judge.R "$run_dir"
   else
-    echo "[run] skipping judge (NO_JUDGE, mock mode, or claude not on PATH)"
+    echo "[run] skipping judge (NO_JUDGE, mock mode, or $JUDGE_CLI not on PATH)"
     Rscript judge.R "$run_dir" --skip
   fi
 

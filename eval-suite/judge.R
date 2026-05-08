@@ -1,10 +1,13 @@
 #!/usr/bin/env Rscript
-# LLM-as-judge: for each (config, task) in a run dir, ask claude to evaluate
+# LLM-as-judge: for each (config, task) in a run dir, ask an LLM to evaluate
 # the solution against the task's expectations (from task.yaml). Writes
 # runs/<ts>/<config>/<task>/judge.json.
 #
+# The CLI used to call the LLM is selected via $JUDGE_CLI (default: claude;
+# also supports codex, opencode). $JUDGE_MODEL picks the model name.
+#
 # Usage:
-#   Rscript judge.R runs/<ts>            # call claude for every (config, task)
+#   Rscript judge.R runs/<ts>            # judge every (config, task)
 #   Rscript judge.R runs/<ts> --skip     # write skipped-stub judge.json files
 #
 # Inputs read per (config, task):
@@ -166,15 +169,34 @@ extract_json <- function(s) {
   substr(s, start, end + attr(end, "match.length") - 1L)
 }
 
-call_claude <- function(prompt, model) {
+JUDGE_CLI <- Sys.getenv("JUDGE_CLI", unset = "claude")
+
+# argv prefix for each supported judge CLI. The prompt is fed via stdin.
+# `claude` wraps its response in a JSON envelope with a `result` field;
+# `codex` and `opencode` print the raw model text. call_judge() handles
+# both cases.
+judge_cli_args <- function(cli, model) {
+  switch(
+    cli,
+    claude   = c("-p", "--output-format", "json", "--model", model),
+    codex    = c("exec", "--quiet", "--model", model, "-"),
+    opencode = c("run", "-m", model, "-"),
+    stop(sprintf(
+      "unknown JUDGE_CLI=%s; supported: claude, codex, opencode",
+      cli
+    ))
+  )
+}
+
+call_judge <- function(prompt, model) {
   tmp_in <- tempfile("judge-prompt-", fileext = ".txt")
   on.exit(unlink(tmp_in), add = TRUE)
   writeLines(prompt, tmp_in)
 
   raw <- tryCatch(
     system2(
-      "claude",
-      args = c("-p", "--output-format", "json", "--model", model),
+      JUDGE_CLI,
+      args = judge_cli_args(JUDGE_CLI, model),
       stdin = tmp_in,
       stdout = TRUE,
       stderr = TRUE
@@ -189,30 +211,36 @@ call_claude <- function(prompt, model) {
   if (!is.null(status) && status != 0) {
     return(list(
       ok = FALSE,
-      error = sprintf("claude exited %d: %s", status, raw_text),
+      error = sprintf("%s exited %d: %s", JUDGE_CLI, status, raw_text),
       raw = raw_text
     ))
   }
 
-  outer <- tryCatch(
-    jsonlite::fromJSON(raw_text, simplifyVector = FALSE),
-    error = function(e) e
-  )
-  if (inherits(outer, "error")) {
-    return(list(
-      ok = FALSE,
-      error = paste(
-        "could not parse claude wrapper JSON:",
-        conditionMessage(outer)
-      ),
-      raw = raw_text
-    ))
+  if (JUDGE_CLI == "claude") {
+    # Claude wraps the model output in a JSON envelope; unwrap it first.
+    outer <- tryCatch(
+      jsonlite::fromJSON(raw_text, simplifyVector = FALSE),
+      error = function(e) e
+    )
+    if (inherits(outer, "error")) {
+      return(list(
+        ok = FALSE,
+        error = paste(
+          "could not parse claude wrapper JSON:",
+          conditionMessage(outer)
+        ),
+        raw = raw_text
+      ))
+    }
+    inner_text <- outer$result %||% outer$content %||% ""
+  } else {
+    # codex / opencode emit the model text directly.
+    inner_text <- raw_text
   }
-  inner_text <- outer$result %||% outer$content %||% ""
   if (!nzchar(inner_text)) {
     return(list(
       ok = FALSE,
-      error = "no result text in claude response",
+      error = sprintf("no result text in %s response", JUDGE_CLI),
       raw = raw_text
     ))
   }
@@ -298,7 +326,7 @@ for (config in configs) {
     prompt_sha <- digest::digest(prompt, algo = "sha256", serialize = FALSE)
 
     message(sprintf("[judge] %s / %s", config, task))
-    res <- call_claude(prompt, JUDGE_MODEL)
+    res <- call_judge(prompt, JUDGE_MODEL)
 
     if (!res$ok) {
       write_judge(
