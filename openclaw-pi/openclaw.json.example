@@ -1,0 +1,51 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-6",
+        "fallback": "anthropic/claude-opus-4-7"
+      },
+      "sandbox": {
+        "mode": "non-main"
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "tokenFile": "~/.openclaw/secrets/telegram-token",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["<DEINE_TELEGRAM_ID>"],
+      "groupPolicy": "disabled",
+      "streaming": "progress",
+      "textChunkLimit": 4000,
+      "chunkMode": "newline",
+      "actions": {
+        "sendMessage": true,
+        "react": true,
+        "deleteMessage": false,
+        "editMessage": true,
+        "sticker": false
+      },
+      "execApprovals": {
+        "enabled": true,
+        "approvers": ["<DEINE_TELEGRAM_ID>"],
+        "target": "dm"
+      },
+      "errorPolicy": "reply"
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "ownerAllowFrom": ["telegram:<DEINE_TELEGRAM_ID>"]
+  },
+  "skills": {
+    "enabled": [
+      "browser",
+      "cron",
+      "sessions",
+      "canvas",
+      "nodes"
+    ]
+  }
+}

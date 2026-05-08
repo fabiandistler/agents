@@ -1,0 +1,10 @@
+# Real secrets — never commit
+secrets/telegram-token
+secrets/*.token
+secrets/*.key
+!secrets/*.example
+
+# Local overrides
+openclaw.json
+openclaw.local.json
+*.log
