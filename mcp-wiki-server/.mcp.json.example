@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "wiki": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/home/user/agents/mcp-wiki-server",
+        "python",
+        "server.py"
+      ],
+      "env": {
+        "WIKI_PATH": "/home/user/agents/mcp-wiki-server/wiki"
+      }
+    }
+  }
+}
