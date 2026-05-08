@@ -3,6 +3,13 @@
 
 Tests whether a skill's description causes Claude to trigger (read the skill)
 for a set of queries. Outputs results as JSON.
+
+Note: this script is Claude Code-specific. It depends on the
+``--output-format stream-json`` protocol and the ``Skill`` / ``Read`` tool
+names that Claude Code emits in its event stream. Other CLI agents do not
+expose an equivalent tool-call event stream, so trigger detection cannot
+be ported behind ``$CODER_CLI``. The simpler prompt → text workflow used
+by ``improve_description.py`` does honour ``$CODER_CLI``.
 """
 
 import argparse

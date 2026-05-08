@@ -429,7 +429,7 @@ In Claude.ai, the core workflow is the same (draft → test → review → impro
 
 **The iteration loop**: Same as before — improve the skill, rerun the test cases, ask for feedback — just without the browser reviewer in the middle. You can still organize results into iteration directories on the filesystem if you have one.
 
-**Description optimization**: This section requires the `claude` CLI tool (specifically `claude -p`) which is only available in Claude Code. Skip it if you're on Claude.ai.
+**Description optimization**: This section requires a coder CLI on `$PATH`. The backend is selected via `$CODER_CLI` (default: `claude`; also supports `codex`, `opencode`). Skip it if you're on Claude.ai or anywhere else without a CLI installed.
 
 **Blind comparison**: Requires subagents. Skip it.
 
@@ -451,7 +451,7 @@ If you're in Cowork, the main things to know are:
 - For whatever reason, the Cowork setup seems to disincline Claude from generating the eval viewer after running the tests, so just to reiterate: whether you're in Cowork or in Claude Code, after running tests, you should always generate the eval viewer for the human to look at examples before revising the skill yourself and trying to make corrections, using `generate_review.py` (not writing your own boutique html code). Sorry in advance but I'm gonna go all caps here: GENERATE THE EVAL VIEWER *BEFORE* evaluating inputs yourself. You want to get them in front of the human ASAP!
 - Feedback works differently: since there's no running server, the viewer's "Submit All Reviews" button will download `feedback.json` as a file. You can then read it from there (you may have to request access first).
 - Packaging works — `package_skill.py` just needs Python and a filesystem.
-- Description optimization (`run_loop.py` / `run_eval.py`) should work in Cowork just fine since it uses `claude -p` via subprocess, not a browser, but please save it until you've fully finished making the skill and the user agrees it's in good shape.
+- Description optimization (`run_loop.py` / `improve_description.py`) should work in Cowork just fine since it uses the configured `$CODER_CLI` via subprocess, not a browser, but please save it until you've fully finished making the skill and the user agrees it's in good shape. Note: `run_eval.py` (trigger detection) is Claude Code-specific because it parses Claude's stream-JSON protocol; `$CODER_CLI` only affects the prompt → text path.
 - **Updating an existing skill**: The user might be asking you to update an existing skill, not create a new one. Follow the update guidance in the claude.ai section above.
 
 ---

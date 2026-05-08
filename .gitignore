@@ -1,2 +1,4 @@
 eval-suite/.claude/settings.local.json
 .memsearch/*
+__pycache__/
+*.pyc
