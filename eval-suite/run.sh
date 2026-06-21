@@ -11,12 +11,12 @@
 #   ./run.sh --no-judge                       # skip the LLM judge step
 #
 # Configuration via env:
-#   OPENCODE_BIN     Probandee CLI (default: opencode). The eval suite is
+#   OPENCODE_BIN     CLI under test (default: opencode). The eval suite is
 #                    designed around opencode's `run --pure` flag, so other
 #                    coder CLIs are not drop-in replacements here.
 #   JUDGE_CLI        CLI used by judge.R for LLM-as-judge scoring
 #                    (default: claude). Independent of OPENCODE_BIN — you
-#                    can evaluate any probandee with any judge.
+#                    can evaluate any CLI under test with any judge.
 #
 # Mock mode (no opencode call):
 #   OPENCODE_MOCK_DIR=fixtures ./run.sh

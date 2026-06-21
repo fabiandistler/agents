@@ -8,7 +8,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 
 - Each top-level directory whose name does not start with `.` and which
   contains a `SKILL.md` file is a self-contained skill.
-- `skills.json` (repo root) is the maschine-readable manifest of all
+- `skills.json` (repo root) is the machine-readable manifest of all
   skills. Read it once to discover what is available without crawling the
   tree.
 - `install.sh` (repo root) symlinks the skills into the conventional
@@ -32,7 +32,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 
 For agents that auto-load `AGENTS.md` (Codex CLI, opencode, Aider): the
 links above are valid relative paths and may be fetched on demand. For
-maschine consumption prefer `skills.json`.
+machine consumption prefer `skills.json`.
 
 ## Conventions for skill authors
 
@@ -48,4 +48,5 @@ maschine consumption prefer `skills.json`.
   (slash-commands, "the Skill tool", proprietary tool names). Prefer
   describing the workflow in terms any reader can apply.
 - After editing any `SKILL.md` frontmatter, regenerate the manifest:
-  `python3 scripts/build_manifest.py`. CI rejects stale manifests.
+  `python3 scripts/build_manifest.py`. Verify it is in sync before
+  committing with `python3 scripts/build_manifest.py --check`.
