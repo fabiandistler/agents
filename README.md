@@ -6,7 +6,7 @@ Codex CLI, opencode, Continue, Aider, and any agent that can read
 Markdown.
 
 See [`AGENTS.md`](AGENTS.md) for the agent-facing entry point and
-[`skills.json`](skills.json) for a maschine-readable manifest.
+[`skills.json`](skills.json) for a machine-readable manifest.
 
 ## Install
 
