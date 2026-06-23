@@ -1,0 +1,12 @@
+# Ruff configuration for first-party Python in this repo
+# (repo tooling, mcp-wiki-server, skill-creator). Intentionally-varied
+# eval/fixture sample files are excluded so they are never reformatted or linted.
+
+target-version = "py310"
+line-length = 100
+
+extend-exclude = [
+    "**/evals/**",
+    "**/fixtures/**",
+    "**/bad_examples/**",
+]

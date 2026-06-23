@@ -17,7 +17,7 @@ from pathlib import Path
 # Add new backends here; downstream callers don't need to change.
 _CODER_CLI_BACKENDS: dict[str, list[str]] = {
     "claude": ["claude", "-p", "--output-format", "text"],
-    "codex":  ["codex", "exec", "--quiet", "-"],
+    "codex": ["codex", "exec", "--quiet", "-"],
     "opencode": ["opencode", "run", "-"],
 }
 
@@ -39,17 +39,14 @@ def coder_cli_invoke(
     backend = os.environ.get("CODER_CLI", "claude")
     if backend not in _CODER_CLI_BACKENDS:
         raise ValueError(
-            f"unknown $CODER_CLI={backend!r}; supported: "
-            f"{', '.join(sorted(_CODER_CLI_BACKENDS))}"
+            f"unknown $CODER_CLI={backend!r}; supported: {', '.join(sorted(_CODER_CLI_BACKENDS))}"
         )
     cmd = list(_CODER_CLI_BACKENDS[backend])
     if model:
         cmd.extend(["--model", model])
 
     if shutil.which(cmd[0]) is None:
-        raise FileNotFoundError(
-            f"$CODER_CLI={backend!r} requires {cmd[0]!r} on PATH"
-        )
+        raise FileNotFoundError(f"$CODER_CLI={backend!r} requires {cmd[0]!r} on PATH")
 
     # Strip CLAUDECODE so this works when nested inside a Claude Code session.
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
@@ -64,8 +61,7 @@ def coder_cli_invoke(
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"{backend} ({' '.join(cmd)}) exited {result.returncode}\n"
-            f"stderr: {result.stderr}"
+            f"{backend} ({' '.join(cmd)}) exited {result.returncode}\nstderr: {result.stderr}"
         )
     return result.stdout
 
@@ -94,14 +90,16 @@ def parse_skill_md(skill_path: Path) -> tuple[str, str, str]:
     while i < len(frontmatter_lines):
         line = frontmatter_lines[i]
         if line.startswith("name:"):
-            name = line[len("name:"):].strip().strip('"').strip("'")
+            name = line[len("name:") :].strip().strip('"').strip("'")
         elif line.startswith("description:"):
-            value = line[len("description:"):].strip()
+            value = line[len("description:") :].strip()
             # Handle YAML multiline indicators (>, |, >-, |-)
             if value in (">", "|", ">-", "|-"):
                 continuation_lines: list[str] = []
                 i += 1
-                while i < len(frontmatter_lines) and (frontmatter_lines[i].startswith("  ") or frontmatter_lines[i].startswith("\t")):
+                while i < len(frontmatter_lines) and (
+                    frontmatter_lines[i].startswith("  ") or frontmatter_lines[i].startswith("\t")
+                ):
                     continuation_lines.append(frontmatter_lines[i].strip())
                     i += 1
                 description = " ".join(continuation_lines)

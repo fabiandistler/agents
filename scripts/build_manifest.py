@@ -19,16 +19,15 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SKILLS_DIR = REPO_ROOT / "skills"
 MANIFEST_PATH = REPO_ROOT / "skills.json"
 MANIFEST_VERSION = "1"
-
-EXCLUDE_DIRS = {".git", "scripts", "eval-suite", "mcp-wiki-server"}
 
 
 def find_skill_files() -> list[Path]:
     skills = []
-    for child in sorted(REPO_ROOT.iterdir()):
-        if not child.is_dir() or child.name in EXCLUDE_DIRS or child.name.startswith("."):
+    for child in sorted(SKILLS_DIR.iterdir()):
+        if not child.is_dir() or child.name.startswith("."):
             continue
         skill_md = child / "SKILL.md"
         if skill_md.is_file():
@@ -149,8 +148,7 @@ def build_manifest() -> dict[str, object]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true",
-                        help="exit 1 if skills.json is out of date")
+    parser.add_argument("--check", action="store_true", help="exit 1 if skills.json is out of date")
     args = parser.parse_args()
 
     manifest = build_manifest()
@@ -159,9 +157,7 @@ def main() -> int:
     if args.check:
         existing = MANIFEST_PATH.read_text(encoding="utf-8") if MANIFEST_PATH.exists() else ""
         if existing != rendered:
-            sys.stderr.write(
-                "skills.json is out of date. Run: python3 scripts/build_manifest.py\n"
-            )
+            sys.stderr.write("skills.json is out of date. Run: python3 scripts/build_manifest.py\n")
             return 1
         return 0
 

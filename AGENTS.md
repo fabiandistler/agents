@@ -6,8 +6,8 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 
 ## How to use this repo
 
-- Each top-level directory whose name does not start with `.` and which
-  contains a `SKILL.md` file is a self-contained skill.
+- Each directory under `skills/` that contains a `SKILL.md` file is a
+  self-contained skill.
 - `skills.json` (repo root) is the machine-readable manifest of all
   skills. Read it once to discover what is available without crawling the
   tree.
@@ -16,19 +16,20 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `./install.sh --help`.
 - `eval-suite/` is an A/B harness for measuring whether a skill
   improves an agent's output. It is not a skill itself.
-- `mcp-wiki-server/` is a small MCP server exposing a Wikipedia tool to
-  any MCP-aware agent. It is independent of the skills.
+- `mcp-wiki-server/` is a small MCP server exposing a wiki /
+  knowledge-base tool to any MCP-aware agent. It is independent of the
+  skills.
 
 ## Skill catalogue
 
 | Skill | When to use |
 |---|---|
-| [adr-workflow](adr-workflow/SKILL.md) | Establishing or maintaining Architecture Decision Records in a repo. |
-| [problem-first-explanation](problem-first-explanation/SKILL.md) | Producing technical explanations that lead with the concrete problem before the abstract solution. |
-| [r-package-dev](r-package-dev/SKILL.md) | Designing or refactoring R packages (data.table, roxygen2, testthat). |
-| [skill-creator](skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
-| [software-design](software-design/SKILL.md) | Designing function/module APIs to maximise functionality and minimise interface surface ("deep modules"). |
-| [stepdown-rule](stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
+| [adr-workflow](skills/adr-workflow/SKILL.md) | Establishing or maintaining Architecture Decision Records in a repo. |
+| [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing technical explanations that lead with the concrete problem before the abstract solution. |
+| [r-package-dev](skills/r-package-dev/SKILL.md) | Designing or refactoring R packages (data.table, roxygen2, testthat). |
+| [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
+| [software-design](skills/software-design/SKILL.md) | Designing function/module APIs to maximize functionality and minimize interface surface ("deep modules"). |
+| [stepdown-rule](skills/stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 
 For agents that auto-load `AGENTS.md` (Codex CLI, opencode, Aider): the
 links above are valid relative paths and may be fetched on demand. For
@@ -36,7 +37,7 @@ machine consumption prefer `skills.json`.
 
 ## Conventions for skill authors
 
-- A skill lives in `<skill-name>/` and has a `SKILL.md` at its root.
+- A skill lives in `skills/<skill-name>/` and has a `SKILL.md` at its root.
 - `SKILL.md` starts with YAML frontmatter providing at minimum:
   - `name` — must match the directory name.
   - `description` — single paragraph; the first sentence becomes the

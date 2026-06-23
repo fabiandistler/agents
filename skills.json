@@ -4,36 +4,36 @@
     {
       "name": "adr-workflow",
       "summary": "Establish and maintain Architecture Decision Records (ADRs) in software repositories.",
-      "path": "adr-workflow/SKILL.md",
+      "path": "skills/adr-workflow/SKILL.md",
       "compatibility": "Works in any software repository. No special dependencies."
     },
     {
       "name": "problem-first-explanation",
       "summary": "Output-form skill for technical explanations.",
-      "path": "problem-first-explanation/SKILL.md"
+      "path": "skills/problem-first-explanation/SKILL.md"
     },
     {
       "name": "r-package-dev",
       "summary": "Design and develop R packages.",
-      "path": "r-package-dev/SKILL.md",
+      "path": "skills/r-package-dev/SKILL.md",
       "compatibility": "Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required. Diagram generation uses DiagrammeR if installed.",
       "version": "1.0"
     },
     {
       "name": "skill-creator",
       "summary": "Create new skills, modify and improve existing skills, and measure skill performance.",
-      "path": "skill-creator/SKILL.md"
+      "path": "skills/skill-creator/SKILL.md"
     },
     {
       "name": "software-design",
       "summary": "Design and validate deep modules that maximize functionality while minimizing interface complexity.",
-      "path": "software-design/SKILL.md",
+      "path": "skills/software-design/SKILL.md",
       "version": "1.1"
     },
     {
       "name": "stepdown-rule",
       "summary": "Write, refactor, or review functions using the stepdown rule: make code read top-down, keep each function at one level of abstraction, and extract helpers so the reader can move from orchestration to…",
-      "path": "stepdown-rule/SKILL.md",
+      "path": "skills/stepdown-rule/SKILL.md",
       "compatibility": "Works with function-writing tasks in any language. No special dependencies."
     }
   ]
