@@ -9,7 +9,7 @@ A small, sharp output-form skill: **never explain a concept before the reader kn
 
 ## When to invoke
 
-- Writing or editing a README, package description, design rationale, or [[20251003T164600551034000|ADR]] motivation.
+- Writing or editing a README, package description, design rationale, or ADR motivation.
 - Adding a docstring or roxygen2 `@description` block.
 - Explaining a design pattern, library, framework, or architectural choice.
 - The user asks "explain X" or "what is X" or "why do we use X".

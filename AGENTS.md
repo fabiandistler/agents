@@ -16,8 +16,9 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `./install.sh --help`.
 - `eval-suite/` is an A/B harness for measuring whether a skill
   improves an agent's output. It is not a skill itself.
-- `mcp-wiki-server/` is a small MCP server exposing a Wikipedia tool to
-  any MCP-aware agent. It is independent of the skills.
+- `mcp-wiki-server/` is a small MCP server exposing a wiki /
+  knowledge-base tool to any MCP-aware agent. It is independent of the
+  skills.
 
 ## Skill catalogue
 
@@ -27,7 +28,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 | [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing technical explanations that lead with the concrete problem before the abstract solution. |
 | [r-package-dev](skills/r-package-dev/SKILL.md) | Designing or refactoring R packages (data.table, roxygen2, testthat). |
 | [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
-| [software-design](skills/software-design/SKILL.md) | Designing function/module APIs to maximise functionality and minimise interface surface ("deep modules"). |
+| [software-design](skills/software-design/SKILL.md) | Designing function/module APIs to maximize functionality and minimize interface surface ("deep modules"). |
 | [stepdown-rule](skills/stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 
 For agents that auto-load `AGENTS.md` (Codex CLI, opencode, Aider): the

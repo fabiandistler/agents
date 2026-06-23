@@ -30,7 +30,7 @@ Symlink the skills into your agent's conventional skill directory:
 | `skills/r-package-dev/` | Skill for R package development (data.table, roxygen2, testthat) |
 | `skills/skill-creator/` | Skill for authoring and iterating on new skills |
 | `skills/software-design/` | Skill for function argument design and API patterns |
-| `skills/stepdown-rule/` | Skill for stepdown rule code organisation |
+| `skills/stepdown-rule/` | Skill for stepdown rule code organization |
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
-| `mcp-wiki-server/` | MCP server exposing a Wikipedia tool to MCP-aware agents |
+| `mcp-wiki-server/` | MCP server exposing a wiki / knowledge-base tool to MCP-aware agents |
 | `scripts/` | Repo tooling (manifest generator) |

@@ -37,7 +37,7 @@ Workflow A — Session-scoped state (package-private environment)
 3) Initialize non-interactively in .onLoad(); show messages (if any) in .onAttach().
 
 Example
-See assets/examples-state.R
+See assets/example-state.R
 
 Key do’s/don’ts
 - Do: the <- new.env(parent = emptyenv()); use the$… for state.
@@ -57,7 +57,7 @@ Workflow B — Persistent user data (CRAN-compliant)
 - Provide list/read/write/clear helpers; keep files small; document what’s stored and how to clean it.
 
 Examples
-- Path helpers and read/write helpers: assets/examples-persistence.R
+- Path helpers and read/write helpers: assets/example-persistence.R
 - Cleanup utility: scripts/clean-user-data.R
 
 Loading vs attaching (correct usage)
@@ -116,8 +116,8 @@ Common edge cases
 
 References and scripts
 - Code samples:
-  - assets/examples-state.R
-  - assets/examples-persistence.R
+  - assets/example-state.R
+  - assets/example-persistence.R
   - assets/c4-context-diagram.R
 - Cleanup script:
   - scripts/clean-user-data.R
