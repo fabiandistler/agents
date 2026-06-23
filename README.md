@@ -24,12 +24,13 @@ Symlink the skills into your agent's conventional skill directory:
 
 | Directory | Description |
 |---|---|
-| `adr-workflow/` | Skill for Architecture Decision Records |
-| `problem-first-explanation/` | Skill for problem-first code explanation |
-| `r-package-dev/` | Skill for R package development (data.table, roxygen2, testthat) |
-| `skill-creator/` | Skill for authoring and iterating on new skills |
-| `software-design/` | Skill for function argument design and API patterns |
-| `stepdown-rule/` | Skill for stepdown rule code organisation |
+| `skills/` | All installable skills (each subdirectory has a `SKILL.md`) |
+| `skills/adr-workflow/` | Skill for Architecture Decision Records |
+| `skills/problem-first-explanation/` | Skill for problem-first code explanation |
+| `skills/r-package-dev/` | Skill for R package development (data.table, roxygen2, testthat) |
+| `skills/skill-creator/` | Skill for authoring and iterating on new skills |
+| `skills/software-design/` | Skill for function argument design and API patterns |
+| `skills/stepdown-rule/` | Skill for stepdown rule code organisation |
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
 | `mcp-wiki-server/` | MCP server exposing a Wikipedia tool to MCP-aware agents |
 | `scripts/` | Repo tooling (manifest generator) |

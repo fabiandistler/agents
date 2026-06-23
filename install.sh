@@ -61,12 +61,9 @@ resolve_targets() {
 }
 
 list_skills() {
-  # A directory is a skill iff it contains SKILL.md.
-  # Skip hidden dirs and non-skill subprojects.
-  local skip='^(scripts|eval-suite|mcp-wiki-server)$'
-  for d in "$REPO_ROOT"/*/; do
+  # A directory under skills/ is a skill iff it contains SKILL.md.
+  for d in "$REPO_ROOT"/skills/*/; do
     local name; name="$(basename "$d")"
-    [[ "$name" =~ $skip ]] && continue
     [[ -f "$d/SKILL.md" ]] || continue
     printf '%s\n' "$name"
   done
@@ -138,7 +135,7 @@ main() {
       ensure_parent "$dest_dir"
     fi
     while IFS= read -r skill; do
-      local src="$REPO_ROOT/$skill"
+      local src="$REPO_ROOT/skills/$skill"
       local dest="$dest_dir/$skill"
       if (( UNINSTALL )); then
         unlink_one "$src" "$dest"

@@ -19,16 +19,15 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SKILLS_DIR = REPO_ROOT / "skills"
 MANIFEST_PATH = REPO_ROOT / "skills.json"
 MANIFEST_VERSION = "1"
-
-EXCLUDE_DIRS = {".git", "scripts", "eval-suite", "mcp-wiki-server"}
 
 
 def find_skill_files() -> list[Path]:
     skills = []
-    for child in sorted(REPO_ROOT.iterdir()):
-        if not child.is_dir() or child.name in EXCLUDE_DIRS or child.name.startswith("."):
+    for child in sorted(SKILLS_DIR.iterdir()):
+        if not child.is_dir() or child.name.startswith("."):
             continue
         skill_md = child / "SKILL.md"
         if skill_md.is_file():

@@ -28,10 +28,8 @@ count_links() {
 }
 
 skill_count() {
-  local n=0 skip='^(scripts|eval-suite|mcp-wiki-server)$'
-  for d in "$REPO_ROOT"/*/; do
-    local name; name="$(basename "$d")"
-    [[ "$name" =~ $skip ]] && continue
+  local n=0
+  for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] && n=$((n + 1))
   done
   echo "$n"
