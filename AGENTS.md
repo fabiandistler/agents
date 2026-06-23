@@ -25,6 +25,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 | Skill | When to use |
 |---|---|
 | [adr-workflow](skills/adr-workflow/SKILL.md) | Establishing or maintaining Architecture Decision Records in a repo. |
+| [architecture-pattern-advisor](skills/architecture-pattern-advisor/SKILL.md) | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
 | [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing technical explanations that lead with the concrete problem before the abstract solution. |
 | [r-package-dev](skills/r-package-dev/SKILL.md) | Designing or refactoring R packages (data.table, roxygen2, testthat). |
 | [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
