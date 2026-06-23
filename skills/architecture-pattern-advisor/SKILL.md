@@ -58,7 +58,7 @@ Once chosen, document it. **REQUIRED SUB-SKILL:** use the `adr-workflow` skill t
 
 - **New repo:** generate the folder/file skeleton from the annotated example tree for the chosen pattern in [references/pattern-catalog.md](references/pattern-catalog.md), adapted to the repo name and language. For R packages, **REQUIRED SUB-SKILL:** delegate structure to `r-package-dev`.
 - **Existing repo:** produce an **incremental migration plan** (strangler-fig): smallest first move, what moves where, keeping the build green at every step. Never a big-bang rewrite.
-- Apply deep-module thinking when shaping boundaries. **OPTIONAL SUB-SKILL:** `software-design` (small interfaces, hidden complexity).
+- Apply deep-module thinking when shaping boundaries. **OPTIONAL SUB-SKILL:** `codebase-design` (small interfaces, hidden complexity).
 
 ### 6. Verify
 
