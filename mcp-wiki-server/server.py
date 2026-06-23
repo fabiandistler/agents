@@ -73,7 +73,7 @@ def render(topic: Path, query: str | None, page: str | None) -> str:
     lines = [f"# {topic.name} pages", ""]
     for f in files:
         first = next(
-            (l for l in f.read_text(encoding="utf-8").splitlines() if l.strip()),
+            (ln for ln in f.read_text(encoding="utf-8").splitlines() if ln.strip()),
             "",
         )
         lines.append(f"- `{f.relative_to(topic)}` — {first[:100]}")

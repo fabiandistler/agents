@@ -148,8 +148,7 @@ def build_manifest() -> dict[str, object]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true",
-                        help="exit 1 if skills.json is out of date")
+    parser.add_argument("--check", action="store_true", help="exit 1 if skills.json is out of date")
     args = parser.parse_args()
 
     manifest = build_manifest()
@@ -158,9 +157,7 @@ def main() -> int:
     if args.check:
         existing = MANIFEST_PATH.read_text(encoding="utf-8") if MANIFEST_PATH.exists() else ""
         if existing != rendered:
-            sys.stderr.write(
-                "skills.json is out of date. Run: python3 scripts/build_manifest.py\n"
-            )
+            sys.stderr.write("skills.json is out of date. Run: python3 scripts/build_manifest.py\n")
             return 1
         return 0
 
