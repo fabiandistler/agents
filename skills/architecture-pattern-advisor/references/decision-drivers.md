@@ -34,7 +34,8 @@ The diagnostic questions for step 2, plus how answers map to candidate patterns.
 | One component has a distinct scaling/load profile | Modular monolith now, extract that one later; or microservices | — |
 | Multiple teams needing release autonomy | Microservices | Monolith |
 | Strong cross-entity transactional consistency | Monolith / modular monolith | Microservices (distributed transactions) |
-| Spiky/event-triggered, stateless work | Serverless / functions, event-driven | Always-on monolith for that part |
+| Spiky/event-triggered, stateless work | Serverless / functions | Always-on monolith for that part |
+| Event-driven integration needed (async fan-out, audit trails) | Event-Driven overlay (see Advanced patterns) | — |
 | Mature CI/CD, observability, on-call | Microservices viable | — |
 | Library / CLI / single R package | (no topology choice — skip axis) | — |
 

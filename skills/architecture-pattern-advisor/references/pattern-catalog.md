@@ -20,7 +20,7 @@ One deployable unit, one process, one database.
 One deployable unit, but internally split into well-bounded modules with explicit public interfaces. **Recommended default when unsure.**
 
 - **Pros:** monolith's operational simplicity + clear seams; modules can later be extracted into services; enforces boundaries without network cost.
-- **Cons:** boundaries must be actively maintained (a monolith in disguise if not); still one deploy/scale unit.
+- **Cons:** boundaries must be actively maintained (a monolith in disguise if not); still one deploy/scale unit; shared fate — a process crash or runaway thread brings all modules down simultaneously, no process isolation between them.
 - **Fits:** long-lived apps, moderate-to-rich domains, teams that want microservices' decoupling without the ops burden.
 - **Avoid:** truly throwaway scripts; cases needing genuine independent deployment today.
 
@@ -36,17 +36,11 @@ Many small independently deployable services, each owning its data, communicatin
 Stateless functions run on demand by a managed platform; scale to zero.
 
 - **Pros:** no server management; pay-per-use; auto-scaling; great for spiky/event-triggered work.
-- **Cons:** cold starts; vendor lock-in; local testing/debugging harder; awkward for long-running or stateful work.
+- **Cons:** cold starts; vendor lock-in; local testing/debugging harder; execution time hard-capped by platform (e.g. 15 min on AWS Lambda, 9 min on GCP Cloud Run jobs); payload/response size limits (typically ~6 MB); concurrency throttling under bursty load.
 - **Fits:** event-driven glue, scheduled jobs, spiky stateless workloads, webhooks.
 - **Avoid:** steady high-throughput services, long-lived connections, heavy stateful processing.
 
-### Event-Driven
-Components communicate asynchronously through events on a broker rather than direct calls.
-
-- **Pros:** loose coupling; natural scaling/buffering; easy to add consumers; resilient to downstream outages.
-- **Cons:** eventual consistency; harder to trace/reason about end-to-end flow; needs broker ops; ordering/idempotency concerns.
-- **Fits:** workflows with many reactions to one fact, audit trails, decoupling producers from consumers, integration backbones.
-- **Avoid:** simple request/response needs, strong immediate-consistency requirements, teams new to async debugging.
+> **Note:** Event-Driven (see Advanced section below) is a *communication style* that overlays any topology, not a topology itself — a monolith, microservices deployment, or serverless cluster can all be event-driven internally.
 
 ---
 
@@ -150,6 +144,31 @@ Concentric layers (entities → use cases → interface adapters → frameworks)
 - **Fits:** complex, long-lived enterprise domains; teams valuing strict dependency inversion.
 - **Avoid:** small/medium apps where hexagonal or by-domain already suffice.
 
+```
+app/                        # Python — Clean / Onion
+  entities/                 # innermost ring: enterprise business rules
+    user.py                 # pure domain objects, no framework deps
+  use_cases/                # application business rules
+    register_user.py        # orchestrate entities, call outward via interfaces
+  interface_adapters/       # convert between use-case format and external format
+    controllers/
+      user_controller.py    # HTTP → use case
+    presenters/
+      user_presenter.py     # use case result → response DTO
+    gateways/
+      user_repository.py    # implements use-case interface using ORM
+  frameworks_drivers/       # outermost ring: DB, web framework, UI
+    db/
+      orm_models.py
+    web/
+      app.py                # FastAPI/Flask wiring
+  main.py                   # composition root: wire rings together
+tests/
+  entities/                 # zero infra — fastest
+  use_cases/                # mock gateways
+  interface_adapters/       # integration
+```
+
 ---
 
 ## Advanced — Data & Interaction Patterns (add on top, when justified)
@@ -171,12 +190,20 @@ Persist state as an append-only log of events; current state is a fold over even
 - **Avoid:** most apps; when you don't need the history.
 
 ### Pub/Sub
-Publishers emit messages to topics; subscribers consume independently. The messaging mechanism behind event-driven topologies.
+Publishers emit messages to topics; subscribers consume independently. The messaging mechanism behind event-driven architectures.
 
 - **Pros:** decouples producers/consumers; easy fan-out; buffers load.
 - **Cons:** broker ops; delivery/ordering/idempotency semantics to handle.
 - **Fits:** broadcasting facts to many consumers; integration backbones.
 - **Avoid:** simple direct request/response.
+
+### Event-Driven
+Components communicate asynchronously through events on a broker rather than direct calls. An *overlay* — applies on top of any topology (monolith, microservices, serverless).
+
+- **Pros:** loose coupling; natural scaling/buffering; easy to add consumers; resilient to downstream outages.
+- **Cons:** eventual consistency; harder to trace/reason about end-to-end flow; needs broker ops; ordering/idempotency concerns.
+- **Fits:** workflows with many reactions to one fact, audit trails, decoupling producers from consumers, integration backbones.
+- **Avoid:** simple request/response needs, strong immediate-consistency requirements, teams new to async debugging.
 
 ---
 

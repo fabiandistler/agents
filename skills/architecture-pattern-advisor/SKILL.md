@@ -1,6 +1,6 @@
 ---
 name: architecture-pattern-advisor
-description: Use when choosing or restructuring the architecture of a new or existing repository — deciding system topology (monolith, modular monolith, microservices, serverless, event-driven) or code organization (layered, by-domain, ports & adapters / hexagonal, clean / onion), or asking how to structure a project or repo. Not for generic "new project" setup that carries no architecture-shape decision.
+description: Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). Not for generic project setup with no architecture-shape decision.
 compatibility: Works in any repository. Richer scaffolding examples for Python and R.
 ---
 
