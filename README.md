@@ -26,6 +26,7 @@ Symlink the skills into your agent's conventional skill directory:
 |---|---|
 | `skills/` | All installable skills (each subdirectory has a `SKILL.md`) |
 | `skills/adr-workflow/` | Skill for Architecture Decision Records |
+| `skills/architecture-pattern-advisor/` | Skill for architecture pattern selection (topology + code organization) and incremental migration |
 | `skills/problem-first-explanation/` | Skill for problem-first code explanation |
 | `skills/r-package-dev/` | Skill for R package development (data.table, roxygen2, testthat) |
 | `skills/skill-creator/` | Skill for authoring and iterating on new skills |

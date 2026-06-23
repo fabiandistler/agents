@@ -8,6 +8,12 @@
       "compatibility": "Works in any software repository. No special dependencies."
     },
     {
+      "name": "architecture-pattern-advisor",
+      "summary": "Use when choosing or restructuring the architecture of a new or existing repository — deciding system topology (monolith, modular monolith, microservices, serverless, event-driven) or code organizati…",
+      "path": "skills/architecture-pattern-advisor/SKILL.md",
+      "compatibility": "Works in any repository. Richer scaffolding examples for Python and R."
+    },
+    {
       "name": "problem-first-explanation",
       "summary": "Output-form skill for technical explanations.",
       "path": "skills/problem-first-explanation/SKILL.md"
