@@ -8,15 +8,41 @@
       "compatibility": "Works in any software repository. No special dependencies."
     },
     {
+      "name": "analyze-coupling",
+      "summary": "Use when measuring or judging how coupled / brittle a codebase is — computing afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finding components in…",
+      "path": "skills/analyze-coupling/SKILL.md",
+      "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go)."
+    },
+    {
       "name": "architecture-pattern-advisor",
       "summary": "Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion).",
       "path": "skills/architecture-pattern-advisor/SKILL.md",
       "compatibility": "Works in any repository. Richer scaffolding examples for Python and R."
     },
     {
+      "name": "codebase-design",
+      "summary": "Shared vocabulary and workflow for designing deep modules.",
+      "path": "skills/codebase-design/SKILL.md"
+    },
+    {
+      "name": "grilling",
+      "summary": "Interview the user relentlessly about a plan or design.",
+      "path": "skills/grilling/SKILL.md"
+    },
+    {
+      "name": "handoff",
+      "summary": "Compact the current conversation into a handoff document for another agent to pick up.",
+      "path": "skills/handoff/SKILL.md"
+    },
+    {
       "name": "problem-first-explanation",
       "summary": "Output-form skill for technical explanations.",
       "path": "skills/problem-first-explanation/SKILL.md"
+    },
+    {
+      "name": "prototype",
+      "summary": "Build a throwaway prototype to flesh out a design — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route.",
+      "path": "skills/prototype/SKILL.md"
     },
     {
       "name": "r-package-dev",
@@ -31,16 +57,20 @@
       "path": "skills/skill-creator/SKILL.md"
     },
     {
-      "name": "software-design",
-      "summary": "Design and validate deep modules that maximize functionality while minimizing interface complexity.",
-      "path": "skills/software-design/SKILL.md",
-      "version": "1.1"
-    },
-    {
       "name": "stepdown-rule",
       "summary": "Write, refactor, or review functions using the stepdown rule: make code read top-down, keep each function at one level of abstraction, and extract helpers so the reader can move from orchestration to…",
       "path": "skills/stepdown-rule/SKILL.md",
       "compatibility": "Works with function-writing tasks in any language. No special dependencies."
+    },
+    {
+      "name": "tdd",
+      "summary": "Test-driven development.",
+      "path": "skills/tdd/SKILL.md"
+    },
+    {
+      "name": "to-issues",
+      "summary": "Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices.",
+      "path": "skills/to-issues/SKILL.md"
     }
   ]
 }
