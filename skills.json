@@ -8,6 +8,10 @@
       "compatibility": "Works in any software repository. No special dependencies."
     },
     {
+      "name": "analyze-coupling",
+      "summary": "Use when measuring or judging how coupled / brittle a codebase is — computing afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finding components in…",
+      "path": "skills/analyze-coupling/SKILL.md",
+      "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go)."
       "name": "analyze-cohesion",
       "summary": "Analyze the cohesion of a class, module, file, or package and recommend whether to split it, merge it, or leave it.",
       "path": "skills/analyze-cohesion/SKILL.md",
