@@ -118,6 +118,10 @@ def first_sentence(text: str, limit: int = 200) -> str:
     return sentence
 
 
+def _warn(message: str) -> None:
+    sys.stderr.write(f"warning: {message}\n")
+
+
 def build_entry(skill_md: Path) -> dict[str, object]:
     text = skill_md.read_text(encoding="utf-8")
     fm = parse_frontmatter(extract_frontmatter(text))
@@ -127,10 +131,18 @@ def build_entry(skill_md: Path) -> dict[str, object]:
         raise ValueError(f"{skill_md}: frontmatter missing 'name'")
     if not isinstance(description, str) or not description:
         raise ValueError(f"{skill_md}: frontmatter missing 'description'")
+    summary = first_sentence(description)
+    rel = skill_md.relative_to(REPO_ROOT)
+    if name != skill_md.parent.name:
+        _warn(f"{rel}: frontmatter name '{name}' does not match directory '{skill_md.parent.name}'")
+    if len(description) > 1024:
+        _warn(f"{rel}: description is {len(description)} chars (spec cap: 1024)")
+    if summary.endswith("…"):
+        _warn(f"{rel}: first sentence of description exceeds 200 chars; manifest summary is truncated")
     entry: dict[str, object] = {
         "name": name,
-        "summary": first_sentence(description),
-        "path": str(skill_md.relative_to(REPO_ROOT)),
+        "summary": summary,
+        "path": str(rel),
     }
     compat = fm.get("compatibility")
     if isinstance(compat, str) and compat:

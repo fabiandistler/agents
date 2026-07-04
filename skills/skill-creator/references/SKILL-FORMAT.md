@@ -12,13 +12,15 @@ The authoritative frontmatter constraints for `SKILL.md`, per the Agent Skills f
 | `compatibility` | No | Max 500 characters. Environment requirements (intended product, system packages, network access). Most skills don't need it. |
 | `metadata` | No | Arbitrary string-to-string map for client-specific properties. |
 | `allowed-tools` | No | Space-separated string of pre-approved tools. Experimental; support varies by agent implementation. |
+| `disable-model-invocation` | No | When `true`, the skill is only invoked explicitly by the user, never auto-triggered by the model. Agent-specific (Claude Code); agents that don't support it ignore it. Used in this repo by `handoff`, `prototype`, and `to-issues`. |
+| `argument-hint` | No | Hint text shown for the skill's argument in explicit invocations. Agent-specific (Claude Code); ignored elsewhere. |
 
 ## Where this repo is stricter than the general spec
 
 `AGENTS.md` and `scripts/build_manifest.py` narrow two of the fields above specifically for this repo:
 
-- **`name` must equal the directory name.** The general spec states this too, but `build_manifest.py` doesn't enforce it programmatically — a mismatch produces a `skills.json` entry whose `path` and `name` silently disagree. Check it by eye when authoring or renaming a skill.
-- **The first sentence of `description` becomes the `summary` field in `skills.json`** (`first_sentence()` in `build_manifest.py`, truncated at 200 characters with an ellipsis if longer). Write that first sentence as a self-contained what+when trigger — anything after it is invisible to tooling that only reads the manifest, not the full `SKILL.md`.
+- **`name` must equal the directory name.** The general spec states this too; `build_manifest.py` prints a warning on mismatch (a mismatch would produce a `skills.json` entry whose `path` and `name` disagree).
+- **The first sentence of `description` becomes the `summary` field in `skills.json`** (`first_sentence()` in `build_manifest.py`, truncated at 200 characters with an ellipsis if longer). Write that first sentence as a self-contained what+when trigger — anything after it is invisible to tooling that only reads the manifest, not the full `SKILL.md`. `build_manifest.py` warns when the first sentence overruns the 200-character cap or the whole description exceeds the spec's 1024-character limit.
 
 After editing any frontmatter, regenerate the manifest: `python3 scripts/build_manifest.py` (`--check` to verify it's in sync before committing).
 
