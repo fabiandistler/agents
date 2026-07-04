@@ -1,7 +1,7 @@
-# helpers.R — persistent user data (R 4.0+)
-user_dir_data <- function() tools::R_user_dir("mypkg", which = "data")
-user_dir_config <- function() tools::R_user_dir("mypkg", which = "config")
-user_dir_cache <- function() tools::R_user_dir("mypkg", which = "cache")
+# helpers.R — persistent user data
+user_dir_data <- function() user_dir_safe("data")
+user_dir_config <- function() user_dir_safe("config")
+user_dir_cache <- function() user_dir_safe("cache")
 
 save_config <- function(key, value) {
     dir <- user_dir_config()
@@ -33,7 +33,8 @@ clear_cache <- function(confirm = interactive()) {
     if (!dir.exists(dir)) {
         return(invisible(TRUE))
     }
-    if (!confirm || utils::askYesNo("Clear cache?")) {
+    proceed <- if (confirm) isTRUE(utils::askYesNo("Clear cache?")) else TRUE
+    if (proceed) {
         unlink(dir, recursive = TRUE, force = TRUE)
         dir.create(dir, recursive = TRUE, showWarnings = FALSE)
     }
