@@ -47,7 +47,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 | [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
 | [sql-schema-design](skills/sql-schema-design/SKILL.md) | Designing or reviewing a SQL schema, decomposing complex queries, partitioning, or gating CI/CD on schema drift. |
 | [stepdown-rule](skills/stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
-| [tdd](skills/tdd/SKILL.md) | Test-driven development. |
+| [tdd](skills/tdd/SKILL.md) | Building features or fixing bugs test-first with a red-green-refactor loop and integration-style tests. |
 | [to-issues](skills/to-issues/SKILL.md) | Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. |
 | [uncertainty-management](skills/uncertainty-management/SKILL.md) | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
 | [worry-management](skills/worry-management/SKILL.md) | When someone brings a specific worry and explicitly wants help analyzing or resolving it (not a therapy substitute). |

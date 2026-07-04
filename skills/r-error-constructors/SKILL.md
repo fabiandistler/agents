@@ -1,6 +1,6 @@
 ---
 name: r-error-constructors
-description: Design custom condition/error constructors for R packages the tidyverse/rlang way — standardized functions that turn a recurring `stop()` call into a testable, documentable, and inheritable error type. Use this whenever an R package raises the same error at three or more call sites, whenever tests assert on error message text with a regex, or when a user asks about `rlang::abort()`, custom conditions, `conditionMessage()` methods, or building an error-class hierarchy in R.
+description: Design custom rlang error constructors for R packages — use when the same error recurs at 3+ call sites, tests match error messages by regex, or an error-class hierarchy is needed. Standardized stop_* functions turn a recurring stop() call into a testable, documentable, and inheritable error type the tidyverse/rlang way. Also triggers on questions about rlang::abort(), custom conditions, or conditionMessage() methods in R.
 compatibility: R packages using rlang for condition signaling and testthat for testing; assumes tidyverse-style package conventions (roxygen2 `@export`, `NAMESPACE`-managed S3 methods).
 metadata:
   version: "1.0"

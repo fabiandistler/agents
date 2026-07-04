@@ -1,6 +1,6 @@
 ---
 name: worry-management
-description: Use when someone brings a specific distressing worry, anxious rumination, or recurring "what if" and explicitly wants help thinking it through — not when they want emotional support alone or when the distress looks clinical. Walks the worry through a structured six-step analysis: classify it as Concern or Worry, check whether it is controllable, then either run a four-question problem analysis or accept the worst case with the Carrier Formula, and close with a Stop-Loss limit and staying busy.
+description: Walk a specific distressing worry through a structured six-step analysis — use when someone brings a worry, anxious rumination, or recurring "what if" and explicitly wants help thinking it through. Not for emotional support alone, and not when the distress looks clinical. The steps: classify it as Concern or Worry, check whether it is controllable, then either run a four-question problem analysis or accept the worst case with the Carrier Formula, and close with a Stop-Loss limit and staying busy.
 compatibility: Text-only reasoning workflow; no tools, scripts, or dependencies required. Works in any conversational context. Not a clinical or diagnostic instrument.
 metadata:
   version: "1.0"

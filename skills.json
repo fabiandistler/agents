@@ -15,7 +15,7 @@
     },
     {
       "name": "analyze-coupling",
-      "summary": "Use when measuring or judging how coupled / brittle a codebase is — computing afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finding components in…",
+      "summary": "Use when measuring or judging how coupled or brittle a codebase is — afferent/efferent coupling, Instability, Abstractness, Distance from the Main Sequence, and the Zones of Pain and Uselessness.",
       "path": "skills/analyze-coupling/SKILL.md",
       "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go)."
     },
@@ -27,19 +27,19 @@
     },
     {
       "name": "codebase-design",
-      "summary": "Shared vocabulary and workflow for designing deep modules.",
+      "summary": "Shared vocabulary and workflow for designing deep modules — use when designing or improving a module, API, or function interface, placing a seam, or making code more testable.",
       "path": "skills/codebase-design/SKILL.md"
     },
     {
       "name": "communication-analysis",
-      "summary": "Analyze or rewrite a message, piece of feedback, or conversation transcript using Schulz von Thun's four-sides model and Carl Rogers-style active listening — decoding what is said on the factual, sel…",
+      "summary": "Analyze or rewrite feedback, messages, or conversations with Schulz von Thun's four-sides model and Rogers-style active listening — use when a message landed badly or feedback needs review.",
       "path": "skills/communication-analysis/SKILL.md",
       "compatibility": "Domain-knowledge skill for interpersonal communication analysis. No tools, scripts, or software dependencies; applies to any text or transcript a reader brings to it.",
       "version": "1.0"
     },
     {
       "name": "ddd-advisor",
-      "summary": "Advise on Domain-Driven Design at the strategic level (classifying subdomains as Core, Generic, or Supporting; context-mapping between bounded contexts) and the tactical level (picking an implementat…",
+      "summary": "Advise on Domain-Driven Design when a design conversation touches subdomain classification, buy-vs-build, bounded-context boundaries, or how much domain modeling a piece of business logic deserves.",
       "path": "skills/ddd-advisor/SKILL.md",
       "compatibility": "Domain- and language-agnostic; the reasoning applies to any codebase practicing or considering Domain-Driven Design (examples below use SQL and R, but nothing is R-specific). Pairs with architecture-pattern-advisor for topology/microservice-boundary decisions and with adr-workflow to record the classification and pattern choices.",
       "version": "1.0"
@@ -53,12 +53,12 @@
     },
     {
       "name": "grilling",
-      "summary": "Interview the user relentlessly about a plan or design.",
+      "summary": "Interview the user relentlessly about a plan or design to stress-test it before building.",
       "path": "skills/grilling/SKILL.md"
     },
     {
       "name": "guideline-distillation",
-      "summary": "Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs, review checklists, onboarding docs) into lean, machine-actionable convention files such as CONVENTIONS.md, AGENTS.md,…",
+      "summary": "Distill a messy source document (style guide, ADR, RFC, wiki, linter config) into a lean convention file for coding agents — use when a document must become loadable project rules.",
       "path": "skills/guideline-distillation/SKILL.md",
       "compatibility": "Works on any text source (Markdown, wikis, RFCs, linter configs, PDFs of style guides) and any output convention format. No special tooling required.",
       "version": "1.0"
@@ -70,21 +70,21 @@
     },
     {
       "name": "hypertrophy-training",
-      "summary": "Summarizes evidence-based hypertrophy-training programming (weekly set volume, RIR/RPE intensity targets, the Stimulus:Fatigue ratio) and auto-regulation protocols with precise stop criteria (5% Fati…",
+      "summary": "Summarizes evidence-based hypertrophy programming and auto-regulation for experienced trainees — use when asked how many sets or how hard to train, how to auto-regulate, or why a lift stalled.",
       "path": "skills/hypertrophy-training/SKILL.md",
       "compatibility": "Domain-knowledge skill with no code or tooling dependency. Applies to any context where training programming or auto-regulation is being discussed or drafted (chat, a written program, a coaching note).",
       "version": "1.0"
     },
     {
       "name": "llm-application-engineering",
-      "summary": "Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring…",
+      "summary": "Guide the engineering of a foundation-model application across three linked decisions: adapting a failing model, choosing the next architectural piece to build, and monitoring it in production.",
       "path": "skills/llm-application-engineering/SKILL.md",
       "compatibility": "Domain-knowledge skill, not tied to any language, framework, or model provider. Applies to any application built on a foundation model, whether self-hosted or accessed via API.",
       "version": "1.0"
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Guide a machine learning project from problem framing through model selection to production deployment — use it whenever someone is scoping an ML project, picking a model architecture, deciding how t…",
+      "summary": "Guide an ML project from problem framing through model selection to production — use when scoping a project, choosing a model, handling missing data, gating a ship decision, or planning deployment.",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "compatibility": "Domain-knowledge and process skill, not tied to any language, framework, or ML library. Applies to any supervised-learning project regardless of stack; example commands in the source material lean Python and R, but the checklists and decision tables are tool-agnostic. Specific model and library names (e.g. XGBoost, BERT, AutoKeras) reflect the field's state as of the source material and may date faster than the surrounding principles.",
       "version": "1.0"
@@ -98,7 +98,7 @@
     },
     {
       "name": "problem-first-explanation",
-      "summary": "Output-form skill for technical explanations.",
+      "summary": "Structure a technical explanation problem-first: lead with the concrete problem before the abstract solution — use for docs, READMEs, tutorials, design rationale, or \"explain X\" requests.",
       "path": "skills/problem-first-explanation/SKILL.md"
     },
     {
@@ -108,21 +108,21 @@
     },
     {
       "name": "r-error-constructors",
-      "summary": "Design custom condition/error constructors for R packages the tidyverse/rlang way — standardized functions that turn a recurring `stop()` call into a testable, documentable, and inheritable error typ…",
+      "summary": "Design custom rlang error constructors for R packages — use when the same error recurs at 3+ call sites, tests match error messages by regex, or an error-class hierarchy is needed.",
       "path": "skills/r-error-constructors/SKILL.md",
       "compatibility": "R packages using rlang for condition signaling and testthat for testing; assumes tidyverse-style package conventions (roxygen2 `@export`, `NAMESPACE`-managed S3 methods).",
       "version": "1.0"
     },
     {
       "name": "r-package-dev",
-      "summary": "Design and develop R packages.",
+      "summary": "Design and develop R packages the tidyverse way — package-private state and persistence, load/attach behavior, lifecycle staging and deprecation, and interface-focused testing with reliable fixtures.",
       "path": "skills/r-package-dev/SKILL.md",
       "compatibility": "Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required. Diagram generation uses DiagrammeR if installed.",
       "version": "1.0"
     },
     {
       "name": "refactoring-checklist",
-      "summary": "Walk through a four-phase decision workflow for whether, when, and how to refactor code — deciding if a change is worth doing now, assessing the risk before touching anything, running the refactor sa…",
+      "summary": "Decide whether, when, and how to refactor a spotted code smell — is it worth doing now, is it safe to touch, and how to change it in small reversible steps.",
       "path": "skills/refactoring-checklist/SKILL.md",
       "compatibility": "Works in any codebase and language; the priority matrix and general code smells apply broadly, with one smell set called out as R-specific. Complements the fowler-refactoring-catalog skill, which supplies the step-by-step mechanics for each named technique referenced here (Extract Function, Extract Class, Decompose Conditional, Introduce Parameter Object, and others).",
       "version": "1.0"
@@ -134,20 +134,20 @@
     },
     {
       "name": "sql-schema-design",
-      "summary": "Apply module-encapsulation thinking to SQL schema design and query patterns — expose views as the stable public interface, decompose complex queries into named CTE pipelines, hide physical storage (p…",
+      "summary": "Design or review a SQL schema with views as the stable public interface — use when apps query raw tables, a query nests deeply, a table outgrows its read pattern, or CI/CD must catch schema drift.",
       "path": "skills/sql-schema-design/SKILL.md",
       "compatibility": "Database-agnostic in principle. Examples use ANSI SQL (CTEs via WITH, INFORMATION_SCHEMA); syntax details vary by engine (PostgreSQL, MySQL, SQL Server, Snowflake, etc.) but the workflow and decision criteria transfer directly.",
       "version": "1.0"
     },
     {
       "name": "stepdown-rule",
-      "summary": "Write, refactor, or review functions using the stepdown rule: make code read top-down, keep each function at one level of abstraction, and extract helpers so the reader can move from orchestration to…",
+      "summary": "Write, refactor, or review functions in the stepdown style — top-down reading order, one level of abstraction per function, helpers extracted so orchestration stays separate from detail.",
       "path": "skills/stepdown-rule/SKILL.md",
       "compatibility": "Works with function-writing tasks in any language. No special dependencies."
     },
     {
       "name": "tdd",
-      "summary": "Test-driven development.",
+      "summary": "Build features or fix bugs test-first with a red-green-refactor loop and integration-style tests.",
       "path": "skills/tdd/SKILL.md"
     },
     {
@@ -164,14 +164,14 @@
     },
     {
       "name": "worry-management",
-      "summary": "Use when someone brings a specific distressing worry, anxious rumination, or recurring \"what if\" and explicitly wants help thinking it through — not when they want emotional support alone or when the…",
+      "summary": "Walk a specific distressing worry through a structured six-step analysis — use when someone brings a worry, anxious rumination, or recurring \"what if\" and explicitly wants help thinking it through.",
       "path": "skills/worry-management/SKILL.md",
       "compatibility": "Text-only reasoning workflow; no tools, scripts, or dependencies required. Works in any conversational context. Not a clinical or diagnostic instrument.",
       "version": "1.0"
     },
     {
       "name": "zettelkasten-value-hierarchy",
-      "summary": "Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet) and run bottom-up or top-down value-gener…",
+      "summary": "Classify personal knowledge-base notes on an 8-level value hierarchy and consolidate low-value notes into higher-value ones — use when reviewing note value or seeking synthesis opportunities.",
       "path": "skills/zettelkasten-value-hierarchy/SKILL.md",
       "compatibility": "Tool-agnostic. Assumes a note collection with typed notes and a linking mechanism (wiki-links, tags, or backlinks); adapt the mechanics to whatever note system is in use.",
       "version": "1.0"

@@ -1,6 +1,6 @@
 ---
 name: stepdown-rule
-description: 'Write, refactor, or review functions using the stepdown rule: make code read top-down, keep each function at one level of abstraction, and extract helpers so the reader can move from orchestration to detail without jumping around. Use this skill whenever the user asks you to write functions, untangle a long function, extract helpers, follow a top-down or one-level-of-abstraction style, or make code easier to read with clean-code decomposition, even if they do not explicitly mention "stepdown".'
+description: Write, refactor, or review functions in the stepdown style — top-down reading order, one level of abstraction per function, helpers extracted so orchestration stays separate from detail. Use when asked to write a nontrivial multi-step function, untangle a long function, extract helpers, or make code easier to read with clean-code decomposition, even if "stepdown" is never mentioned.
 compatibility: Works with function-writing tasks in any language. No special dependencies.
 ---
 

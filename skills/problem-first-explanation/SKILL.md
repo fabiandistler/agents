@@ -1,6 +1,6 @@
 ---
 name: problem-first-explanation
-description: Output-form skill for technical explanations. Forces every explanation to start with the concrete problem the concept solves, before introducing the abstract solution or implementation. Use when writing documentation, README files, tutorials, code comments, design rationale, ADR motivation sections, or when the user asks Claude to "explain X". Triggers on "explain", "document", "tutorial", "README", "what is X", "why does X exist".
+description: Structure a technical explanation problem-first: lead with the concrete problem before the abstract solution — use for docs, READMEs, tutorials, design rationale, or "explain X" requests. Also fits docstrings, ADR motivation sections, and code comments. Triggers when asked to explain or document a concept, pattern, or design choice — "explain", "document", "tutorial", "README", "what is X", "why does X exist" — not for trivial inline explanations or pure reference docs.
 ---
 
 # Problem-First Explanation
