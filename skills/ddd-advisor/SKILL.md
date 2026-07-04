@@ -97,12 +97,12 @@ default to the most sophisticated pattern out of habit.
 
 ### Decision path
 
-Walk these questions in order; stop at the first "yes":
+Walk questions 1–3 in order and stop at the first "yes"; questions 4 and 5 are follow-ups, not further rungs:
 
 1. **Is the data structure flat/simple and the process a linear, straightforward operation** (ETL, batch/report generation, simple CRUD)? → **Transaction Script.**
 2. **Is the data structure complex** (object trees, hierarchies, 1:n or n:m relations) **but the logic is still essentially CRUD**, with no rich business rules to enforce? → **Active Record.**
 3. **Does the subdomain carry complex, changing business logic or domain invariants that must be enforced** (this is where Core subdomains usually land)? → **Domain Model.**
-4. **Does the subdomain involve monetary transactions, regulatory audit requirements, or a genuine need for full history / point-in-time reconstruction?** → **Event-Sourced Domain Model.**
+4. **If step 3 selected Domain Model, additionally ask: does the subdomain involve monetary transactions, regulatory audit requirements, or a genuine need for full history / point-in-time reconstruction?** → Upgrade to an **Event-Sourced Domain Model.**
 5. **Does the system need multiple persistence models** (e.g. a write model and separately optimized read models)? → Layer **CQRS + Event Sourcing**, or a **Ports & Adapters** architecture, on top of whichever pattern steps 1–4 selected — this is an orthogonal concern, not a fifth rung on the ladder.
 
 Never select a pattern above what the subdomain's classification and actual
