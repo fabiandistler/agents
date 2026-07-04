@@ -102,7 +102,4 @@ The same three pillars and three meta-questions transfer directly to non-softwar
 - Validating only at the very end of a decomposed change, which throws away the main benefit (early detection, isolated blame for failures).
 - Rolling back without asking what the failure teaches — the point is not just safety, it is that each step should raise confidence for the next one.
 
-## Related skills
 
-- **adr-workflow** — record the decision to decompose a particular change this way, and why, when the change is significant enough to warrant a durable record.
-- **fowler-refactoring-catalog** — the code-level small-step vocabulary (a specific Strangler Fig-style decomposition for refactoring).

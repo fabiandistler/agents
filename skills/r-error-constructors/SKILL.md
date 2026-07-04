@@ -203,11 +203,3 @@ Work through this before adding a constructor to a package:
    wherever the error is triggered.
 7. **Document the throw** in the calling function's `@section Throws:` if the
    package documents error contracts.
-
-## Related skills
-
-- **r-package-dev** — general R package design and structure; error
-  constructors are one convention within it.
-- **codebase-design** — the deep-module framing behind separating a
-  condition's testable structure from its user-facing presentation.
-- **tdd** — writing the usage tests test-first, before the constructor exists.

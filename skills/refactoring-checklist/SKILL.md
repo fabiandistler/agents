@@ -207,15 +207,4 @@ Also recheck the original quality-gate checklist from the quick decision path:
 | Interface changed | Adjust the tests to match |
 | Turns out more complex than expected | Split the work further, or switch strategy (Mikado / Strangler Fig / rewrite) |
 
-## Related skills
 
-- **fowler-refactoring-catalog** — the mechanics for each named technique
-  referenced above (Extract Function, Extract Class, Decompose Conditional,
-  Introduce Parameter Object, and others). This skill decides whether/when to
-  apply one; the catalog shows how.
-- **tdd** — needed to get to the 80%+ coverage and characterization tests
-  this checklist gates on before any refactor begins.
-- **stepdown-rule** — useful when the "This week" smells point at Extract
-  Function/Method: it shapes what the extracted helpers should look like.
-- **analyze-cohesion** — useful when a Large Class or Feature Envy smell
-  raises the question of where exactly to split.

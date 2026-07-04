@@ -124,9 +124,3 @@ This workflow is not database-specific invention — it is a set of established 
 - **Seams for incremental change** — views are database-side seams: they let you refactor storage with a safety net instead of a coordinated cutover.
 - **High cohesion, low coupling** — each view bundles one coherent consumer need and decouples it from physical structure.
 - **Layers with different abstraction levels** — consumers see the semantic layer (views); the DBA works at the physical layer (tables, indexes, partitions).
-
-## Related skills
-
-- **codebase-design** — the deep-module vocabulary (interface vs. implementation, seams) that this workflow instantiates for databases; use it when the "interface" side of a view contract needs more precise design.
-- **stepdown-rule** — the general top-down, one-level-of-abstraction principle that Phase 2's CTE decomposition applies to SQL specifically.
-- **analyze-cohesion** — useful when judging whether a view or a set of CTEs bundles one coherent consumer need or has drifted into a grab-bag.
