@@ -59,19 +59,19 @@ Ask, in order:
 
 ## Value generation: two directions
 
-Both workflows share the same goal — synthesize new value at levels 1–4
-(Principle, System, Workflow, Automated Tool) by drawing on levels 5–8
-(Template, Checklist, Tool, Snippet) — but they start from opposite ends.
+Both workflows share the same goal — synthesize new value at levels 1–3
+(Principle, System, Workflow) by drawing on levels 4–8 (Automated Tool,
+Template, Checklist, Tool, Snippet) — but they start from opposite ends.
 
 ```
-Principle ──┐
-System      ├─ target: higher-value notes to create or strengthen
-Workflow ───┘
-Automated Tool
-Template ───┐
-Checklist   ├─ source: lower-value notes to consolidate or upgrade
-Tool        │
-Snippet ────┘
+Principle ──────┐
+System          ├─ target: higher-value notes to create or strengthen
+Workflow ───────┘
+Automated Tool ─┐
+Template        │
+Checklist       ├─ source: lower-value notes to consolidate or upgrade
+Tool            │
+Snippet ────────┘
 ```
 
 ### Bottom-up: from existing low-value notes upward
