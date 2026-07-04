@@ -78,11 +78,11 @@ Practical consequences:
 - **Small improvements are expensive to prove.** Detecting a 1% gain needs
   ~10,000 eval examples *per comparison*. Monthly iteration across five
   comparison dimensions can mean 50,000+ quality annotations a month.
-- **The cost curve is superlinear**, not linear: halving the detectable effect
-  costs roughly 9–10× more data (the rule is a mnemonic form of the general
-  power-analysis result that detecting an effect of size ε needs a sample
-  ∝ 1/ε²). Teams routinely underestimate this and draw conclusions from eval
-  sets that are far too small.
+- **The cost curve is superlinear**, not linear: each ~3× reduction in the
+  detectable effect costs roughly 9–10× more data (the rule is a mnemonic form
+  of the general power-analysis result that detecting an effect of size ε
+  needs a sample ∝ 1/ε²). Teams routinely underestimate this and draw
+  conclusions from eval sets that are far too small.
 
 Before climbing a rung: estimate the expected effect size first. If it is
 small (~1%), either budget for a much larger eval set or reframe the
@@ -176,9 +176,9 @@ opt-out — lost trust costs more than the data is worth.
 
 ### Baseline checklist before calling anything deployment-worthy
 
-Independent of the metric families above, a model must clear five baseline
-types before it is considered fit to deploy — this guards against "a good
-model with good metrics that is still not good enough":
+Independent of the metric families above, compare a model against five
+baseline types before considering it fit to deploy — this guards against "a
+good model with good metrics that is still not good enough":
 
 1. **Random baseline** — random predictions (the floor).
 2. **Simple heuristic** — a domain rule (e.g. "spam if >5 links").
@@ -186,7 +186,11 @@ model with good metrics that is still not good enough":
 4. **Human baseline** — expert human performance on the same task.
 5. **Existing solution** — whatever system is currently in production.
 
-A model must beat *all five*, not just the ones it happens to beat easily.
+The model must clearly beat the random, simple-heuristic, and zero-rule
+baselines, and beat the existing production solution if one exists. The human
+baseline is a reference ceiling rather than a pass/fail gate: measure the gap
+to expert performance and decide whether that gap is acceptable for the use
+case.
 
 ## Applying the three parts together
 

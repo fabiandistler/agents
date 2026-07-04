@@ -35,6 +35,8 @@ Workflow A — Session-scoped state (package-private environment)
 - Name: the (ergonomic), parent = emptyenv(), placed before first use (often R/aaa.R).
 2) Expose behavior via public functions; keep internals hidden.
 3) Initialize non-interactively in .onLoad(); show messages (if any) in .onAttach().
+   Top-level assignment (as in the example) is fine for build-time constants;
+   values that must be computed fresh each session belong in .onLoad().
 
 Example
 See assets/example-state.R

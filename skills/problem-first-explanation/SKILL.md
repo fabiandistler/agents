@@ -23,13 +23,13 @@ Do **not** invoke for: pure reference docs (API parameter tables), already-concr
 Describe the **specific situation** that creates a need. Use a scenario, a code smell, or a pain point — not a category.
 
 - ✗ "When you need to add behaviour to a class..." (abstract, no urgency)
-- ✓ "You have an Order class with a `format()` method. Marketing wants emoji output for emails, plain text for receipts, and HTML for the web. Subclassing produces an explosion of OrderEmoji, OrderHTML, OrderEmojiAndStuff..." (concrete, the reader feels the pain)
+- ✓ "You have an Order class with a `format()` method. Marketing wants to optionally add a gift-wrap note, a discount banner, and a tracking link to a confirmation — in any combination. Subclassing produces an explosion of OrderWithGiftNote, OrderWithBanner, OrderWithGiftNoteAndBanner..." (concrete, the reader feels the pain)
 
 ### 2. Solution (conceptual, named)
 Introduce the concept as a **direct response** to the pain just described. Name it. State what it does in one sentence. Do not yet show code.
 
 - ✗ "There is a pattern called Decorator that wraps objects..." (definitional, doesn't hook the problem)
-- ✓ "The Decorator pattern solves this: instead of subclassing, you wrap the original `Order` in a `EmojiOrder` decorator that adds emoji formatting around the original `format()`. New combinations = new wrappers, not new subclasses." (links solution to pain)
+- ✓ "The Decorator pattern solves this: instead of subclassing, you wrap the original `Order` in decorators (`GiftNoteDecorator`, `BannerDecorator`) that each add one embellishment around the original `format()`. Any combination is a stack of wrappers, not a new subclass." (links solution to pain)
 
 ### 3. Implementation (concrete code)
 Now show how. Code, signature, sequence diagram, whatever fits. The reader has the mental model already, so the implementation reads as "of course, that follows".
@@ -41,7 +41,7 @@ Two cognitive mechanisms:
 - **Anchor before abstraction.** A concrete problem creates a mental model the reader can hang the abstract solution on. Without the anchor, the abstraction floats — readers ask "why?" instead of "ah, so that's why!".
 - **Relevance before completeness.** Listing all features of a concept is overwhelming. Showing how it solves a specific problem makes the rest feel optional.
 
-This is universal — it shows up in `Domain-Driven Design` teaching, in good API docs, in Ousterhout's writing, in tracer-bullet tutorials. It is the same principle as **Problemorientierung als universelles Gestaltungsprinzip**: solutions emerge from problem understanding, not from abstract first principles.
+This is universal — it shows up in `Domain-Driven Design` teaching, in good API docs, in Ousterhout's writing, in tracer-bullet tutorials. It is the same principle behind problem-oriented design as a universal principle: solutions emerge from problem understanding, not from abstract first principles.
 
 ## Minimum viable check
 

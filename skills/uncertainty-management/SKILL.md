@@ -51,9 +51,9 @@ Uncertainty is not uniform — how cautiously to proceed should scale with how m
 
 | Confidence | Strategy | Behavior |
 |---|---|---|
-| ≥ 0.9 | Conservative | Use proven, well-tested methods; minimal deviation. |
-| ≥ 0.7 | Moderate | Balanced adjustments, with active monitoring. |
-| < 0.7 | Experimental / learning | Deliberately experimental approach, with heightened attention and tighter checkpoints. |
+| High — this kind of change has been done many times, with consistent success | Conservative | Use proven, well-tested methods; minimal deviation. |
+| Moderate — done a few times, or with mixed results | Moderate | Balanced adjustments, with active monitoring. |
+| Low — novel situation, little or no direct experience | Experimental / learning | Deliberately experimental approach, with heightened attention and tighter checkpoints. |
 
 The apparent paradox: low confidence calls for the *more* exploratory strategy, not a more cautious one. This is not extra risk-taking — it is that in a genuinely unfamiliar situation, conservative "proven" methods are not reliably proven for *this* case. Learning fast, under tight monitoring, is the safer bet than committing to an untested assumption of safety. Correspondingly, low confidence should also mean smaller steps and more frequent checkpoints, not fewer.
 
@@ -89,7 +89,7 @@ The same three pillars and three meta-questions transfer directly to non-softwar
    - Define the checkpoint (what "known-good state" you are capturing).
    - Define the validation signal (how you will know the step succeeded).
    - Define the rollback action (what exactly reverts to the checkpoint).
-4. **Estimate confidence** for the step given prior experience with this kind of situation, and pick conservative / moderate / experimental accordingly (table above). Let low confidence shrink the step size and tighten monitoring, not skip the checkpoint.
+4. **Judge confidence** for the step — high / moderate / low, bucketed by prior experience with this kind of situation — and pick conservative / moderate / experimental accordingly (table above). Let low confidence shrink the step size and tighten monitoring, not skip the checkpoint.
 5. **Take the step, then validate.** On success, the new state becomes the checkpoint for the next step. On failure, roll back — do not attempt to push through or patch forward from a partially-failed step.
 6. **Update confidence** for this kind of situation based on the outcome, before moving to the next step.
 7. **Close the loop with the three meta-questions** — confirm detection, return-path, and learning were all real for this change, not just assumed.

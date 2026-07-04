@@ -40,13 +40,16 @@ across `tryCatch()` handlers written by callers who never read the source.
 ```r
 stop_not_found <- function(path) {
   rlang::abort(
-    .subclass = "my_package_error_not_found",
+    class = "my_package_error_not_found",
     path = path
   )
 }
 ```
 
-`rlang::abort()` with `.subclass` produces a condition object that is:
+(`class` superseded the older `.subclass` argument name; `.subclass` is
+deprecated in current rlang.)
+
+`rlang::abort()` with `class` produces a condition object that is:
 
 - **Classed** — precise `tryCatch()` dispatch instead of matching on message text.
 - **Structured** — arbitrary attributes (`path`, in the example) are attached to
@@ -96,7 +99,7 @@ specialized constructors can extend the base one instead of duplicating it:
 ```r
 stop_not_found <- function(path, ..., class = character()) {
   rlang::abort(
-    .subclass = c(class, "my_package_error_not_found"),
+    class = c(class, "my_package_error_not_found"),
     path = path,
     ...
   )
@@ -147,17 +150,21 @@ Robust testing separates **constructor tests** (does the error look right?)
 from **usage tests** (does calling code raise the right error?). Conflating
 them tends to produce fragile, string-matching tests.
 
-### Constructor tests — regression via `verify_output()`
+### Constructor tests — regression via snapshot tests
 
-Use `testthat::verify_output()` to snapshot the printed error. These tests are
+Use a testthat 3e snapshot test to record the printed error. These tests are
 independent of the message text changing on purpose — they just document what
 the current output looks like and flag unintended drift:
 
 ```r
-testthat::verify_output("test-errors.txt", {
-  stop_not_found("missing-file.txt")
-})
+testthat::expect_snapshot(
+  stop_not_found("missing-file.txt"),
+  error = TRUE
+)
 ```
+
+(Snapshot tests superseded `testthat::verify_output()`; use
+`expect_snapshot(..., error = TRUE)` in testthat 3e code.)
 
 ### Usage tests — assert on class, not on message text
 
@@ -181,7 +188,7 @@ expect_equal(error$path, "missing-file.txt")
 
 - Message wording can be refactored freely without breaking usage tests.
 - Usage tests stay precise about error *logic*, not phrasing.
-- `verify_output()` gives a durable, reviewable record of what users see.
+- Snapshot tests give a durable, reviewable record of what users see.
 - Overall test suite becomes robust against copy-editing the error text.
 
 ## Decision checklist
@@ -198,8 +205,9 @@ Work through this before adding a constructor to a package:
 5. **Decide if a hierarchy is needed.** Only add the `class` passthrough
    parameter if there is a real family of specialized errors to build; do not
    add it speculatively.
-6. **Write both kinds of test**: a `verify_output()` regression test for the
-   constructor itself, and `expect_error(..., class = ...)` usage tests
-   wherever the error is triggered.
+6. **Write both kinds of test**: an `expect_snapshot(..., error = TRUE)`
+   regression test for the constructor itself, and
+   `expect_error(..., class = ...)` usage tests wherever the error is
+   triggered.
 7. **Document the throw** in the calling function's `@section Throws:` if the
    package documents error contracts.

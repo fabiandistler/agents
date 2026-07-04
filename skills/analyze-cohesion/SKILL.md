@@ -67,7 +67,7 @@ For anything with the structure of methods-and-fields or functions-and-shared-
 state, get the structural signal from the bundled script:
 
 ```
-python skills/analyze-cohesion/scripts/lcom.py <path...> [--lang auto|python|r|bash]
+python3 skills/analyze-cohesion/scripts/lcom.py <path...> [--lang auto|python|r|bash]
 ```
 
 It reports, per class and per file:

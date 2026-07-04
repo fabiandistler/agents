@@ -33,7 +33,7 @@ If the repository does not already have a decision-record home, propose this def
 
 - `docs/adr/`
 - `docs/adr/README.md` or `docs/adr/index.md` as the entry point
-- `docs/adr/0001-template.md` as a starter template
+- `docs/adr/template.md` as a starter template (no sequence number — the template is not a decision record)
 - `docs/adr/0001-short-title.md` for individual records
 
 Use zero-padded numbers so records stay sortable as the list grows.
@@ -55,7 +55,7 @@ Do not use an ADR for trivial implementation details, local style preferences, o
 Use this structure when drafting a new record:
 
 ```markdown
-# ADR-0001: Short title
+# ADR-NNNN: Short title
 
 ## Status
 Proposed | Accepted | Deprecated | Superseded by ADR-000X

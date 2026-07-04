@@ -10,7 +10,7 @@ metadata:
 
 Refactoring is restructuring code so its external behavior stays the same while its internal structure improves. This skill is a lookup tool: given a smell in the code, it names the specific technique that addresses it and lays out the technique's mechanics as an ordered checklist. It does not replace judgment about *whether* to refactor — it removes the guesswork about *which* named technique to reach for and *how* to execute it safely.
 
-The full technique index (61 entries) lives in [references/CATALOG.md](references/CATALOG.md). This file covers the twelve highest-value techniques in enough depth to apply directly, plus the shared discipline that makes every technique in the catalog safe to run.
+The full technique index (62 entries) lives in [references/CATALOG.md](references/CATALOG.md). This file covers the twelve highest-value techniques in enough depth to apply directly, plus the shared discipline that makes every technique in the catalog safe to run.
 
 ## Core principles (apply to every technique in the catalog)
 

@@ -5,7 +5,9 @@ argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace, to avoid polluting it. As the final step, state the absolute path of the written file so the user can pass it to the next session.
+
+Cover at minimum: the goal, the current state, what is done and what remains, key decisions with their rationale, open questions or blockers, how to resume (entry points, commands), and relevant files or artifacts by path.
 
 Include a "suggested skills" section in the document, which suggests skills that the agent should invoke.
 

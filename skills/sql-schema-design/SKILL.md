@@ -37,7 +37,7 @@ Side benefit: security becomes granular without row-level-security policies — 
 
 ### Phase 2 — Decompose query logic with CTEs
 
-Inside a view definition (or inside any report query), break complexity into a linear pipeline of named steps using Common Table Expressions (`WITH step1 AS (...), step2 AS (...) SELECT ... FROM step2`). Each step is understandable in isolation and independently testable — just run `SELECT * FROM step_name` to inspect it during debugging.
+Inside a view definition (or inside any report query), break complexity into a linear pipeline of named steps using Common Table Expressions (`WITH step1 AS (...), step2 AS (...) SELECT ... FROM step2`). Each step is understandable in isolation and independently inspectable during debugging: temporarily repoint the statement's final `SELECT` at the step under inspection (e.g. change the closing `SELECT ... FROM step2` to `SELECT * FROM step1`), or copy the `WITH` prefix up to and including that step into a scratch query.
 
 CTE names are scoped to the single statement (statement scope), so CTEs give you the readability of a temp table without the create/drop overhead. This is the SQL equivalent of the stepdown rule: the query reads top-down as a narrative instead of as a nested puzzle the reader has to unwind from the inside out.
 
@@ -51,10 +51,12 @@ When a table outgrows its read volume, or its query pattern splits into disjoint
 
 ```sql
 CREATE VIEW payment_all AS
-SELECT * FROM payment_historic
+SELECT payment_id, customer_id, amount, paid_at FROM payment_historic
 UNION ALL
-SELECT * FROM payment_current;
+SELECT payment_id, customer_id, amount, paid_at FROM payment_current;
 ```
+
+List the columns explicitly in an interface view — precisely because the view is the frozen contract, a `SELECT *` definition would silently move the contract whenever a base table changes shape.
 
 Consumers query `payment_all` exactly as they would a single table — nothing about their queries changes. The query optimizer can often exploit partition pruning, touching only the relevant partition instead of scanning everything.
 
@@ -64,7 +66,7 @@ The partitioning strategy is now an implementation detail and can be changed lat
 
 ### Phase 4 — Automate schema conformance checks
 
-Verify every deployment against `INFORMATION_SCHEMA`, the standardized metadata catalog that describes tables, columns, constraints, and indexes. Check: do all expected tables and columns exist, with the correct types? Are the expected indexes and constraints present? Is the view signature from Phase 1 unchanged?
+Verify every deployment against `INFORMATION_SCHEMA`, the standardized metadata catalog that describes tables, columns, and constraints. Check: do all expected tables and columns exist, with the correct types? Are the expected constraints present? Is the view signature from Phase 1 unchanged? (Index presence is not part of ANSI `INFORMATION_SCHEMA` — check it via engine-specific catalogs such as `pg_indexes`, MySQL's `INFORMATION_SCHEMA.STATISTICS`, or SQL Server's `sys.indexes`.)
 
 Pattern for existence checks:
 

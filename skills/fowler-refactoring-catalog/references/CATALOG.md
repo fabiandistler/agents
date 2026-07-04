@@ -1,4 +1,4 @@
-# Full Technique Index (61 techniques)
+# Full Technique Index (62 techniques)
 
 One line per technique, grouped the way Fowler's catalog groups them. Named
 inverse/paired techniques are cross-referenced with "↔". The twelve techniques
@@ -62,6 +62,7 @@ when you need to execute one of these.
 
 ## Refactoring APIs
 
+- **Change Function Declaration** — rename a function or add/remove/reorder its parameters; the umbrella technique for changing a signature (subsumes Rename Function and Add/Remove Parameter).
 - **Separate Query from Modifier** — split a function that both returns a value and has a side effect into one that queries and one that modifies.
 - **Parameterize Function** ↔ (opposite direction of splitting similar functions) — merge near-identical functions that differ only by a literal value into one parameterized function.
 - **Remove Flag Argument** — replace a boolean flag parameter with explicit functions for each flag value.
