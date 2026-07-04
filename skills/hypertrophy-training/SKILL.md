@@ -42,9 +42,11 @@ volume in experienced trainees:
   growth per set) — a relationship that holds roughly linearly at low volumes
   but breaks down at high volumes due to recovery limits.
 
-The per-set return on volume drops off sharply, not linearly:
+The per-set return on volume drops off sharply, not linearly (the index below
+is an illustrative relative-return scale, not a Cohen's-d effect size — the
+measured average per-set effect size is the 0.023 cited above):
 
-| Set range (per muscle group/week) | Effect size per set | Return |
+| Set range (per muscle group/week) | Relative per-set return (illustrative) | Return |
 |---|---|---|
 | 1–5 | 0.4–0.8 | Highest |
 | 6–10 | 0.2–0.4 | Moderate |
@@ -55,7 +57,7 @@ The practical reading: the first 10–12 sets deliver most of the hypertrophic
 stimulus; sets beyond that trade an increasingly small stimulus gain for a
 disproportionate recovery cost.
 
-**This volume recommendation assumes high training intensity** (RPE 7–9,
+**This volume recommendation assumes high training intensity** (RPE 8–10,
 0–2 RIR — see below). At submaximal intensity, higher volumes are needed to
 compensate. For experienced trainees, moderate volume at high intensity tends
 to outperform high volume at moderate intensity.
@@ -72,7 +74,8 @@ volume for experienced trainees:
 - Mechanical tension — believed to be the primary driver of hypertrophy (see
   below) — reaches its maximum only at high intensity.
 
-Working ranges: RPE 7–9, or 0–2 RIR (Reps in Reserve), producing a strong
+Working ranges: RPE 8–10, or 0–2 RIR (Reps in Reserve; RPE = 10 − RIR on the
+standard scale), producing a strong
 growth stimulus without excessive central-nervous-system fatigue. The
 practical implication is that moderate volume (12–15 sets) at high intensity
 (RPE 8–9) is often more effective for an experienced trainee than high volume
