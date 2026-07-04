@@ -2,20 +2,36 @@
   "version": "1",
   "skills": [
     {
+      "name": "adhd-hyperfocus-check",
+      "summary": "Provides a 30-second in-the-moment self-check for ADHD / twice-exceptional (2e) individuals to distinguish productive hyperfocus (flow) from maladaptive hyperfocus (an anxiety-driven coping mechanism…",
+      "path": "skills/adhd-hyperfocus-check/SKILL.md",
+      "compatibility": "Personal self-management reference content; no tools, dependencies, or code execution required. Applies to any conversation where someone is examining their own hyperfocus, coping, or burnout pattern in real time.",
+      "version": "1.0"
+    },
+    {
       "name": "adr-workflow",
       "summary": "Establish and maintain Architecture Decision Records (ADRs) in software repositories.",
       "path": "skills/adr-workflow/SKILL.md",
       "compatibility": "Works in any software repository. No special dependencies."
     },
     {
-      "name": "analyze-coupling",
-      "summary": "Use when measuring or judging how coupled / brittle a codebase is — computing afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finding components in…",
-      "path": "skills/analyze-coupling/SKILL.md",
-      "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go)."
       "name": "analyze-cohesion",
       "summary": "Analyze the cohesion of a class, module, file, or package and recommend whether to split it, merge it, or leave it.",
       "path": "skills/analyze-cohesion/SKILL.md",
       "compatibility": "The bundled LCOM script needs Python 3.8+. It analyzes Python (precise, via AST), R, and Bash (heuristic) sources. The reasoning workflow is language-agnostic."
+    },
+    {
+      "name": "analyze-coupling",
+      "summary": "Use when measuring or judging how coupled / brittle a codebase is — computing afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finding components in…",
+      "path": "skills/analyze-coupling/SKILL.md",
+      "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go)."
+    },
+    {
+      "name": "apology-review",
+      "summary": "Analyze the structure of an apology (spoken or written) against Lewicki's peer-reviewed six-component model, reporting which components are present or missing ranked by importance, and optionally dra…",
+      "path": "skills/apology-review/SKILL.md",
+      "compatibility": "Works on any apology text in any language the reviewer can read; no tools or dependencies required. Structural analysis only — it cannot assess sincerity.",
+      "version": "1.0"
     },
     {
       "name": "architecture-pattern-advisor",
@@ -24,9 +40,44 @@
       "compatibility": "Works in any repository. Richer scaffolding examples for Python and R."
     },
     {
+      "name": "backward-planning",
+      "summary": "Break procrastination on a stalled task or project by planning backwards from the goal into concrete steps, surfacing the hidden fear or avoidance behind the stall, and committing to a real deadline…",
+      "path": "skills/backward-planning/SKILL.md",
+      "compatibility": "Applies to any stalled task or project, personal or professional; no tools, code, or specific domain required. Works best as a short guided conversation with direct questions, not as a form to fill in alone.",
+      "version": "1.0"
+    },
+    {
       "name": "codebase-design",
       "summary": "Shared vocabulary and workflow for designing deep modules.",
       "path": "skills/codebase-design/SKILL.md"
+    },
+    {
+      "name": "communication-analysis",
+      "summary": "Analyze or rewrite a message, piece of feedback, or conversation transcript using Schulz von Thun's four-sides model and Carl Rogers-style active listening — decoding what is said on the factual, sel…",
+      "path": "skills/communication-analysis/SKILL.md",
+      "compatibility": "Domain-knowledge skill for interpersonal communication analysis. No tools, scripts, or software dependencies; applies to any text or transcript a reader brings to it.",
+      "version": "1.0"
+    },
+    {
+      "name": "ddd-advisor",
+      "summary": "Advise on Domain-Driven Design at the strategic level (classifying subdomains as Core, Generic, or Supporting; context-mapping between bounded contexts) and the tactical level (picking an implementat…",
+      "path": "skills/ddd-advisor/SKILL.md",
+      "compatibility": "Domain- and language-agnostic; the reasoning applies to any codebase practicing or considering Domain-Driven Design (examples below use SQL and R, but nothing is R-specific). Pairs with architecture-pattern-advisor for topology/microservice-boundary decisions and with adr-workflow to record the classification and pattern choices.",
+      "version": "1.0"
+    },
+    {
+      "name": "evidence-based-nutrition",
+      "summary": "Summarizes evidence-based nutrition principles for body composition (muscle gain and fat loss) — calorie surplus/deficit periodisation across a training year, the 1.6–2.2 g/kg protein ceiling, a thre…",
+      "path": "skills/evidence-based-nutrition/SKILL.md",
+      "compatibility": "Domain-knowledge skill with no code or tooling dependency. Applies to general-population body-composition goals (muscle gain / fat loss) in otherwise healthy adults; not tailored to clinical populations, eating disorders, pregnancy/lactation, or other conditions needing individualized medical or dietetic supervision.",
+      "version": "1.0"
+    },
+    {
+      "name": "fowler-refactoring-catalog",
+      "summary": "Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics.",
+      "path": "skills/fowler-refactoring-catalog/SKILL.md",
+      "compatibility": "Technique names and mechanics are drawn from Martin Fowler's \"Refactoring\" (2nd edition) as captured in this repository's source notes. The notes illustrate mechanics in JavaScript and R, but the steps generalize to any language with functions, variables, and (where relevant) classes.",
+      "version": "1.0"
     },
     {
       "name": "grilling",
@@ -34,9 +85,51 @@
       "path": "skills/grilling/SKILL.md"
     },
     {
+      "name": "guideline-distillation",
+      "summary": "Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs, review checklists, onboarding docs) into lean, machine-actionable convention files such as CONVENTIONS.md, AGENTS.md,…",
+      "path": "skills/guideline-distillation/SKILL.md",
+      "compatibility": "Works on any text source (Markdown, wikis, RFCs, linter configs, PDFs of style guides) and any output convention format. No special tooling required.",
+      "version": "1.0"
+    },
+    {
       "name": "handoff",
       "summary": "Compact the current conversation into a handoff document for another agent to pick up.",
       "path": "skills/handoff/SKILL.md"
+    },
+    {
+      "name": "hypertrophy-training",
+      "summary": "Summarizes evidence-based hypertrophy-training programming (weekly set volume, RIR/RPE intensity targets, the Stimulus:Fatigue ratio) and auto-regulation protocols with precise stop criteria (5% Fati…",
+      "path": "skills/hypertrophy-training/SKILL.md",
+      "compatibility": "Domain-knowledge skill with no code or tooling dependency. Applies to any context where training programming or auto-regulation is being discussed or drafted (chat, a written program, a coaching note).",
+      "version": "1.0"
+    },
+    {
+      "name": "learning-decision-filter",
+      "summary": "Run a proposed learning or skill investment (a technology, course, certification, or deep-dive topic) through five go/no-go gate criteria — requiring at least three of five to pass — whenever decidin…",
+      "path": "skills/learning-decision-filter/SKILL.md",
+      "compatibility": "No dependencies. Applies to any individual's learning or skill-investment decision; most useful when the person's current career phase and priorities are known or can be asked for.",
+      "version": "1.0"
+    },
+    {
+      "name": "llm-application-engineering",
+      "summary": "Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring…",
+      "path": "skills/llm-application-engineering/SKILL.md",
+      "compatibility": "Domain-knowledge skill, not tied to any language, framework, or model provider. Applies to any application built on a foundation model, whether self-hosted or accessed via API.",
+      "version": "1.0"
+    },
+    {
+      "name": "ml-project-lifecycle",
+      "summary": "Guide a machine learning project from problem framing through model selection to production deployment — use it whenever someone is scoping an ML project, picking a model architecture, deciding how t…",
+      "path": "skills/ml-project-lifecycle/SKILL.md",
+      "compatibility": "Domain-knowledge and process skill, not tied to any language, framework, or ML library. Applies to any supervised-learning project regardless of stack; example commands in the source material lean Python and R, but the checklists and decision tables are tool-agnostic. Specific model and library names (e.g. XGBoost, BERT, AutoKeras) reflect the field's state as of the source material and may date faster than the surrounding principles.",
+      "version": "1.0"
+    },
+    {
+      "name": "natural-planning",
+      "summary": "Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague or stuck project into concrete physical next actions.",
+      "path": "skills/natural-planning/SKILL.md",
+      "compatibility": "Agent-agnostic reasoning workflow. No tools, dependencies, or code execution required.",
+      "version": "1.0"
     },
     {
       "name": "problem-first-explanation",
@@ -49,6 +142,13 @@
       "path": "skills/prototype/SKILL.md"
     },
     {
+      "name": "r-error-constructors",
+      "summary": "Design custom condition/error constructors for R packages the tidyverse/rlang way — standardized functions that turn a recurring `stop()` call into a testable, documentable, and inheritable error typ…",
+      "path": "skills/r-error-constructors/SKILL.md",
+      "compatibility": "R packages using rlang for condition signaling and testthat for testing; assumes tidyverse-style package conventions (roxygen2 `@export`, `NAMESPACE`-managed S3 methods).",
+      "version": "1.0"
+    },
+    {
       "name": "r-package-dev",
       "summary": "Design and develop R packages.",
       "path": "skills/r-package-dev/SKILL.md",
@@ -56,9 +156,30 @@
       "version": "1.0"
     },
     {
+      "name": "refactoring-checklist",
+      "summary": "Walk through a four-phase decision workflow for whether, when, and how to refactor code — deciding if a change is worth doing now, assessing the risk before touching anything, running the refactor sa…",
+      "path": "skills/refactoring-checklist/SKILL.md",
+      "compatibility": "Works in any codebase and language; the priority matrix and general code smells apply broadly, with one smell set called out as R-specific. Complements the fowler-refactoring-catalog skill, which supplies the step-by-step mechanics for each named technique referenced here (Extract Function, Extract Class, Decompose Conditional, Introduce Parameter Object, and others).",
+      "version": "1.0"
+    },
+    {
+      "name": "scanner-personalities",
+      "summary": "Provides the Barbara Sher / Bettina Lemke \"Scanner\" typology for people with many divergent, ever-shifting interests, and a light self-diagnosis flow for matching a career or work form to how someone…",
+      "path": "skills/scanner-personalities/SKILL.md",
+      "compatibility": "Personal-development reference content; no tools or dependencies required. Applies to any conversation about work/career structure, project follow-through, or self-understanding for multi-interest people.",
+      "version": "1.0"
+    },
+    {
       "name": "skill-creator",
       "summary": "Create new skills, modify and improve existing skills, and measure skill performance.",
       "path": "skills/skill-creator/SKILL.md"
+    },
+    {
+      "name": "sql-schema-design",
+      "summary": "Apply module-encapsulation thinking to SQL schema design and query patterns — expose views as the stable public interface, decompose complex queries into named CTE pipelines, hide physical storage (p…",
+      "path": "skills/sql-schema-design/SKILL.md",
+      "compatibility": "Database-agnostic in principle. Examples use ANSI SQL (CTEs via WITH, INFORMATION_SCHEMA); syntax details vary by engine (PostgreSQL, MySQL, SQL Server, Snowflake, etc.) but the workflow and decision criteria transfer directly.",
+      "version": "1.0"
     },
     {
       "name": "stepdown-rule",
@@ -72,9 +193,37 @@
       "path": "skills/tdd/SKILL.md"
     },
     {
+      "name": "tidyverse-code-review",
+      "summary": "Review or author a pull request against an R package using the tidyverse code review conventions, prioritised by the Code Review Pyramid so design and correctness get attention before style and forma…",
+      "path": "skills/tidyverse-code-review/SKILL.md",
+      "compatibility": "Written for R packages that follow tidyverse conventions (roxygen2, testthat, NAMESPACE, NEWS.md, usethis PR helpers). The prioritisation logic and comment-writing guidance generalize to any language; the R/usethis-specific steps do not.",
+      "version": "1.0"
+    },
+    {
       "name": "to-issues",
       "summary": "Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices.",
       "path": "skills/to-issues/SKILL.md"
+    },
+    {
+      "name": "uncertainty-management",
+      "summary": "Manage risky, hard-to-predict changes by decomposing them into small validated steps, checkpointing before each one, and rolling back on trouble.",
+      "path": "skills/uncertainty-management/SKILL.md",
+      "compatibility": "Domain-agnostic reasoning pattern. Maps directly onto deployment tooling (feature flags, canary infra), version control (small commits), and any staged-rollout mechanism, but requires none of them.",
+      "version": "1.0"
+    },
+    {
+      "name": "worry-management",
+      "summary": "Use when someone brings a specific distressing worry, anxious rumination, or recurring \"what if\" and explicitly wants help thinking it through — not when they want emotional support alone or when the…",
+      "path": "skills/worry-management/SKILL.md",
+      "compatibility": "Text-only reasoning workflow; no tools, scripts, or dependencies required. Works in any conversational context. Not a clinical or diagnostic instrument.",
+      "version": "1.0"
+    },
+    {
+      "name": "zettelkasten-value-hierarchy",
+      "summary": "Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet) and run bottom-up or top-down value-gener…",
+      "path": "skills/zettelkasten-value-hierarchy/SKILL.md",
+      "compatibility": "Tool-agnostic. Assumes a note collection with typed notes and a linking mechanism (wiki-links, tags, or backlinks); adapt the mechanics to whatever note system is in use.",
+      "version": "1.0"
     }
   ]
 }

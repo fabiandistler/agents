@@ -188,3 +188,44 @@ For R package and function design, prefer these idioms to prevent interface spra
 - **Options Objects** — bundle many optional parameters into a single list/environment; callers set only what they need.
 - **Progressive Interface Disclosure** — keep the base interface minimal; expose advanced parameters only when the user opts in (e.g., via a `control` argument or a secondary `*_advanced()` variant).
 - **Strategy Objects** — replace boolean flags or `method =` string arguments with a function or S3 object that encapsulates the varying behaviour.
+
+### More interface idioms
+
+- **Enum default for closed choices** — when a parameter has a handful of valid string values, default it to the full vector and resolve with `match.arg()` (or `rlang::arg_match()`, preferred for clearer error messages). The first element is the default; the signature becomes self-documenting.
+
+  ```r
+  my_function <- function(method = c("average", "first", "last")) {
+    method <- rlang::arg_match(method)
+  }
+  ```
+
+  Use this when the options share the same parameters; once they need different parameters each, escalate to Strategy Objects above.
+
+- **`invisible()` for pipe-composable side effects** — a function called for its side effect should still return a useful value (often its first argument), just invisibly, so it doesn't clutter the console but keeps working inside a pipe.
+
+  ```r
+  write_log <- function(data, message) {
+    cat(message, "\n", file = "log.txt", append = TRUE)
+    invisible(data)  # not NULL — keeps `data %>% write_log(...) %>% next_fn()` working
+  }
+  ```
+
+- **`I()` for a second, explicit mode** — wrap an argument in `I()` to mark it as "AsIs" (checkable via `inherits(x, "AsIs")`) and let the function skip its usual processing for that input. Reach for this when a function has two natural modes: transform the input, or pass it through untouched.
+
+  ```r
+  create_url <- function(base, params) {
+    # already-escaped values arrive wrapped in I(); everything else gets escaped here
+    if (inherits(params$query, "AsIs")) params$query else curl::curl_escape(params$query)
+  }
+  ```
+
+- **`lifecycle::deprecated()` to retrofit an Options Object** — when widening an existing signature into the Options Objects form above, keep the old parameters as `deprecated()` defaults, fold them into the options object with a warning, and remove them in a later major version.
+
+  ```r
+  my_function <- function(x, options = my_function_options(), opt1 = deprecated()) {
+    if (lifecycle::is_present(opt1)) {
+      lifecycle::deprecate_warn("1.0.0", "my_function(opt1)", "my_function_options(opt1)")
+      options$opt1 <- opt1
+    }
+  }
+  ```

@@ -1,6 +1,6 @@
 ---
 name: analyze-cohesion
-description: Analyze the cohesion of a class, module, file, or package and recommend whether to split it, merge it, or leave it. Classifies code on the best-to-worst cohesion scale (functional, sequential, communicational, procedural, temporal, logical, coincidental) and computes the LCOM (Lack of Cohesion in Methods) metric. Use this whenever code is reviewed for whether its parts belong together — a god-class or god-module, a grab-bag utility or `*Utils` / `helpers` file, "is this class doing too much", "should I split this module", separation-of-concerns questions, or any request to reason about or compute LCOM. Applies to object-oriented code AND to files or namespaces of plain functions (Python, R, Bash, and others).
+description: Analyze the cohesion of a class, module, file, or package and recommend whether to split it, merge it, or leave it. Classifies code on the best-to-worst cohesion scale (functional, sequential, communicational, procedural, temporal, logical, coincidental) and computes the LCOM (Lack of Cohesion in Methods) metric. Use this whenever code is reviewed for whether its parts belong together — a god-class or god-module, a grab-bag utility or `*Utils` / `helpers` file, "is this class doing too much", "should I split this module", separation-of-concerns questions, or any request to reason about or compute LCOM. Applies to object-oriented code AND to files or namespaces of plain functions (Python, R, Bash, and others). Also frames cohesion within the broader "zeroth law" (high cohesion, low coupling) that underlies design principles at every level from function to service, and maps classic violation patterns — God Object, Shotgun Surgery, Feature Envy — to cohesion and coupling failures.
 compatibility: The bundled LCOM script needs Python 3.8+. It analyzes Python (precise, via AST), R, and Bash (heuristic) sources. The reasoning workflow is language-agnostic.
 ---
 
@@ -130,8 +130,49 @@ Keep it proportional: a clean module needs a sentence, not a report.
   Bash library can be just as incohesive as a god-class. Analyze files of
   functions too.
 
+## The zeroth law: cohesion and coupling as one meta-principle
+
+"High cohesion, low coupling" is not a design principle alongside the others —
+it is the principle the others reduce to. Whenever a design rule is under
+scrutiny for *why* it is good, the answer traces back to one of two questions:
+
+1. **Does this belong here?** — cohesion.
+2. **Could I change this without touching other parts?** — coupling.
+
+This same pair of questions repeats at every level of scale, just renamed:
+
+| Level | Principle | Cohesion expression | Coupling expression |
+|-------|-----------|----------------------|-----------------------|
+| Function / method | Single Responsibility | One reason to change | Minimal side effects outward |
+| Module | Deep modules | Complete, coherent problem domain | Narrow, simple interface |
+| Architecture | Separation of Concerns | One layer per concern | Layers talk only through defined boundaries |
+| Domain | Bounded Context | Consistent ubiquitous language within the context | Explicit context maps at the edges |
+| Service | Microservices | Self-contained business capability | Loose coupling via defined APIs |
+
+Classic anti-patterns are this law failing in a specific, recognizable shape —
+treat them as symptoms to trace back to a cohesion and/or coupling root cause:
+
+- **God Object** — high external coupling *and* low internal cohesion:
+  unrelated responsibilities crammed into one place, and everything else ends
+  up depending on it.
+- **Shotgun Surgery** — a cohesion failure by distribution: one concern is
+  scattered across many modules instead of held together in one, so a single
+  change ripples everywhere.
+- **Feature Envy** — a cohesion failure by wrong placement: a method cares
+  more about another module's data than its own — it is living in the wrong
+  home.
+
+This framing complements, not replaces, the LCOM workflow above: LCOM is how
+you make the cohesion half of the law measurable at the class/module level
+(step 4). Use the two diagnostic questions as a fast first pass before
+reaching for the metric, and reach for `analyze-coupling` when the question
+in front of you is really about the second half of the law.
+
 ## Related skills
 
+- **analyze-coupling** — the other half of the zeroth law: measures the
+  "could I change this without touching other parts?" question directly via
+  afferent/efferent coupling, instability, and the main sequence.
 - **codebase-design** — once you decide *where* a module should split, use the
   deep-module / seam vocabulary to shape the new interface.
 - **stepdown-rule** — cohesion within a single function: one level of

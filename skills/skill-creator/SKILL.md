@@ -466,6 +466,7 @@ The agents/ directory contains instructions for specialized subagents. Read them
 
 The references/ directory has additional documentation:
 - `references/schemas.md` — JSON structures for evals.json, grading.json, etc.
+- `references/SKILL-FORMAT.md` — Authoritative SKILL.md frontmatter constraints (name/description rules, etc.) and where this repo's conventions are stricter than the general spec.
 
 ---
 

@@ -25,14 +25,41 @@ Symlink the skills into your agent's conventional skill directory:
 | Directory | Description |
 |---|---|
 | `skills/` | All installable skills (each subdirectory has a `SKILL.md`) |
-| `skills/adr-workflow/` | Skill for Architecture Decision Records |
-| `skills/analyze-cohesion/` | Skill for analyzing module/class/file cohesion (cohesion taxonomy + LCOM) |
-| `skills/architecture-pattern-advisor/` | Skill for architecture pattern selection (topology + code organization) and incremental migration |
-| `skills/problem-first-explanation/` | Skill for problem-first code explanation |
-| `skills/r-package-dev/` | Skill for R package development (data.table, roxygen2, testthat) |
-| `skills/skill-creator/` | Skill for authoring and iterating on new skills |
-| `skills/software-design/` | Skill for function argument design and API patterns |
-| `skills/stepdown-rule/` | Skill for stepdown rule code organization |
+| `skills/adhd-hyperfocus-check/` | ADHD/2e: distinguish flow vs. anxiety-driven hyperfocus, intervene, and recover from a crash (explicit request only). |
+| `skills/adr-workflow/` | Establishing or maintaining Architecture Decision Records in a repo. |
+| `skills/analyze-cohesion/` | Analyzing whether a class, module, file, or package is cohesive — classify it on the best-to-worst cohesion scale, compute LCOM, and recommend a split/merge/leave. |
+| `skills/analyze-coupling/` | Measuring how coupled or brittle a codebase is — afferent/efferent coupling, Instability, Abstractness, Distance from the Main Sequence, and the Zones of Pain and Uselessness. |
+| `skills/apology-review/` | Reviewing or improving an apology's structure against Lewicki's six components (explicit request only). |
+| `skills/architecture-pattern-advisor/` | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
+| `skills/backward-planning/` | Stuck avoiding a task or project and need to surface the real blocker plus a concrete first step. |
+| `skills/codebase-design/` | Shared vocabulary and workflow for designing deep modules. |
+| `skills/communication-analysis/` | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
+| `skills/ddd-advisor/` | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
+| `skills/evidence-based-nutrition/` | Body-composition nutrition: bulk/cut calorie targets, protein, tracking precision, sleep/cardio priorities (educational). |
+| `skills/fowler-refactoring-catalog/` | Naming the right Fowler refactoring for a code smell and getting its step-by-step mechanics. |
+| `skills/grilling/` | Interview the user relentlessly about a plan or design. |
+| `skills/guideline-distillation/` | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
+| `skills/handoff/` | Compact the current conversation into a handoff document for another agent to pick up. |
+| `skills/hypertrophy-training/` | Experienced trainee: set volume, RIR/effort, auto-regulation, or diagnosing a stalled lift (educational). |
+| `skills/learning-decision-filter/` | Before committing time to learn a technology/skill, or to prioritize a learning backlog. |
+| `skills/llm-application-engineering/` | Diagnosing LLM output failures, ordering LLM app architecture builds, or defining production monitoring metrics. |
+| `skills/ml-project-lifecycle/` | Scoping an ML project, picking a model/baseline, handling missing data, or planning pipelines and staged deployment. |
+| `skills/natural-planning/` | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
+| `skills/problem-first-explanation/` | Producing technical explanations that lead with the concrete problem before the abstract solution. |
+| `skills/prototype/` | Build a throwaway prototype to flesh out a design — a runnable terminal app for state/business-logic questions, or several radically different UI var… |
+| `skills/r-error-constructors/` | Recurring R error (3+ sites): build a stop_* constructor with class hierarchy, conditionMessage(), and class-based tests. |
+| `skills/r-package-dev/` | Designing or refactoring R packages (data.table, roxygen2, testthat). |
+| `skills/refactoring-checklist/` | Deciding whether and when a spotted code smell is worth refactoring now, and how to do it safely in small steps. |
+| `skills/scanner-personalities/` | Someone with many shifting interests wants a career/work-form fit, or feels guilty about unfinished projects. |
+| `skills/skill-creator/` | Creating, editing, evaluating, or benchmarking skills in this repo. |
+| `skills/sql-schema-design/` | Designing or reviewing a SQL schema, decomposing complex queries, partitioning, or gating CI/CD on schema drift. |
+| `skills/stepdown-rule/` | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
+| `skills/tdd/` | Test-driven development. |
+| `skills/tidyverse-code-review/` | Reviewing or authoring a pull request against an R/tidyverse package (checklist + review-pyramid prioritisation). |
+| `skills/to-issues/` | Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. |
+| `skills/uncertainty-management/` | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
+| `skills/worry-management/` | When someone brings a specific worry and explicitly wants help analyzing or resolving it (not a therapy substitute). |
+| `skills/zettelkasten-value-hierarchy/` | Classifying or promoting notes by value, or synthesizing higher-value systems/workflows from low-value notes. |
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
 | `mcp-wiki-server/` | MCP server exposing a wiki / knowledge-base tool to MCP-aware agents |
 | `scripts/` | Repo tooling (manifest generator) |
