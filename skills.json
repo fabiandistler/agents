@@ -34,21 +34,18 @@
       "name": "communication-analysis",
       "summary": "Analyze or rewrite feedback, messages, or conversations with Schulz von Thun's four-sides model and Rogers-style active listening — use when a message landed badly or feedback needs review.",
       "path": "skills/communication-analysis/SKILL.md",
-      "compatibility": "Domain-knowledge skill for interpersonal communication analysis. No tools, scripts, or software dependencies; applies to any text or transcript a reader brings to it.",
       "version": "1.0"
     },
     {
       "name": "ddd-advisor",
       "summary": "Advise on Domain-Driven Design when a design conversation touches subdomain classification, buy-vs-build, bounded-context boundaries, or how much domain modeling a piece of business logic deserves.",
       "path": "skills/ddd-advisor/SKILL.md",
-      "compatibility": "Domain- and language-agnostic; the reasoning applies to any codebase practicing or considering Domain-Driven Design (examples below use SQL and R, but nothing is R-specific). Pairs with architecture-pattern-advisor for topology/microservice-boundary decisions and with adr-workflow to record the classification and pattern choices.",
       "version": "1.0"
     },
     {
       "name": "fowler-refactoring-catalog",
       "summary": "Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics.",
       "path": "skills/fowler-refactoring-catalog/SKILL.md",
-      "compatibility": "Technique names and mechanics are drawn from Martin Fowler's \"Refactoring\" (2nd edition) as captured in this repository's source notes. The notes illustrate mechanics in JavaScript and R, but the steps generalize to any language with functions, variables, and (where relevant) classes.",
       "version": "1.0"
     },
     {
@@ -60,7 +57,6 @@
       "name": "guideline-distillation",
       "summary": "Distill a messy source document (style guide, ADR, RFC, wiki, linter config) into a lean convention file for coding agents — use when a document must become loadable project rules.",
       "path": "skills/guideline-distillation/SKILL.md",
-      "compatibility": "Works on any text source (Markdown, wikis, RFCs, linter configs, PDFs of style guides) and any output convention format. No special tooling required.",
       "version": "1.0"
     },
     {
@@ -72,28 +68,24 @@
       "name": "hypertrophy-training",
       "summary": "Summarizes evidence-based hypertrophy programming and auto-regulation for experienced trainees — use when asked how many sets or how hard to train, how to auto-regulate, or why a lift stalled.",
       "path": "skills/hypertrophy-training/SKILL.md",
-      "compatibility": "Domain-knowledge skill with no code or tooling dependency. Applies to any context where training programming or auto-regulation is being discussed or drafted (chat, a written program, a coaching note).",
       "version": "1.0"
     },
     {
       "name": "llm-application-engineering",
       "summary": "Guide the engineering of a foundation-model application across three linked decisions: adapting a failing model, choosing the next architectural piece to build, and monitoring it in production.",
       "path": "skills/llm-application-engineering/SKILL.md",
-      "compatibility": "Domain-knowledge skill, not tied to any language, framework, or model provider. Applies to any application built on a foundation model, whether self-hosted or accessed via API.",
       "version": "1.0"
     },
     {
       "name": "ml-project-lifecycle",
       "summary": "Guide an ML project from problem framing through model selection to production — use when scoping a project, choosing a model, handling missing data, gating a ship decision, or planning deployment.",
       "path": "skills/ml-project-lifecycle/SKILL.md",
-      "compatibility": "Domain-knowledge and process skill, not tied to any language, framework, or ML library. Applies to any supervised-learning project regardless of stack; example commands in the source material lean Python and R, but the checklists and decision tables are tool-agnostic. Specific model and library names (e.g. XGBoost, BERT, AutoKeras) reflect the field's state as of the source material and may date faster than the surrounding principles.",
       "version": "1.0"
     },
     {
       "name": "natural-planning",
       "summary": "Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague or stuck project into concrete physical next actions.",
       "path": "skills/natural-planning/SKILL.md",
-      "compatibility": "Agent-agnostic reasoning workflow. No tools, dependencies, or code execution required.",
       "version": "1.0"
     },
     {
@@ -159,14 +151,12 @@
       "name": "uncertainty-management",
       "summary": "Manage risky, hard-to-predict changes by decomposing them into small validated steps, checkpointing before each one, and rolling back on trouble.",
       "path": "skills/uncertainty-management/SKILL.md",
-      "compatibility": "Domain-agnostic reasoning pattern. Maps directly onto deployment tooling (feature flags, canary infra), version control (small commits), and any staged-rollout mechanism, but requires none of them.",
       "version": "1.0"
     },
     {
       "name": "worry-management",
       "summary": "Walk a specific distressing worry through a structured six-step analysis — use when someone brings a worry, anxious rumination, or recurring \"what if\" and explicitly wants help thinking it through.",
       "path": "skills/worry-management/SKILL.md",
-      "compatibility": "Text-only reasoning workflow; no tools, scripts, or dependencies required. Works in any conversational context. Not a clinical or diagnostic instrument.",
       "version": "1.0"
     },
     {

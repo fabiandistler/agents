@@ -1,7 +1,6 @@
 ---
 name: communication-analysis
 description: Analyze or rewrite feedback, messages, or conversations with Schulz von Thun's four-sides model and Rogers-style active listening — use when a message landed badly or feedback needs review. Decode the factual, self-revealing, relationship, and appeal levels, spot incongruent (verbal-vs-nonverbal) signals, and mirror hidden appeals instead of reacting to them blindly; also applies when setting or respecting interpersonal boundaries is being discussed. Also covers the four comprehensibility makers, the relevance filter, why disturbances take precedence, and the solution-reflex trap. This is educational communication-psychology material, not therapy or clinical advice.
-compatibility: Domain-knowledge skill for interpersonal communication analysis. No tools, scripts, or software dependencies; applies to any text or transcript a reader brings to it.
 metadata:
   version: "1.0"
 ---

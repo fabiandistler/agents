@@ -1,7 +1,6 @@
 ---
 name: ml-project-lifecycle
 description: Guide an ML project from problem framing through model selection to production — use when scoping a project, choosing a model, handling missing data, gating a ship decision, or planning deployment. Also fits designing a feature-engineering pipeline or planning retraining. It bundles a business-objectives-first checklist, a five-baseline deployment gate, a missing-values (MCAR/MAR/MNAR) taxonomy, a data-type-to-model decision table, and a staged rollout checklist.
-compatibility: Domain-knowledge and process skill, not tied to any language, framework, or ML library. Applies to any supervised-learning project regardless of stack; example commands in the source material lean Python and R, but the checklists and decision tables are tool-agnostic. Specific model and library names (e.g. XGBoost, BERT, AutoKeras) reflect the field's state as of the source material and may date faster than the surrounding principles.
 metadata:
   version: "1.0"
 ---

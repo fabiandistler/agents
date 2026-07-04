@@ -1,7 +1,6 @@
 ---
 name: guideline-distillation
 description: Distill a messy source document (style guide, ADR, RFC, wiki, linter config) into a lean convention file for coding agents — use when a document must become loadable project rules. Targets CONVENTIONS.md, AGENTS.md, or CLAUDE.md fragments; also use when a rules file feels bloated with generic advice a competent coding model already knows, or when review checklists and onboarding docs need condensing. The defining move is subtraction — most of a source document is generic best practice or language defaults the model already follows, and the job is to find the small residue that is non-obvious, project-specific, and consequential.
-compatibility: Works on any text source (Markdown, wikis, RFCs, linter configs, PDFs of style guides) and any output convention format. No special tooling required.
 metadata:
   version: "1.0"
 ---

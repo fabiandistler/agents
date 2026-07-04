@@ -1,7 +1,6 @@
 ---
 name: uncertainty-management
 description: Manage risky, hard-to-predict changes by decomposing them into small validated steps, checkpointing before each one, and rolling back on trouble. Use whenever a change is risky, its full impact cannot be foreseen in advance, or the user is planning a migration, refactor, deployment, rollout, or any other change where "what could go wrong" matters — even if they do not name a specific pattern like canary or feature flag.
-compatibility: Domain-agnostic reasoning pattern. Maps directly onto deployment tooling (feature flags, canary infra), version control (small commits), and any staged-rollout mechanism, but requires none of them.
 metadata:
   version: "1.0"
 ---
