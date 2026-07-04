@@ -24,23 +24,18 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 
 | Skill | When to use |
 |---|---|
-| [adhd-hyperfocus-check](skills/adhd-hyperfocus-check/SKILL.md) | ADHD/2e: distinguish flow vs. anxiety-driven hyperfocus, intervene, and recover from a crash (explicit request only). |
 | [adr-workflow](skills/adr-workflow/SKILL.md) | Establishing or maintaining Architecture Decision Records in a repo. |
 | [analyze-cohesion](skills/analyze-cohesion/SKILL.md) | Analyzing whether a class, module, file, or package is cohesive — classify it on the best-to-worst cohesion scale, compute LCOM, and recommend a split/merge/leave. |
 | [analyze-coupling](skills/analyze-coupling/SKILL.md) | Measuring how coupled or brittle a codebase is — afferent/efferent coupling, Instability, Abstractness, Distance from the Main Sequence, and the Zones of Pain and Uselessness. |
-| [apology-review](skills/apology-review/SKILL.md) | Reviewing or improving an apology's structure against Lewicki's six components (explicit request only). |
 | [architecture-pattern-advisor](skills/architecture-pattern-advisor/SKILL.md) | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
-| [backward-planning](skills/backward-planning/SKILL.md) | Stuck avoiding a task or project and need to surface the real blocker plus a concrete first step. |
 | [codebase-design](skills/codebase-design/SKILL.md) | Shared vocabulary and workflow for designing deep modules. |
 | [communication-analysis](skills/communication-analysis/SKILL.md) | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | [ddd-advisor](skills/ddd-advisor/SKILL.md) | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
-| [evidence-based-nutrition](skills/evidence-based-nutrition/SKILL.md) | Body-composition nutrition: bulk/cut calorie targets, protein, tracking precision, sleep/cardio priorities (educational). |
 | [fowler-refactoring-catalog](skills/fowler-refactoring-catalog/SKILL.md) | Naming the right Fowler refactoring for a code smell and getting its step-by-step mechanics. |
 | [grilling](skills/grilling/SKILL.md) | Interview the user relentlessly about a plan or design. |
 | [guideline-distillation](skills/guideline-distillation/SKILL.md) | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
 | [handoff](skills/handoff/SKILL.md) | Compact the current conversation into a handoff document for another agent to pick up. |
 | [hypertrophy-training](skills/hypertrophy-training/SKILL.md) | Experienced trainee: set volume, RIR/effort, auto-regulation, or diagnosing a stalled lift (educational). |
-| [learning-decision-filter](skills/learning-decision-filter/SKILL.md) | Before committing time to learn a technology/skill, or to prioritize a learning backlog. |
 | [llm-application-engineering](skills/llm-application-engineering/SKILL.md) | Diagnosing LLM output failures, ordering LLM app architecture builds, or defining production monitoring metrics. |
 | [ml-project-lifecycle](skills/ml-project-lifecycle/SKILL.md) | Scoping an ML project, picking a model/baseline, handling missing data, or planning pipelines and staged deployment. |
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
@@ -49,12 +44,10 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 | [r-error-constructors](skills/r-error-constructors/SKILL.md) | Recurring R error (3+ sites): build a stop_* constructor with class hierarchy, conditionMessage(), and class-based tests. |
 | [r-package-dev](skills/r-package-dev/SKILL.md) | Designing or refactoring R packages (data.table, roxygen2, testthat). |
 | [refactoring-checklist](skills/refactoring-checklist/SKILL.md) | Deciding whether and when a spotted code smell is worth refactoring now, and how to do it safely in small steps. |
-| [scanner-personalities](skills/scanner-personalities/SKILL.md) | Someone with many shifting interests wants a career/work-form fit, or feels guilty about unfinished projects. |
 | [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
 | [sql-schema-design](skills/sql-schema-design/SKILL.md) | Designing or reviewing a SQL schema, decomposing complex queries, partitioning, or gating CI/CD on schema drift. |
 | [stepdown-rule](skills/stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 | [tdd](skills/tdd/SKILL.md) | Test-driven development. |
-| [tidyverse-code-review](skills/tidyverse-code-review/SKILL.md) | Reviewing or authoring a pull request against an R/tidyverse package (checklist + review-pyramid prioritisation). |
 | [to-issues](skills/to-issues/SKILL.md) | Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. |
 | [uncertainty-management](skills/uncertainty-management/SKILL.md) | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
 | [worry-management](skills/worry-management/SKILL.md) | When someone brings a specific worry and explicitly wants help analyzing or resolving it (not a therapy substitute). |
