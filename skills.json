@@ -2,13 +2,6 @@
   "version": "1",
   "skills": [
     {
-      "name": "adhd-hyperfocus-check",
-      "summary": "Provides a 30-second in-the-moment self-check for ADHD / twice-exceptional (2e) individuals to distinguish productive hyperfocus (flow) from maladaptive hyperfocus (an anxiety-driven coping mechanism…",
-      "path": "skills/adhd-hyperfocus-check/SKILL.md",
-      "compatibility": "Personal self-management reference content; no tools, dependencies, or code execution required. Applies to any conversation where someone is examining their own hyperfocus, coping, or burnout pattern in real time.",
-      "version": "1.0"
-    },
-    {
       "name": "adr-workflow",
       "summary": "Establish and maintain Architecture Decision Records (ADRs) in software repositories.",
       "path": "skills/adr-workflow/SKILL.md",
@@ -27,24 +20,10 @@
       "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go)."
     },
     {
-      "name": "apology-review",
-      "summary": "Analyze the structure of an apology (spoken or written) against Lewicki's peer-reviewed six-component model, reporting which components are present or missing ranked by importance, and optionally dra…",
-      "path": "skills/apology-review/SKILL.md",
-      "compatibility": "Works on any apology text in any language the reviewer can read; no tools or dependencies required. Structural analysis only — it cannot assess sincerity.",
-      "version": "1.0"
-    },
-    {
       "name": "architecture-pattern-advisor",
       "summary": "Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion).",
       "path": "skills/architecture-pattern-advisor/SKILL.md",
       "compatibility": "Works in any repository. Richer scaffolding examples for Python and R."
-    },
-    {
-      "name": "backward-planning",
-      "summary": "Break procrastination on a stalled task or project by planning backwards from the goal into concrete steps, surfacing the hidden fear or avoidance behind the stall, and committing to a real deadline…",
-      "path": "skills/backward-planning/SKILL.md",
-      "compatibility": "Applies to any stalled task or project, personal or professional; no tools, code, or specific domain required. Works best as a short guided conversation with direct questions, not as a form to fill in alone.",
-      "version": "1.0"
     },
     {
       "name": "codebase-design",
@@ -63,13 +42,6 @@
       "summary": "Advise on Domain-Driven Design at the strategic level (classifying subdomains as Core, Generic, or Supporting; context-mapping between bounded contexts) and the tactical level (picking an implementat…",
       "path": "skills/ddd-advisor/SKILL.md",
       "compatibility": "Domain- and language-agnostic; the reasoning applies to any codebase practicing or considering Domain-Driven Design (examples below use SQL and R, but nothing is R-specific). Pairs with architecture-pattern-advisor for topology/microservice-boundary decisions and with adr-workflow to record the classification and pattern choices.",
-      "version": "1.0"
-    },
-    {
-      "name": "evidence-based-nutrition",
-      "summary": "Summarizes evidence-based nutrition principles for body composition (muscle gain and fat loss) — calorie surplus/deficit periodisation across a training year, the 1.6–2.2 g/kg protein ceiling, a thre…",
-      "path": "skills/evidence-based-nutrition/SKILL.md",
-      "compatibility": "Domain-knowledge skill with no code or tooling dependency. Applies to general-population body-composition goals (muscle gain / fat loss) in otherwise healthy adults; not tailored to clinical populations, eating disorders, pregnancy/lactation, or other conditions needing individualized medical or dietetic supervision.",
       "version": "1.0"
     },
     {
@@ -101,13 +73,6 @@
       "summary": "Summarizes evidence-based hypertrophy-training programming (weekly set volume, RIR/RPE intensity targets, the Stimulus:Fatigue ratio) and auto-regulation protocols with precise stop criteria (5% Fati…",
       "path": "skills/hypertrophy-training/SKILL.md",
       "compatibility": "Domain-knowledge skill with no code or tooling dependency. Applies to any context where training programming or auto-regulation is being discussed or drafted (chat, a written program, a coaching note).",
-      "version": "1.0"
-    },
-    {
-      "name": "learning-decision-filter",
-      "summary": "Run a proposed learning or skill investment (a technology, course, certification, or deep-dive topic) through five go/no-go gate criteria — requiring at least three of five to pass — whenever decidin…",
-      "path": "skills/learning-decision-filter/SKILL.md",
-      "compatibility": "No dependencies. Applies to any individual's learning or skill-investment decision; most useful when the person's current career phase and priorities are known or can be asked for.",
       "version": "1.0"
     },
     {
@@ -163,13 +128,6 @@
       "version": "1.0"
     },
     {
-      "name": "scanner-personalities",
-      "summary": "Provides the Barbara Sher / Bettina Lemke \"Scanner\" typology for people with many divergent, ever-shifting interests, and a light self-diagnosis flow for matching a career or work form to how someone…",
-      "path": "skills/scanner-personalities/SKILL.md",
-      "compatibility": "Personal-development reference content; no tools or dependencies required. Applies to any conversation about work/career structure, project follow-through, or self-understanding for multi-interest people.",
-      "version": "1.0"
-    },
-    {
       "name": "skill-creator",
       "summary": "Create new skills, modify and improve existing skills, and measure skill performance.",
       "path": "skills/skill-creator/SKILL.md"
@@ -191,13 +149,6 @@
       "name": "tdd",
       "summary": "Test-driven development.",
       "path": "skills/tdd/SKILL.md"
-    },
-    {
-      "name": "tidyverse-code-review",
-      "summary": "Review or author a pull request against an R package using the tidyverse code review conventions, prioritised by the Code Review Pyramid so design and correctness get attention before style and forma…",
-      "path": "skills/tidyverse-code-review/SKILL.md",
-      "compatibility": "Written for R packages that follow tidyverse conventions (roxygen2, testthat, NAMESPACE, NEWS.md, usethis PR helpers). The prioritisation logic and comment-writing guidance generalize to any language; the R/usethis-specific steps do not.",
-      "version": "1.0"
     },
     {
       "name": "to-issues",
