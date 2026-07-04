@@ -1,6 +1,6 @@
 ---
 name: architecture-pattern-advisor
-description: Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). Not for generic project setup with no architecture-shape decision.
+description: Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). Includes a reusable trade-off-analysis method for weighing alternatives and guidance for cutting microservice boundaries along bounded contexts rather than technical layers. Not for generic project setup with no architecture-shape decision.
 compatibility: Works in any repository. Richer scaffolding examples for Python and R.
 ---
 
@@ -63,6 +63,42 @@ Once chosen, document it. **REQUIRED SUB-SKILL:** use the `adr-workflow` skill t
 ### 6. Verify
 
 Sanity-check the result: Python — package imports, a minimal `pyproject.toml`; R — defer to `r-package-dev` checks. For a migration, confirm the first step builds before listing the rest.
+
+## Trade-off Analysis
+
+Every architecture decision trades some qualities for others — there is no dominant option once real constraints apply. Use this five-step method whenever step 3's candidates are close or the choice is contentious, before writing the ADR.
+
+1. **Define the context.** Business requirements, technical constraints, stakeholder needs, and the timeline/budget envelope — the same inputs gathered in step 2 (Diagnose).
+2. **Generate at least three alternatives**, including a genuine "do nothing" / status-quo option. Don't stop at the first two options that come to mind; include an extreme or hybrid option if one realistically applies.
+3. **Weight the relevant -ilities.** Pick the 3–7 characteristics that actually matter for this decision (performance, maintainability, cost, scalability, time-to-market, etc. — see the diagnostic questions in [references/decision-drivers.md](references/decision-drivers.md)) and assign each a weight; not all qualities matter equally for a given project.
+4. **Analyze trade-offs short-term vs. long-term.** For each alternative, separate immediate effects (time-to-market, initial cost) from long-run effects (maintainability, technical debt, lock-in), and note which assumptions the analysis depends on.
+5. **Document the decision with a review date.** Record the chosen alternative, the rejected ones and why, the accepted downsides, and *when* to re-evaluate — conditions change, and a decision that was right last year may not be right today.
+
+This output is ADR-ready: use the `adr-workflow` skill (step 4 of the Workflow) to turn steps 1–2 into the ADR's Context and Considered Options, and steps 3–5 into Decision Drivers and Consequences.
+
+### Scoring-matrix shape
+
+Use a weighted matrix when more than two close alternatives need a side-by-side comparison:
+
+| Characteristic | Weight | Option A | Option B | Option C |
+|---|---|---|---|---|
+| Performance | 30% | 8/10 | 6/10 | 9/10 |
+| Maintainability | 25% | 9/10 | 7/10 | 5/10 |
+| Cost | 20% | 6/10 | 9/10 | 7/10 |
+| Scalability | 15% | 7/10 | 8/10 | 9/10 |
+| Time-to-market | 10% | 5/10 | 9/10 | 6/10 |
+| **Weighted avg** | | **7.3** | **7.5** | **7.4** |
+
+Treat the weighted average as a discussion aid, not a verdict — a close score is a signal to re-check the weights or surface a qualitative factor the matrix can't capture, not to default to the highest number.
+
+## Microservice Boundary Design
+
+When the topology axis lands on microservices — or an existing repo is being decomposed into them — the hardest and most consequential call is where to cut. Apply these checks before finalizing service boundaries in step 5 (Implement):
+
+- **Bounded context as the natural boundary.** A domain's bounded context — the boundary within which a model and its terms carry one consistent meaning — is the strongest starting point for a service boundary. Context boundaries change more slowly than technical architecture, so services cut along them stay stable longer. If contexts aren't already identified, use the `ddd-advisor` skill to find and map them first; this skill consumes that boundary, it doesn't derive it (context-mapping patterns live there, not here).
+- **Cohesion / change-locality test.** A well-cut service absorbs a change entirely within itself. If two or more services are habitually modified together for the same feature, that is a direct signal the cut is wrong — either the boundary split a single cohesive capability, or a shared concept was duplicated incorrectly. Treat repeated cross-service changes for one feature as a boundary smell, not a normal cost of doing business.
+- **Database-per-service.** Each service owns its data exclusively; other services reach it only through its API, never through a direct foreign-database connection or shared schema. A shared database is coupling in disguise — it silently reintroduces the monolith's shared-state problem across process boundaries. Expect some data duplication and eventual consistency as the accepted trade-off (see Trade-off Analysis above); resolve cross-service queries with API composition or CQRS rather than joins.
+- **Anti-pattern: cutting along technical layers.** Do not carve out a "data-access service," "business-logic service," or "UI service" — that is the by-layer code-organization mistake (see the Code-organization axis in [references/pattern-catalog.md](references/pattern-catalog.md)) applied at the topology level, and it produces the worst of both: network calls for what used to be a function call, with none of the domain cohesion microservices are meant to buy. Name services after business capabilities (`Order Service`, `Customer Service`), not technical roles.
 
 ## Quick Reference
 
