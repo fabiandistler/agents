@@ -31,7 +31,7 @@ If a decision cannot be traced to a business metric, treat that as a signal to s
 
 ### The five-baseline gate
 
-A model's absolute metric score is meaningless without a baseline. Effective ML evaluation requires five baseline types, and **a candidate model must beat all five** before it is deployment-worthy:
+A model's absolute metric score is meaningless without a baseline. Effective ML evaluation compares a candidate model against **five baseline types** before it is deployment-worthy:
 
 | # | Baseline | What it is |
 |---|----------|------------|
@@ -41,7 +41,7 @@ A model's absolute metric score is meaningless without a baseline. Effective ML 
 | 4 | Human baseline | Human expert performance on the same task |
 | 5 | Existing solution | The current production system, if one exists |
 
-This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. Beating one or two baselines is not sufficient; beating all five is the bar.
+This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. The bar: clearly beat the random, simple-heuristic, and zero-rule baselines, and beat the existing production solution if one exists. The human baseline is a reference ceiling rather than a pass/fail gate — measure the gap to expert performance and judge whether it is acceptable for the use case.
 
 ### Missing-values taxonomy
 
@@ -107,7 +107,7 @@ A workable default workflow: start with a simple model (e.g. XGBoost) as the rea
 
 **Ordering constraint that matters most: split the data first, then scale.** Fitting a scaler (or any statistic) on the full dataset before splitting leaks test-set information into training and inflates validation performance in a way that will not hold in production.
 
-**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): a hash function maps every category — seen or unseen — into a fixed index space (e.g. 2^18 = 262,144 slots) that is defined ahead of time. New categories are automatically encoded validly; occasional hash collisions between two categories are an acceptable trade-off for never crashing on an unseen value. (`sklearn.feature_extraction.FeatureHasher`, TensorFlow `tf.feature_column.crossed_column`, or Vowpal Wabbit's hashing trick.)
+**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): a hash function maps every category — seen or unseen — into a fixed index space (e.g. 2^18 = 262,144 slots) that is defined ahead of time. New categories are automatically encoded validly; occasional hash collisions between two categories are an acceptable trade-off for never crashing on an unseen value. (`sklearn.feature_extraction.FeatureHasher`, TensorFlow `tf.keras.layers.Hashing`, or Vowpal Wabbit's hashing trick.)
 
 ### Staged deployment
 
