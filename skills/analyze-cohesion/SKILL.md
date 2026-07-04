@@ -167,17 +167,3 @@ you make the cohesion half of the law measurable at the class/module level
 (step 4). Use the two diagnostic questions as a fast first pass before
 reaching for the metric, and reach for `analyze-coupling` when the question
 in front of you is really about the second half of the law.
-
-## Related skills
-
-- **analyze-coupling** — the other half of the zeroth law: measures the
-  "could I change this without touching other parts?" question directly via
-  afferent/efferent coupling, instability, and the main sequence.
-- **codebase-design** — once you decide *where* a module should split, use the
-  deep-module / seam vocabulary to shape the new interface.
-- **stepdown-rule** — cohesion within a single function: one level of
-  abstraction, helpers extracted by purpose.
-- **architecture-pattern-advisor** — cohesion at system scale: module and
-  service boundaries, by-domain organization.
-- **adr-workflow** — record a non-trivial split/merge decision and its
-  trade-offs.
