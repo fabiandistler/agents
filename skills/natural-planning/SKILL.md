@@ -15,9 +15,10 @@ vague, or simply new. The point of walking through it is not process for its own
 sake — it is to arrive at outcomes that are clear and next actions that are
 concrete enough to actually do.
 
-This skill is distilled from personal notes on Allen & Reuter's *Wie ich die
-Dinge geregelt kriege* (GTD); apply it as a general reasoning tool, not as a
-prescription for how any one person must plan.
+This skill is distilled from personal notes on David Allen's *Getting Things
+Done* (German edition *Wie ich die Dinge geregelt kriege*, trans. Helmut
+Reuter); apply it as a general reasoning tool, not as a prescription for how
+any one person must plan.
 
 ## The five phases
 
