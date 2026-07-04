@@ -76,7 +76,7 @@ Classify the smell, then act on the matching timeline.
 | Long Method | > 20 lines | Extract Function |
 | Large Class | > 500 lines | Extract Class |
 | Complex Conditional | > 5 conditions | Decompose Conditional |
-| Switch Statements | > 5 cases | Replace with Strategy |
+| Switch Statements | > 5 cases | Replace Conditional with Polymorphism |
 | data.table chains | > 10 operations | Split into intermediate steps |
 | Nested `apply()` | > 3 levels deep | Refactor into clear named functions |
 | Copy-on-modify on large objects | — | Use data.table's `:=` |
@@ -167,9 +167,9 @@ into smaller steps — don't push through.
 A refactor isn't done when the steps stop; it's done when these hold:
 
 **Code quality metrics**
-- [ ] Cyclomatic complexity reduced by 20%+?
-- [ ] Code duplication significantly reduced?
-- [ ] Method/class length under reasonable limits?
+- [ ] Cyclomatic complexity reduced (target: < 10)?
+- [ ] No remaining duplication?
+- [ ] Method/class length under reasonable limits (methods < 20 lines)?
 - [ ] Coupling (dependency metrics) reduced?
 
 **Development velocity**
@@ -181,14 +181,6 @@ A refactor isn't done when the steps stop; it's done when these hold:
 - [ ] No performance regression.
 - [ ] Changes are genuinely easier to make now?
 - [ ] Development team more confident in the code?
-
-Also recheck the original quality-gate checklist from the quick decision path:
-
-- [ ] Complexity reduced (target: < 10)
-- [ ] No remaining duplication
-- [ ] Methods < 20 lines
-- [ ] Performance not degraded
-- [ ] Team satisfied with the result
 
 ## Test adaptation during refactoring
 
