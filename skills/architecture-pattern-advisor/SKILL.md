@@ -87,7 +87,7 @@ Use a weighted matrix when more than two close alternatives need a side-by-side 
 | Cost | 20% | 6/10 | 9/10 | 7/10 |
 | Scalability | 15% | 7/10 | 8/10 | 9/10 |
 | Time-to-market | 10% | 5/10 | 9/10 | 6/10 |
-| **Weighted avg** | | **7.3** | **7.5** | **7.4** |
+| **Weighted avg** | | **7.4** | **7.5** | **7.3** |
 
 Treat the weighted average as a discussion aid, not a verdict — a close score is a signal to re-check the weights or surface a qualitative factor the matrix can't capture, not to default to the highest number.
 

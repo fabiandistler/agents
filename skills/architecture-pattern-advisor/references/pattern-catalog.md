@@ -36,7 +36,7 @@ Many small independently deployable services, each owning its data, communicatin
 Stateless functions run on demand by a managed platform; scale to zero.
 
 - **Pros:** no server management; pay-per-use; auto-scaling; great for spiky/event-triggered work.
-- **Cons:** cold starts; vendor lock-in; local testing/debugging harder; execution time hard-capped by platform (e.g. 15 min on AWS Lambda, 9 min on GCP Cloud Run jobs); payload/response size limits (typically ~6 MB); concurrency throttling under bursty load.
+- **Cons:** cold starts; vendor lock-in; local testing/debugging harder; execution time hard-capped by platform (e.g. 15 min on AWS Lambda, ~9 min on Google Cloud Functions 1st gen); payload/response size limits (e.g. ~6 MB synchronous on Lambda); concurrency throttling under bursty load.
 - **Fits:** event-driven glue, scheduled jobs, spiky stateless workloads, webhooks.
 - **Avoid:** steady high-throughput services, long-lived connections, heavy stateful processing.
 
