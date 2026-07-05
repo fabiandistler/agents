@@ -1,5 +1,6 @@
 ---
 name: repo-status
+environments: coding
 description: Generate a status update from recent activity. Use when preparing for daily standup, summarizing yesterday's commits and PRs and ticket moves, formatting work into yesterday/today/blockers, or structuring a few rough notes into a shareable update.
 argument-hint: "[yesterday | today | blockers]"
 ---

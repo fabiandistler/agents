@@ -135,6 +135,9 @@ def build_entry(skill_md: Path) -> dict[str, object]:
     compat = fm.get("compatibility")
     if isinstance(compat, str) and compat:
         entry["compatibility"] = compat
+    environments = fm.get("environments")
+    if isinstance(environments, str) and environments.strip():
+        entry["environments"] = [e.strip() for e in environments.split(",") if e.strip()]
     metadata = fm.get("metadata")
     if isinstance(metadata, dict) and metadata.get("version"):
         entry["version"] = str(metadata["version"])

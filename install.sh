@@ -9,6 +9,12 @@
 #   ./install.sh --target=all                 # all of the above
 #   ./install.sh --target=all --dry-run       # show what would happen
 #   ./install.sh --target=all --uninstall     # remove symlinks owned by us
+#   ./install.sh --target=claude --env=chat   # only chat skills
+#   ./install.sh --target=codex  --env=coding # only coding skills
+#
+# --env=coding|chat|all (default all) selects which skills to (un)install,
+# based on each skill's `environments:` frontmatter field. A skill with no
+# such field belongs to every environment.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -24,12 +30,14 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 DRY_RUN=0
 UNINSTALL=0
 TARGET=""
+ENV="all"
 
-usage() { sed -n '2,18p' "$0"; }
+usage() { sed -n '2,24p' "$0"; }
 
 for arg in "$@"; do
   case "$arg" in
     --target=*)   TARGET="${arg#--target=}" ;;
+    --env=*)      ENV="${arg#--env=}" ;;
     --dry-run)    DRY_RUN=1 ;;
     --uninstall)  UNINSTALL=1 ;;
     -h|--help)    usage; exit 0 ;;
@@ -42,6 +50,11 @@ if [[ -z "$TARGET" ]]; then
   usage >&2
   exit 2
 fi
+
+case "$ENV" in
+  all|coding|chat) ;;
+  *) echo "invalid --env=$ENV (expected coding|chat|all)" >&2; usage >&2; exit 2 ;;
+esac
 
 target_dir_for() {
   case "$1" in
@@ -60,11 +73,35 @@ resolve_targets() {
   fi
 }
 
+# Read the comma-separated `environments:` frontmatter value of a SKILL.md.
+# Prints the raw value (may be empty if the field is absent).
+skill_environments() {
+  local skill_md="$1" line
+  line="$(grep -m1 '^environments:' "$skill_md" 2>/dev/null || true)"
+  printf '%s' "${line#environments:}"
+}
+
+# True if a skill belongs to the requested environment. A skill with no
+# `environments:` field belongs to every environment.
+skill_matches_env() {
+  local skill_md="$1" want="$2" envs
+  [[ "$want" == "all" ]] && return 0
+  envs="$(skill_environments "$skill_md")"
+  [[ -z "${envs//[[:space:]]/}" ]] && return 0
+  local IFS=','
+  for e in $envs; do
+    e="${e//[[:space:]]/}"
+    [[ "$e" == "$want" ]] && return 0
+  done
+  return 1
+}
+
 list_skills() {
   # A directory under skills/ is a skill iff it contains SKILL.md.
   for d in "$REPO_ROOT"/skills/*/; do
     local name; name="$(basename "$d")"
     [[ -f "$d/SKILL.md" ]] || continue
+    skill_matches_env "$d/SKILL.md" "$ENV" || continue
     printf '%s\n' "$name"
   done
 }
@@ -123,9 +160,10 @@ unlink_one() {
 main() {
   local skills; skills="$(list_skills)"
   if [[ -z "$skills" ]]; then
-    echo "no skills found under $REPO_ROOT" >&2
+    echo "no skills found under $REPO_ROOT (env=$ENV)" >&2
     exit 1
   fi
+  [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
