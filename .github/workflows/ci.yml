@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Manifest in sync
+        run: python scripts/build_manifest.py --check
+
+      - name: Catalogue tables in sync
+        run: python scripts/check_docs.py
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Python compiles
+        run: python -m compileall -q scripts skills mcp-wiki-server
+
+      - name: Shell lint (shellcheck)
+        run: shellcheck install.sh scripts/test_install.sh eval-suite/run.sh
+
+      - name: install.sh smoke test
+        run: bash scripts/test_install.sh

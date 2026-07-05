@@ -79,3 +79,7 @@ machine consumption prefer `skills.json`.
 - After editing any `SKILL.md` frontmatter, regenerate the manifest:
   `python3 scripts/build_manifest.py`. Verify it is in sync before
   committing with `python3 scripts/build_manifest.py --check`.
+- After adding, renaming, or removing a skill, update both catalogue
+  tables by hand — `README.md` (`## Contents`) and `AGENTS.md`
+  (`## Skill catalogue`) — keeping their text identical. CI enforces this
+  with `python3 scripts/check_docs.py`.
