@@ -30,7 +30,10 @@ jobs:
         run: python -m compileall -q scripts skills mcp-wiki-server
 
       - name: Shell lint (shellcheck)
-        run: shellcheck install.sh scripts/test_install.sh eval-suite/run.sh
+        # -S warning: gate on real problems; skip advisory info/style notes
+        # (eval-suite/run.sh intentionally word-splits flag lists and passes
+        # single-quoted R code, both of which are info-level).
+        run: shellcheck -S warning install.sh scripts/test_install.sh eval-suite/run.sh
 
       - name: install.sh smoke test
         run: bash scripts/test_install.sh
