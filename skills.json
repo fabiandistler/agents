@@ -128,6 +128,11 @@
       "version": "1.0"
     },
     {
+      "name": "repo-status",
+      "summary": "Generate a status update from recent activity.",
+      "path": "skills/repo-status/SKILL.md"
+    },
+    {
       "name": "skill-creator",
       "summary": "Create new skills, modify and improve existing skills, and measure skill performance.",
       "path": "skills/skill-creator/SKILL.md"
@@ -138,6 +143,11 @@
       "path": "skills/sql-schema-design/SKILL.md",
       "compatibility": "Database-agnostic in principle. Examples use ANSI SQL (CTEs via WITH, INFORMATION_SCHEMA); syntax details vary by engine (PostgreSQL, MySQL, SQL Server, Snowflake, etc.) but the workflow and decision criteria transfer directly.",
       "version": "1.0"
+    },
+    {
+      "name": "stakeholder-update",
+      "summary": "Generate a stakeholder update tailored to audience and cadence.",
+      "path": "skills/stakeholder-update/SKILL.md"
     },
     {
       "name": "stepdown-rule",

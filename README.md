@@ -45,8 +45,10 @@ Symlink the skills into your agent's conventional skill directory:
 | `skills/r-error-constructors/` | Recurring R error (3+ sites): build a stop_* constructor with class hierarchy, conditionMessage(), and class-based tests. |
 | `skills/r-package-dev/` | Designing or refactoring R packages (data.table, roxygen2, testthat). |
 | `skills/refactoring-checklist/` | Deciding whether and when a spotted code smell is worth refactoring now, and how to do it safely in small steps. |
+| `skills/repo-status/` | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
 | `skills/skill-creator/` | Creating, editing, evaluating, or benchmarking skills in this repo. |
 | `skills/sql-schema-design/` | Designing or reviewing a SQL schema, decomposing complex queries, partitioning, or gating CI/CD on schema drift. |
+| `skills/stakeholder-update/` | Generating a stakeholder update tailored to audience and cadence — weekly/monthly status, launch announcement, risk escalation, exec/engineering/customer versions. |
 | `skills/stepdown-rule/` | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 | `skills/tdd/` | Test-driven development. |
 | `skills/to-issues/` | Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. |
