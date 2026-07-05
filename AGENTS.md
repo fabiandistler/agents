@@ -68,6 +68,10 @@ machine consumption prefer `skills.json`.
     `summary` in `skills.json`.
 - Optional frontmatter fields:
   - `compatibility` — runtime / language requirements in plain prose.
+  - `environments` — comma-separated list of the environments the skill
+    belongs to: `coding`, `chat`, or both (e.g. `environments: coding, chat`).
+    `install.sh --env=coding|chat` uses this to install only the matching
+    subset. A skill without the field belongs to every environment.
   - `metadata.version` — semver-ish string.
 - The body is plain Markdown. Avoid agent-specific vocabulary
   (slash-commands, "the Skill tool", proprietary tool names). Prefer

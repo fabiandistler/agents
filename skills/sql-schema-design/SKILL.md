@@ -1,5 +1,6 @@
 ---
 name: sql-schema-design
+environments: coding
 description: Apply module-encapsulation thinking to SQL schema design and query patterns — expose views as the stable public interface, decompose complex queries into named CTE pipelines, hide physical storage (partitioning) behind that interface, and gate deployments with INFORMATION_SCHEMA conformance checks. Use whenever a database schema is being designed or reviewed, a report/application queries tables directly, a query has deep subquery nesting, a table is outgrowing its read pattern, or CI/CD needs to catch schema drift before it reaches consumers.
 compatibility: Database-agnostic in principle. Examples use ANSI SQL (CTEs via WITH, INFORMATION_SCHEMA); syntax details vary by engine (PostgreSQL, MySQL, SQL Server, Snowflake, etc.) but the workflow and decision criteria transfer directly.
 metadata:

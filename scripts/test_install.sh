@@ -28,9 +28,19 @@ count_links() {
 }
 
 skill_count() {
-  local n=0
+  # Count skills, optionally filtered by environment ($1 = coding|chat|all).
+  local want="${1:-all}" n=0
   for d in "$REPO_ROOT"/skills/*/; do
-    [[ -f "$d/SKILL.md" ]] && n=$((n + 1))
+    [[ -f "$d/SKILL.md" ]] || continue
+    if [[ "$want" != "all" ]]; then
+      local envs
+      envs="$(grep -m1 '^environments:' "$d/SKILL.md" 2>/dev/null | sed 's/^environments://')"
+      # Absent field belongs to every environment; otherwise must list $want.
+      if [[ -n "${envs//[[:space:]]/}" ]] && [[ ",${envs// /}," != *",$want,"* ]]; then
+        continue
+      fi
+    fi
+    n=$((n + 1))
   done
   echo "$n"
 }
@@ -86,5 +96,40 @@ for sub in ".claude/skills" ".codex/skills" ".config/opencode/agent"; do
   [[ "$got" -eq "$EXPECTED" ]] || fail "all install: $sub has $got links, expected $EXPECTED"
 done
 pass "all install populates claude, codex, opencode"
+
+# 7. --env=chat links only the chat subset (non-empty, strictly fewer than all).
+CHAT_EXPECTED="$(skill_count chat)"
+CODING_EXPECTED="$(skill_count coding)"
+[[ "$CHAT_EXPECTED" -ge 1 ]] || fail "no chat skills detected"
+[[ "$CHAT_EXPECTED" -lt "$EXPECTED" ]] || fail "chat subset is not smaller than all"
+HOME_CHAT="$(mktemp -d)"
+HOME="$HOME_CHAT" "$INSTALL" --target=claude --env=chat >/dev/null
+got="$(count_links "$HOME_CHAT/.claude/skills")"
+[[ "$got" -eq "$CHAT_EXPECTED" ]] || fail "env=chat: expected $CHAT_EXPECTED links, got $got"
+pass "env=chat links only the $CHAT_EXPECTED chat skills"
+
+# 8. --env=coding links only the coding subset.
+HOME_CODE="$(mktemp -d)"
+HOME="$HOME_CODE" "$INSTALL" --target=claude --env=coding >/dev/null
+got="$(count_links "$HOME_CODE/.claude/skills")"
+[[ "$got" -eq "$CODING_EXPECTED" ]] || fail "env=coding: expected $CODING_EXPECTED links, got $got"
+pass "env=coding links only the $CODING_EXPECTED coding skills"
+
+# 9. coding + chat cover at least every skill (skills in both are counted twice).
+[[ $((CODING_EXPECTED + CHAT_EXPECTED)) -ge "$EXPECTED" ]] \
+  || fail "coding ($CODING_EXPECTED) + chat ($CHAT_EXPECTED) < all ($EXPECTED)"
+pass "coding + chat subsets cover all skills"
+
+# 10. dry-run with a filter creates nothing.
+HOME_DF="$(mktemp -d)"
+HOME="$HOME_DF" "$INSTALL" --target=claude --env=chat --dry-run >/dev/null
+[[ ! -d "$HOME_DF/.claude" ]] || fail "dry-run --env=chat created $HOME_DF/.claude"
+pass "dry-run --env=chat creates no files"
+
+# 11. an invalid --env value is rejected.
+if HOME="$(mktemp -d)" "$INSTALL" --target=claude --env=bogus >/dev/null 2>&1; then
+  fail "invalid --env=bogus was accepted"
+fi
+pass "invalid --env is rejected"
 
 echo "all install.sh tests passed"

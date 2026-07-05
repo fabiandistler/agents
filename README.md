@@ -20,6 +20,22 @@ Symlink the skills into your agent's conventional skill directory:
 ./install.sh --uninstall --target=all
 ```
 
+### Selecting skills by environment
+
+Each skill is tagged with an `environments` field in its `SKILL.md`
+frontmatter — `coding`, `chat`, or both. Use `--env` to install only one
+group, so a chat app like Claude Desktop gets your chat skills while a
+coding agent gets the coding ones:
+
+```sh
+./install.sh --target=claude --env=coding   # only coding skills
+./install.sh --target=claude --env=chat      # only chat skills
+./install.sh --target=claude --env=all       # everything (default)
+```
+
+`--env` defaults to `all`, so omitting it installs every skill as before.
+A skill without an `environments` field belongs to every environment.
+
 ## Contents
 
 | Directory | Description |

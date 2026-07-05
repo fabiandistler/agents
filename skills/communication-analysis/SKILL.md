@@ -1,5 +1,6 @@
 ---
 name: communication-analysis
+environments: chat
 description: Analyze or rewrite a message, piece of feedback, or conversation transcript using Schulz von Thun's four-sides model and Carl Rogers-style active listening — decoding what is said on the factual, self-revealing, relationship, and appeal levels, spotting incongruent (verbal-vs-nonverbal) signals, and mirroring hidden appeals instead of reacting to them blindly — use this whenever reviewing or rewriting feedback, analyzing a conversation for what is really being communicated, diagnosing why a message landed badly, or discussing how to set and respect interpersonal boundaries. Also covers the four comprehensibility makers, the relevance filter, why disturbances take precedence, and the solution-reflex trap. This is educational communication-psychology material, not therapy or clinical advice.
 compatibility: Domain-knowledge skill for interpersonal communication analysis. No tools, scripts, or software dependencies; applies to any text or transcript a reader brings to it.
 metadata:

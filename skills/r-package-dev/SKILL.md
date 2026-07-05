@@ -1,5 +1,6 @@
 ---
 name: r-package-dev
+environments: coding
 description: Design and develop R packages. Use this when building or refactoring R packages, including package-private state and persistence, loading/attaching behavior, lifecycle staging and deprecation, interface-focused testing with reliable fixtures, and the single-function development workflow from interface design to docs.
 compatibility: Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required. Diagram generation uses DiagrammeR if installed.
 metadata:

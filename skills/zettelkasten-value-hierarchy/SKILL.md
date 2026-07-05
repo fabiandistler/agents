@@ -1,5 +1,6 @@
 ---
 name: zettelkasten-value-hierarchy
+environments: chat
 description: Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet) and run bottom-up or top-down value-generation passes that consolidate low-value notes into higher-value ones. Use whenever a note collection is reviewed for what it is "worth", when deciding whether a note should be promoted or merged, or when the user asks to find synthesis opportunities, generate value, or build a system/workflow/principle note out of existing snippets, tools, or checklists.
 compatibility: Tool-agnostic. Assumes a note collection with typed notes and a linking mechanism (wiki-links, tags, or backlinks); adapt the mechanics to whatever note system is in use.
 metadata:

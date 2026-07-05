@@ -1,5 +1,6 @@
 ---
 name: hypertrophy-training
+environments: chat
 description: Summarizes evidence-based hypertrophy-training programming (weekly set volume, RIR/RPE intensity targets, the Stimulus:Fatigue ratio) and auto-regulation protocols with precise stop criteria (5% Fatigue Rule, Rep Drop, Myo-Reps) plus a two-step plateau diagnosis; use whenever an experienced trainee asks how many sets or how hard to train, how to auto-regulate a set or session, or why progress has stalled. Draws on meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022, Aube 2022, Robinson 2024) and is aimed at trainees with roughly 9+ years of systematic training experience, not beginners.
 compatibility: Domain-knowledge skill with no code or tooling dependency. Applies to any context where training programming or auto-regulation is being discussed or drafted (chat, a written program, a coaching note).
 metadata:

@@ -1,5 +1,6 @@
 ---
 name: analyze-cohesion
+environments: coding
 description: Analyze the cohesion of a class, module, file, or package and recommend whether to split it, merge it, or leave it. Classifies code on the best-to-worst cohesion scale (functional, sequential, communicational, procedural, temporal, logical, coincidental) and computes the LCOM (Lack of Cohesion in Methods) metric. Use this whenever code is reviewed for whether its parts belong together — a god-class or god-module, a grab-bag utility or `*Utils` / `helpers` file, "is this class doing too much", "should I split this module", separation-of-concerns questions, or any request to reason about or compute LCOM. Applies to object-oriented code AND to files or namespaces of plain functions (Python, R, Bash, and others). Also frames cohesion within the broader "zeroth law" (high cohesion, low coupling) that underlies design principles at every level from function to service, and maps classic violation patterns — God Object, Shotgun Surgery, Feature Envy — to cohesion and coupling failures.
 compatibility: The bundled LCOM script needs Python 3.8+. It analyzes Python (precise, via AST), R, and Bash (heuristic) sources. The reasoning workflow is language-agnostic.
 ---
