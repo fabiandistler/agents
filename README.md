@@ -54,6 +54,7 @@ A skill without an `environments` field belongs to every environment.
 | `skills/handoff/` | Compact the current conversation into a handoff document for another agent to pick up. |
 | `skills/hypertrophy-training/` | Experienced trainee: set volume, RIR/effort, auto-regulation, or diagnosing a stalled lift (educational). |
 | `skills/llm-application-engineering/` | Diagnosing LLM output failures, ordering LLM app architecture builds, or defining production monitoring metrics. |
+| `skills/logical-component-design/` | Decomposing a new system or feature into named logical components — the iterative Workflow / Actor-Action identification cycle, the Entity-Trap antipattern, cohesion and coupling refinement, and the Law of Demeter. |
 | `skills/ml-project-lifecycle/` | Scoping an ML project, picking a model/baseline, handling missing data, or planning pipelines and staged deployment. |
 | `skills/natural-planning/` | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
 | `skills/problem-first-explanation/` | Producing technical explanations that lead with the concrete problem before the abstract solution. |
