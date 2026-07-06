@@ -123,6 +123,15 @@
       "version": "1.0"
     },
     {
+      "name": "logical-component-design",
+      "summary": "Forward, generative decomposition of a NEW system or feature into named logical components — the iterative component identification and refactoring cycle from Richards & Ford's *Fundamentals of Softw…",
+      "path": "skills/logical-component-design/SKILL.md",
+      "compatibility": "Language- and domain-agnostic. The workflow is reasoning-only — its input is workflows, actors, and user stories, not source code — so it needs no tooling and applies to any system being designed.",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "ml-project-lifecycle",
       "summary": "Guide a machine learning project from problem framing through model selection to production deployment — use it whenever someone is scoping an ML project, picking a model architecture, deciding how t…",
       "path": "skills/ml-project-lifecycle/SKILL.md",
