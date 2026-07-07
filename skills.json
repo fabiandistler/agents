@@ -66,6 +66,15 @@
       "version": "1.0"
     },
     {
+      "name": "fitness-functions",
+      "summary": "Design and implement architecture fitness functions — automated, objective checks that govern architecture characteristics (modularity, layering, coupling, security, operational resilience) from Rich…",
+      "path": "skills/fitness-functions/SKILL.md",
+      "compatibility": "Language- and stack-agnostic workflow. Implementations use whatever governance tooling fits the ecosystem (references/tooling-catalog.md lists options for Java, .NET, JS/TS, Python, Go, and production/runtime checks).",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "fowler-refactoring-catalog",
       "summary": "Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics.",
       "path": "skills/fowler-refactoring-catalog/SKILL.md",
