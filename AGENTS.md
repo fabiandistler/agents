@@ -31,6 +31,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 | [codebase-design](skills/codebase-design/SKILL.md) | Shared vocabulary and workflow for designing deep modules. |
 | [communication-analysis](skills/communication-analysis/SKILL.md) | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | [ddd-advisor](skills/ddd-advisor/SKILL.md) | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
+| [fitness-functions](skills/fitness-functions/SKILL.md) | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
 | [fowler-refactoring-catalog](skills/fowler-refactoring-catalog/SKILL.md) | Naming the right Fowler refactoring for a code smell and getting its step-by-step mechanics. |
 | [grilling](skills/grilling/SKILL.md) | Interview the user relentlessly about a plan or design. |
 | [guideline-distillation](skills/guideline-distillation/SKILL.md) | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |

@@ -48,6 +48,7 @@ A skill without an `environments` field belongs to every environment.
 | `skills/codebase-design/` | Shared vocabulary and workflow for designing deep modules. |
 | `skills/communication-analysis/` | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | `skills/ddd-advisor/` | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
+| `skills/fitness-functions/` | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
 | `skills/fowler-refactoring-catalog/` | Naming the right Fowler refactoring for a code smell and getting its step-by-step mechanics. |
 | `skills/grilling/` | Interview the user relentlessly about a plan or design. |
 | `skills/guideline-distillation/` | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
