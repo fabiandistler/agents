@@ -1,5 +1,8 @@
 {
   "name": "personal",
   "description": "Personal-domain skills: structured worry management, hypertrophy training programming, and Zettelkasten note valuation.",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "author": {
+    "name": "Fabian Distler"
+  }
 }

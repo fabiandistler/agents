@@ -1,5 +1,8 @@
 {
   "name": "architecture",
   "description": "Software architecture and design skills: ADRs, architecture and DDD advisors, logical component design, deep-module design, fitness functions, SQL schema design, cohesion and coupling analysis. Includes read-only coupling/cohesion analyst subagents and an architecture knowledge-base MCP server.",
-  "version": "1.1.0"
+  "version": "1.1.0",
+  "author": {
+    "name": "Fabian Distler"
+  }
 }
