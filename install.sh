@@ -11,10 +11,15 @@
 #   ./install.sh --target=all --uninstall     # remove symlinks owned by us
 #   ./install.sh --target=claude --env=chat   # only chat skills
 #   ./install.sh --target=codex  --env=coding # only coding skills
+#   ./install.sh --target=claude --category=architecture,refactoring
 #
 # --env=coding|chat|all (default all) selects which skills to (un)install,
 # based on each skill's `environments:` frontmatter field. A skill with no
 # such field belongs to every environment.
+#
+# --category=<name>[,<name>...] (default all) further narrows the selection
+# to skills whose `category:` frontmatter field matches one of the given
+# categories. Combinable with --env.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -31,13 +36,18 @@ DRY_RUN=0
 UNINSTALL=0
 TARGET=""
 ENV="all"
+CATEGORY="all"
 
-usage() { sed -n '2,24p' "$0"; }
+# Must match the category list in scripts/build_manifest.py.
+CATEGORIES="architecture refactoring r-development ai-ml workflow communication personal"
+
+usage() { sed -n '2,29p' "$0"; }
 
 for arg in "$@"; do
   case "$arg" in
     --target=*)   TARGET="${arg#--target=}" ;;
     --env=*)      ENV="${arg#--env=}" ;;
+    --category=*) CATEGORY="${arg#--category=}" ;;
     --dry-run)    DRY_RUN=1 ;;
     --uninstall)  UNINSTALL=1 ;;
     -h|--help)    usage; exit 0 ;;
@@ -55,6 +65,19 @@ case "$ENV" in
   all|coding|chat) ;;
   *) echo "invalid --env=$ENV (expected coding|chat|all)" >&2; usage >&2; exit 2 ;;
 esac
+
+if [[ "$CATEGORY" != "all" ]]; then
+  IFS=',' read -ra _cats <<< "$CATEGORY"
+  for c in "${_cats[@]}"; do
+    c="${c//[[:space:]]/}"
+    [[ -n "$c" ]] || continue
+    if [[ " $CATEGORIES " != *" $c "* ]]; then
+      echo "invalid --category=$c (expected one of: ${CATEGORIES// /|}|all)" >&2
+      usage >&2
+      exit 2
+    fi
+  done
+fi
 
 target_dir_for() {
   case "$1" in
@@ -96,12 +119,25 @@ skill_matches_env() {
   return 1
 }
 
+# True if a skill's `category:` frontmatter matches the requested filter.
+# `all` matches everything; a skill without the field only matches `all`.
+skill_matches_category() {
+  local skill_md="$1" want="$2" line cat
+  [[ "$want" == "all" ]] && return 0
+  line="$(grep -m1 '^category:' "$skill_md" 2>/dev/null || true)"
+  cat="${line#category:}"
+  cat="${cat//[[:space:]]/}"
+  [[ -n "$cat" ]] || return 1
+  [[ ",${want// /}," == *",$cat,"* ]]
+}
+
 list_skills() {
   # A directory under skills/ is a skill iff it contains SKILL.md.
   for d in "$REPO_ROOT"/skills/*/; do
     local name; name="$(basename "$d")"
     [[ -f "$d/SKILL.md" ]] || continue
     skill_matches_env "$d/SKILL.md" "$ENV" || continue
+    skill_matches_category "$d/SKILL.md" "$CATEGORY" || continue
     printf '%s\n' "$name"
   done
 }
@@ -160,10 +196,11 @@ unlink_one() {
 main() {
   local skills; skills="$(list_skills)"
   if [[ -z "$skills" ]]; then
-    echo "no skills found under $REPO_ROOT (env=$ENV)" >&2
+    echo "no skills found under $REPO_ROOT (env=$ENV, category=$CATEGORY)" >&2
     exit 1
   fi
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
+  [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue

@@ -1,5 +1,6 @@
 ---
 name: tdd
+category: refactoring
 environments: coding
 description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests. Covers vertical-slice tracer bullets, brute-forcing the first green, and treating tests as both a design tool and living documentation.
 ---

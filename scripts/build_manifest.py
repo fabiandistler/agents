@@ -23,6 +23,16 @@ SKILLS_DIR = REPO_ROOT / "skills"
 MANIFEST_PATH = REPO_ROOT / "skills.json"
 MANIFEST_VERSION = "1"
 
+CATEGORIES = (
+    "architecture",
+    "refactoring",
+    "r-development",
+    "ai-ml",
+    "workflow",
+    "communication",
+    "personal",
+)
+
 
 def find_skill_files() -> list[Path]:
     skills = []
@@ -123,13 +133,20 @@ def build_entry(skill_md: Path) -> dict[str, object]:
     fm = parse_frontmatter(extract_frontmatter(text))
     name = fm.get("name")
     description = fm.get("description")
+    category = fm.get("category")
     if not isinstance(name, str) or not name:
         raise ValueError(f"{skill_md}: frontmatter missing 'name'")
     if not isinstance(description, str) or not description:
         raise ValueError(f"{skill_md}: frontmatter missing 'description'")
+    if not isinstance(category, str) or category not in CATEGORIES:
+        raise ValueError(
+            f"{skill_md}: frontmatter 'category' must be one of {', '.join(CATEGORIES)}"
+            f" (got {category!r})"
+        )
     entry: dict[str, object] = {
         "name": name,
         "summary": first_sentence(description),
+        "category": category,
         "path": str(skill_md.relative_to(REPO_ROOT)),
     }
     compat = fm.get("compatibility")

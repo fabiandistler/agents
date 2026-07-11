@@ -1,0 +1,5 @@
+{
+  "name": "refactoring",
+  "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes.",
+  "version": "1.0.0"
+}

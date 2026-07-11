@@ -23,6 +23,9 @@ jobs:
       - name: Catalogue tables in sync
         run: python scripts/check_docs.py
 
+      - name: Plugin marketplace in sync
+        run: python scripts/check_plugins.py
+
       - name: Lint (ruff)
         run: ruff check .
 

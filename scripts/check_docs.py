@@ -28,6 +28,9 @@ AGENTS = REPO_ROOT / "AGENTS.md"
 
 README_ROW = re.compile(r"^\| `skills/([a-z0-9-]+)/` \| (.*) \|$")
 AGENTS_ROW = re.compile(r"^\| \[([a-z0-9-]+)\]\(skills/\1/SKILL\.md\) \| (.*) \|$")
+# Category sections look like: ### Architecture & design (`architecture`)
+SECTION_HEADING = re.compile(r"^### .+ \(`([a-z0-9-]+)`\)$")
+CATEGORY_FIELD = re.compile(r"^category:\s*(\S+)\s*$", re.M)
 
 
 def skill_names() -> set[str]:
@@ -40,13 +43,33 @@ def skill_names() -> set[str]:
     }
 
 
-def parse_table(path: Path, pattern: re.Pattern[str]) -> dict[str, str]:
+def skill_categories(skills: set[str]) -> dict[str, str]:
+    categories: dict[str, str] = {}
+    for name in skills:
+        text = (SKILLS_DIR / name / "SKILL.md").read_text(encoding="utf-8")
+        m = CATEGORY_FIELD.search(text)
+        if m:
+            categories[name] = m.group(1)
+    return categories
+
+
+def parse_table(
+    path: Path, pattern: re.Pattern[str]
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Return (skill -> description, skill -> category of enclosing section)."""
     rows: dict[str, str] = {}
+    sections: dict[str, str] = {}
+    current = ""
     for line in path.read_text(encoding="utf-8").splitlines():
+        h = SECTION_HEADING.match(line)
+        if h:
+            current = h.group(1)
+            continue
         m = pattern.match(line)
         if m:
             rows[m.group(1)] = m.group(2).strip()
-    return rows
+            sections[m.group(1)] = current
+    return rows, sections
 
 
 def report(label: str, skills: set[str], rows: dict[str, str]) -> list[str]:
@@ -63,8 +86,9 @@ def report(label: str, skills: set[str], rows: dict[str, str]) -> list[str]:
 
 def main() -> int:
     skills = skill_names()
-    readme = parse_table(README, README_ROW)
-    agents = parse_table(AGENTS, AGENTS_ROW)
+    categories = skill_categories(skills)
+    readme, readme_sections = parse_table(README, README_ROW)
+    agents, agents_sections = parse_table(AGENTS, AGENTS_ROW)
 
     errors: list[str] = []
     errors += report("README.md", skills, readme)
@@ -77,6 +101,17 @@ def main() -> int:
                 f"    README: {readme[name]}\n"
                 f"    AGENTS: {agents[name]}"
             )
+
+    for label, sections in (("README.md", readme_sections), ("AGENTS.md", agents_sections)):
+        for name, section in sorted(sections.items()):
+            want = categories.get(name)
+            if want is None:
+                errors.append(f"{label}: {name}: SKILL.md has no 'category' frontmatter")
+            elif section != want:
+                errors.append(
+                    f"{label}: {name} listed under section `{section or '(none)'}` "
+                    f"but its SKILL.md says category: {want}"
+                )
 
     if errors:
         sys.stderr.write("catalogue drift detected:\n")

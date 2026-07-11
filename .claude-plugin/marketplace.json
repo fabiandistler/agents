@@ -1,0 +1,46 @@
+{
+  "name": "fabiandistler-agents",
+  "owner": {
+    "name": "Fabian Distler"
+  },
+  "metadata": {
+    "description": "Personal agent skills grouped into one plugin per domain."
+  },
+  "plugins": [
+    {
+      "name": "architecture",
+      "source": "./plugins/architecture",
+      "description": "Software architecture and design skills: ADRs, architecture and DDD advisors, logical component design, deep-module design, fitness functions, SQL schema design, cohesion and coupling analysis."
+    },
+    {
+      "name": "refactoring",
+      "source": "./plugins/refactoring",
+      "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes."
+    },
+    {
+      "name": "r-development",
+      "source": "./plugins/r-development",
+      "description": "R development skills: designing R packages and building tidyverse-style error constructors."
+    },
+    {
+      "name": "ai-ml",
+      "source": "./plugins/ai-ml",
+      "description": "AI and ML engineering skills: diagnosing and architecting LLM applications, and guiding ML projects from framing to deployment."
+    },
+    {
+      "name": "workflow",
+      "source": "./plugins/workflow",
+      "description": "Planning and workflow skills: natural planning, breaking plans into issues, design grilling, throwaway prototypes, handoffs, status updates, skill authoring, and guideline distillation."
+    },
+    {
+      "name": "communication",
+      "source": "./plugins/communication",
+      "description": "Communication skills: stakeholder updates, communication analysis, and problem-first technical explanations."
+    },
+    {
+      "name": "personal",
+      "source": "./plugins/personal",
+      "description": "Personal-domain skills: structured worry management, hypertrophy training programming, and Zettelkasten note valuation."
+    }
+  ]
+}

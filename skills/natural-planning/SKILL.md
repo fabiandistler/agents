@@ -1,5 +1,6 @@
 ---
 name: natural-planning
+category: workflow
 environments: coding, chat
 description: Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague or stuck project into concrete physical next actions. Use whenever a project feels stuck, undefined, or overwhelming, when scoping any new multi-step effort, or when a to-do reads as an intention rather than a physical action.
 compatibility: Agent-agnostic reasoning workflow. No tools, dependencies, or code execution required.

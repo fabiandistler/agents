@@ -1,5 +1,6 @@
 ---
 name: llm-application-engineering
+category: ai-ml
 environments: coding
 description: Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring the system once it reaches production -- so use this whenever a foundation model's output is wrong and the fix (prompting, retrieval, or finetuning) is unclear, whenever an LLM application's architecture (context construction, guardrails, routing, caching, agents) is being designed or reviewed and the question is what to build next, or whenever production evaluation metrics or user-feedback signals for an LLM-based system need defining. Draws on Chip Huyen's book "AI Engineering" and bundles three complementary parts -- the adaptation ladder (prompting through RAG+finetuning, gated by a failure-type diagnosis and a sample-size rule of thumb), the progressive architecture build sequence (enhance context, then guardrails, then router/gateway, then caching, then agents), and production monitoring (six metric families plus five implicit-feedback signals).
 compatibility: Domain-knowledge skill, not tied to any language, framework, or model provider. Applies to any application built on a foundation model, whether self-hosted or accessed via API.

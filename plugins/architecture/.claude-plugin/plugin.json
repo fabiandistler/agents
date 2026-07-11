@@ -1,0 +1,5 @@
+{
+  "name": "architecture",
+  "description": "Software architecture and design skills: ADRs, architecture and DDD advisors, logical component design, deep-module design, fitness functions, SQL schema design, cohesion and coupling analysis.",
+  "version": "1.0.0"
+}
