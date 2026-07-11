@@ -128,9 +128,33 @@ def first_sentence(text: str, limit: int = 200) -> str:
     return sentence
 
 
+# Agent-skills spec limit; Claude.ai silently drops skills that exceed it.
+MAX_DESCRIPTION_LENGTH = 1024
+
+
+def check_strict_yaml(block: str, skill_md: Path) -> None:
+    """Reject frontmatter our lenient parser accepts but strict YAML rejects.
+
+    An unquoted scalar containing ': ' is a YAML mapping error, so consumers
+    like Claude.ai fail to load the skill even though skills.json builds fine.
+    """
+    for line in block.splitlines():
+        if line.startswith((" ", "\t")) or not line.strip() or line.lstrip().startswith("#"):
+            continue
+        key, _, rest = line.partition(":")
+        value = rest.strip()
+        if value and value[0] not in ("'", '"') and ": " in value:
+            raise ValueError(
+                f"{skill_md}: unquoted '{key.strip()}' value contains ': ' — invalid YAML;"
+                " rephrase (e.g. use an em-dash) or quote the value"
+            )
+
+
 def build_entry(skill_md: Path) -> dict[str, object]:
     text = skill_md.read_text(encoding="utf-8")
-    fm = parse_frontmatter(extract_frontmatter(text))
+    block = extract_frontmatter(text)
+    check_strict_yaml(block, skill_md)
+    fm = parse_frontmatter(block)
     name = fm.get("name")
     description = fm.get("description")
     category = fm.get("category")
@@ -138,6 +162,11 @@ def build_entry(skill_md: Path) -> dict[str, object]:
         raise ValueError(f"{skill_md}: frontmatter missing 'name'")
     if not isinstance(description, str) or not description:
         raise ValueError(f"{skill_md}: frontmatter missing 'description'")
+    if len(description) > MAX_DESCRIPTION_LENGTH:
+        raise ValueError(
+            f"{skill_md}: description is {len(description)} chars"
+            f" (limit {MAX_DESCRIPTION_LENGTH}; longer skills are dropped by Claude.ai)"
+        )
     if not isinstance(category, str) or category not in CATEGORIES:
         raise ValueError(
             f"{skill_md}: frontmatter 'category' must be one of {', '.join(CATEGORIES)}"
