@@ -1,5 +1,7 @@
 {
   "name": "ai-ml",
   "description": "AI and ML engineering skills: diagnosing and architecting LLM applications, and guiding ML projects from framing to deployment.",
-  "version": "1.0.0"
+  "author": {
+    "name": "Fabian Distler"
+  }
 }

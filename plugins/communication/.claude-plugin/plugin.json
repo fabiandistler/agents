@@ -1,5 +1,7 @@
 {
   "name": "communication",
   "description": "Communication skills: stakeholder updates, communication analysis, and problem-first technical explanations.",
-  "version": "1.0.0"
+  "author": {
+    "name": "Fabian Distler"
+  }
 }
