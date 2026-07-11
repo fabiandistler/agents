@@ -1,5 +1,6 @@
 ---
 name: fowler-refactoring-catalog
+category: refactoring
 environments: coding
 description: Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics. Use this whenever code needs restructuring without changing observable behavior — a function is too long or hard to name, a conditional is deeply nested or duplicated, data travels as loose primitives or repeated parameter groups, a class exposes its internals or does too much, or the user names a Fowler technique directly (Extract Function, Replace Conditional with Polymorphism, Introduce Parameter Object, etc.) or asks "what refactoring is this called" / "how do I refactor this safely".
 compatibility: Technique names and mechanics are drawn from Martin Fowler's "Refactoring" (2nd edition) as captured in this repository's source notes. The notes illustrate mechanics in JavaScript and R, but the steps generalize to any language with functions, variables, and (where relevant) classes.

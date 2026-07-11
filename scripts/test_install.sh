@@ -132,4 +132,40 @@ if HOME="$(mktemp -d)" "$INSTALL" --target=claude --env=bogus >/dev/null 2>&1; t
 fi
 pass "invalid --env is rejected"
 
+# 12. --category links only the matching subset (non-empty, fewer than all).
+category_count() {
+  # Count skills whose category: frontmatter is in the comma-separated list $1.
+  local want="$1" n=0
+  for d in "$REPO_ROOT"/skills/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    local cat
+    cat="$(grep -m1 '^category:' "$d/SKILL.md" 2>/dev/null | sed 's/^category://')"
+    cat="${cat//[[:space:]]/}"
+    [[ -n "$cat" ]] && [[ ",$want," == *",$cat,"* ]] && n=$((n + 1))
+  done
+  echo "$n"
+}
+ARCH_EXPECTED="$(category_count architecture)"
+[[ "$ARCH_EXPECTED" -ge 1 ]] || fail "no architecture skills detected"
+[[ "$ARCH_EXPECTED" -lt "$EXPECTED" ]] || fail "architecture subset is not smaller than all"
+HOME_CAT="$(mktemp -d)"
+HOME="$HOME_CAT" "$INSTALL" --target=claude --category=architecture >/dev/null
+got="$(count_links "$HOME_CAT/.claude/skills")"
+[[ "$got" -eq "$ARCH_EXPECTED" ]] || fail "category=architecture: expected $ARCH_EXPECTED links, got $got"
+pass "category=architecture links only the $ARCH_EXPECTED architecture skills"
+
+# 13. a comma-separated --category list links the union of both subsets.
+MULTI_EXPECTED="$(category_count architecture,refactoring)"
+HOME_MULTI="$(mktemp -d)"
+HOME="$HOME_MULTI" "$INSTALL" --target=claude --category=architecture,refactoring >/dev/null
+got="$(count_links "$HOME_MULTI/.claude/skills")"
+[[ "$got" -eq "$MULTI_EXPECTED" ]] || fail "category list: expected $MULTI_EXPECTED links, got $got"
+pass "category=architecture,refactoring links $MULTI_EXPECTED skills"
+
+# 14. an invalid --category value is rejected.
+if HOME="$(mktemp -d)" "$INSTALL" --target=claude --category=bogus >/dev/null 2>&1; then
+  fail "invalid --category=bogus was accepted"
+fi
+pass "invalid --category is rejected"
+
 echo "all install.sh tests passed"
