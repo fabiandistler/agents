@@ -46,8 +46,9 @@ def sanitize(name: str) -> str:
 
 def render(topic: Path, query: str | None, page: str | None) -> str:
     if page:
-        target = (topic / page).resolve()
-        if not target.is_relative_to(topic) or not target.is_file():
+        base = topic.resolve()  # topic may be a symlink; compare against its real path
+        target = (base / page).resolve()
+        if not target.is_relative_to(base) or not target.is_file():
             return f"Page not found: {page}"
         text = target.read_text(encoding="utf-8")
         if len(text) > MAX_PAGE_CHARS:

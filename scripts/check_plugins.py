@@ -14,6 +14,14 @@ Checked invariants:
   - Plugin membership mirrors the `category:` frontmatter exactly: plugin
     `<cat>` contains precisely the skills with `category: <cat>`, so each
     skill ships in exactly one plugin.
+  - Every `plugins/<plugin>/kb/<topic>` is a relative symlink to
+    `../../../skills/<skill>/references` whose target contains at least one
+    Markdown page.
+  - If `plugins/<plugin>/.mcp.json` exists it parses as JSON, and when it
+    references `${CLAUDE_PLUGIN_ROOT}/mcp-wiki-server` the plugin has a
+    `mcp-wiki-server` symlink to `../../mcp-wiki-server`.
+  - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
+    `name:` (matching the filename stem) and `description:`.
 """
 
 from __future__ import annotations
@@ -101,6 +109,69 @@ def plugin_skills(plugin: str, errors: list[str]) -> set[str]:
     return found
 
 
+def check_kb(plugin: str, errors: list[str]) -> None:
+    """Validate the plugin's kb/ topic symlinks, if any."""
+    kb_dir = PLUGINS_DIR / plugin / "kb"
+    if not kb_dir.is_dir():
+        return
+    target_re = re.compile(r"^\.\./\.\./\.\./skills/[^/]+/references$")
+    for link in sorted(kb_dir.iterdir()):
+        rel = link.relative_to(REPO_ROOT)
+        if not link.is_symlink():
+            errors.append(f"{rel}: expected a symlink into skills/<skill>/references")
+            continue
+        if not target_re.match(str(link.readlink())):
+            errors.append(f"{rel}: points to {link.readlink()}, expected ../../../skills/<skill>/references")
+            continue
+        if not link.is_dir():
+            errors.append(f"{rel}: target does not exist")
+            continue
+        if not any(link.glob("*.md")):
+            errors.append(f"{rel}: target has no Markdown pages")
+
+
+def check_mcp(plugin: str, errors: list[str]) -> None:
+    """Validate the plugin's .mcp.json and its mcp-wiki-server symlink, if any."""
+    mcp_json = PLUGINS_DIR / plugin / ".mcp.json"
+    if not mcp_json.is_file():
+        return
+    rel = mcp_json.relative_to(REPO_ROOT)
+    try:
+        text = mcp_json.read_text(encoding="utf-8")
+        json.loads(text)
+    except json.JSONDecodeError as e:
+        errors.append(f"{rel}: invalid JSON: {e}")
+        return
+    if "${CLAUDE_PLUGIN_ROOT}/mcp-wiki-server" in text:
+        link = PLUGINS_DIR / plugin / "mcp-wiki-server"
+        if not link.is_symlink() or str(link.readlink()) != "../../mcp-wiki-server":
+            errors.append(
+                f"{rel}: references ${{CLAUDE_PLUGIN_ROOT}}/mcp-wiki-server but "
+                f"plugins/{plugin}/mcp-wiki-server is not a symlink to ../../mcp-wiki-server"
+            )
+
+
+def check_agents(plugin: str, errors: list[str]) -> None:
+    """Validate frontmatter of the plugin's agents/*.md, if any."""
+    agents_dir = PLUGINS_DIR / plugin / "agents"
+    if not agents_dir.is_dir():
+        return
+    for md in sorted(agents_dir.glob("*.md")):
+        rel = md.relative_to(REPO_ROOT)
+        text = md.read_text(encoding="utf-8")
+        if not text.startswith("---\n"):
+            errors.append(f"{rel}: missing YAML frontmatter")
+            continue
+        frontmatter = text[4:].split("\n---", 1)[0]
+        m = re.search(r"^name:\s*(\S+)\s*$", frontmatter, re.M)
+        if not m:
+            errors.append(f"{rel}: frontmatter has no 'name'")
+        elif m.group(1) != md.stem:
+            errors.append(f"{rel}: frontmatter name {m.group(1)!r} != filename stem {md.stem!r}")
+        if not re.search(r"^description:", frontmatter, re.M):
+            errors.append(f"{rel}: frontmatter has no 'description'")
+
+
 def main() -> int:
     errors: list[str] = []
     categories = skill_categories()
@@ -116,6 +187,9 @@ def main() -> int:
             errors.append(f"skills/{name}: SKILL.md has no 'category' frontmatter")
 
     for plugin in plugins:
+        check_kb(plugin, errors)
+        check_mcp(plugin, errors)
+        check_agents(plugin, errors)
         bundled = plugin_skills(plugin, errors)
         expected = {s for s, c in categories.items() if c == plugin}
         for s in sorted(expected - bundled):

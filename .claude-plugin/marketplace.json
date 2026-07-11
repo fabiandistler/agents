@@ -10,12 +10,12 @@
     {
       "name": "architecture",
       "source": "./plugins/architecture",
-      "description": "Software architecture and design skills: ADRs, architecture and DDD advisors, logical component design, deep-module design, fitness functions, SQL schema design, cohesion and coupling analysis."
+      "description": "Software architecture and design skills: ADRs, architecture and DDD advisors, logical component design, deep-module design, fitness functions, SQL schema design, cohesion and coupling analysis. Includes read-only coupling/cohesion analyst subagents and an architecture knowledge-base MCP server."
     },
     {
       "name": "refactoring",
       "source": "./plugins/refactoring",
-      "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes."
+      "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes. Includes a Fowler-catalog knowledge-base MCP server."
     },
     {
       "name": "r-development",
