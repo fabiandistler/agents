@@ -18,12 +18,18 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
   plugin marketplace in Claude Code, claude.ai, Claude Desktop, and
-  Cowork.
+  Cowork. The `architecture` plugin additionally ships two read-only
+  analysis subagents (`coupling-analyst`, `cohesion-analyst`), and the
+  `architecture` and `refactoring` plugins each embed a knowledge-base
+  MCP server (a reuse of `mcp-wiki-server/` over each skill's
+  `references/`, wired up via `kb/` symlinks and a plugin `.mcp.json`;
+  requires `uv` at runtime).
 - `eval-suite/` is an A/B harness for measuring whether a skill
   improves an agent's output. It is not a skill itself.
 - `mcp-wiki-server/` is a small MCP server exposing a wiki /
-  knowledge-base tool to any MCP-aware agent. It is independent of the
-  skills.
+  knowledge-base tool to any MCP-aware agent. It works standalone, and
+  is also embedded by the `architecture` and `refactoring` plugins to
+  serve their skills' reference catalogs.
 
 ## Skill catalogue
 

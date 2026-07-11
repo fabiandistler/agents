@@ -61,6 +61,21 @@ Copy `.mcp.json.example` into your project as `.mcp.json` (or merge it into
 `~/.claude.json` for global use), restart Claude Code, then run `/mcp` to
 verify the connection.
 
+## Used by the plugins
+
+The `architecture` and `refactoring` plugins in this repo embed this server
+to serve their skills' reference catalogs. Each plugin has:
+
+- a `mcp-wiki-server` symlink to this directory,
+- a `kb/` folder of topic symlinks pointing at `skills/<skill>/references/`
+  (each topic becomes one `wiki_*` tool),
+- a `.mcp.json` that launches the server with
+  `uv run --no-project --with "mcp[cli]>=1.2"` and `WIKI_PATH` set to the
+  plugin's `kb/`.
+
+This requires `uv` on the machine running the plugin. The server follows
+directory symlinks, so the topic folders may themselves be links.
+
 ## Adding your own content
 
 Create a folder under your `WIKI_PATH` and drop Markdown files in it:

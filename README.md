@@ -15,7 +15,12 @@ See [`AGENTS.md`](AGENTS.md) for the agent-facing entry point and
 This repo doubles as a Claude plugin marketplace: every skill category is
 packaged as one plugin (see `plugins/` and
 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)), so
-you can install exactly the domains you want.
+you can install exactly the domains you want. Beyond skills, the
+`architecture` plugin ships two read-only analysis subagents
+(`coupling-analyst`, `cohesion-analyst`), and the `architecture` and
+`refactoring` plugins each embed a knowledge-base MCP server built on
+[`mcp-wiki-server/`](mcp-wiki-server/) that serves their reference
+catalogs as lookup tools (requires [`uv`](https://docs.astral.sh/uv/)).
 
 - **Claude Code**:
 
@@ -81,9 +86,9 @@ A skill without an `environments` field belongs to every environment.
 | Directory | Description |
 |---|---|
 | `skills/` | All installable skills (each subdirectory has a `SKILL.md`), grouped below by category |
-| `plugins/` | The same skills packaged as Claude plugins, one plugin per category |
+| `plugins/` | The same skills packaged as Claude plugins, one plugin per category (architecture adds analysis subagents; architecture and refactoring embed a knowledge-base MCP server) |
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
-| `mcp-wiki-server/` | MCP server exposing a wiki / knowledge-base tool to MCP-aware agents |
+| `mcp-wiki-server/` | MCP server exposing a wiki / knowledge-base tool to MCP-aware agents; also embedded by the architecture and refactoring plugins |
 | `scripts/` | Repo tooling (manifest generator, consistency checks) |
 
 ## Skill catalogue
