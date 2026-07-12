@@ -168,4 +168,57 @@ if HOME="$(mktemp -d)" "$INSTALL" --target=claude --category=bogus >/dev/null 2>
 fi
 pass "invalid --category is rejected"
 
+# 15. codex install registers the plugin MCP servers in config.toml.
+HOME_MCP="$(mktemp -d)"
+HOME="$HOME_MCP" "$INSTALL" --target=codex >/dev/null
+CONFIG="$HOME_MCP/.codex/config.toml"
+[[ -f "$CONFIG" ]] || fail "codex install did not create config.toml"
+grep -Fxq '[mcp_servers.architecture-kb]' "$CONFIG" \
+  || fail "architecture-kb missing from config.toml"
+grep -Fxq '[mcp_servers.refactoring-kb]' "$CONFIG" \
+  || fail "refactoring-kb missing from config.toml"
+python3 - "$CONFIG" <<'PY' || fail "config.toml is not valid TOML"
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    cfg = tomllib.load(f)
+servers = cfg["mcp_servers"]
+for name in ("architecture-kb", "refactoring-kb"):
+    assert servers[name]["command"], name
+    assert "${CLAUDE_PLUGIN_ROOT}" not in " ".join(servers[name]["args"]), name
+PY
+pass "codex install registers MCP servers as valid TOML"
+
+# 16. re-running leaves config.toml byte-identical.
+before="$(cat "$CONFIG")"
+HOME="$HOME_MCP" "$INSTALL" --target=codex >/dev/null
+[[ "$(cat "$CONFIG")" == "$before" ]] || fail "MCP registration is not idempotent"
+pass "MCP registration is idempotent"
+
+# 17. codex uninstall removes our blocks but keeps foreign config.
+printf '\n[mcp_servers.foreign]\ncommand = "keep-me"\n' >> "$CONFIG"
+HOME="$HOME_MCP" "$INSTALL" --target=codex --uninstall >/dev/null
+grep -Fxq '[mcp_servers.foreign]' "$CONFIG" \
+  || fail "uninstall dropped a foreign MCP server"
+if grep -q 'mcp_servers\.\(architecture\|refactoring\)-kb' "$CONFIG"; then
+  fail "uninstall left our MCP servers in config.toml"
+fi
+pass "codex uninstall removes only our MCP servers"
+
+# 18. a category without an .mcp.json registers no MCP servers.
+HOME_NOMCP="$(mktemp -d)"
+HOME="$HOME_NOMCP" "$INSTALL" --target=codex --category=workflow >/dev/null
+[[ ! -f "$HOME_NOMCP/.codex/config.toml" ]] \
+  || fail "category=workflow created config.toml"
+pass "category without MCP servers leaves config.toml alone"
+
+# 19. a foreign server table with our name is never overwritten.
+HOME_FOREIGN="$(mktemp -d)"
+mkdir -p "$HOME_FOREIGN/.codex"
+printf '[mcp_servers.architecture-kb]\ncommand = "mine"\n' \
+  > "$HOME_FOREIGN/.codex/config.toml"
+HOME="$HOME_FOREIGN" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+grep -Fxq 'command = "mine"' "$HOME_FOREIGN/.codex/config.toml" \
+  || fail "foreign architecture-kb table was overwritten"
+pass "foreign MCP server table is preserved"
+
 echo "all install.sh tests passed"

@@ -12,8 +12,10 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   skills. Read it once to discover what is available without crawling the
   tree.
 - `install.sh` (repo root) symlinks the skills into the conventional
-  install paths for Claude Code, Codex CLI, and opencode. See
-  `./install.sh --help`.
+  install paths for Claude Code, Codex CLI, and opencode. For Codex CLI
+  it also registers the plugins' knowledge-base MCP servers in
+  `~/.codex/config.toml` (marker-delimited, removed by `--uninstall`).
+  See `./install.sh --help`.
 - `plugins/` packages the same skills as Claude plugins, one plugin per
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a

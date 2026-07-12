@@ -21,12 +21,21 @@
 # to skills whose `category:` frontmatter field matches one of the given
 # categories. Combinable with --env.
 #
+# The codex target additionally registers each selected plugin's
+# knowledge-base MCP servers (from plugins/<category>/.mcp.json) in
+# ~/.codex/config.toml, so the full plugins — skills plus MCP servers —
+# work in Codex CLI too. Requires python3 (skipped with a warning
+# otherwise); --uninstall removes the managed config blocks again.
+#
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
 #   - Symlink pointing elsewhere:      skip with a warning, never overwrite.
 #   - Regular file or non-empty dir:   skip with a warning, never overwrite.
 #   - Uninstall only removes a symlink whose target is a path inside this
 #     repo, so foreign files at that location are never touched.
+#   - MCP servers are written to ~/.codex/config.toml only between our own
+#     marker comments; a foreign [mcp_servers.<name>] table with the same
+#     name is never overwritten, and uninstall only removes our blocks.
 
 set -euo pipefail
 
@@ -41,7 +50,7 @@ CATEGORY="all"
 # Must match the category list in scripts/build_manifest.py.
 CATEGORIES="architecture refactoring r-development ai-ml workflow communication personal"
 
-usage() { sed -n '2,29p' "$0"; }
+usage() { sed -n '2,38p' "$0"; }
 
 for arg in "$@"; do
   case "$arg" in
@@ -142,6 +151,155 @@ list_skills() {
   done
 }
 
+# --- Codex MCP server registration -----------------------------------------
+#
+# Claude installs plugins/<category>/.mcp.json natively; Codex CLI reads MCP
+# servers from ~/.codex/config.toml instead. Each selected plugin's .mcp.json
+# is translated into a marker-delimited TOML block so install and uninstall
+# stay idempotent and never touch config we do not own.
+
+codex_config_path() { printf '%s/.codex/config.toml' "$HOME"; }
+
+mcp_begin_marker() {
+  printf '# >>> agents:%s MCP servers (managed by install.sh, do not edit) >>>' "$1"
+}
+
+mcp_end_marker() {
+  printf '# <<< agents:%s MCP servers <<<' "$1"
+}
+
+# Categories selected by --category that ship an .mcp.json.
+mcp_categories() {
+  local c
+  if [[ "$CATEGORY" == "all" ]]; then
+    for c in $CATEGORIES; do
+      if [[ -f "$REPO_ROOT/plugins/$c/.mcp.json" ]]; then printf '%s\n' "$c"; fi
+    done
+  else
+    local IFS=','
+    for c in $CATEGORY; do
+      c="${c//[[:space:]]/}"
+      if [[ -n "$c" && -f "$REPO_ROOT/plugins/$c/.mcp.json" ]]; then
+        printf '%s\n' "$c"
+      fi
+    done
+  fi
+  return 0
+}
+
+# Render plugins/<category>/.mcp.json as Codex config.toml tables, with
+# ${CLAUDE_PLUGIN_ROOT} resolved to the plugin directory in this repo.
+plugin_mcp_toml() {
+  local plugin_dir="$REPO_ROOT/plugins/$1"
+  python3 - "$plugin_dir" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+plugin_dir = Path(sys.argv[1])
+spec = json.loads((plugin_dir / ".mcp.json").read_text(encoding="utf-8"))
+
+
+def toml_str(value: str) -> str:
+    value = value.replace("${CLAUDE_PLUGIN_ROOT}", str(plugin_dir))
+    return json.dumps(value)  # JSON string escaping is valid TOML
+
+
+lines = []
+for name, server in spec.get("mcpServers", {}).items():
+    lines.append(f"[mcp_servers.{name}]")
+    lines.append(f"command = {toml_str(server['command'])}")
+    args = ", ".join(toml_str(a) for a in server.get("args", []))
+    lines.append(f"args = [{args}]")
+    env = server.get("env", {})
+    if env:
+        pairs = ", ".join(f"{k} = {toml_str(v)}" for k, v in env.items())
+        lines.append(f"env = {{ {pairs} }}")
+    lines.append("")
+print("\n".join(lines).rstrip())
+PY
+}
+
+# Filter stdin, dropping the marker block (inclusive) for a category, plus
+# the separator blank line before it and any blank lines left at the start
+# of the file (so reinstalls do not accumulate or shuffle blank lines).
+# Blank lines are held back one step and only flushed once the next line
+# turns out not to be our begin marker.
+strip_mcp_block() {
+  awk -v b="$(mcp_begin_marker "$1")" -v e="$(mcp_end_marker "$1")" '
+    $0 == b { skip = 1; pending = 0; next }
+    $0 == e { skip = 0; next }
+    skip { next }
+    $0 == "" { if (pending && printed) print ""; pending = 1; next }
+    { if (pending && printed) print ""; pending = 0; print; printed = 1 }
+  '
+}
+
+install_codex_mcp() {
+  local config; config="$(codex_config_path)"
+  local cats; cats="$(mcp_categories)"
+  [[ -n "$cats" ]] || return 0
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; cannot register MCP servers in %s\n' \
+      "$config" >&2
+    return 0
+  fi
+  local cat toml rest name skip
+  while IFS= read -r cat; do
+    [[ -n "$cat" ]] || continue
+    if ! toml="$(plugin_mcp_toml "$cat")"; then
+      printf '  WARN      failed to parse plugins/%s/.mcp.json (skipping)\n' "$cat" >&2
+      continue
+    fi
+    if (( DRY_RUN )); then
+      printf '[dry-run] register %s MCP servers in %s\n' "$cat" "$config"
+      continue
+    fi
+    mkdir -p "$(dirname "$config")"
+    [[ -f "$config" ]] || : > "$config"
+    rest="$(strip_mcp_block "$cat" < "$config")"
+    skip=0
+    while IFS= read -r name; do
+      if printf '%s\n' "$rest" | grep -Fxq "[mcp_servers.$name]"; then
+        printf '  WARN      [mcp_servers.%s] already in %s (not ours, skipping %s)\n' \
+          "$name" "$config" "$cat" >&2
+        skip=1
+      fi
+    done < <(printf '%s\n' "$toml" | sed -n 's/^\[mcp_servers\.\([^]]*\)\]$/\1/p')
+    if (( skip )); then continue; fi
+    {
+      if [[ -n "$rest" ]]; then printf '%s\n\n' "$rest"; fi
+      mcp_begin_marker "$cat"; printf '\n'
+      printf '%s\n' "$toml"
+      mcp_end_marker "$cat"; printf '\n'
+    } > "$config.tmp.$$"
+    mv "$config.tmp.$$" "$config"
+    printf '  mcp       %s servers registered in %s\n' "$cat" "$config"
+  done <<< "$cats"
+}
+
+uninstall_codex_mcp() {
+  local config; config="$(codex_config_path)"
+  [[ -f "$config" ]] || return 0
+  local cat before after
+  while IFS= read -r cat; do
+    [[ -n "$cat" ]] || continue
+    before="$(cat "$config")"
+    after="$(strip_mcp_block "$cat" <<< "$before")"
+    [[ "$after" != "$before" ]] || continue
+    if (( DRY_RUN )); then
+      printf '[dry-run] remove %s MCP servers from %s\n' "$cat" "$config"
+      continue
+    fi
+    if [[ -n "$after" ]]; then
+      printf '%s\n' "$after" > "$config"
+    else
+      : > "$config"
+    fi
+    printf '  removed   %s MCP servers from %s\n' "$cat" "$config"
+  done < <(mcp_categories)
+}
+
 run() {
   if (( DRY_RUN )); then
     printf '[dry-run] %s\n' "$*"
@@ -218,6 +376,13 @@ main() {
         link_one "$src" "$dest"
       fi
     done <<< "$skills"
+    if [[ "$target" == "codex" ]]; then
+      if (( UNINSTALL )); then
+        uninstall_codex_mcp
+      else
+        install_codex_mcp
+      fi
+    fi
   done < <(resolve_targets)
 }
 

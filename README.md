@@ -52,6 +52,16 @@ Symlink the skills into your agent's conventional skill directory:
 Symlinks pick up local edits immediately, which makes this the better
 setup while developing skills in this repo.
 
+For Codex CLI the installer covers the full plugins, not just the
+skills: `--target=codex` also registers each selected plugin's
+knowledge-base MCP server (`architecture-kb`, `refactoring-kb`) in
+`~/.codex/config.toml`, inside clearly marked blocks that `--uninstall`
+removes again. Existing `[mcp_servers.*]` entries you added yourself are
+never touched. Like under Claude, the servers need
+[`uv`](https://docs.astral.sh/uv/) at runtime; the `architecture`
+subagents are Claude-only and are not installed. Restart Codex (or run
+`codex mcp list`) to see the new servers.
+
 ### Selecting skills by category
 
 Every skill carries a `category` field in its `SKILL.md` frontmatter —
