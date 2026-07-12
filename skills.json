@@ -42,6 +42,17 @@
       ]
     },
     {
+      "name": "c4-modeling",
+      "summary": "Draft a C4 model of a software system together with the user and render it as high-quality architecture diagrams — Mermaid-first, so they display natively on GitHub and in chat.",
+      "category": "architecture",
+      "path": "skills/c4-modeling/SKILL.md",
+      "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, VS Code, and most Markdown tools. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
+      "environments": [
+        "coding",
+        "chat"
+      ]
+    },
+    {
       "name": "codebase-design",
       "summary": "Shared vocabulary and workflow for designing deep modules.",
       "category": "architecture",
