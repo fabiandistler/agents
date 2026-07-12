@@ -52,6 +52,27 @@ Symlink the skills into your agent's conventional skill directory:
 Symlinks pick up local edits immediately, which makes this the better
 setup while developing skills in this repo.
 
+For Codex CLI the installer covers the full plugins, not just the
+skills. `--target=codex` additionally:
+
+- registers each selected plugin's knowledge-base MCP server
+  (`architecture-kb`, `refactoring-kb`) in `~/.codex/config.toml`,
+  inside clearly marked blocks that `--uninstall` removes again.
+  Existing `[mcp_servers.*]` entries you added yourself are never
+  touched. Like under Claude, the servers need
+  [`uv`](https://docs.astral.sh/uv/) at runtime.
+- converts each selected plugin's subagents (`coupling-analyst`,
+  `cohesion-analyst`) into [Codex custom
+  agents](https://developers.openai.com/codex/subagents) under
+  `~/.codex/agents/<name>.toml`. The generated files carry a marker
+  comment; files you created yourself are never overwritten, and
+  `--uninstall` only removes marker-carrying files. Model and sandbox
+  are inherited from your Codex session (the Claude-specific `model:`
+  and `tools:` fields have no Codex equivalent).
+
+Restart Codex (or run `codex mcp list`) to pick up the new servers and
+agents.
+
 ### Selecting skills by category
 
 Every skill carries a `category` field in its `SKILL.md` frontmatter —

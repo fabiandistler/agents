@@ -168,4 +168,134 @@ if HOME="$(mktemp -d)" "$INSTALL" --target=claude --category=bogus >/dev/null 2>
 fi
 pass "invalid --category is rejected"
 
+# 15. codex install registers the plugin MCP servers in config.toml.
+HOME_MCP="$(mktemp -d)"
+HOME="$HOME_MCP" "$INSTALL" --target=codex >/dev/null
+CONFIG="$HOME_MCP/.codex/config.toml"
+[[ -f "$CONFIG" ]] || fail "codex install did not create config.toml"
+grep -Fxq '[mcp_servers.architecture-kb]' "$CONFIG" \
+  || fail "architecture-kb missing from config.toml"
+grep -Fxq '[mcp_servers.refactoring-kb]' "$CONFIG" \
+  || fail "refactoring-kb missing from config.toml"
+python3 - "$CONFIG" <<'PY' || fail "config.toml is not valid TOML"
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    cfg = tomllib.load(f)
+servers = cfg["mcp_servers"]
+for name in ("architecture-kb", "refactoring-kb"):
+    assert servers[name]["command"], name
+    assert "${CLAUDE_PLUGIN_ROOT}" not in " ".join(servers[name]["args"]), name
+PY
+pass "codex install registers MCP servers as valid TOML"
+
+# 16. re-running leaves config.toml byte-identical.
+before="$(cat "$CONFIG")"
+HOME="$HOME_MCP" "$INSTALL" --target=codex >/dev/null
+[[ "$(cat "$CONFIG")" == "$before" ]] || fail "MCP registration is not idempotent"
+pass "MCP registration is idempotent"
+
+# 17. codex uninstall removes our blocks but keeps foreign config.
+printf '\n[mcp_servers.foreign]\ncommand = "keep-me"\n' >> "$CONFIG"
+HOME="$HOME_MCP" "$INSTALL" --target=codex --uninstall >/dev/null
+grep -Fxq '[mcp_servers.foreign]' "$CONFIG" \
+  || fail "uninstall dropped a foreign MCP server"
+if grep -q 'mcp_servers\.\(architecture\|refactoring\)-kb' "$CONFIG"; then
+  fail "uninstall left our MCP servers in config.toml"
+fi
+pass "codex uninstall removes only our MCP servers"
+
+# 18. a category without an .mcp.json registers no MCP servers.
+HOME_NOMCP="$(mktemp -d)"
+HOME="$HOME_NOMCP" "$INSTALL" --target=codex --category=workflow >/dev/null
+[[ ! -f "$HOME_NOMCP/.codex/config.toml" ]] \
+  || fail "category=workflow created config.toml"
+pass "category without MCP servers leaves config.toml alone"
+
+# 19. a foreign server table with our name is never overwritten.
+HOME_FOREIGN="$(mktemp -d)"
+mkdir -p "$HOME_FOREIGN/.codex"
+printf '[mcp_servers.architecture-kb]\ncommand = "mine"\n' \
+  > "$HOME_FOREIGN/.codex/config.toml"
+HOME="$HOME_FOREIGN" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+grep -Fxq 'command = "mine"' "$HOME_FOREIGN/.codex/config.toml" \
+  || fail "foreign architecture-kb table was overwritten"
+pass "foreign MCP server table is preserved"
+
+# 20. a foreign table using a quoted key is also detected and preserved.
+HOME_QUOTED="$(mktemp -d)"
+mkdir -p "$HOME_QUOTED/.codex"
+printf '[mcp_servers."architecture-kb"]\ncommand = "mine"\n' \
+  > "$HOME_QUOTED/.codex/config.toml"
+HOME="$HOME_QUOTED" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+grep -Fxq 'command = "mine"' "$HOME_QUOTED/.codex/config.toml" \
+  || fail "quoted-key foreign table was overwritten"
+python3 - "$HOME_QUOTED/.codex/config.toml" <<'PY' || fail "quoted-key case left invalid TOML"
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    tomllib.load(f)
+PY
+pass "quoted-key foreign table is preserved and config stays valid TOML"
+
+# 21. unbalanced markers (hand-deleted end marker) leave the file untouched.
+HOME_UNBAL="$(mktemp -d)"
+HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null
+CONFIG_UNBAL="$HOME_UNBAL/.codex/config.toml"
+grep -v '^# <<< agents:architecture' "$CONFIG_UNBAL" > "$CONFIG_UNBAL.tmp"
+printf '\n[mcp_servers.precious]\ncommand = "keep-me"\n' >> "$CONFIG_UNBAL.tmp"
+mv "$CONFIG_UNBAL.tmp" "$CONFIG_UNBAL"
+before="$(cat "$CONFIG_UNBAL")"
+HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] \
+  || fail "install modified a config with unbalanced markers"
+HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture --uninstall >/dev/null 2>&1
+[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] \
+  || fail "uninstall modified a config with unbalanced markers"
+pass "unbalanced markers leave config.toml untouched"
+
+# 22. codex install converts plugin subagents to valid custom-agent TOML.
+HOME_AG="$(mktemp -d)"
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null
+AGENTS_DIR="$HOME_AG/.codex/agents"
+for agent in coupling-analyst cohesion-analyst; do
+  [[ -f "$AGENTS_DIR/$agent.toml" ]] || fail "missing $agent.toml"
+done
+python3 - "$AGENTS_DIR" <<'PY' || fail "agent TOML is invalid or incomplete"
+import sys, tomllib
+from pathlib import Path
+for name in ("coupling-analyst", "cohesion-analyst"):
+    with open(Path(sys.argv[1]) / f"{name}.toml", "rb") as f:
+        agent = tomllib.load(f)
+    assert agent["name"] == name
+    assert agent["description"]
+    assert agent["developer_instructions"].strip()
+    assert "${CLAUDE_PLUGIN_ROOT}" not in agent["developer_instructions"]
+PY
+pass "codex install converts subagents to valid agent TOML"
+
+# 23. re-running leaves the agent files identical; foreign files survive.
+before="$(cat "$AGENTS_DIR/coupling-analyst.toml")"
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null
+[[ "$(cat "$AGENTS_DIR/coupling-analyst.toml")" == "$before" ]] \
+  || fail "agent conversion is not idempotent"
+printf 'name = "mine"\n' > "$AGENTS_DIR/cohesion-analyst.toml"
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+grep -Fxq 'name = "mine"' "$AGENTS_DIR/cohesion-analyst.toml" \
+  || fail "foreign agent file was overwritten"
+pass "agent conversion is idempotent and preserves foreign files"
+
+# 24. uninstall removes generated agents only; foreign files stay.
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture --uninstall >/dev/null 2>&1
+[[ ! -f "$AGENTS_DIR/coupling-analyst.toml" ]] \
+  || fail "uninstall left a generated agent file"
+[[ -f "$AGENTS_DIR/cohesion-analyst.toml" ]] \
+  || fail "uninstall removed a foreign agent file"
+pass "uninstall removes only generated agent files"
+
+# 25. a category without agents creates no agents directory.
+HOME_NOAG="$(mktemp -d)"
+HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=workflow >/dev/null
+[[ ! -d "$HOME_NOAG/.codex/agents" ]] \
+  || fail "category=workflow created an agents directory"
+pass "category without subagents leaves agents directory alone"
+
 echo "all install.sh tests passed"
