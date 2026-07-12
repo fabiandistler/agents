@@ -26,6 +26,7 @@
 # ~/.codex/config.toml, so the full plugins — skills plus MCP servers —
 # work in Codex CLI too. Requires python3 (skipped with a warning
 # otherwise); --uninstall removes the managed config blocks again.
+# --env only filters skills; MCP registration follows --category.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -36,6 +37,8 @@
 #   - MCP servers are written to ~/.codex/config.toml only between our own
 #     marker comments; a foreign [mcp_servers.<name>] table with the same
 #     name is never overwritten, and uninstall only removes our blocks.
+#     If the marker lines have been hand-edited into an unbalanced state,
+#     the whole file is left untouched rather than risk stripping too much.
 
 set -euo pipefail
 
@@ -50,7 +53,7 @@ CATEGORY="all"
 # Must match the category list in scripts/build_manifest.py.
 CATEGORIES="architecture refactoring r-development ai-ml workflow communication personal"
 
-usage() { sed -n '2,38p' "$0"; }
+usage() { sed -n '2,41p' "$0"; }
 
 for arg in "$@"; do
   case "$arg" in
@@ -220,6 +223,18 @@ print("\n".join(lines).rstrip())
 PY
 }
 
+# True if stdin's marker lines for a category are absent or form properly
+# nested begin/end pairs. A hand-edited config with a dangling begin or end
+# marker must not be stripped: strip_mcp_block would silently drop
+# everything from the begin marker to end of file.
+mcp_markers_balanced() {
+  awk -v b="$(mcp_begin_marker "$1")" -v e="$(mcp_end_marker "$1")" '
+    $0 == b { if (open) bad = 1; open = 1; next }
+    $0 == e { if (!open) bad = 1; open = 0; next }
+    END { exit (bad || open) ? 1 : 0 }
+  '
+}
+
 # Filter stdin, dropping the marker block (inclusive) for a category, plus
 # the separator blank line before it and any blank lines left at the start
 # of the file (so reinstalls do not accumulate or shuffle blank lines).
@@ -257,10 +272,24 @@ install_codex_mcp() {
     fi
     mkdir -p "$(dirname "$config")"
     [[ -f "$config" ]] || : > "$config"
+    if ! mcp_markers_balanced "$cat" < "$config"; then
+      printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
+        "$cat" "$config" >&2
+      continue
+    fi
     rest="$(strip_mcp_block "$cat" < "$config")"
     skip=0
     while IFS= read -r name; do
-      if printf '%s\n' "$rest" | grep -Fxq "[mcp_servers.$name]"; then
+      if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]]; then
+        printf '  WARN      MCP server name %q is not a bare TOML key (skipping %s)\n' \
+          "$name" "$cat" >&2
+        skip=1
+        continue
+      fi
+      # Match bare and quoted forms of the table header, with optional
+      # trailing whitespace or comment: [mcp_servers."<name>"] # note
+      if printf '%s\n' "$rest" \
+        | grep -Eq "^\[mcp_servers\.\"?$name\"?\][[:space:]]*(#.*)?$"; then
         printf '  WARN      [mcp_servers.%s] already in %s (not ours, skipping %s)\n' \
           "$name" "$config" "$cat" >&2
         skip=1
@@ -285,6 +314,11 @@ uninstall_codex_mcp() {
   while IFS= read -r cat; do
     [[ -n "$cat" ]] || continue
     before="$(cat "$config")"
+    if ! mcp_markers_balanced "$cat" <<< "$before"; then
+      printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
+        "$cat" "$config" >&2
+      continue
+    fi
     after="$(strip_mcp_block "$cat" <<< "$before")"
     [[ "$after" != "$before" ]] || continue
     if (( DRY_RUN )); then

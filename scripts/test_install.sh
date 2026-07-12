@@ -221,4 +221,35 @@ grep -Fxq 'command = "mine"' "$HOME_FOREIGN/.codex/config.toml" \
   || fail "foreign architecture-kb table was overwritten"
 pass "foreign MCP server table is preserved"
 
+# 20. a foreign table using a quoted key is also detected and preserved.
+HOME_QUOTED="$(mktemp -d)"
+mkdir -p "$HOME_QUOTED/.codex"
+printf '[mcp_servers."architecture-kb"]\ncommand = "mine"\n' \
+  > "$HOME_QUOTED/.codex/config.toml"
+HOME="$HOME_QUOTED" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+grep -Fxq 'command = "mine"' "$HOME_QUOTED/.codex/config.toml" \
+  || fail "quoted-key foreign table was overwritten"
+python3 - "$HOME_QUOTED/.codex/config.toml" <<'PY' || fail "quoted-key case left invalid TOML"
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    tomllib.load(f)
+PY
+pass "quoted-key foreign table is preserved and config stays valid TOML"
+
+# 21. unbalanced markers (hand-deleted end marker) leave the file untouched.
+HOME_UNBAL="$(mktemp -d)"
+HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null
+CONFIG_UNBAL="$HOME_UNBAL/.codex/config.toml"
+grep -v '^# <<< agents:architecture' "$CONFIG_UNBAL" > "$CONFIG_UNBAL.tmp"
+printf '\n[mcp_servers.precious]\ncommand = "keep-me"\n' >> "$CONFIG_UNBAL.tmp"
+mv "$CONFIG_UNBAL.tmp" "$CONFIG_UNBAL"
+before="$(cat "$CONFIG_UNBAL")"
+HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] \
+  || fail "install modified a config with unbalanced markers"
+HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture --uninstall >/dev/null 2>&1
+[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] \
+  || fail "uninstall modified a config with unbalanced markers"
+pass "unbalanced markers leave config.toml untouched"
+
 echo "all install.sh tests passed"
