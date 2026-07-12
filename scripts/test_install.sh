@@ -252,4 +252,50 @@ HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture --uninstall
   || fail "uninstall modified a config with unbalanced markers"
 pass "unbalanced markers leave config.toml untouched"
 
+# 22. codex install converts plugin subagents to valid custom-agent TOML.
+HOME_AG="$(mktemp -d)"
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null
+AGENTS_DIR="$HOME_AG/.codex/agents"
+for agent in coupling-analyst cohesion-analyst; do
+  [[ -f "$AGENTS_DIR/$agent.toml" ]] || fail "missing $agent.toml"
+done
+python3 - "$AGENTS_DIR" <<'PY' || fail "agent TOML is invalid or incomplete"
+import sys, tomllib
+from pathlib import Path
+for name in ("coupling-analyst", "cohesion-analyst"):
+    with open(Path(sys.argv[1]) / f"{name}.toml", "rb") as f:
+        agent = tomllib.load(f)
+    assert agent["name"] == name
+    assert agent["description"]
+    assert agent["developer_instructions"].strip()
+    assert "${CLAUDE_PLUGIN_ROOT}" not in agent["developer_instructions"]
+PY
+pass "codex install converts subagents to valid agent TOML"
+
+# 23. re-running leaves the agent files identical; foreign files survive.
+before="$(cat "$AGENTS_DIR/coupling-analyst.toml")"
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null
+[[ "$(cat "$AGENTS_DIR/coupling-analyst.toml")" == "$before" ]] \
+  || fail "agent conversion is not idempotent"
+printf 'name = "mine"\n' > "$AGENTS_DIR/cohesion-analyst.toml"
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
+grep -Fxq 'name = "mine"' "$AGENTS_DIR/cohesion-analyst.toml" \
+  || fail "foreign agent file was overwritten"
+pass "agent conversion is idempotent and preserves foreign files"
+
+# 24. uninstall removes generated agents only; foreign files stay.
+HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture --uninstall >/dev/null 2>&1
+[[ ! -f "$AGENTS_DIR/coupling-analyst.toml" ]] \
+  || fail "uninstall left a generated agent file"
+[[ -f "$AGENTS_DIR/cohesion-analyst.toml" ]] \
+  || fail "uninstall removed a foreign agent file"
+pass "uninstall removes only generated agent files"
+
+# 25. a category without agents creates no agents directory.
+HOME_NOAG="$(mktemp -d)"
+HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=workflow >/dev/null
+[[ ! -d "$HOME_NOAG/.codex/agents" ]] \
+  || fail "category=workflow created an agents directory"
+pass "category without subagents leaves agents directory alone"
+
 echo "all install.sh tests passed"
