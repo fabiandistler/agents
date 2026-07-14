@@ -31,6 +31,11 @@ its workflow exactly. Key mechanics:
 4. Interpret per the skill's step 5 (zones, earned stability, graph
    sanity-check) — never hand back a raw ranked table as the answer.
 
+When the question is whether one *specific* dependency is acceptable at its
+boundary (rather than repo-wide metrics), also read
+${CLAUDE_PLUGIN_ROOT}/skills/balanced-coupling/SKILL.md and weigh that
+relationship along integration strength, distance, and volatility.
+
 If MCP tools named wiki_coupling or similar knowledge-base tools are
 available, query them for metric definitions and remediation material instead
 of reading the full references files; otherwise fall back to

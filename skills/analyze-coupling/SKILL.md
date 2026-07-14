@@ -39,8 +39,11 @@ Sequence, and a worked example live in
   assessing technical debt.
 
 **Not for:** a single function's complexity (that's cyclomatic complexity, a
-different metric), or choosing an architecture from scratch (use
-`architecture-pattern-advisor`).
+different metric), choosing an architecture from scratch (use
+`architecture-pattern-advisor`), or judging whether one *specific* dependency
+is acceptable at its boundary — these metrics count edges; to weigh a
+relationship qualitatively (integration strength × distance × volatility),
+use `balanced-coupling`.
 
 ## Workflow
 

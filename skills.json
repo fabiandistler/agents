@@ -42,6 +42,16 @@
       ]
     },
     {
+      "name": "balanced-coupling",
+      "summary": "Judge whether a specific dependency between two components is acceptable — not by counting edges, but by weighing them along Vlad Khononov's Balanced Coupling model of integration strength (intrusive…",
+      "category": "architecture",
+      "path": "skills/balanced-coupling/SKILL.md",
+      "compatibility": "Works on any codebase or design document. The bundled checker script is stdlib-only Python 3.8+. No dependency-graph tooling required — the assessment is qualitative, per relationship.",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "c4-modeling",
       "summary": "Draft a C4 model of a software system together with the user and render it as high-quality architecture diagrams — Mermaid-first, so they display natively on GitHub and in chat.",
       "category": "architecture",
