@@ -82,6 +82,11 @@ If none of Shared Kernel, Customer-Supplier, or Conformist apply and there is
 no leverage over the other side, default to Conformist plus an ACL: adapt to
 the external model but don't let it leak into your own.
 
+To judge whether a specific cross-context dependency is acceptable as
+designed — how much knowledge crosses the boundary, at what distance, and how
+volatile it is — use the `balanced-coupling` skill; its volatility step in
+turn leans on the subdomain classification above.
+
 ## Level 2 — Tactical Design: pick the implementation pattern
 
 Once a subdomain and its bounded context are identified, choose *how* to

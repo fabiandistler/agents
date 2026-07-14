@@ -122,6 +122,7 @@ A skill without an `environments` field belongs to every environment.
 | `skills/analyze-cohesion/` | Analyzing whether a class, module, file, or package is cohesive — classify it on the best-to-worst cohesion scale, compute LCOM, and recommend a split/merge/leave. |
 | `skills/analyze-coupling/` | Measuring how coupled or brittle a codebase is — afferent/efferent coupling, Instability, Abstractness, Distance from the Main Sequence, and the Zones of Pain and Uselessness. |
 | `skills/architecture-pattern-advisor/` | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
+| `skills/balanced-coupling/` | Weighing a specific dependency along Khononov's Balanced Coupling model — integration strength (intrusive/functional/model/contract), distance, and volatility — flagging knowledge leaks and recommending how to rebalance them. |
 | `skills/c4-modeling/` | Drafting a C4 model of a system interactively and rendering it as Mermaid diagrams — System Context, Container, and Component views plus landscape, dynamic, and deployment — per c4model.com best practices. |
 | `skills/codebase-design/` | Shared vocabulary and workflow for designing deep modules. |
 | `skills/ddd-advisor/` | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
