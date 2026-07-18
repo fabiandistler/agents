@@ -177,6 +177,17 @@
       ]
     },
     {
+      "name": "microservices-design",
+      "summary": "Apply distilled microservices design conventions (from Newman's Building Microservices) when designing, reviewing, or evolving how services interact — service boundary rules, inter-service coupling,…",
+      "category": "architecture",
+      "path": "skills/microservices-design/SKILL.md",
+      "compatibility": "Language- and framework-agnostic; applies to any service-based system regardless of transport (HTTP, gRPC, messaging). Pairs with architecture-pattern-advisor (topology choice), ddd-advisor (bounded contexts), balanced-coupling (judging a specific dependency), and adr-workflow (recording decisions).",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "ml-project-lifecycle",
       "summary": "Guide a machine learning project from problem framing through model selection to production deployment — use it whenever someone is scoping an ML project, picking a model architecture, deciding how t…",
       "category": "ai-ml",

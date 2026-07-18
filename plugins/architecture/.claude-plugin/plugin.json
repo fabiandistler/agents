@@ -1,6 +1,6 @@
 {
   "name": "architecture",
-  "description": "Software architecture and design skills: ADRs, architecture and DDD advisors, C4 model drafting and diagram rendering, logical component design, deep-module design, fitness functions, SQL schema design, cohesion and coupling analysis. Includes read-only coupling/cohesion analyst subagents and an architecture knowledge-base MCP server.",
+  "description": "Software architecture and design skills: ADRs, architecture and DDD advisors, C4 model drafting and diagram rendering, microservices design conventions, logical component design, deep-module design, fitness functions, SQL schema design, cohesion and coupling analysis. Includes read-only coupling/cohesion analyst subagents and an architecture knowledge-base MCP server.",
   "author": {
     "name": "Fabian Distler"
   }

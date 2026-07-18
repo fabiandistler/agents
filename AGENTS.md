@@ -53,6 +53,7 @@ group the catalogue by those categories.
 | [ddd-advisor](skills/ddd-advisor/SKILL.md) | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
 | [fitness-functions](skills/fitness-functions/SKILL.md) | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
 | [logical-component-design](skills/logical-component-design/SKILL.md) | Decomposing a new system or feature into named logical components — the iterative Workflow / Actor-Action identification cycle, the Entity-Trap antipattern, cohesion and coupling refinement, and the Law of Demeter. |
+| [microservices-design](skills/microservices-design/SKILL.md) | Designing or reviewing how microservices interact — boundaries, coupling, communication style, contract versioning, cross-service code reuse, sagas, and resiliency patterns (timeouts, bulkheads, circuit breakers, retries) — via a distilled Newman ruleset. |
 | [sql-schema-design](skills/sql-schema-design/SKILL.md) | Designing or reviewing a SQL schema, decomposing complex queries, partitioning, or gating CI/CD on schema drift. |
 
 ### Refactoring & code quality (`refactoring`)
