@@ -94,6 +94,17 @@
       "version": "1.0"
     },
     {
+      "name": "ddd-conventions",
+      "summary": "Correctness and design conventions to apply while writing or reviewing code in a codebase that practices Domain-Driven Design — aggregates, value objects, domain events, transaction scripts, event so…",
+      "category": "architecture",
+      "path": "skills/ddd-conventions/SKILL.md",
+      "compatibility": "Language-agnostic; examples use Java-ish pseudocode but every rule applies to any language. Pairs with ddd-advisor (the design-time counterpart), balanced-coupling (judging a specific cross-context dependency), and architecture-pattern-advisor (topology and code organization).",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "fitness-functions",
       "summary": "Design and implement architecture fitness functions — automated, objective checks that govern architecture characteristics (modularity, layering, coupling, security, operational resilience) from Rich…",
       "category": "architecture",

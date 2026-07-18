@@ -6,7 +6,7 @@ description: Generate a status update from recent activity. Use when preparing f
 argument-hint: "[yesterday | today | blockers]"
 ---
 
-# /repo-status
+# Repo Status
 
 Generate a status update by pulling together recent activity across your tools.
 
@@ -32,7 +32,7 @@ Generate a status update by pulling together recent activity across your tools.
 ## What I Need From You
 
 **Option A: Let me pull it**
-If your tools are connected, just say `/repo-status` and I'll gather everything automatically.
+If your tools are connected, ask for a repo status and I'll gather everything automatically.
 
 **Option B: Tell me what you did**
 "Worked on the auth migration, reviewed 3 PRs, got blocked on the API rate limiting issue."
