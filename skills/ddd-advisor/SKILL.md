@@ -77,10 +77,14 @@ each has a real trade-off:
 | **Customer-Supplier** | Directed dependency: an upstream context provides services/data, a downstream context consumes them | Clear provider/consumer relationship, formalized by SLAs and API contracts | Upstream has design priority and must manage backward compatibility; downstream must handle versioning/migration — needs active relationship management |
 | **Conformist** | Downstream adapts to an upstream model it cannot influence | Integrating with an external or legacy system where you have no leverage over the upstream model | Simplest to implement, but you inherit the upstream's modeling choices, good or bad, with no ability to push back |
 | **Anti-Corruption Layer (ACL)** | A translation/adapter layer isolates your model from an external model | Legacy integration, third-party APIs, or any Conformist situation where you want to protect model integrity anyway | Adds complexity and a translation layer (possible performance overhead), but buys long-term maintainability — your model stays clean and changeable independent of the external system |
+| **Open-Host Service (OHS)** | The *upstream* mirror of the ACL: the provider exposes a stable integration contract — a **published language** — decoupled from its internal model | You are the upstream provider and want to evolve internals freely without breaking every consumer, or serve many downstream contexts through one contract | The published language is a second model to design and maintain; contract changes still need versioning and consumer migration — but internal refactoring stops being a breaking change |
 
 If none of Shared Kernel, Customer-Supplier, or Conformist apply and there is
 no leverage over the other side, default to Conformist plus an ACL: adapt to
-the external model but don't let it leak into your own.
+the external model but don't let it leak into your own. The same protection
+works in both directions: an ACL guards a downstream consumer, an OHS guards
+an upstream provider — a context that is both consumes through ACLs and
+serves through a published language.
 
 To judge whether a specific cross-context dependency is acceptable as
 designed — how much knowledge crosses the boundary, at what distance, and how
@@ -116,6 +120,28 @@ Never select a pattern above what the subdomain's classification and actual
 complexity justify. A Supporting subdomain implemented as a full Domain Model
 is over-engineering; a Core subdomain implemented as a Transaction Script is
 under-investment in the one place that should differentiate the business.
+
+The check runs in both directions: the pattern the logic *actually needs* is
+a sanity check on the strategic classification. If a "Core" subdomain turns
+out to need only a Transaction Script, or a "Supporting" one genuinely needs
+a Domain Model, revisit the classification from Level 1 before proceeding —
+one of the two judgments is wrong.
+
+### Architecture follows the pattern
+
+The business-logic pattern also determines the architecture style around it —
+choose them together, not independently:
+
+| Business-logic pattern | Architecture style | Why |
+|---|---|---|
+| Transaction Script | Minimal 3-layer (presentation / logic / data) | The logic is procedural; hexagonal ceremony adds nothing |
+| Active Record | Layered, with an added application/service layer | The service layer drives the records; persistence-awareness is inherent to the pattern |
+| Domain Model | Ports & Adapters (hexagonal) | Aggregates and Value Objects must stay persistence-ignorant; a classic layered architecture makes that hard (e.g. ORM annotations leaking into aggregates) |
+| Event-Sourced Domain Model | CQRS (required) | Without a separate read model, querying an event store is limited to fetch-by-ID |
+
+CQRS is not exclusive to event sourcing: add it to *any* pattern when the
+subdomain needs multiple persistent read models (mirrors step 5 of the
+decision path).
 
 ### Migration paths
 
@@ -245,6 +271,12 @@ aggregate** — a gatekeeper:
 
 ## Related skills
 
+- **ddd-conventions** — the implementation-time counterpart of this skill:
+  concrete correctness rules for *writing* the code once the decisions here
+  are made (one aggregate per transaction, optimistic concurrency via a
+  version field, past-tense domain events, outbox-pattern event publishing,
+  event-sourcing mechanics, transaction-script idempotency). Hand off to it
+  when the conversation moves from choosing patterns to implementing them.
 - **architecture-pattern-advisor** — once bounded contexts are identified,
   use this skill for the topology decision (monolith vs. modular monolith vs.
   microservices) and code-organization pattern; bounded contexts are the
