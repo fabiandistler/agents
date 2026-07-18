@@ -17,7 +17,10 @@ packaged as one plugin (see `plugins/` and
 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)), so
 you can install exactly the domains you want. Beyond skills, the
 `architecture` plugin ships two read-only analysis subagents
-(`coupling-analyst`, `cohesion-analyst`), and the `architecture` and
+(`coupling-analyst`, `cohesion-analyst`), the `workflow` plugin ships a
+read-only repo QA subagent (`repo-error-checker`) that checks this
+catalogue against the official Agent Skills format, and the
+`architecture` and
 `refactoring` plugins each embed a knowledge-base MCP server built on
 [`mcp-wiki-server/`](mcp-wiki-server/) that serves their reference
 catalogs as lookup tools (requires [`uv`](https://docs.astral.sh/uv/)).
@@ -62,7 +65,7 @@ skills. `--target=codex` additionally:
   touched. Like under Claude, the servers need
   [`uv`](https://docs.astral.sh/uv/) at runtime.
 - converts each selected plugin's subagents (`coupling-analyst`,
-  `cohesion-analyst`) into [Codex custom
+  `cohesion-analyst`, `repo-error-checker`) into [Codex custom
   agents](https://developers.openai.com/codex/subagents) under
   `~/.codex/agents/<name>.toml`. The generated files carry a marker
   comment; files you created yourself are never overwritten, and
@@ -107,7 +110,7 @@ A skill without an `environments` field belongs to every environment.
 | Directory | Description |
 |---|---|
 | `skills/` | All installable skills (each subdirectory has a `SKILL.md`), grouped below by category |
-| `plugins/` | The same skills packaged as Claude plugins, one plugin per category (architecture adds analysis subagents; architecture and refactoring embed a knowledge-base MCP server) |
+| `plugins/` | The same skills packaged as Claude plugins, one plugin per category (architecture adds analysis subagents; workflow adds a repo QA subagent; architecture and refactoring embed a knowledge-base MCP server) |
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
 | `mcp-wiki-server/` | MCP server exposing a wiki / knowledge-base tool to MCP-aware agents; also embedded by the architecture and refactoring plugins |
 | `scripts/` | Repo tooling (manifest generator, consistency checks) |
