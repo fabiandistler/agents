@@ -293,23 +293,9 @@ pass "uninstall removes only generated agent files"
 
 # 25. a category without agents creates no agents directory.
 HOME_NOAG="$(mktemp -d)"
-HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=communication >/dev/null
+HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=workflow >/dev/null
 [[ ! -d "$HOME_NOAG/.codex/agents" ]] \
-  || fail "category=communication created an agents directory"
+  || fail "category=workflow created an agents directory"
 pass "category without subagents leaves agents directory alone"
-
-# 26. the workflow category installs its repo-error-checker agent.
-HOME_WFAG="$(mktemp -d)"
-HOME="$HOME_WFAG" "$INSTALL" --target=codex --category=workflow >/dev/null
-python3 - "$HOME_WFAG/.codex/agents" <<'PY' || fail "repo-error-checker.toml is invalid or incomplete"
-import sys, tomllib
-from pathlib import Path
-with open(Path(sys.argv[1]) / "repo-error-checker.toml", "rb") as f:
-    agent = tomllib.load(f)
-assert agent["name"] == "repo-error-checker"
-assert agent["description"]
-assert agent["developer_instructions"].strip()
-PY
-pass "workflow category installs repo-error-checker agent"
 
 echo "all install.sh tests passed"
