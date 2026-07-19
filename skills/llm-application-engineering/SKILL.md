@@ -5,7 +5,7 @@ environments: coding
 description: Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring it live -- plus the craft-level conventions underneath them. Use whenever a foundation model's output is wrong and the fix (prompting, retrieval, or finetuning) is unclear, whenever an LLM app's architecture (context, guardrails, routing, caching, agents) is being designed or reviewed, whenever production evaluation metrics or user-feedback signals need defining, or whenever the question is how to implement prompting and prompt management, an evaluation harness or LLM judge, guardrails and security gating, finetuning (LoRA, hyperparameters), or training-data preparation. Draws on Chip Huyen's "AI Engineering" and bundles the adaptation ladder, the architecture build sequence, production monitoring, and an operational conventions sheet.
 compatibility: Domain-knowledge skill, not tied to any language, framework, or model provider. Applies to any application built on a foundation model, whether self-hosted or accessed via API.
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # LLM Application Engineering
@@ -25,6 +25,14 @@ preparation — open
 It is a dense, falsifiable conventions sheet meant to be consulted when the
 question is *how to implement* one of these steps well, not *which* step to take
 next.
+
+When the application is an **agent** — tool loops, orchestration topologies,
+multi-agent decomposition, autonomy levels — pair that sheet with
+[`references/agent-engineering-conventions.md`](references/agent-engineering-conventions.md),
+its agent-specific companion (distilled from Albada, *Building Applications with
+AI Agents*). It carries the tool-design, orchestration, agent-evaluation,
+agent-memory-scoping, and autonomy-UX rules the general sheet does not, and
+defers to the general sheet wherever they overlap.
 
 ## Part A — The adaptation ladder
 
