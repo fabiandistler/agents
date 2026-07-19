@@ -2,10 +2,10 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring the system once it reaches production -- so use this whenever a foundation model's output is wrong and the fix (prompting, retrieval, or finetuning) is unclear, whenever an LLM application's architecture (context construction, guardrails, routing, caching, agents) is being designed or reviewed and the question is what to build next, or whenever production evaluation metrics or user-feedback signals for an LLM-based system need defining. Draws on Chip Huyen's "AI Engineering" and bundles three parts -- the adaptation ladder (prompting through RAG+finetuning, gated by a failure-type diagnosis and a sample-size rule), the architecture build sequence (enhance context, then guardrails, then router/gateway, then caching, then agents), and production monitoring (six metric families plus five implicit-feedback signals).
+description: Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring it live -- plus the craft-level conventions underneath them. Use whenever a foundation model's output is wrong and the fix (prompting, retrieval, or finetuning) is unclear, whenever an LLM app's architecture (context, guardrails, routing, caching, agents) is being designed or reviewed, whenever production evaluation metrics or user-feedback signals need defining, or whenever the question is how to implement prompting and prompt management, an evaluation harness or LLM judge, guardrails and security gating, finetuning (LoRA, hyperparameters), or training-data preparation. Draws on Chip Huyen's "AI Engineering" and bundles the adaptation ladder, the architecture build sequence, production monitoring, and an operational conventions sheet.
 compatibility: Domain-knowledge skill, not tied to any language, framework, or model provider. Applies to any application built on a foundation model, whether self-hosted or accessed via API.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # LLM Application Engineering
@@ -16,6 +16,15 @@ it is still working once users touch it. This skill bundles all three, because
 they are usually needed in the same conversation and each guards against the
 same failure mode — reaching for the most powerful, most complex tool before the
 cheaper one has been ruled out.
+
+For the craft-level rules underneath these three decisions — prompt engineering
+and prompt management, evaluation-harness and LLM-judge configuration,
+guardrails and security gating, finetuning mechanics, and training-data
+preparation — open
+[`references/ai-engineering-conventions.md`](references/ai-engineering-conventions.md).
+It is a dense, falsifiable conventions sheet meant to be consulted when the
+question is *how to implement* one of these steps well, not *which* step to take
+next.
 
 ## Part A — The adaptation ladder
 

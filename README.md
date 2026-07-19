@@ -152,7 +152,7 @@ A skill without an `environments` field belongs to every environment.
 
 | Skill | When to use |
 |---|---|
-| `skills/llm-application-engineering/` | Diagnosing LLM output failures, ordering LLM app architecture builds, or defining production monitoring metrics. |
+| `skills/llm-application-engineering/` | Diagnosing LLM output failures, ordering LLM app architecture builds, defining production monitoring metrics, or applying craft-level conventions for prompting, evaluation/LLM-judges, guardrails, finetuning, and training data. |
 | `skills/ml-project-lifecycle/` | Scoping an ML project, picking a model/baseline, handling missing data, or planning pipelines and staged deployment. |
 
 ### Workflow & planning (`workflow`)
