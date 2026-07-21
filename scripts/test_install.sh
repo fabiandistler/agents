@@ -204,7 +204,7 @@ for name in ("architecture-kb", "refactoring-kb"):
     if have_venv:
         assert cmd == runtime_py, (name, cmd)
         assert args and args[0].endswith("server.py"), (name, args)
-        assert "uv" not in cmd and not any("--with" in a for a in args), (name, args)
+        assert cmd != "uv" and not any("--with" in a for a in args), (name, args)
     else:
         assert cmd == "uv", (name, cmd)
 PY
