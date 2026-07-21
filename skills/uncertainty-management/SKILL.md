@@ -103,5 +103,3 @@ The same three pillars and three meta-questions transfer directly to non-softwar
 - Choosing "conservative" strategy by default regardless of confidence, which under-explores well-understood situations and over-commits in novel ones.
 - Validating only at the very end of a decomposed change, which throws away the main benefit (early detection, isolated blame for failures).
 - Rolling back without asking what the failure teaches — the point is not just safety, it is that each step should raise confidence for the next one.
-
-

@@ -10,12 +10,6 @@ argument-hint: "<update type and audience>"
 
 Generate a stakeholder update tailored to the audience and cadence.
 
-## Usage
-
-```
-/stakeholder-update $ARGUMENTS
-```
-
 ## Workflow
 
 ### 1. Determine Update Type
@@ -37,22 +31,22 @@ Ask who the update is for:
 
 ### 3. Pull Context from Connected Tools
 
-If **~~project tracker** is connected:
+If **project tracker** is connected:
 - Pull status of roadmap items and milestones
 - Identify completed items since last update
 - Surface items that are at risk or blocked
 - Pull sprint or iteration progress
 
-If **~~chat** is connected:
+If **chat** is connected:
 - Search for relevant team discussions and decisions
 - Find blockers or issues raised in channels
 - Identify key decisions made asynchronously
 
-If **~~meeting transcription** is connected:
+If **meeting transcription** is connected:
 - Pull recent meeting notes and discussion summaries
 - Find decisions and action items from relevant meetings
 
-If **~~knowledge base** is connected:
+If **knowledge base** is connected:
 - Search for recent meeting notes
 - Find decision documents or design reviews
 
@@ -66,7 +60,7 @@ If no tools are connected, ask the user to provide:
 
 Structure the update for the target audience using the templates and frameworks below.
 
-**For executives**: TL;DR, status color (G/Y/R), key progress tied to goals, decisions made, risks with mitigation, specific asks, and next milestones. Keep it under 300 words.
+**For executives**: TL;DR, status color (G/Y/R), key progress tied to goals, decisions made, risks with mitigation, specific asks, and next milestones. Keep it under 200 words.
 
 **For engineering**: What shipped (with links), what is in progress (with owners), blockers, decisions needed (with options and recommendation), and what is coming next.
 
@@ -81,7 +75,7 @@ Structure the update for the target audience using the templates and frameworks 
 After generating the update:
 - Ask if the user wants to adjust tone, detail level, or emphasis
 - Offer to format for the delivery channel (email, chat post, doc, slides)
-- If **~~chat** is connected, offer to draft the message for sending
+- If **chat** is connected, offer to draft the message for sending
 
 ## Update Templates by Audience
 
@@ -340,7 +334,7 @@ For each: what was it, why was it rejected?
 
 ## Output Format
 
-Keep updates scannable. Use bold for key points, bullets for lists. Executive updates should be under 300 words. Engineering updates can be longer but should still be structured for skimming.
+Keep updates scannable. Use bold for key points, bullets for lists. Executive updates should be under 200 words. Engineering updates can be longer but should still be structured for skimming.
 
 ## Tips
 

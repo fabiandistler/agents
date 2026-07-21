@@ -200,5 +200,3 @@ A refactor isn't done when the steps stop; it's done when these hold:
 | Behavior changed | Restore the original behavior |
 | Interface changed | Adjust the tests to match |
 | Turns out more complex than expected | Split the work further, or switch strategy (Mikado / Strangler Fig / rewrite) |
-
-

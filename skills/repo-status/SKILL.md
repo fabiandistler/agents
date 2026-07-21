@@ -10,25 +10,6 @@ argument-hint: "[yesterday | today | blockers]"
 
 Generate a status update by pulling together recent activity across your tools.
 
-## How It Works
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        REPO STATUS                                │
-├─────────────────────────────────────────────────────────────────┤
-│  STANDALONE (always works)                                       │
-│  ✓ Tell me what you worked on and I'll structure it             │
-│  ✓ Format for daily standup (yesterday / today / blockers)      │
-│  ✓ Keep it concise and action-oriented                          │
-├─────────────────────────────────────────────────────────────────┤
-│  SUPERCHARGED (when you connect your tools)                      │
-│  + Source control: Recent commits and PRs                        │
-│  + Project tracker: Ticket status changes                        │
-│  + Chat: Relevant discussions and decisions                      │
-│  + CI/CD: Build and deploy status                                │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 ## What I Need From You
 
 **Option A: Let me pull it**
@@ -56,17 +37,20 @@ If your tools are connected, ask for a repo status and I'll gather everything au
 
 ## If Connectors Available
 
-If **~~source control** is connected:
+If **source control** is connected:
 - Pull recent commits and PRs (opened, reviewed, merged)
 - Summarize code changes at a high level
 
-If **~~project tracker** is connected:
+If a **project tracker** is connected:
 - Pull tickets moved to "in progress" or "done"
 - Show upcoming sprint items
 
-If **~~chat** is connected:
+If **chat** is connected:
 - Scan for relevant discussions and decisions
 - Flag threads needing your response
+
+If **CI/CD** is connected:
+- Pull recent build and deploy status
 
 ## Tips
 
