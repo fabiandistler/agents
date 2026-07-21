@@ -129,6 +129,7 @@ A skill without an `environments` field belongs to every environment.
 | `skills/ddd-conventions/` | Implementation-time DDD correctness rules — aggregates (one per transaction, optimistic concurrency), value objects, past-tense domain events, outbox-pattern publishing, event-sourcing mechanics, and bounded-context integration conventions. |
 | `skills/fitness-functions/` | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
 | `skills/logical-component-design/` | Decomposing a new system or feature into named logical components — the iterative Workflow / Actor-Action identification cycle, the Entity-Trap antipattern, cohesion and coupling refinement, and the Law of Demeter. |
+| `skills/microservices-design/` | Designing or reviewing how microservices interact — boundaries, coupling, communication style, contract versioning, cross-service code reuse, sagas, and resiliency patterns (timeouts, bulkheads, circuit breakers, retries) — via a distilled Newman ruleset. |
 | `skills/sql-schema-design/` | Designing or reviewing a SQL schema, decomposing complex queries, partitioning, or gating CI/CD on schema drift. |
 
 ### Refactoring & code quality (`refactoring`)
