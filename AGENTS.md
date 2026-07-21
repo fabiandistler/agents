@@ -89,7 +89,7 @@ group the catalogue by those categories.
 | [guideline-distillation](skills/guideline-distillation/SKILL.md) | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
 | [handoff](skills/handoff/SKILL.md) | Compact the current conversation into a handoff document for another agent to pick up. |
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
-| [prototype](skills/prototype/SKILL.md) | Build a throwaway prototype to flesh out a design — a runnable terminal app for state/business-logic questions, or several radically different UI var… |
+| [prototype](skills/prototype/SKILL.md) | Build a throwaway prototype to flesh out a design — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. |
 | [repo-status](skills/repo-status/SKILL.md) | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
 | [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
 | [to-issues](skills/to-issues/SKILL.md) | Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. |
