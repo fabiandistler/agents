@@ -73,8 +73,13 @@ to serve their skills' reference catalogs. Each plugin has:
   `uv run --no-project --with "mcp[cli]>=1.2"` and `WIKI_PATH` set to the
   plugin's `kb/`.
 
-This requires `uv` on the machine running the plugin. The server follows
-directory symlinks, so the topic folders may themselves be links.
+Under Claude this requires `uv` on the machine running the plugin. For
+Codex, `install.sh --target=codex` instead resolves `mcp[cli]` once into a
+runtime venv (`~/.codex/agents-mcp-runtime`) and generates a config block
+that runs `server.py` with that interpreter directly — so the tool start
+needs neither `uv` nor PyPI access and works under a sandbox that denies
+both. The server follows directory symlinks, so the topic folders may
+themselves be links.
 
 ## Adding your own content
 

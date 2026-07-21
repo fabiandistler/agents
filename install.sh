@@ -27,6 +27,10 @@
 # --category:
 #   - Each selected plugin's knowledge-base MCP servers
 #     (plugins/<category>/.mcp.json) are registered in ~/.codex/config.toml.
+#     Their `uv run --with mcp[cli]...` dependency is resolved once here into
+#     a runtime venv (~/.codex/agents-mcp-runtime) and the generated config
+#     points at that interpreter, so tool starts need no uv cache or PyPI
+#     access — the fix for sandboxed Codex setups that deny both.
 #   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
 #     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
 #
@@ -41,6 +45,8 @@
 #     name is never overwritten, and uninstall only removes our blocks.
 #     If the marker lines have been hand-edited into an unbalanced state,
 #     the whole file is left untouched rather than risk stripping too much.
+#     The runtime venv lives at a fixed path we own and is removed on
+#     uninstall.
 #   - Generated agent files carry a marker comment; a file at the same path
 #     without the marker is never overwritten, and uninstall only removes
 #     marker-carrying files.
@@ -197,14 +203,22 @@ mcp_categories() {
 
 # Render plugins/<category>/.mcp.json as Codex config.toml tables, with
 # ${CLAUDE_PLUGIN_ROOT} resolved to the plugin directory in this repo.
+#
+# $2 is the interpreter of the install-time runtime venv (see
+# install_codex_mcp_runtime). When non-empty, servers launched via
+# `uv run ... python <script>` are rewritten to invoke that interpreter on
+# <script> directly, so the tool start needs neither uv cache writes nor PyPI
+# access — the dependency was resolved once at install time. When empty (venv
+# unavailable), the original uv invocation is emitted unchanged.
 plugin_mcp_toml() {
-  local plugin_dir="$REPO_ROOT/plugins/$1"
-  python3 - "$plugin_dir" <<'PY'
+  local plugin_dir="$REPO_ROOT/plugins/$1" runtime_python="${2:-}"
+  python3 - "$plugin_dir" "$runtime_python" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 plugin_dir = Path(sys.argv[1])
+runtime_python = sys.argv[2]
 spec = json.loads((plugin_dir / ".mcp.json").read_text(encoding="utf-8"))
 
 
@@ -213,12 +227,25 @@ def toml_str(value: str) -> str:
     return json.dumps(value)  # JSON string escaping is valid TOML
 
 
+def resolve(command: str, args: list[str]) -> tuple[str, list[str]]:
+    """Rewrite a `uv run ... python <script> [extra]` launch to run <script>
+    with the install-time runtime interpreter, dropping the uv/dependency
+    flags. Anything else is returned unchanged."""
+    if not runtime_python or command != "uv":
+        return command, args
+    for i, a in enumerate(args):
+        if a in ("python", "python3") and i + 1 < len(args):
+            return runtime_python, args[i + 1 :]
+    return command, args
+
+
 lines = []
 for name, server in spec.get("mcpServers", {}).items():
+    command, args = resolve(server["command"], server.get("args", []))
     lines.append(f"[mcp_servers.{name}]")
-    lines.append(f"command = {toml_str(server['command'])}")
-    args = ", ".join(toml_str(a) for a in server.get("args", []))
-    lines.append(f"args = [{args}]")
+    lines.append(f"command = {toml_str(command)}")
+    rendered = ", ".join(toml_str(a) for a in args)
+    lines.append(f"args = [{rendered}]")
     env = server.get("env", {})
     if env:
         pairs = ", ".join(f"{k} = {toml_str(v)}" for k, v in env.items())
@@ -255,6 +282,77 @@ strip_mcp_block() {
   '
 }
 
+# --- Codex MCP runtime venv -------------------------------------------------
+#
+# Under Claude the servers run via `uv run --with mcp[cli]>=1.2 ...`, which
+# resolves the dependency on every launch — needing uv cache writes and PyPI
+# access. Codex tool starts often run under a restrictive sandbox where both
+# are denied, so we resolve the dependency once here, at install time, into a
+# dedicated venv and point the generated config at its interpreter.
+
+codex_mcp_runtime_dir() { printf '%s/.codex/agents-mcp-runtime' "$HOME"; }
+codex_mcp_runtime_python() { printf '%s/bin/python' "$(codex_mcp_runtime_dir)"; }
+
+# Collect the unique `--with <spec>` dependency specs across the selected
+# plugins' uv-launched MCP servers, one per line.
+codex_mcp_requirements() {
+  local cats; cats="$(mcp_categories)"
+  [[ -n "$cats" ]] || return 0
+  python3 - "$REPO_ROOT" $cats <<'PY'
+import json
+import sys
+from pathlib import Path
+
+repo_root = Path(sys.argv[1])
+seen: list[str] = []
+for cat in sys.argv[2:]:
+    spec = json.loads((repo_root / "plugins" / cat / ".mcp.json").read_text("utf-8"))
+    for server in spec.get("mcpServers", {}).values():
+        if server.get("command") != "uv":
+            continue
+        args = server.get("args", [])
+        for i, a in enumerate(args):
+            if a == "--with" and i + 1 < len(args) and args[i + 1] not in seen:
+                seen.append(args[i + 1])
+print("\n".join(seen))
+PY
+}
+
+# Provision the runtime venv and install the collected requirements into it.
+# Prints the interpreter path on success (so callers can point config at it),
+# or nothing if there is no uv server, or on failure — in which case the
+# generated blocks fall back to the original uv invocation.
+install_codex_mcp_runtime() {
+  local reqs; reqs="$(codex_mcp_requirements)"
+  [[ -n "${reqs//[[:space:]]/}" ]] || return 0  # no uv server; nothing to do
+
+  local venv; venv="$(codex_mcp_runtime_dir)"
+  local py; py="$(codex_mcp_runtime_python)"
+
+  if (( DRY_RUN )); then
+    printf '[dry-run] create MCP runtime venv %s and install: %s\n' \
+      "$venv" "$(printf '%s ' $reqs)" >&2
+    printf '%s\n' "$py"
+    return 0
+  fi
+
+  if [[ ! -x "$py" ]]; then
+    if ! python3 -m venv "$venv" >/dev/null 2>&1; then
+      printf '  WARN      could not create MCP runtime venv %s; ' "$venv" >&2
+      printf 'falling back to uv at runtime\n' >&2
+      return 0
+    fi
+  fi
+  # shellcheck disable=SC2086
+  if ! "$py" -m pip install --quiet --upgrade $reqs >/dev/null 2>&1; then
+    printf '  WARN      could not install MCP dependencies into %s; ' "$venv" >&2
+    printf 'falling back to uv at runtime\n' >&2
+    return 0
+  fi
+  printf '  runtime   MCP dependencies installed in %s\n' "$venv" >&2
+  printf '%s\n' "$py"
+}
+
 install_codex_mcp() {
   local config; config="$(codex_config_path)"
   local cats; cats="$(mcp_categories)"
@@ -264,10 +362,11 @@ install_codex_mcp() {
       "$config" >&2
     return 0
   fi
+  local runtime_python; runtime_python="$(install_codex_mcp_runtime)"
   local cat toml rest name skip
   while IFS= read -r cat; do
     [[ -n "$cat" ]] || continue
-    if ! toml="$(plugin_mcp_toml "$cat")"; then
+    if ! toml="$(plugin_mcp_toml "$cat" "$runtime_python")"; then
       printf '  WARN      failed to parse plugins/%s/.mcp.json (skipping)\n' "$cat" >&2
       continue
     fi
@@ -337,6 +436,17 @@ uninstall_codex_mcp() {
     fi
     printf '  removed   %s MCP servers from %s\n' "$cat" "$config"
   done < <(mcp_categories)
+
+  # Remove the install-time runtime venv we provisioned for these servers.
+  local venv; venv="$(codex_mcp_runtime_dir)"
+  if [[ -d "$venv" ]]; then
+    if (( DRY_RUN )); then
+      printf '[dry-run] remove MCP runtime venv %s\n' "$venv"
+    else
+      rm -rf "$venv"
+      printf '  removed   MCP runtime venv %s\n' "$venv"
+    fi
+  fi
 }
 
 # --- Codex custom agent registration ----------------------------------------
