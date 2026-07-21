@@ -204,6 +204,7 @@ Each entry: **when to reach for it**, then **mechanics** as an ordered checklist
 
 ## Related skills
 
+- **refactoring-checklist** — decides *whether/when/how-safely* to refactor a spotted smell (priority matrix, risk gate, small-steps protocol); this catalog supplies the mechanics once that skill says go. Use the two together.
 - **stepdown-rule** — decomposition inside a single function once its parts have the right names; complements Extract Function.
 - **analyze-cohesion** — decide *whether* a class or module should split at all before reaching for Extract Class / Combine Functions into Class.
 - **codebase-design** — the deep-module vocabulary for judging whether an Extract Function/Class result is actually a better seam, not just a smaller one.
