@@ -59,8 +59,13 @@ skills. `--target=codex` additionally:
   (`architecture-kb`, `refactoring-kb`) in `~/.codex/config.toml`,
   inside clearly marked blocks that `--uninstall` removes again.
   Existing `[mcp_servers.*]` entries you added yourself are never
-  touched. Like under Claude, the servers need
-  [`uv`](https://docs.astral.sh/uv/) at runtime.
+  touched. Unlike under Claude, the servers do **not** need
+  [`uv`](https://docs.astral.sh/uv/) at runtime: the installer resolves
+  their `mcp[cli]` dependency once into a runtime venv
+  (`~/.codex/agents-mcp-runtime`) and points the generated config at that
+  interpreter. So the tool start needs no uv cache writes and no PyPI
+  access — which is what lets the servers run under a restrictive Codex
+  sandbox. The venv is removed again on `--uninstall`.
 - converts each selected plugin's subagents (`coupling-analyst`,
   `cohesion-analyst`) into [Codex custom
   agents](https://developers.openai.com/codex/subagents) under

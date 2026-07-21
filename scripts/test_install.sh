@@ -188,6 +188,32 @@ for name in ("architecture-kb", "refactoring-kb"):
 PY
 pass "codex install registers MCP servers as valid TOML"
 
+# 15b. when the runtime venv is provisioned, the generated blocks launch its
+# interpreter on server.py directly (no uv, no PyPI at tool start). If the
+# venv could not be created (e.g. no network), the install falls back to the
+# original uv invocation — assert that instead so the test needs no network.
+RUNTIME_PY="$HOME_MCP/.codex/agents-mcp-runtime/bin/python"
+python3 - "$CONFIG" "$RUNTIME_PY" <<'PY' || fail "MCP runtime rewrite is inconsistent"
+import os, sys, tomllib
+config, runtime_py = sys.argv[1], sys.argv[2]
+with open(config, "rb") as f:
+    servers = tomllib.load(f)["mcp_servers"]
+have_venv = os.path.exists(runtime_py)
+for name in ("architecture-kb", "refactoring-kb"):
+    cmd, args = servers[name]["command"], servers[name]["args"]
+    if have_venv:
+        assert cmd == runtime_py, (name, cmd)
+        assert args and args[0].endswith("server.py"), (name, args)
+        assert "uv" not in cmd and not any("--with" in a for a in args), (name, args)
+    else:
+        assert cmd == "uv", (name, cmd)
+PY
+if [[ -x "$RUNTIME_PY" ]]; then
+  pass "runtime venv rewrites MCP blocks to its interpreter"
+else
+  pass "no runtime venv (offline): MCP blocks keep uv fallback"
+fi
+
 # 16. re-running leaves config.toml byte-identical.
 before="$(cat "$CONFIG")"
 HOME="$HOME_MCP" "$INSTALL" --target=codex >/dev/null
@@ -202,6 +228,8 @@ grep -Fxq '[mcp_servers.foreign]' "$CONFIG" \
 if grep -q 'mcp_servers\.\(architecture\|refactoring\)-kb' "$CONFIG"; then
   fail "uninstall left our MCP servers in config.toml"
 fi
+[[ -d "$HOME_MCP/.codex/agents-mcp-runtime" ]] \
+  && fail "uninstall left the MCP runtime venv behind"
 pass "codex uninstall removes only our MCP servers"
 
 # 18. a category without an .mcp.json registers no MCP servers.
