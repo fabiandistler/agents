@@ -204,15 +204,14 @@ mcp_categories() {
 # Render plugins/<category>/.mcp.json as Codex config.toml tables, with
 # ${CLAUDE_PLUGIN_ROOT} resolved to the plugin directory in this repo.
 #
-# $2 is the interpreter of the install-time runtime venv (see
-# install_codex_mcp_runtime). When non-empty, servers launched via
-# `uv run ... python <script>` are rewritten to invoke that interpreter on
-# <script> directly, so the tool start needs neither uv cache writes nor PyPI
-# access — the dependency was resolved once at install time. When empty (venv
-# unavailable), the original uv invocation is emitted unchanged.
+# $2 is the validated interpreter of the install-time runtime venv (see
+# install_codex_mcp_runtime). Servers launched via `uv run ... python
+# <script>` are rewritten to invoke that interpreter on <script> directly, so
+# the tool start needs neither uv cache writes nor PyPI access — the dependency
+# was resolved once at install time.
 plugin_mcp_toml() {
-  local plugin_dir="$REPO_ROOT/plugins/$1" runtime_python="${2:-}"
-  python3 - "$plugin_dir" "$runtime_python" <<'PY'
+  local plugin_dir="$REPO_ROOT/plugins/$1" runtime_python="${2:-}" render_python="${3:-$2}"
+  "$render_python" - "$plugin_dir" "$runtime_python" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -231,12 +230,12 @@ def resolve(command: str, args: list[str]) -> tuple[str, list[str]]:
     """Rewrite a `uv run ... python <script> [extra]` launch to run <script>
     with the install-time runtime interpreter, dropping the uv/dependency
     flags. Anything else is returned unchanged."""
-    if not runtime_python or command != "uv":
+    if command != "uv":
         return command, args
     for i, a in enumerate(args):
         if a in ("python", "python3") and i + 1 < len(args):
             return runtime_python, args[i + 1 :]
-    return command, args
+    raise ValueError("cannot resolve uv launch to a direct Python command")
 
 
 lines = []
@@ -293,12 +292,83 @@ strip_mcp_block() {
 codex_mcp_runtime_dir() { printf '%s/.codex/agents-mcp-runtime' "$HOME"; }
 codex_mcp_runtime_python() { printf '%s/bin/python' "$(codex_mcp_runtime_dir)"; }
 
+# Print the first usable Python interpreter in the documented preference
+# order. A name alone is not enough: installations often retain a python3
+# symlink to an unsupported interpreter after an OS upgrade.
+codex_mcp_python() {
+  local candidate version major minor
+  for candidate in python3 python3.13 python3.12 python3.11 python3.10; do
+    command -v "$candidate" >/dev/null 2>&1 || continue
+    version="$("$candidate" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null)" \
+      || continue
+    if [[ "$version" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+      major="${BASH_REMATCH[1]}"
+      minor="${BASH_REMATCH[2]}"
+      if (( major > 3 || (major == 3 && minor >= 10) )); then
+        command -v "$candidate"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+# A runtime is usable only when both the Python and mcp contracts hold. The
+# import check catches interrupted installs that still leave mcp dist-info
+# metadata behind.
+codex_mcp_runtime_valid() {
+  local py="$1" version major minor
+  [[ -x "$py" ]] || return 1
+  version="$("$py" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null)" \
+    || return 1
+  [[ "$version" =~ ^([0-9]+)\.([0-9]+)$ ]] || return 1
+  major="${BASH_REMATCH[1]}"
+  minor="${BASH_REMATCH[2]}"
+  (( major > 3 || (major == 3 && minor >= 10) )) || return 1
+  "$py" -c '
+from importlib.metadata import PackageNotFoundError, version
+import re
+
+try:
+    raw = version("mcp").strip().lower()
+except PackageNotFoundError:
+    raise SystemExit(1)
+
+# PEP 440 public-version parser used only for the >=1.2 threshold. It keeps
+# the runtime-valid contract independent of pip vendored modules.
+match = re.fullmatch(r"""
+    v?(?:(?P<epoch>\d+)!)?
+    (?P<release>\d+(?:\.\d+)*)
+    (?:(?P<pre_sep>[-_.]?)(?P<pre>alpha|beta|preview|pre|rc|c|a|b)[-_.]?(?P<pre_n>\d*))?
+    (?P<post>(?:[-_.]?(?:post|rev|r)[-_.]?\d*)|(?:-\d+))?
+    (?:(?P<dev_sep>[-_.]?)dev[-_.]?(?P<dev_n>\d*))?
+    (?:\+(?P<local>[a-z0-9]+(?:[-_.][a-z0-9]+)*))?
+""", raw, re.VERBOSE)
+if not match:
+    raise SystemExit(1)
+epoch = int(match.group("epoch") or 0)
+release = [int(part) for part in match.group("release").split(".")]
+while len(release) > 1 and release[-1] == 0:
+    release.pop()
+base = [1, 2]
+if epoch == 0 and release < base:
+    raise SystemExit(1)
+if epoch == 0 and release == base:
+    # A pre/dev release of the base version is older than 1.2. A post release
+    # remains newer even when it carries a following development segment.
+    if match.group("pre") or (match.group("dev_n") is not None and not match.group("post")):
+        raise SystemExit(1)
+import mcp.server.fastmcp
+' >/dev/null 2>&1
+}
+
 # Collect the unique `--with <spec>` dependency specs across the selected
 # plugins' uv-launched MCP servers, one per line.
 codex_mcp_requirements() {
+  local render_python="$1"
   local cats; cats="$(mcp_categories)"
   [[ -n "$cats" ]] || return 0
-  python3 - "$REPO_ROOT" $cats <<'PY'
+  "$render_python" - "$REPO_ROOT" $cats <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -319,59 +389,120 @@ PY
 }
 
 # Provision the runtime venv and install the collected requirements into it.
-# Prints the interpreter path on success (so callers can point config at it),
-# or nothing if there is no uv server, or on failure — in which case the
-# generated blocks fall back to the original uv invocation.
+# Prints the interpreter path only after validation. On failure it prints a
+# concrete warning and returns no interpreter, so callers can fail closed
+# rather than write a broken uv fallback into Codex's config.
 install_codex_mcp_runtime() {
-  local reqs; reqs="$(codex_mcp_requirements)"
-  [[ -n "${reqs//[[:space:]]/}" ]] || return 0  # no uv server; nothing to do
+  local cats; cats="$(mcp_categories)"
+  [[ -n "$cats" ]] || return 0
 
   local venv; venv="$(codex_mcp_runtime_dir)"
   local py; py="$(codex_mcp_runtime_python)"
+  local bootstrap_python reqs
 
   if (( DRY_RUN )); then
-    printf '[dry-run] create MCP runtime venv %s and install: %s\n' \
-      "$venv" "$(printf '%s ' $reqs)" >&2
+    if bootstrap_python="$(codex_mcp_python)"; then
+      reqs="$(codex_mcp_requirements "$bootstrap_python")"
+      printf '[dry-run] create MCP runtime venv %s with %s and install: %s\n' \
+        "$venv" "$bootstrap_python" "$(printf '%s ' $reqs)" >&2
+      printf '%s\n' "$py"
+    else
+      printf '  WARN      no Python >=3.10 found; MCP servers will not be registered\n' >&2
+    fi
+    return 0
+  fi
+
+  if codex_mcp_runtime_valid "$py"; then
+    printf '  runtime   reusing validated MCP runtime %s\n' "$venv" >&2
     printf '%s\n' "$py"
     return 0
   fi
 
-  if [[ ! -x "$py" ]]; then
-    if ! python3 -m venv "$venv" >/dev/null 2>&1; then
-      printf '  WARN      could not create MCP runtime venv %s; ' "$venv" >&2
-      printf 'falling back to uv at runtime\n' >&2
-      return 0
-    fi
+  if [[ -e "$venv" ]]; then
+    rm -rf "$venv"
+  fi
+  if ! bootstrap_python="$(codex_mcp_python)"; then
+    printf '  WARN      no compatible Python >=3.10 found; MCP servers were not registered\n' >&2
+    return 0
+  fi
+  reqs="$(codex_mcp_requirements "$bootstrap_python")"
+  [[ -n "${reqs//[[:space:]]/}" ]] || return 0  # no uv server; nothing to do
+  if ! "$bootstrap_python" -m venv "$venv" 1>&2; then
+    printf '  WARN      could not create MCP runtime venv %s with %s; MCP servers were not registered\n' \
+      "$venv" "$bootstrap_python" >&2
+    return 0
   fi
   # shellcheck disable=SC2086
-  if ! "$py" -m pip install --quiet --upgrade $reqs >/dev/null 2>&1; then
-    printf '  WARN      could not install MCP dependencies into %s; ' "$venv" >&2
-    printf 'falling back to uv at runtime\n' >&2
+  if ! "$py" -m pip install --quiet --upgrade $reqs 1>&2; then
+    printf '  WARN      could not install MCP dependencies into %s; MCP servers were not registered\n' \
+      "$venv" >&2
+    return 0
+  fi
+  if ! codex_mcp_runtime_valid "$py"; then
+    printf '  WARN      MCP runtime %s failed validation; MCP servers were not registered\n' \
+      "$venv" >&2
     return 0
   fi
   printf '  runtime   MCP dependencies installed in %s\n' "$venv" >&2
   printf '%s\n' "$py"
 }
 
+remove_codex_mcp_blocks() {
+  local config; config="$(codex_config_path)"
+  [[ -f "$config" ]] || return 0
+  local cat before after
+  while IFS= read -r cat; do
+    [[ -n "$cat" ]] || continue
+    before="$(cat "$config")"
+    if ! mcp_markers_balanced "$cat" <<< "$before"; then
+      printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
+        "$cat" "$config" >&2
+      continue
+    fi
+    after="$(strip_mcp_block "$cat" <<< "$before")"
+    [[ "$after" != "$before" ]] || continue
+    if (( DRY_RUN )); then
+      printf '[dry-run] remove %s MCP servers from %s\n' "$cat" "$config"
+      continue
+    fi
+    if [[ -n "$after" ]]; then
+      printf '%s\n' "$after" > "$config"
+    else
+      : > "$config"
+    fi
+    printf '  removed   %s MCP servers from %s\n' "$cat" "$config"
+  done < <(
+    if (( $# )); then
+      printf '%s\n' "$@"
+    else
+      mcp_categories
+    fi
+  )
+}
+
 install_codex_mcp() {
   local config; config="$(codex_config_path)"
   local cats; cats="$(mcp_categories)"
   [[ -n "$cats" ]] || return 0
-  if ! command -v python3 >/dev/null 2>&1; then
-    printf '  WARN      python3 not found; cannot register MCP servers in %s\n' \
-      "$config" >&2
+  local runtime_python; runtime_python="$(install_codex_mcp_runtime)"
+  if [[ -z "$runtime_python" ]]; then
+    remove_codex_mcp_blocks
     return 0
   fi
-  local runtime_python; runtime_python="$(install_codex_mcp_runtime)"
+  if (( DRY_RUN )); then
+    remove_codex_mcp_blocks
+    while IFS= read -r cat; do
+      [[ -n "$cat" ]] || continue
+      printf '[dry-run] register %s MCP servers in %s\n' "$cat" "$config"
+    done <<< "$cats"
+    return 0
+  fi
   local cat toml rest name skip
   while IFS= read -r cat; do
     [[ -n "$cat" ]] || continue
-    if ! toml="$(plugin_mcp_toml "$cat" "$runtime_python")"; then
-      printf '  WARN      failed to parse plugins/%s/.mcp.json (skipping)\n' "$cat" >&2
-      continue
-    fi
-    if (( DRY_RUN )); then
-      printf '[dry-run] register %s MCP servers in %s\n' "$cat" "$config"
+    if ! toml="$(plugin_mcp_toml "$cat" "$runtime_python" "$runtime_python")"; then
+      printf '  WARN      failed to render plugins/%s/.mcp.json; removing managed block\n' "$cat" >&2
+      remove_codex_mcp_blocks "$cat"
       continue
     fi
     mkdir -p "$(dirname "$config")"
@@ -412,30 +543,7 @@ install_codex_mcp() {
 }
 
 uninstall_codex_mcp() {
-  local config; config="$(codex_config_path)"
-  [[ -f "$config" ]] || return 0
-  local cat before after
-  while IFS= read -r cat; do
-    [[ -n "$cat" ]] || continue
-    before="$(cat "$config")"
-    if ! mcp_markers_balanced "$cat" <<< "$before"; then
-      printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
-        "$cat" "$config" >&2
-      continue
-    fi
-    after="$(strip_mcp_block "$cat" <<< "$before")"
-    [[ "$after" != "$before" ]] || continue
-    if (( DRY_RUN )); then
-      printf '[dry-run] remove %s MCP servers from %s\n' "$cat" "$config"
-      continue
-    fi
-    if [[ -n "$after" ]]; then
-      printf '%s\n' "$after" > "$config"
-    else
-      : > "$config"
-    fi
-    printf '  removed   %s MCP servers from %s\n' "$cat" "$config"
-  done < <(mcp_categories)
+  remove_codex_mcp_blocks
 
   # Remove the install-time runtime venv we provisioned for these servers.
   local venv; venv="$(codex_mcp_runtime_dir)"

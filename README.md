@@ -65,7 +65,13 @@ skills. `--target=codex` additionally:
   (`~/.codex/agents-mcp-runtime`) and points the generated config at that
   interpreter. So the tool start needs no uv cache writes and no PyPI
   access — which is what lets the servers run under a restrictive Codex
-  sandbox. The venv is removed again on `--uninstall`.
+  sandbox. This requires Python 3.10 or later. The installer checks the
+  available Python interpreters, repairs an incomplete or outdated runtime
+  automatically, and reuses a validated one without contacting PyPI. If it
+  cannot provision and validate that runtime, it writes no managed MCP block
+  (and removes only its previous managed block), rather than leaving a `uv`
+  fallback that would fail at tool start. The venv is removed again on
+  `--uninstall`.
 - converts each selected plugin's subagents (`coupling-analyst`,
   `cohesion-analyst`) into [Codex custom
   agents](https://developers.openai.com/codex/subagents) under
