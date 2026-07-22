@@ -229,48 +229,6 @@ Feedback:
 - Presenting risks without mitigations. Every risk should come with a plan.
 - Waiting too long. A risk communicated early is a planning input. A risk communicated late is a fire drill.
 
-## Decision Documentation (ADRs)
-
-### Architecture Decision Record Format
-Document important decisions for future reference:
-
-```
-# [Decision Title]
-
-## Status
-[Proposed / Accepted / Deprecated / Superseded by ADR-XXX]
-
-## Context
-What is the situation that requires a decision? What forces are at play?
-
-## Decision
-What did we decide? State the decision clearly and directly.
-
-## Consequences
-What are the implications of this decision?
-- Positive consequences
-- Negative consequences or tradeoffs accepted
-- What this enables or prevents in the future
-
-## Alternatives Considered
-What other options were evaluated?
-For each: what was it, why was it rejected?
-```
-
-### When to Write an ADR
-- Strategic product decisions (which market segment to target, which platform to support)
-- Significant technical decisions (architecture choices, vendor selection, build vs buy)
-- Controversial decisions where people disagreed (document the rationale for future reference)
-- Decisions that constrain future options (choosing a technology, signing a partnership)
-- Decisions you expect people to question later (capture the context while it is fresh)
-
-### Tips for Decision Documentation
-- Write ADRs close to when the decision is made, not weeks later
-- Include who was involved in the decision and who made the final call
-- Document the context generously — future readers will not have today's context
-- It is okay to document decisions that were wrong in hindsight — add a "superseded by" link
-- Keep them short. One page is better than five.
-
 ## Meeting Facilitation
 
 ### Stand-up / Daily Sync
