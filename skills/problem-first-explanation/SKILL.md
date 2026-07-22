@@ -60,7 +60,3 @@ If either is no, the structure is wrong — restart from step 1.
 - **Implementation-first.** Code dump followed by "this does Y." — readers can't parse code without a mental model.
 - **Solution before problem.** "Use the Strategy pattern when..." — when is a list, not a hook.
 - **Generic problem statement.** "Sometimes you need flexibility..." — too vague to anchor.
-
-
-
-

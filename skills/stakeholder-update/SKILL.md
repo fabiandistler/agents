@@ -10,12 +10,6 @@ argument-hint: "<update type and audience>"
 
 Generate a stakeholder update tailored to the audience and cadence.
 
-## Usage
-
-```
-/stakeholder-update $ARGUMENTS
-```
-
 ## Workflow
 
 ### 1. Determine Update Type
@@ -37,22 +31,22 @@ Ask who the update is for:
 
 ### 3. Pull Context from Connected Tools
 
-If **~~project tracker** is connected:
+If **project tracker** is connected:
 - Pull status of roadmap items and milestones
 - Identify completed items since last update
 - Surface items that are at risk or blocked
 - Pull sprint or iteration progress
 
-If **~~chat** is connected:
+If **chat** is connected:
 - Search for relevant team discussions and decisions
 - Find blockers or issues raised in channels
 - Identify key decisions made asynchronously
 
-If **~~meeting transcription** is connected:
+If **meeting transcription** is connected:
 - Pull recent meeting notes and discussion summaries
 - Find decisions and action items from relevant meetings
 
-If **~~knowledge base** is connected:
+If **knowledge base** is connected:
 - Search for recent meeting notes
 - Find decision documents or design reviews
 
@@ -66,7 +60,7 @@ If no tools are connected, ask the user to provide:
 
 Structure the update for the target audience using the templates and frameworks below.
 
-**For executives**: TL;DR, status color (G/Y/R), key progress tied to goals, decisions made, risks with mitigation, specific asks, and next milestones. Keep it under 300 words.
+**For executives**: TL;DR, status color (G/Y/R), key progress tied to goals, decisions made, risks with mitigation, specific asks, and next milestones. Keep it under 200 words.
 
 **For engineering**: What shipped (with links), what is in progress (with owners), blockers, decisions needed (with options and recommendation), and what is coming next.
 
@@ -81,7 +75,7 @@ Structure the update for the target audience using the templates and frameworks 
 After generating the update:
 - Ask if the user wants to adjust tone, detail level, or emphasis
 - Offer to format for the delivery channel (email, chat post, doc, slides)
-- If **~~chat** is connected, offer to draft the message for sending
+- If **chat** is connected, offer to draft the message for sending
 
 ## Update Templates by Audience
 
@@ -235,48 +229,6 @@ Feedback:
 - Presenting risks without mitigations. Every risk should come with a plan.
 - Waiting too long. A risk communicated early is a planning input. A risk communicated late is a fire drill.
 
-## Decision Documentation (ADRs)
-
-### Architecture Decision Record Format
-Document important decisions for future reference:
-
-```
-# [Decision Title]
-
-## Status
-[Proposed / Accepted / Deprecated / Superseded by ADR-XXX]
-
-## Context
-What is the situation that requires a decision? What forces are at play?
-
-## Decision
-What did we decide? State the decision clearly and directly.
-
-## Consequences
-What are the implications of this decision?
-- Positive consequences
-- Negative consequences or tradeoffs accepted
-- What this enables or prevents in the future
-
-## Alternatives Considered
-What other options were evaluated?
-For each: what was it, why was it rejected?
-```
-
-### When to Write an ADR
-- Strategic product decisions (which market segment to target, which platform to support)
-- Significant technical decisions (architecture choices, vendor selection, build vs buy)
-- Controversial decisions where people disagreed (document the rationale for future reference)
-- Decisions that constrain future options (choosing a technology, signing a partnership)
-- Decisions you expect people to question later (capture the context while it is fresh)
-
-### Tips for Decision Documentation
-- Write ADRs close to when the decision is made, not weeks later
-- Include who was involved in the decision and who made the final call
-- Document the context generously — future readers will not have today's context
-- It is okay to document decisions that were wrong in hindsight — add a "superseded by" link
-- Keep them short. One page is better than five.
-
 ## Meeting Facilitation
 
 ### Stand-up / Daily Sync
@@ -340,7 +292,7 @@ For each: what was it, why was it rejected?
 
 ## Output Format
 
-Keep updates scannable. Use bold for key points, bullets for lists. Executive updates should be under 300 words. Engineering updates can be longer but should still be structured for skimming.
+Keep updates scannable. Use bold for key points, bullets for lists. Executive updates should be under 200 words. Engineering updates can be longer but should still be structured for skimming.
 
 ## Tips
 
