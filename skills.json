@@ -287,6 +287,7 @@
       "summary": "Create new skills, modify and improve existing skills, and measure skill performance.",
       "category": "workflow",
       "path": "skills/skill-creator/SKILL.md",
+      "compatibility": "Claude Code, Claude.ai, Cowork, Codex CLI, OpenCode (trigger evals need the claude CLI; codex trigger support is experimental)",
       "environments": [
         "coding"
       ]

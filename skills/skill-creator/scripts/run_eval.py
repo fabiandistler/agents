@@ -1,29 +1,40 @@
 #!/usr/bin/env python3
 """Run trigger evaluation for a skill description.
 
-Tests whether a skill's description causes Claude to trigger (read the skill)
-for a set of queries. Outputs results as JSON.
+Tests whether a skill's description causes the agent to trigger (read the
+skill) for a set of queries. Outputs results as JSON.
 
-Note: this script is Claude Code-specific. It depends on the
-``--output-format stream-json`` protocol and the ``Skill`` / ``Read`` tool
-names that Claude Code emits in its event stream. Other CLI agents do not
-expose an equivalent tool-call event stream, so trigger detection cannot
-be ported behind ``$CODER_CLI``. The simpler prompt → text workflow used
-by ``improve_description.py`` does honour ``$CODER_CLI``.
+Backend support (``--backend``, default ``$CODER_CLI`` or ``claude``):
+
+- ``claude`` — fully supported. Depends on Claude Code's
+  ``--output-format stream-json`` protocol and the ``Skill`` / ``Read``
+  tool names it emits in its event stream.
+- ``codex`` — EXPERIMENTAL. Stages the skill in a throwaway project's
+  ``.agents/skills/`` directory and parses ``codex exec --json`` JSONL
+  events, counting the skill as triggered when a command-execution or
+  file-change item references the staged skill. The event schema is not a
+  stable contract and may drift across Codex releases.
+- ``opencode`` — not supported: opencode exposes no machine-readable
+  tool-call event stream to detect skill loading. Only the prompt → text
+  path used by ``improve_description.py`` honours ``CODER_CLI=opencode``.
 """
 
 import argparse
 import json
 import os
 import select
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 from scripts.utils import parse_skill_md
+
+TRIGGER_BACKENDS = ("claude", "codex")
 
 
 def find_project_root() -> Path:
@@ -46,8 +57,27 @@ def run_single_query(
     timeout: int,
     project_root: str,
     model: str | None = None,
+    backend: str = "claude",
 ) -> bool:
-    """Run a single query and return whether the skill was triggered.
+    """Run a single query and return whether the skill was triggered."""
+    if backend == "claude":
+        return _run_single_query_claude(
+            query, skill_name, skill_description, timeout, project_root, model
+        )
+    if backend == "codex":
+        return _run_single_query_codex(query, skill_name, skill_description, timeout, model)
+    raise ValueError(f"unsupported trigger-eval backend: {backend!r}")
+
+
+def _run_single_query_claude(
+    query: str,
+    skill_name: str,
+    skill_description: str,
+    timeout: int,
+    project_root: str,
+    model: str | None = None,
+) -> bool:
+    """Run a single query against Claude Code.
 
     Creates a command file in .claude/commands/ so it appears in Claude's
     available_skills list, then runs `claude -p` with the raw query.
@@ -192,6 +222,130 @@ def run_single_query(
             command_file.unlink()
 
 
+# Codex JSONL item types that count as "the agent acted on the skill" when
+# they reference the staged skill name. agent_message/reasoning items are
+# deliberately excluded: the model merely *mentioning* the skill is not a
+# trigger.
+_CODEX_ACTION_ITEM_TYPES = ("command_execution", "file_change", "mcp_tool_call")
+
+
+def _run_single_query_codex(
+    query: str,
+    skill_name: str,
+    skill_description: str,
+    timeout: int,
+    model: str | None = None,
+) -> bool:
+    """EXPERIMENTAL: run a single query against Codex CLI.
+
+    Stages a uniquely-named copy of the skill in a throwaway project's
+    ``.agents/skills/`` directory (a repo-scope skill location Codex scans),
+    then runs ``codex exec --json`` from that directory and watches the
+    JSONL event stream. The skill counts as triggered when a
+    command-execution, file-change, or MCP tool-call item references the
+    staged skill's unique name — i.e. the agent actually went and read or
+    used it. The real ``$CODEX_HOME`` is left untouched so auth still works.
+    """
+    unique_id = uuid.uuid4().hex[:8]
+    clean_name = f"{skill_name}-skill-{unique_id}"
+    workdir = Path(tempfile.mkdtemp(prefix="trigger-eval-codex-"))
+
+    try:
+        skill_dir = workdir / ".agents" / "skills" / clean_name
+        skill_dir.mkdir(parents=True)
+        indented_desc = "\n  ".join(skill_description.split("\n"))
+        (skill_dir / "SKILL.md").write_text(
+            f"---\n"
+            f"name: {clean_name}\n"
+            f"description: |\n"
+            f"  {indented_desc}\n"
+            f"---\n\n"
+            f"# {skill_name}\n\n"
+            f"This skill handles: {skill_description}\n"
+        )
+
+        cmd = [
+            "codex",
+            "exec",
+            "--json",
+            "--skip-git-repo-check",
+            "--cd",
+            str(workdir),
+        ]
+        if model:
+            cmd.extend(["--model", model])
+        cmd.append("-")
+
+        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
+        process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            cwd=str(workdir),
+            env=env,
+        )
+        process.stdin.write(query.encode("utf-8"))
+        process.stdin.close()
+
+        triggered = False
+        start_time = time.time()
+        buffer = ""
+        exited = False
+
+        try:
+            while time.time() - start_time < timeout:
+                if process.poll() is not None:
+                    # Drain everything still buffered in the pipe, then parse
+                    # it below before leaving the loop.
+                    remaining = process.stdout.read()
+                    if remaining:
+                        buffer += remaining.decode("utf-8", errors="replace")
+                    exited = True
+                else:
+                    ready, _, _ = select.select([process.stdout], [], [], 1.0)
+                    if ready:
+                        chunk = os.read(process.stdout.fileno(), 8192)
+                        if not chunk:
+                            exited = True
+                        else:
+                            buffer += chunk.decode("utf-8", errors="replace")
+
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    try:
+                        event = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+
+                    event_type = event.get("type", "")
+
+                    if event_type.startswith("item."):
+                        item = event.get("item", {})
+                        if item.get("type") in _CODEX_ACTION_ITEM_TYPES:
+                            if clean_name in json.dumps(item):
+                                return True
+
+                    elif event_type in ("turn.completed", "turn.failed", "error"):
+                        return triggered
+
+                if exited:
+                    break
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+
+        return triggered
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
 def run_eval(
     eval_set: list[dict],
     skill_name: str,
@@ -202,6 +356,7 @@ def run_eval(
     runs_per_query: int = 1,
     trigger_threshold: float = 0.5,
     model: str | None = None,
+    backend: str = "claude",
 ) -> dict:
     """Run the full eval set and return results."""
     results = []
@@ -218,6 +373,7 @@ def run_eval(
                     timeout,
                     str(project_root),
                     model,
+                    backend,
                 )
                 future_to_info[future] = (item, run_idx)
 
@@ -283,10 +439,28 @@ def main():
     parser.add_argument(
         "--model",
         default=None,
-        help="Model to use for claude -p (default: user's configured model)",
+        help="Model ID to pass to the backend CLI; must match the backend"
+        " (default: the CLI's configured model)",
+    )
+    parser.add_argument(
+        "--backend",
+        default=None,
+        help="Trigger-eval backend: claude (full support) or codex"
+        " (experimental). Defaults to $CODER_CLI, else claude.",
     )
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
+
+    backend = args.backend or os.environ.get("CODER_CLI", "claude")
+    if backend not in TRIGGER_BACKENDS:
+        hint = (
+            "trigger detection is not supported for opencode; only the"
+            " description-rewrite half honours CODER_CLI=opencode"
+            if backend == "opencode"
+            else f"supported: {', '.join(TRIGGER_BACKENDS)}"
+        )
+        print(f"Error: unsupported trigger-eval backend {backend!r} ({hint})", file=sys.stderr)
+        sys.exit(1)
 
     eval_set = json.loads(Path(args.eval_set).read_text())
     skill_path = Path(args.skill_path)
@@ -300,7 +474,7 @@ def main():
     project_root = find_project_root()
 
     if args.verbose:
-        print(f"Evaluating: {description}", file=sys.stderr)
+        print(f"Evaluating ({backend}): {description}", file=sys.stderr)
 
     output = run_eval(
         eval_set=eval_set,
@@ -312,6 +486,7 @@ def main():
         runs_per_query=args.runs_per_query,
         trigger_threshold=args.trigger_threshold,
         model=args.model,
+        backend=backend,
     )
 
     if args.verbose:

@@ -190,11 +190,34 @@ pass "uninstall removes our symlinks only"
 # 6. install --target=all populates all three roots.
 HOME_A="$(mktemp -d)"
 HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
-for sub in ".claude/skills" ".codex/skills" ".config/opencode/agent"; do
+for sub in ".claude/skills" ".codex/skills" ".config/opencode/skills"; do
   got="$(count_links "$HOME_A/$sub")"
   [[ "$got" -eq "$EXPECTED" ]] || fail "all install: $sub has $got links, expected $EXPECTED"
 done
 pass "all install populates claude, codex, opencode"
+
+# 6b. opencode install migrates our symlinks out of the legacy agent dir
+# (~/.config/opencode/agent) while preserving foreign entries there.
+HOME_OC="$(mktemp -d)"
+legacy_dir="$HOME_OC/.config/opencode/agent"
+mkdir -p "$legacy_dir"
+first_skill=""
+for d in "$REPO_ROOT"/skills/*/; do
+  [[ -f "$d/SKILL.md" ]] || continue
+  first_skill="$(basename "$d")"
+  break
+done
+[[ -n "$first_skill" ]] || fail "no skill found for legacy migration test"
+ln -s "$REPO_ROOT/skills/$first_skill" "$legacy_dir/$first_skill"
+foreign_agent_src="$(mktemp -d)/foreign-agent"
+mkdir "$foreign_agent_src"
+ln -s "$foreign_agent_src" "$legacy_dir/foreign-agent"
+HOME="$HOME_OC" "$INSTALL" --target=opencode >/dev/null
+[[ ! -L "$legacy_dir/$first_skill" ]] || fail "legacy opencode symlink for $first_skill not migrated"
+[[ -L "$legacy_dir/foreign-agent" ]] || fail "legacy cleanup removed a foreign symlink"
+got="$(count_links "$HOME_OC/.config/opencode/skills")"
+[[ "$got" -eq "$EXPECTED" ]] || fail "opencode install: expected $EXPECTED links, got $got"
+pass "opencode install links skills/ and cleans the legacy agent dir"
 
 # 7. --env=chat links only the chat subset (non-empty, strictly fewer than all).
 CHAT_EXPECTED="$(skill_count chat)"

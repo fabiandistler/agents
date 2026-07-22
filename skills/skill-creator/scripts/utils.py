@@ -14,10 +14,13 @@ from pathlib import Path
 #   - read its prompt from stdin,
 #   - write the model's text response to stdout,
 #   - exit 0 on success.
-# Add new backends here; downstream callers don't need to change.
+# `codex exec` prints only the final agent message to stdout (progress goes to
+# stderr) and needs --skip-git-repo-check because callers may run outside a
+# git repository. Add new backends here; downstream callers don't need to
+# change.
 _CODER_CLI_BACKENDS: dict[str, list[str]] = {
     "claude": ["claude", "-p", "--output-format", "text"],
-    "codex": ["codex", "exec", "--quiet", "-"],
+    "codex": ["codex", "exec", "--skip-git-repo-check", "-"],
     "opencode": ["opencode", "run", "-"],
 }
 
@@ -32,6 +35,11 @@ def coder_cli_invoke(
     Backend is selected by $CODER_CLI (default: ``claude``). The prompt is
     fed on stdin so it can embed arbitrarily large content (e.g. a whole
     SKILL.md body) without hitting argv limits.
+
+    ``model`` is passed through as ``--model`` (all backends accept it), but
+    the ID format differs per backend: ``claude-*`` IDs for claude, Codex
+    model names (e.g. ``gpt-*``) for codex, and ``provider/model`` for
+    opencode.
 
     Raises FileNotFoundError if the configured CLI is not on $PATH, with a
     message naming both the backend and the binary it tried to launch.

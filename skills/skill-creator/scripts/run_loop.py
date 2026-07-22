@@ -4,10 +4,16 @@
 Combines run_eval.py and improve_description.py in a loop, tracking history
 and returning the best description found. Supports train/test split to prevent
 overfitting.
+
+The trigger-eval backend is selected via ``--backend`` (default ``$CODER_CLI``,
+else ``claude``); ``codex`` support is experimental and ``opencode`` is not
+supported (see run_eval.py). ``--model`` must be a model ID the chosen
+backend understands.
 """
 
 import argparse
 import json
+import os
 import random
 import sys
 import tempfile
@@ -17,7 +23,7 @@ from pathlib import Path
 
 from scripts.generate_report import generate_html
 from scripts.improve_description import improve_description
-from scripts.run_eval import find_project_root, run_eval
+from scripts.run_eval import TRIGGER_BACKENDS, find_project_root, run_eval
 from scripts.utils import parse_skill_md
 
 
@@ -60,6 +66,7 @@ def run_loop(
     verbose: bool,
     live_report_path: Path | None = None,
     log_dir: Path | None = None,
+    backend: str = "claude",
 ) -> dict:
     """Run the eval + improvement loop."""
     project_root = find_project_root()
@@ -101,6 +108,7 @@ def run_loop(
             runs_per_query=runs_per_query,
             trigger_threshold=trigger_threshold,
             model=model,
+            backend=backend,
         )
         eval_elapsed = time.time() - t0
 
@@ -284,7 +292,18 @@ def main():
         default=0.4,
         help="Fraction of eval set to hold out for testing (0 to disable)",
     )
-    parser.add_argument("--model", required=True, help="Model for improvement")
+    parser.add_argument(
+        "--model",
+        required=True,
+        help="Model ID for eval and improvement; must match the chosen backend",
+    )
+    parser.add_argument(
+        "--backend",
+        default=None,
+        help="Backend CLI for trigger evals and the improvement prompt:"
+        " claude (full support) or codex (experimental)."
+        " Defaults to $CODER_CLI, else claude.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     parser.add_argument(
         "--report",
@@ -297,6 +316,20 @@ def main():
         help="Save all outputs (results.json, report.html, log.txt) to a timestamped subdirectory here",
     )
     args = parser.parse_args()
+
+    backend = args.backend or os.environ.get("CODER_CLI", "claude")
+    if backend not in TRIGGER_BACKENDS:
+        hint = (
+            "trigger detection is not supported for opencode; only"
+            " improve_description.py honours CODER_CLI=opencode"
+            if backend == "opencode"
+            else f"supported: {', '.join(TRIGGER_BACKENDS)}"
+        )
+        print(f"Error: unsupported backend {backend!r} ({hint})", file=sys.stderr)
+        sys.exit(1)
+    # Keep the improve half (improve_description reads $CODER_CLI) on the
+    # same backend as the eval half.
+    os.environ["CODER_CLI"] = backend
 
     eval_set = json.loads(Path(args.eval_set).read_text())
     skill_path = Path(args.skill_path)
@@ -349,6 +382,7 @@ def main():
         verbose=args.verbose,
         live_report_path=live_report_path,
         log_dir=log_dir,
+        backend=backend,
     )
 
     # Save JSON output
