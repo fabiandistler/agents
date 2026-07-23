@@ -5,7 +5,7 @@
 # Usage:
 #   ./install.sh --target=claude              # ~/.claude/skills/<skill>
 #   ./install.sh --target=codex               # ~/.codex/skills/<skill>
-#   ./install.sh --target=opencode            # ~/.config/opencode/agent/<skill>
+#   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
 #   ./install.sh --target=all --dry-run       # show what would happen
 #   ./install.sh --target=all --uninstall     # remove symlinks owned by us
@@ -106,7 +106,7 @@ target_dir_for() {
   case "$1" in
     claude)   printf '%s/.claude/skills\n'        "$HOME" ;;
     codex)    printf '%s/.codex/skills\n'         "$HOME" ;;
-    opencode) printf '%s/.config/opencode/agent\n' "$HOME" ;;
+    opencode) printf '%s/.config/opencode/skills\n' "$HOME" ;;
     *) echo "unknown target: $1" >&2; return 1 ;;
   esac
 }
@@ -754,6 +754,25 @@ unlink_one() {
   printf '  removed   %s\n' "$dest"
 }
 
+# Earlier versions linked skills into OpenCode's agent directory
+# (~/.config/opencode/agent), where the skill loader never looks. Remove any
+# of our leftover symlinks from there — on install (migration) and uninstall
+# alike. Symlinks not pointing into this repo are left untouched.
+cleanup_opencode_legacy() {
+  local skills="$1"
+  local legacy_dir="$HOME/.config/opencode/agent"
+  [[ -d "$legacy_dir" ]] || return 0
+  while IFS= read -r skill; do
+    [[ -z "$skill" ]] && continue
+    local src="$REPO_ROOT/skills/$skill"
+    local dest="$legacy_dir/$skill"
+    [[ -L "$dest" ]] || continue
+    [[ "$(readlink "$dest")" == "$src" ]] || continue
+    run rm "$dest"
+    printf '  removed   %s (legacy opencode location)\n' "$dest"
+  done <<< "$skills"
+}
+
 main() {
   local skills; skills="$(list_skills)"
   if [[ -z "$skills" ]]; then
@@ -787,6 +806,9 @@ main() {
         install_codex_mcp
         install_codex_agents
       fi
+    fi
+    if [[ "$target" == "opencode" ]]; then
+      cleanup_opencode_legacy "$skills"
     fi
   done < <(resolve_targets)
 }

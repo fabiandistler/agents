@@ -44,7 +44,7 @@ Symlink the skills into your agent's conventional skill directory:
 ```sh
 ./install.sh --target=claude    # ~/.claude/skills/
 ./install.sh --target=codex     # ~/.codex/skills/
-./install.sh --target=opencode  # ~/.config/opencode/agent/
+./install.sh --target=opencode  # ~/.config/opencode/skills/
 ./install.sh --target=all
 ./install.sh --uninstall --target=all
 ```
