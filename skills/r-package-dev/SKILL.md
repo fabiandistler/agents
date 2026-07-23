@@ -2,8 +2,8 @@
 name: r-package-dev
 category: r-development
 environments: coding
-description: Design and develop R packages. Use this when building or refactoring R packages, including package-private state and persistence, loading/attaching behavior, lifecycle staging and deprecation, interface-focused testing with reliable fixtures, and the single-function development workflow from interface design to docs.
-compatibility: Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required. Diagram generation uses DiagrammeR if installed.
+description: R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and API deprecation, and interface-focused testing with fixtures. Use when building or refactoring the internals of an R package. Does not cover project scaffolding (DESCRIPTION/NAMESPACE/pkgdown/CI); for the general deep-module and interface-first design workflow see codebase-design, for custom error/condition constructors see r-error-constructors, and for architecture diagrams see c4-modeling.
+compatibility: Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required.
 metadata:
   version: "1.0"
 ---
@@ -30,7 +30,6 @@ Core principles (from the notes)
 - Never call library() in package code; avoid search path pollution. Prefer Imports and namespace qualification.
 - Test interfaces and behavior, not internals. Use testthat with clear Arrange–Act–Assert and snapshots for messages.
 - Favor deep modules: maximize internal functionality while keeping user-facing surface minimal and stable.
-- Document architecture with lightweight C4 diagrams when helpful.
 
 Workflow A — Session-scoped state (package-private environment)
 1) Define a top-level environment
@@ -104,6 +103,7 @@ Testing strategy (interface-focused)
 - Use withr/local_tempdir() and fs helpers to isolate filesystem effects; clean up after tests.
 - Skip conditions for environment-specific tests (skip_on_cran(), skip_if_not_installed()).
 - Coverage with covr; treat tests as executable documentation.
+- For testing raised errors/conditions specifically — class-based expect_error(class = ...) and constructor snapshot tests — see the r-error-constructors skill; this section covers the general testthat/fixture strategy.
 
 Test fixtures and snapshot decisions
 - Capture expected results with dput() during development, save to a fixture file, and reload with dget() in the test; dput()/dget() round-trip a full R object (attributes, classes, factor levels) as readable, diffable source, so fixture changes show up as clear code review diffs.
@@ -117,27 +117,15 @@ Test fixtures and snapshot decisions
   - A snapshot failure only shows that something changed, not what or why — keep snapshots narrow (one message or object per snapshot) so the diff stays readable.
 - Test value over coverage: a test earns its keep by documenting intended behavior, catching a realistic failure mode, or unblocking safe refactoring — not by moving a coverage percentage. Prioritize exported functions, then internal functions with complex logic, then known error-prone edge cases; trivial getters/setters, pure delegation, and generated code can stay untested.
 
-Architecture sketch (C4-lite, optional)
-- Context/Container-level diagrams help communicate boundaries: R code (R/), docs (man/), tests (tests/), data (data/).
-- Generate simple diagrams with DiagrammeR for reproducible docs.
-- See assets/c4-context-diagram.R for a tiny example.
+Architecture diagrams
+- To communicate package boundaries visually (R/, man/, tests/, data/), use the c4-modeling skill (Mermaid-first, renders on GitHub) rather than a bespoke diagram here.
 
-Workflow C — Single-function development cycle
-1) Problem and interface design
-- Clarify the core problem and the 80/20 use case: what inputs are needed, what output is expected.
-- Design the interface first — parameters, types, sensible defaults — before writing the body.
-2) Implementation: make it work, then clear, then fast
-- Make it work: implement the core logic against the interface from step 1.
-- Make it clear: refactor for readability; prefer vectorized/functional style over explicit loops.
-- Make it fast: optimize for the 80/20 case only after correctness and clarity are settled (e.g. vectorization, data.table for internals).
-3) Interface-focused tests
-- Write tests against the public interface and observable behavior, not internal helpers (see Testing strategy above); this is what keeps tests stable across refactors.
-4) Validation
-- Measure performance for the 80/20 case with microbenchmark or profile with profvis; confirm the function's benefits (functionality, speed) outweigh its interface cost.
-- Sanity-check that a caller can reason about the function's behavior from its interface alone, without needing the internals.
-5) Docs and review
-- Document with roxygen2 (purpose, params, return value, @examples); code-review the result for design, complexity, and documentation quality.
-- Note any non-obvious design trade-offs (e.g. why a particular internal implementation was chosen).
+Single-function development cycle (R-specific notes)
+- The general workflow — clarify the 80/20 problem, design the interface first, then make it work → clear → fast, and test against the interface rather than internals — is the deep-module discipline covered by codebase-design; follow that and don't re-derive it here.
+- R-specific pieces to layer on top:
+  - Docs: roxygen2 (purpose, @param, @return, @examples). Keep the exported surface small and stable.
+  - Performance: only after correctness and clarity, measure the 80/20 case with microbenchmark or profile with profvis; reach for data.table in internals when it pays off.
+  - Tests: interface-focused testthat, per the Testing strategy above.
 
 Checklists
 - State (env)
@@ -163,7 +151,6 @@ Checklists
   - Deprecated functions/arguments warn via deprecate_warn() or deprecate_soft() and point to an alternative
 - Docs
   - roxygen docs with examples
-  - Optional C4 diagram to explain boundaries
 
 Common edge cases
 - Older R (< 4.0): use rappdirs; document paths differ.
@@ -176,6 +163,5 @@ References and scripts
 - Code samples:
   - assets/example-state.R
   - assets/example-persistence.R
-  - assets/c4-context-diagram.R
 - Cleanup script:
   - scripts/clean-user-data.R

@@ -158,7 +158,7 @@ A skill without an `environments` field belongs to every environment.
 | Skill | When to use |
 |---|---|
 | `skills/r-error-constructors/` | Recurring R error (3+ sites): build a stop_* constructor with class hierarchy, conditionMessage(), and class-based tests. |
-| `skills/r-package-dev/` | Designing or refactoring R packages (data.table, roxygen2, testthat). |
+| `skills/r-package-dev/` | Building or refactoring R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and deprecation, interface-focused testing. |
 
 ### AI & ML (`ai-ml`)
 

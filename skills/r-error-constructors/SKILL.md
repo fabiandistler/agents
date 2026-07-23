@@ -150,7 +150,9 @@ model. A single constructor with no `class` parameter is the right default.
 
 Robust testing separates **constructor tests** (does the error look right?)
 from **usage tests** (does calling code raise the right error?). Conflating
-them tends to produce fragile, string-matching tests.
+them tends to produce fragile, string-matching tests. (For the general
+testthat/fixture/snapshot strategy beyond error conditions, see the
+r-package-dev skill; this section covers only error-condition testing.)
 
 ### Constructor tests — regression via snapshot tests
 
