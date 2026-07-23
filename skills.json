@@ -11,6 +11,16 @@
       ]
     },
     {
+      "name": "architecture",
+      "summary": "Any software architecture or design question — ADRs, DDD, C4 diagrams, coupling/cohesion analysis, microservices, component design, fitness functions, SQL schema design.",
+      "category": "architecture",
+      "path": "skills/architecture/SKILL.md",
+      "activation": "router",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "architecture-pattern-advisor",
       "summary": "Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion).",
       "category": "architecture",

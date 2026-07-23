@@ -37,8 +37,13 @@ ALLOWLIST = frozenset({"architecture-pattern-advisor", "tdd"})
 AUTO_TOTAL_BUDGET = 10_000
 
 
-def budget_for(name: str) -> int:
-    return ALLOWLIST_BUDGET if name in ALLOWLIST else DEFAULT_BUDGET
+def budget_for(name: str, activation: str) -> int:
+    # Router descriptions are the sole trigger surface for a whole category and
+    # are deliberately broad, so they get the wider budget. They do not count
+    # toward the auto aggregate (see main): they replace, not add to, it.
+    if activation == "router" or name in ALLOWLIST:
+        return ALLOWLIST_BUDGET
+    return DEFAULT_BUDGET
 
 
 def main() -> int:
@@ -55,7 +60,7 @@ def main() -> int:
             continue
         activation = fm.get("activation", "auto")
         length = len(description)
-        budget = budget_for(name)
+        budget = budget_for(name, activation)
         if length > budget:
             errors.append(
                 f"{name}: description is {length} chars (budget {budget})."

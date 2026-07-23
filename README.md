@@ -125,6 +125,14 @@ A skill without an `environments` field belongs to every environment.
 
 ## Skill catalogue
 
+Some categories ship a **router** skill (`activation: router`, named after the
+category) as their single registered entry point: a broad-description skill
+whose body routes to the specific sub-skill to read before acting. The
+sub-skills nest under the router's `members/` directory and load only when
+routed to, so the category adds one trigger entry instead of many. The router
+body is generated from `skills.json` by `scripts/build_routers.py`. Every
+sub-skill is still listed individually below.
+
 ### Architecture & design (`architecture`)
 
 | Skill | When to use |

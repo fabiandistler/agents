@@ -132,6 +132,30 @@ skill_is_command() {
   grep -Eq '^activation:[[:space:]]*command[[:space:]]*$' "$1/SKILL.md" 2>/dev/null
 }
 
+# True if a skill is a per-category router (activation: router).
+skill_is_router() {
+  grep -Eq '^activation:[[:space:]]*router[[:space:]]*$' "$1/SKILL.md" 2>/dev/null
+}
+
+skill_dir_category() {
+  grep -m1 '^category:' "$1/SKILL.md" 2>/dev/null | sed 's/^category://;s/[[:space:]]//g'
+}
+
+# Space-padded list of categories that ship a router skill.
+ROUTED_CATEGORIES=" "
+for _d in "$REPO_ROOT"/skills/*/; do
+  [[ -f "$_d/SKILL.md" ]] || continue
+  skill_is_router "$_d" && ROUTED_CATEGORIES+="$(skill_dir_category "$_d") "
+done
+
+# True if a skill is an auto member nested under a router (not linked at top
+# level): a non-router, non-command skill whose category is routed.
+skill_is_nested_member() {
+  skill_is_router "$1" && return 1
+  skill_is_command "$1" && return 1
+  [[ "$ROUTED_CATEGORIES" == *" $(skill_dir_category "$1") "* ]]
+}
+
 skill_count() {
   # Count auto-triggered skills (those linked into the skills dir), optionally
   # filtered by environment ($1 = coding|chat|all).
@@ -139,6 +163,8 @@ skill_count() {
   for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] || continue
     skill_is_command "$d" && continue
+    # Nested members ride under their router, so they are not linked flat.
+    skill_is_nested_member "$d" && continue
     if [[ "$want" != "all" ]]; then
       local envs
       envs="$(grep -m1 '^environments:' "$d/SKILL.md" 2>/dev/null | sed 's/^environments://')"
@@ -308,6 +334,8 @@ category_count() {
   local want="$1" n=0
   for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] || continue
+    skill_is_command "$d" && continue
+    skill_is_nested_member "$d" && continue
     local cat
     cat="$(grep -m1 '^category:' "$d/SKILL.md" 2>/dev/null | sed 's/^category://')"
     cat="${cat//[[:space:]]/}"
@@ -702,5 +730,27 @@ dry_output="$(HOME="$HOME_DRY_MCP" "$INSTALL" --target=codex --category=architec
 [[ "$dry_output" == *"register architecture MCP servers"* ]] \
   || fail "dry-run did not plan MCP registration"
 pass "dry-run plans runtime replacement without changing config"
+
+# 36. A routed category links only its router at top level; the auto members
+#     ride nested under the router's members/ dir (readable, not registered),
+#     and none of them leak into the skills directory.
+HOME_ROUTED="$(mktemp -d)"
+HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture >/dev/null
+ROUTED_SKILLS="$HOME_ROUTED/.claude/skills"
+[[ -L "$ROUTED_SKILLS/architecture" ]] || fail "router 'architecture' not linked"
+[[ -f "$ROUTED_SKILLS/architecture/SKILL.md" ]] || fail "router SKILL.md not readable"
+[[ "$(count_links "$ROUTED_SKILLS")" -eq 1 ]] \
+  || fail "routed category linked more than the router at top level"
+# A representative member resolves through the router's members/ dir ...
+[[ -f "$ROUTED_SKILLS/architecture/members/coupling-cohesion/SKILL.md" ]] \
+  || fail "nested member coupling-cohesion not readable via the router"
+# ... but is never registered as its own top-level skill.
+for member in adr-workflow coupling-cohesion ddd sql-schema-design; do
+  [[ ! -e "$ROUTED_SKILLS/$member" ]] \
+    || fail "routed member $member leaked into the skills directory"
+done
+HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture --uninstall >/dev/null
+[[ ! -e "$ROUTED_SKILLS/architecture" ]] || fail "uninstall left the router behind"
+pass "routed category registers only its router; members ride nested"
 
 echo "all install.sh tests passed"

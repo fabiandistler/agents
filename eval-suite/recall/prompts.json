@@ -1,0 +1,30 @@
+{
+  "description": "Trigger-recall probes: realistic user requests labelled with the skill that should handle each. Used to A/B flat vs. routed skill menus (see check_recall.py). Keep expected names in sync with skills.json.",
+  "prompts": [
+    { "prompt": "We keep re-litigating past architecture decisions. Set up a durable record of the important ones in this repo.", "expected": "adr-workflow" },
+    { "prompt": "I'm starting a new service and can't decide between a modular monolith and microservices, or how to organize the code inside it.", "expected": "architecture-pattern-advisor" },
+    { "prompt": "Can you help me sketch a C4 diagram of our system — context and container views — and render it as Mermaid?", "expected": "c4-modeling" },
+    { "prompt": "What vocabulary should I use to reason about whether a module is 'deep' or 'shallow' as I design it?", "expected": "codebase-design" },
+    { "prompt": "This codebase feels tangled. Measure the coupling and cohesion — instability, abstractness, LCOM — and tell me which modules are in the zone of pain.", "expected": "coupling-cohesion" },
+    { "prompt": "Help me do domain-driven design: classify our subdomains, map bounded contexts, and get the aggregate and value-object conventions right in code.", "expected": "ddd" },
+    { "prompt": "I want automated CI checks that fail the build when someone violates our layering rules or introduces a dependency cycle.", "expected": "fitness-functions" },
+    { "prompt": "Decompose this new feature into named logical components without falling into the entity-trap.", "expected": "logical-component-design" },
+    { "prompt": "Review how our microservices talk to each other — boundaries, contract versioning, sagas, circuit breakers.", "expected": "microservices-design" },
+    { "prompt": "Design the SQL schema for this feature and help me think about partitioning and query patterns.", "expected": "sql-schema-design" },
+
+    { "prompt": "I spotted a long method with duplicated branches. Should I refactor it, and which Fowler technique applies?", "expected": "refactoring" },
+    { "prompt": "Rewrite these functions so the file reads top-down, one level of abstraction per function.", "expected": "stepdown-rule" },
+    { "prompt": "Let's build this feature test-first — write the failing test before the implementation.", "expected": "tdd" },
+    { "prompt": "This migration is risky and I can't foresee all the impact. How do I stage the rollout safely?", "expected": "uncertainty-management" },
+
+    { "prompt": "Help me wire up an LLM application — prompt structure, tool calling, evals for the agent.", "expected": "llm-application-engineering" },
+    { "prompt": "Walk me through the lifecycle of an ML project from framing to deployment and monitoring.", "expected": "ml-project-lifecycle" },
+
+    { "prompt": "Turn our messy internal style notes into a distilled, enforceable set of coding guidelines.", "expected": "guideline-distillation" },
+    { "prompt": "I want to quickly throw together a throwaway prototype to validate this idea.", "expected": "prototype" },
+    { "prompt": "Help me author a new Claude skill for this repo, with the right frontmatter and structure.", "expected": "skill-creator" },
+
+    { "prompt": "Write me a small stdlib-only constructor for structured R error conditions.", "expected": "r-error-constructors" },
+    { "prompt": "Set up a proper R package with the right structure, state handling, and tests.", "expected": "r-package-dev" }
+  ]
+}

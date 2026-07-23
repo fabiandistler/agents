@@ -36,8 +36,11 @@ CATEGORIES = (
 # How a skill is surfaced. `auto` (default): model-triggered; its description
 # participates in the auto-trigger budget. `command`: user-invoked only;
 # install.sh routes it to each target's command/prompt directory instead of
-# the skills directory, keeping it out of the auto-trigger metadata.
-ACTIVATIONS = ("auto", "command")
+# the skills directory, keeping it out of the auto-trigger metadata. `router`:
+# a per-category entry skill (named after its category) that is the only
+# member of the category registered at top level; its `members/` subdir nests
+# the category's auto skills, which load lazily when the router routes to them.
+ACTIVATIONS = ("auto", "command", "router")
 
 
 def find_skill_files() -> list[Path]:
