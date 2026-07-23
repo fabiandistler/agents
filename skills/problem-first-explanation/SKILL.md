@@ -2,7 +2,7 @@
 name: problem-first-explanation
 category: communication
 environments: coding, chat
-description: Output-form skill for technical explanations. Forces every explanation to start with the concrete problem the concept solves, before introducing the abstract solution or implementation. Use when writing documentation, README files, tutorials, code comments, design rationale, ADR motivation sections, or when the user asks Claude to "explain X". Triggers on "explain", "document", "tutorial", "README", "what is X", "why does X exist".
+description: Output-form skill for technical explanations — forces every explanation to start with the concrete problem the concept solves, before the abstract solution or implementation. For docs, READMEs, tutorials, ADR motivation, or any "explain X".
 ---
 
 # Problem-First Explanation

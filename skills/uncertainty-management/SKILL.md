@@ -2,7 +2,7 @@
 name: uncertainty-management
 category: refactoring
 environments: coding
-description: Manage risky, hard-to-predict changes by decomposing them into small validated steps, checkpointing before each one, and rolling back on trouble. Use whenever a change is risky, its full impact cannot be foreseen in advance, or the user is planning a migration, refactor, deployment, rollout, or any other change where "what could go wrong" matters — even if they do not name a specific pattern like canary or feature flag.
+description: Manage risky, hard-to-predict changes by decomposing them into small validated steps, checkpointing before each one, and rolling back on trouble.
 metadata:
   version: "1.0"
 ---
@@ -12,6 +12,10 @@ metadata:
 Some changes cannot be fully understood in advance — the effects only become clear once the change is partially made. The temptation is to try to anticipate every scenario up front. That does not scale: real systems (codebases, deployments, data pipelines, personal routines) are too complex to model exhaustively before acting.
 
 This skill encodes the alternative: **accept the uncertainty and build a safety net instead of trying to eliminate it.** Decompose the change, checkpoint before each step, validate after each step, and roll back the moment something looks wrong. The point is not to avoid risk — it is to bound how much of it any single step can cost, and to turn each step into a source of information for the next one.
+
+## When to use
+
+Whenever a change is risky, its full impact cannot be foreseen in advance, or the user is planning a migration, refactor, deployment, rollout, or any other change where "what could go wrong" matters — even without naming a specific pattern like canary or feature flag.
 
 ## Core principle
 

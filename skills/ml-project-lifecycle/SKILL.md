@@ -2,7 +2,7 @@
 name: ml-project-lifecycle
 category: ai-ml
 environments: coding
-description: Guide a machine learning project from problem framing through model selection to production deployment — use it whenever someone is scoping an ML project, picking a model architecture, deciding how to handle missing data, evaluating whether a model is good enough to ship, designing a feature-engineering pipeline, or planning how to deploy and retrain a model in production. It bundles a business-objectives-first checklist, a five-baseline deployment gate, a missing-values (MCAR/MAR/MNAR) taxonomy, a data-type-to-model decision table, and a staged rollout checklist.
+description: Guide a machine learning project from problem framing through model selection to production deployment.
 metadata:
   version: "1.0"
 ---
@@ -10,6 +10,10 @@ metadata:
 # ML Project Lifecycle
 
 A machine learning project fails or succeeds long before anyone tunes a hyperparameter. This skill bundles three checkpoints from the lifecycle where that failure is most often locked in early and invisibly: framing the problem, choosing the model, and shipping it safely. Use it as a gate to pass through, not a menu to skim — each part below exists because skipping it produces a specific, recognizable failure mode.
+
+## When to use
+
+Whenever someone is scoping an ML project, picking a model architecture, deciding how to handle missing data, evaluating whether a model is good enough to ship, designing a feature-engineering pipeline, or planning how to deploy and retrain a model in production. Bundles a business-objectives-first checklist, a five-baseline deployment gate, a missing-values (MCAR/MAR/MNAR) taxonomy, a data-type-to-model decision table, and a staged rollout checklist.
 
 ## Part A — Framing: get the problem right before touching a model
 

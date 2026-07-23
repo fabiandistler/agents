@@ -2,7 +2,7 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring it live -- plus the craft-level conventions underneath them. Use whenever a foundation model's output is wrong and the fix (prompting, retrieval, or finetuning) is unclear, whenever an LLM app's architecture (context, guardrails, routing, caching, agents) is being designed or reviewed, whenever production evaluation metrics or user-feedback signals need defining, or whenever the question is how to implement prompting and prompt management, an evaluation harness or LLM judge, guardrails and security gating, finetuning (LoRA, hyperparameters), or training-data preparation. Draws on Chip Huyen's "AI Engineering" and bundles the adaptation ladder, the architecture build sequence, production monitoring, and an operational conventions sheet.
+description: Guide the engineering of a foundation-model application across three linked decisions. Adapt the model when its output fails, choose what to build next, and monitor it live — plus the craft-level conventions underneath.
 metadata:
   version: "1.2"
 ---
@@ -24,6 +24,18 @@ preparation — open
 It is a dense, falsifiable conventions sheet meant to be consulted when the
 question is *how to implement* one of these steps well, not *which* step to take
 next.
+
+## When to use
+
+Whenever a foundation model's output is wrong and the fix (prompting,
+retrieval, or finetuning) is unclear; whenever an LLM app's architecture
+(context, guardrails, routing, caching, agents) is being designed or reviewed;
+whenever production evaluation metrics or user-feedback signals need defining;
+or whenever the question is how to implement prompting and prompt management,
+an evaluation harness or LLM judge, guardrails and security gating, finetuning
+(LoRA, hyperparameters), or training-data preparation. Draws on Chip Huyen's
+*AI Engineering* and bundles the adaptation ladder, the architecture build
+sequence, production monitoring, and an operational conventions sheet.
 
 When the application is an **agent** — tool loops, orchestration topologies,
 multi-agent decomposition, autonomy levels — pair that sheet with

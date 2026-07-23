@@ -2,7 +2,7 @@
 name: fowler-refactoring-catalog
 category: refactoring
 environments: coding
-description: Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics. Use this whenever code needs restructuring without changing observable behavior — a function is too long or hard to name, a conditional is deeply nested or duplicated, data travels as loose primitives or repeated parameter groups, a class exposes its internals or does too much, or the user names a Fowler technique directly (Extract Function, Replace Conditional with Polymorphism, Introduce Parameter Object, etc.) or asks "what refactoring is this called" / "how do I refactor this safely".
+description: Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics.
 metadata:
   version: "1.0"
 ---
@@ -12,6 +12,10 @@ metadata:
 Refactoring is restructuring code so its external behavior stays the same while its internal structure improves. This skill is a lookup tool: given a smell in the code, it names the specific technique that addresses it and lays out the technique's mechanics as an ordered checklist. It does not replace judgment about *whether* to refactor — it removes the guesswork about *which* named technique to reach for and *how* to execute it safely.
 
 The full technique index (62 entries) lives in [references/CATALOG.md](references/CATALOG.md). This file covers the twelve highest-value techniques in enough depth to apply directly, plus the shared discipline that makes every technique in the catalog safe to run.
+
+## When to use
+
+Whenever code needs restructuring without changing observable behavior — a function is too long or hard to name, a conditional is deeply nested or duplicated, data travels as loose primitives or repeated parameter groups, a class exposes its internals or does too much — or the user names a Fowler technique directly (Extract Function, Replace Conditional with Polymorphism, Introduce Parameter Object, etc.) or asks "what refactoring is this called" / "how do I refactor this safely".
 
 ## Core principles (apply to every technique in the catalog)
 

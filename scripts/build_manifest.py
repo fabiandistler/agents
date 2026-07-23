@@ -33,6 +33,12 @@ CATEGORIES = (
     "personal",
 )
 
+# How a skill is surfaced. `auto` (default): model-triggered; its description
+# participates in the auto-trigger budget. `command`: user-invoked only;
+# install.sh routes it to each target's command/prompt directory instead of
+# the skills directory, keeping it out of the auto-trigger metadata.
+ACTIVATIONS = ("auto", "command")
+
 
 def find_skill_files() -> list[Path]:
     skills = []
@@ -185,6 +191,12 @@ def build_entry(skill_md: Path) -> dict[str, object]:
             f"{skill_md}: frontmatter 'category' must be one of {', '.join(CATEGORIES)}"
             f" (got {category!r})"
         )
+    activation = fm.get("activation", "auto")
+    if not isinstance(activation, str) or activation not in ACTIVATIONS:
+        raise ValueError(
+            f"{skill_md}: frontmatter 'activation' must be one of {', '.join(ACTIVATIONS)}"
+            f" (got {activation!r})"
+        )
     sentence = first_sentence(description)
     if len(sentence) > SUMMARY_LIMIT:
         warn(
@@ -199,6 +211,9 @@ def build_entry(skill_md: Path) -> dict[str, object]:
         "category": category,
         "path": str(skill_md.relative_to(REPO_ROOT)),
     }
+    # Emit only the non-default activation, mirroring compatibility/version.
+    if activation != "auto":
+        entry["activation"] = activation
     compat = fm.get("compatibility")
     if isinstance(compat, str) and compat:
         entry["compatibility"] = compat

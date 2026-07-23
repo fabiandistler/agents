@@ -2,7 +2,7 @@
 name: microservices-design
 category: architecture
 environments: coding
-description: Apply distilled microservices design conventions (from Newman's Building Microservices) when designing, reviewing, or evolving how services interact — service boundary rules, inter-service coupling, communication style, contract versioning, cross-service code reuse, sagas instead of distributed transactions, and resiliency patterns (timeouts, bulkheads, circuit breakers, retries, graceful degradation). Use whenever the work touches an interaction between two or more services — a new service or endpoint, an event or message schema, a shared library crossing service boundaries, a cross-service workflow, or code that calls another service. Not for deciding whether to use microservices at all (architecture-pattern-advisor) or where domain boundaries lie (ddd-advisor).
+description: Apply distilled microservices design conventions from Newman's *Building Microservices* when designing or reviewing how services interact. Covers boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns.
 metadata:
   version: "1.0"
 ---
@@ -20,6 +20,15 @@ The binding rules live in
 [references/design-conventions.md](references/design-conventions.md). **Read
 that file before designing or reviewing any cross-service interaction** — the
 `← likely-default` markers flag exactly the habits to override.
+
+## When to use
+
+Whenever the work touches an interaction between two or more services — a new
+service or endpoint, an event or message schema, a shared library crossing
+service boundaries, a cross-service workflow, or code that calls another
+service. Not for deciding whether to use microservices at all
+(→ architecture-pattern-advisor) or where domain boundaries lie
+(→ ddd-advisor).
 
 ## How to apply
 

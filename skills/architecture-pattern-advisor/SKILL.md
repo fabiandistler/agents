@@ -2,7 +2,7 @@
 name: architecture-pattern-advisor
 category: architecture
 environments: coding
-description: Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). Includes a reusable trade-off-analysis method for weighing alternatives and guidance for cutting microservice boundaries along bounded contexts rather than technical layers. Not for generic project setup with no architecture-shape decision.
+description: Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). Includes a reusable trade-off-analysis method for weighing alternatives. Not for generic project setup with no architecture-shape decision.
 ---
 
 # Architecture Pattern Advisor

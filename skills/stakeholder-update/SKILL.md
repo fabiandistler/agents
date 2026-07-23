@@ -1,8 +1,10 @@
 ---
 name: stakeholder-update
 category: communication
+activation: command
+disable-model-invocation: true
 environments: coding, chat
-description: Generate a stakeholder update tailored to audience and cadence. Use when writing a weekly or monthly status for leadership, announcing a launch, escalating a risk or blocker, or translating the same progress into exec-brief, engineering-detail, or customer-facing versions.
+description: Generate a stakeholder update tailored to audience and cadence — weekly/monthly leadership status, launch announcement, risk escalation, or exec/engineering/customer versions of the same progress.
 argument-hint: "<update type and audience>"
 ---
 

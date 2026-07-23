@@ -2,7 +2,7 @@
 name: codebase-design
 category: architecture
 environments: coding
-description: Shared vocabulary and workflow for designing deep modules. Use when designing or improving a module, API, or function interface; finding deepening opportunities; deciding where a seam goes; making code more testable; or when another skill needs the deep-module vocabulary. Includes glossary, interface-first workflow, R patterns, and a practical checklist.
+description: Shared vocabulary and workflow for designing deep modules. Use when designing or improving a module, API, or function interface, finding deepening opportunities, deciding where a seam goes, or making code more testable.
 ---
 
 # Codebase Design

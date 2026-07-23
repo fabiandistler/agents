@@ -2,7 +2,7 @@
 name: ddd-advisor
 category: architecture
 environments: coding
-description: Advise on Domain-Driven Design at the strategic level (classifying subdomains as Core, Generic, or Supporting; context-mapping between bounded contexts) and the tactical level (picking an implementation pattern along the Transaction Script → Active Record → Domain Model → Event-Sourced Domain Model spectrum, then modeling with Entities, Value Objects, and Aggregates) — use it whenever a design conversation touches subdomain classification, buy-vs-build for a capability, integration with a legacy or third-party system, bounded-context boundaries, or how much domain modeling a piece of business logic actually deserves. Applies even if the user never says "DDD" or "domain-driven design" explicitly.
+description: Advise on Domain-Driven Design strategically (subdomain classification, context-mapping) and tactically (choosing an implementation pattern, then modeling Entities, Value Objects, Aggregates). The design conversation; the code is ddd-conventions.
 metadata:
   version: "1.0"
 ---
@@ -19,6 +19,15 @@ Transaction Script for the one thing that actually differentiates the
 business. Getting the tactical call wrong turns a simple ETL job into an
 over-abstracted Domain Model, or lets genuinely complex, invariant-heavy logic
 rot inside a script that nobody can safely change.
+
+## When to use
+
+Whenever a design conversation touches subdomain classification, buy-vs-build
+for a capability, integration with a legacy or third-party system,
+bounded-context boundaries, or how much domain modeling a piece of business
+logic actually deserves — even if the user never says "DDD". Tactical design
+picks the pattern along the Transaction Script → Active Record → Domain Model →
+Event-Sourced Domain Model spectrum.
 
 This skill helps classify the problem correctly at both levels before writing
 or restructuring code.

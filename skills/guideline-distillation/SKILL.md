@@ -2,7 +2,7 @@
 name: guideline-distillation
 category: workflow
 environments: coding
-description: Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs, review checklists, onboarding docs) into lean, machine-actionable convention files such as CONVENTIONS.md, AGENTS.md, or CLAUDE.md fragments for coding agents; use whenever a document needs to become project rules an agent can load as context, or a rules file feels bloated with generic advice a competent coding model already knows. The defining move is subtraction — most of a source document is generic best practice or language defaults the model already follows, and the job is to find the small residue that is non-obvious, project-specific, and consequential.
+description: Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs) into lean, machine-actionable rules files (CONVENTIONS.md, AGENTS.md, CLAUDE.md) for coding agents. Keeps only the non-obvious, project-specific residue.
 metadata:
   version: "1.0"
 ---
@@ -15,6 +15,15 @@ that *this* team forbids `data.table` in favor of `dplyr`, requires every PR to
 update a CHANGELOG, or names migration files with a UTC timestamp prefix. This
 skill turns a messy source document into a short rules file that contains only
 the second kind of thing.
+
+## When to use
+
+Whenever a document needs to become project rules an agent can load as
+context, or a rules file feels bloated with generic advice a competent coding
+model already knows. The defining move is subtraction — most of a source
+document is generic best practice or language defaults the model already
+follows, and the job is to find the small residue that is non-obvious,
+project-specific, and consequential.
 
 The output is consumed by an LLM, not browsed by a human. Every rule in the
 file competes for attention with the agent's actual task, and every generic

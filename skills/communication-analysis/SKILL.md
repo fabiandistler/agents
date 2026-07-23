@@ -2,7 +2,7 @@
 name: communication-analysis
 category: communication
 environments: chat
-description: Analyze or rewrite a message, piece of feedback, or conversation transcript using Schulz von Thun's four-sides model and Carl Rogers-style active listening — decoding what is said on the factual, self-revealing, relationship, and appeal levels, spotting incongruent (verbal-vs-nonverbal) signals, and mirroring hidden appeals instead of reacting to them blindly — use this whenever reviewing or rewriting feedback, analyzing a conversation for what is really being communicated, diagnosing why a message landed badly, or discussing how to set and respect interpersonal boundaries. Also covers the four comprehensibility makers, the relevance filter, why disturbances take precedence, and the solution-reflex trap. This is educational communication-psychology material, not therapy or clinical advice.
+description: Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening. Decodes the factual, self-revealing, relationship, and appeal levels. Educational, not therapy.
 metadata:
   version: "1.0"
 ---
@@ -15,6 +15,15 @@ communication: a message, a piece of feedback, a conversation transcript, or a
 draft reply. The goal is to decode what is actually being communicated on
 several levels at once, notice where signals contradict each other, and
 suggest concrete, non-manipulative ways to make communication clearer.
+
+## When to use
+
+Whenever reviewing or rewriting feedback, analyzing a conversation for what is
+really being communicated, diagnosing why a message landed badly, or
+discussing how to set and respect interpersonal boundaries. Also covers the
+four comprehensibility makers, the relevance filter, why disturbances take
+precedence, and the solution-reflex trap — plus mirroring hidden appeals
+instead of reacting to them blindly.
 
 ## Scope and disclaimer
 

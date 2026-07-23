@@ -2,7 +2,7 @@
 name: logical-component-design
 category: architecture
 environments: coding
-description: Forward, generative decomposition of a NEW system or feature into named logical components — the iterative component identification and refactoring cycle from Richards & Ford's *Fundamentals of Software Architecture* (ch. 8). Use whenever someone is starting a design and asks "what components / modules do I need for …", "how do I break this new system into components", "decompose this domain", "how should I organize these user stories into components", "identify the building blocks for my <app>", or is filling empty buckets, applying the Workflow or Actor/Action approach, or worrying about the Entity Trap — even if they never name the book. Produces a first set of descriptively-named logical components with role statements, assigned user stories, and a coupling/Law-of-Demeter refinement pass. Not for analyzing existing code (→ analyze-cohesion / analyze-coupling) or choosing system topology and folder layout (→ architecture-pattern-advisor).
+description: Forward, generative decomposition of a NEW system or feature into named logical components — Richards & Ford's iterative identify-and-refine cycle. Creates the decomposition; measuring an existing one is analyze-cohesion.
 ---
 
 # Logical Component Design
@@ -24,6 +24,19 @@ runs on greenfield systems and every time a feature is added or changed.
 Detailed approaches, worked examples, the Going-Going-Gone case study, and a
 fill-in worksheet live in
 [references/component-identification.md](references/component-identification.md).
+
+## When to use
+
+Whenever someone is starting a design and asks "what components / modules do I
+need for …", "how do I break this new system into components", "decompose this
+domain", "how should I organize these user stories into components", or
+"identify the building blocks for my <app>", or is filling empty buckets,
+applying the Workflow or Actor/Action approach, or worrying about the Entity
+Trap — even without naming the book. Produces descriptively-named components
+with role statements, assigned user stories, and a coupling/Law-of-Demeter
+refinement pass. Not for analyzing existing code (→ analyze-cohesion /
+analyze-coupling) or choosing system topology and folder layout
+(→ architecture-pattern-advisor).
 Read it when you need the full examples or the worksheet; this file is the
 workflow.
 

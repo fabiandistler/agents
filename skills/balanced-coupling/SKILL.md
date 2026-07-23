@@ -2,11 +2,22 @@
 name: balanced-coupling
 category: architecture
 environments: coding
-description: Judge whether a specific dependency between two components is acceptable — not by counting edges, but by weighing them along Vlad Khononov's Balanced Coupling model of integration strength (intrusive, functional, model, contract), distance, and volatility. Trigger when the user asks "is this coupling ok?", "should these services share this model?", "is this dependency too strong for a service boundary?", asks to evaluate module or service boundaries qualitatively, mentions balanced coupling, integration strength, knowledge leaks, shared knowledge between components, distributed-monolith risk, or Khononov — even without naming the model. Classifies each dependency's strength, distance, and volatility, applies the balance rule (STRENGTH XOR DISTANCE, rescued by low volatility), and recommends how to rebalance the flagged ones.
+description: Judge whether a specific dependency between two components is acceptable. Weigh it along Khononov's Balanced Coupling model of integration strength, distance, and volatility, not by counting edges — qualitative, one relationship at a time.
 compatibility: Works on any codebase or design document. The bundled checker script is stdlib-only Python 3.8+. No dependency-graph tooling required — the assessment is qualitative, per relationship.
 ---
 
 # Balanced Coupling
+
+## When to use
+
+When the user asks "is this coupling ok?", "should these services share this
+model?", "is this dependency too strong for a service boundary?", wants to
+evaluate module or service boundaries qualitatively, or mentions balanced
+coupling, integration strength, knowledge leaks, shared knowledge between
+components, distributed-monolith risk, or Khononov — even without naming the
+model. The workflow classifies each dependency's strength, distance, and
+volatility, applies the balance rule (STRENGTH XOR DISTANCE, rescued by low
+volatility), and recommends how to rebalance the flagged ones.
 
 ## Overview
 

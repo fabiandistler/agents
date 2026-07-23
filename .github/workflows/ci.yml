@@ -20,6 +20,9 @@ jobs:
       - name: Manifest in sync
         run: python scripts/build_manifest.py --check
 
+      - name: Description budget
+        run: python scripts/check_descriptions.py
+
       - name: Catalogue tables in sync
         run: python scripts/check_docs.py
 

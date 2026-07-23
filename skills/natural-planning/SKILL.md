@@ -1,8 +1,10 @@
 ---
 name: natural-planning
 category: workflow
+activation: command
+disable-model-invocation: true
 environments: coding, chat
-description: Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague or stuck project into concrete physical next actions. Use whenever a project feels stuck, undefined, or overwhelming, when scoping any new multi-step effort, or when a to-do reads as an intention rather than a physical action.
+description: Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague, stuck, or overwhelming project into concrete physical next actions.
 metadata:
   version: "1.0"
 ---
