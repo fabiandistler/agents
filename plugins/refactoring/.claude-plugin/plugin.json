@@ -1,6 +1,6 @@
 {
   "name": "refactoring",
-  "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes. Includes a Fowler-catalog knowledge-base MCP server.",
+  "description": "Refactoring and code-quality skills: a unified refactoring skill (decision checklist plus Fowler's technique catalog), the stepdown rule, test-driven development, and managing risky changes. Includes a Fowler-catalog knowledge-base MCP server.",
   "author": {
     "name": "Fabian Distler"
   }

@@ -11,40 +11,10 @@
       ]
     },
     {
-      "name": "analyze-cohesion",
-      "summary": "Analyze the cohesion of a class, module, file, or package and recommend split, merge, or leave — classify it on the cohesion scale and compute LCOM.",
-      "category": "architecture",
-      "path": "skills/analyze-cohesion/SKILL.md",
-      "compatibility": "The bundled LCOM script needs Python 3.8+. It analyzes Python (precise, via AST), R, and Bash (heuristic) sources. The reasoning workflow is language-agnostic.",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
-      "name": "analyze-coupling",
-      "summary": "Measure or judge how coupled or brittle a codebase is.",
-      "category": "architecture",
-      "path": "skills/analyze-coupling/SKILL.md",
-      "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go).",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
       "name": "architecture-pattern-advisor",
       "summary": "Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion).",
       "category": "architecture",
       "path": "skills/architecture-pattern-advisor/SKILL.md",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
-      "name": "balanced-coupling",
-      "summary": "Judge whether a specific dependency between two components is acceptable.",
-      "category": "architecture",
-      "path": "skills/balanced-coupling/SKILL.md",
-      "compatibility": "Works on any codebase or design document. The bundled checker script is stdlib-only Python 3.8+. No dependency-graph tooling required — the assessment is qualitative, per relationship.",
       "environments": [
         "coding"
       ]
@@ -80,24 +50,24 @@
       "version": "1.0"
     },
     {
-      "name": "ddd-advisor",
-      "summary": "Advise on Domain-Driven Design strategically (subdomain classification, context-mapping) and tactically (choosing an implementation pattern, then modeling Entities, Value Objects, Aggregates).",
+      "name": "coupling-cohesion",
+      "summary": "Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov).",
       "category": "architecture",
-      "path": "skills/ddd-advisor/SKILL.md",
+      "path": "skills/coupling-cohesion/SKILL.md",
+      "compatibility": "The bundled scripts are stdlib-only Python 3.8+. LCOM analyzes Python (precise, via AST), R, and Bash (heuristic); the coupling and balance checks are language-agnostic. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go).",
       "environments": [
         "coding"
-      ],
-      "version": "1.0"
+      ]
     },
     {
-      "name": "ddd-conventions",
-      "summary": "Correctness and design conventions for writing or reviewing code in a Domain-Driven Design codebase — aggregates, value objects, domain events, event sourcing, bounded-context integration.",
+      "name": "ddd",
+      "summary": "Domain-Driven Design end to end — strategic subdomain classification and context mapping, tactical pattern choice, and implementation conventions for aggregates, value objects, and events.",
       "category": "architecture",
-      "path": "skills/ddd-conventions/SKILL.md",
+      "path": "skills/ddd/SKILL.md",
       "environments": [
         "coding"
       ],
-      "version": "1.0"
+      "version": "2.0"
     },
     {
       "name": "fitness-functions",
@@ -107,16 +77,6 @@
       "environments": [
         "coding"
       ]
-    },
-    {
-      "name": "fowler-refactoring-catalog",
-      "summary": "Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics.",
-      "category": "refactoring",
-      "path": "skills/fowler-refactoring-catalog/SKILL.md",
-      "environments": [
-        "coding"
-      ],
-      "version": "1.0"
     },
     {
       "name": "grilling",
@@ -252,14 +212,14 @@
       "version": "1.0"
     },
     {
-      "name": "refactoring-checklist",
-      "summary": "Decide whether, when, and how to refactor a spotted code smell — prioritize the backlog, gate on coverage and change size, and refactor safely in reversible small steps.",
+      "name": "refactoring",
+      "summary": "Refactor a spotted code smell end to end — decide whether, when, and how safely to act, then apply the right Martin Fowler technique with its atomic mechanics.",
       "category": "refactoring",
-      "path": "skills/refactoring-checklist/SKILL.md",
+      "path": "skills/refactoring/SKILL.md",
       "environments": [
         "coding"
       ],
-      "version": "1.0"
+      "version": "2.0"
     },
     {
       "name": "repo-status",

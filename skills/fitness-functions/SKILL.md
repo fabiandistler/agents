@@ -32,7 +32,7 @@ or "keep the architecture from eroding", asks how to make an architectural
 decision stick in CI, or mentions fitness functions, evolutionary
 architecture, or chaos engineering as governance — even without the term
 "fitness function". Not for measuring the current coupling/cohesion of
-existing code (→ analyze-coupling / analyze-cohesion) or choosing an
+existing code (→ coupling-cohesion) or choosing an
 architecture in the first place (→ architecture-pattern-advisor).
 
 Two framings to keep in mind, both from the source chapter:
@@ -91,7 +91,7 @@ patterns from the book cover most structural cases:
 - **Threshold on a metric** — e.g. every package's Distance from the Main
   Sequence within a project-dependent tolerance of the ideal. Thresholds are
   legitimate; vibes are not. (To *measure and choose* the threshold on an
-  existing codebase, hand off to **`analyze-coupling`**.)
+  existing codebase, hand off to **`coupling-cohesion`**.)
 - **Layer / boundary rules** — declare which layers may access which
   (ArchUnit's `layeredArchitecture()`, NetArchTest's
   `ShouldNot().HaveDependencyOn(...)`) and fail on violations.
@@ -160,10 +160,10 @@ governance suite. Deliver the check ready to commit, not as a proposal.
 
 ## Related skills
 
-- **`analyze-coupling`** — measures afferent/efferent coupling, Instability,
-  and Distance from the Main Sequence on an existing codebase; use it to pick
-  the thresholds this skill then enforces.
-- **`analyze-cohesion`** — split/merge/leave verdicts for individual modules.
+- **`coupling-cohesion`** — measures afferent/efferent coupling, Instability,
+  and Distance from the Main Sequence on an existing codebase (use it to pick
+  the thresholds this skill then enforces), plus split/merge/leave cohesion
+  verdicts for individual modules.
 - **`architecture-pattern-advisor`** — choosing the architecture whose rules
   fitness functions will guard.
 - **`adr-workflow`** — record the governed decision as an ADR and link the

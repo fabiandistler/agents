@@ -202,7 +202,7 @@ Split it — move the strayed responsibilities into their own components:
 | `Customer Notification` | Email the customer an order summary. |
 
 Each now has a clearer, more distinct role and is easier to maintain, test, and
-deploy. For a metric-backed decision on a borderline case, use `analyze-cohesion`.
+deploy. For a metric-backed decision on a borderline case, use `coupling-cohesion`.
 
 ---
 
@@ -250,7 +250,7 @@ this; it usually surfaces from design documents or shows up through error
 conditions. Note it explicitly during design.
 
 For coupling **metrics on realized code** — instability, abstractness, distance
-from the main sequence, zones of pain/uselessness — use `analyze-coupling`.
+from the main sequence, zones of pain/uselessness — use `coupling-cohesion`.
 
 ---
 

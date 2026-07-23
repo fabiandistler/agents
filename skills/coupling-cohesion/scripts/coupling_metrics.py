@@ -15,7 +15,7 @@ trouble corners:
     A + I < 1  -> Zone of Pain        (concrete + stable -> brittle, hard to change)
     A + I > 1  -> Zone of Uselessness (abstract + unstable -> over-built, unused)
 
-Input is JSON (see scripts/example_input.json):
+Input is JSON (see scripts/coupling_metrics.example.json):
 
     {
       "components": [

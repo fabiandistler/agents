@@ -44,14 +44,11 @@ group the catalogue by those categories.
 | Skill | When to use |
 |---|---|
 | [adr-workflow](skills/adr-workflow/SKILL.md) | Establishing or maintaining Architecture Decision Records in a repo. |
-| [analyze-cohesion](skills/analyze-cohesion/SKILL.md) | Analyzing whether a class, module, file, or package is cohesive — classify it on the best-to-worst cohesion scale, compute LCOM, and recommend a split/merge/leave. |
-| [analyze-coupling](skills/analyze-coupling/SKILL.md) | Measuring how coupled or brittle a codebase is — afferent/efferent coupling, Instability, Abstractness, Distance from the Main Sequence, and the Zones of Pain and Uselessness. |
 | [architecture-pattern-advisor](skills/architecture-pattern-advisor/SKILL.md) | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
-| [balanced-coupling](skills/balanced-coupling/SKILL.md) | Weighing a specific dependency along Khononov's Balanced Coupling model — integration strength (intrusive/functional/model/contract), distance, and volatility — flagging knowledge leaks and recommending how to rebalance them. |
 | [c4-modeling](skills/c4-modeling/SKILL.md) | Drafting a C4 model of a system interactively and rendering it as Mermaid diagrams — System Context, Container, and Component views plus landscape, dynamic, and deployment — per c4model.com best practices. |
 | [codebase-design](skills/codebase-design/SKILL.md) | Shared vocabulary and workflow for designing deep modules. |
-| [ddd-advisor](skills/ddd-advisor/SKILL.md) | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
-| [ddd-conventions](skills/ddd-conventions/SKILL.md) | Implementation-time DDD correctness rules — aggregates (one per transaction, optimistic concurrency), value objects, past-tense domain events, outbox-pattern publishing, event-sourcing mechanics, and bounded-context integration conventions. |
+| [coupling-cohesion](skills/coupling-cohesion/SKILL.md) | Measuring coupling or cohesion of existing code — a module's cohesion and LCOM, codebase-wide coupling metrics (instability, abstractness, Zones of Pain/Uselessness), or whether one specific dependency is balanced (Khononov strength/distance/volatility). |
+| [ddd](skills/ddd/SKILL.md) | Domain-Driven Design across strategy and code — subdomain classification, context mapping, choosing an implementation pattern, and the correctness conventions for aggregates, value objects, domain events, and event sourcing. |
 | [fitness-functions](skills/fitness-functions/SKILL.md) | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
 | [logical-component-design](skills/logical-component-design/SKILL.md) | Decomposing a new system or feature into named logical components — the iterative Workflow / Actor-Action identification cycle, the Entity-Trap antipattern, cohesion and coupling refinement, and the Law of Demeter. |
 | [microservices-design](skills/microservices-design/SKILL.md) | Designing or reviewing how microservices interact — boundaries, coupling, communication style, contract versioning, cross-service code reuse, sagas, and resiliency patterns (timeouts, bulkheads, circuit breakers, retries) — via a distilled Newman ruleset. |
@@ -61,8 +58,7 @@ group the catalogue by those categories.
 
 | Skill | When to use |
 |---|---|
-| [fowler-refactoring-catalog](skills/fowler-refactoring-catalog/SKILL.md) | Naming the right Fowler refactoring for a code smell and getting its step-by-step mechanics. |
-| [refactoring-checklist](skills/refactoring-checklist/SKILL.md) | Deciding whether and when a spotted code smell is worth refactoring now, and how to do it safely in small steps. |
+| [refactoring](skills/refactoring/SKILL.md) | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
 | [stepdown-rule](skills/stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 | [tdd](skills/tdd/SKILL.md) | Test-driven development. |
 | [uncertainty-management](skills/uncertainty-management/SKILL.md) | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
