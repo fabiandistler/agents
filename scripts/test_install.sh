@@ -249,26 +249,59 @@ done
 [[ "$ours_remaining" -eq 0 ]] || fail "uninstall left $ours_remaining of our symlinks"
 pass "uninstall removes our symlinks only"
 
-# 6. install --target=all populates all three roots (skills + command dirs).
+# 6. install --target=all populates all three roots. claude and opencode keep
+#    command skills in their command dir; codex has no command dir, so its
+#    command skills land in the skills dir instead.
+CODEX_SKILLS_EXPECTED=$((EXPECTED + CMD_EXPECTED))
 HOME_A="$(mktemp -d)"
 HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
-for sub in ".claude/skills" ".codex/skills" ".config/opencode/skills"; do
+for sub in ".claude/skills" ".config/opencode/skills"; do
   got="$(count_links "$HOME_A/$sub")"
   [[ "$got" -eq "$EXPECTED" ]] || fail "all install: $sub has $got links, expected $EXPECTED"
 done
-for sub in ".claude/commands" ".codex/prompts" ".config/opencode/command"; do
+got="$(count_links "$HOME_A/.codex/skills")"
+[[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] \
+  || fail "all install: .codex/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
+for sub in ".claude/commands" ".config/opencode/command"; do
   got="$(count_links "$HOME_A/$sub")"
   [[ "$got" -eq "$CMD_EXPECTED" ]] || fail "all install: $sub has $got command links, expected $CMD_EXPECTED"
 done
-pass "all install populates claude, codex, opencode (skills + commands)"
+[[ -L "$HOME_A/.codex/skills/handoff" ]] || fail "codex: command skill handoff not linked into skills/"
+[[ -f "$HOME_A/.codex/skills/handoff/agents/openai.yaml" ]] \
+  || fail "codex: command skill handoff missing its openai.yaml sidecar"
+[[ ! -e "$HOME_A/.codex/prompts/handoff.md" ]] || fail "codex: command skill handoff leaked into deprecated prompts/"
+pass "all install populates claude, codex, opencode (codex commands as skills)"
 
-# 6a. --uninstall removes command-dir links too.
+# 6a. --uninstall removes command-dir links (and the codex skill links).
 HOME="$HOME_A" "$INSTALL" --target=all --uninstall >/dev/null
-for sub in ".claude/commands" ".codex/prompts" ".config/opencode/command"; do
+for sub in ".claude/commands" ".config/opencode/command"; do
   got="$(count_links "$HOME_A/$sub")"
   [[ "$got" -eq 0 ]] || fail "all uninstall: $sub still has $got command links"
 done
+[[ ! -e "$HOME_A/.codex/skills/handoff" ]] || fail "codex uninstall left command skill handoff behind"
 pass "all uninstall removes command-dir links"
+
+# 6c. codex install migrates our symlinks out of the deprecated prompts dir
+# (~/.codex/prompts) while preserving foreign entries there.
+HOME_CX="$(mktemp -d)"
+legacy_prompts="$HOME_CX/.codex/prompts"
+mkdir -p "$legacy_prompts"
+first_command=""
+for d in "$REPO_ROOT"/skills/*/; do
+  [[ -f "$d/SKILL.md" ]] || continue
+  skill_is_command "$d" || continue
+  first_command="$(basename "$d")"
+  break
+done
+[[ -n "$first_command" ]] || fail "no command skill found for codex prompts migration test"
+ln -s "$REPO_ROOT/skills/$first_command/SKILL.md" "$legacy_prompts/$first_command.md"
+foreign_prompt_src="$(mktemp -d)/foreign-prompt.md"
+: > "$foreign_prompt_src"
+ln -s "$foreign_prompt_src" "$legacy_prompts/foreign-prompt.md"
+HOME="$HOME_CX" "$INSTALL" --target=codex >/dev/null
+[[ ! -L "$legacy_prompts/$first_command.md" ]] || fail "deprecated codex prompt for $first_command not migrated"
+[[ -L "$legacy_prompts/foreign-prompt.md" ]] || fail "codex prompt cleanup removed a foreign symlink"
+pass "codex install cleans the deprecated prompts dir"
 
 # 6b. opencode install migrates our symlinks out of the legacy agent dir
 # (~/.config/opencode/agent) while preserving foreign entries there.

@@ -22,10 +22,15 @@
 # categories. Combinable with --env.
 #
 # Skills with `activation: command` in their frontmatter are user-invoked,
-# not model-triggered. They are linked into each target's command directory
-# (~/.claude/commands, ~/.codex/prompts, ~/.config/opencode/command) as
-# <name>.md instead of the skills directory, keeping them out of the
-# auto-trigger metadata. --uninstall reverses this.
+# not model-triggered. For claude and opencode they are linked into the
+# target's command directory (~/.claude/commands, ~/.config/opencode/command)
+# as <name>.md instead of the skills directory, keeping them out of the
+# auto-trigger metadata. Codex custom prompts (~/.codex/prompts) are
+# deprecated, so under codex these skills install into the skills directory
+# like any other; their agents/openai.yaml sidecar
+# (policy.allow_implicit_invocation: false) keeps Codex from auto-triggering
+# them, so they stay explicit-only. --uninstall reverses this, and codex
+# installs also remove any leftover ~/.codex/prompts symlinks we created.
 #
 # A category may ship a router skill (`activation: router`, named after the
 # category). Its auto skills are nested under the router's members/ dir, so
@@ -128,7 +133,6 @@ target_dir_for() {
 target_command_dir_for() {
   case "$1" in
     claude)   printf '%s/.claude/commands\n'         "$HOME" ;;
-    codex)    printf '%s/.codex/prompts\n'           "$HOME" ;;
     opencode) printf '%s/.config/opencode/command\n' "$HOME" ;;
     *) echo "unknown target: $1" >&2; return 1 ;;
   esac
@@ -833,6 +837,21 @@ cleanup_opencode_legacy() {
   done <<< "$skills"
 }
 
+cleanup_codex_prompts_legacy() {
+  local skills="$1"
+  local legacy_dir="$HOME/.codex/prompts"
+  [[ -d "$legacy_dir" ]] || return 0
+  while IFS= read -r skill; do
+    [[ -z "$skill" ]] && continue
+    local src="$REPO_ROOT/skills/$skill/SKILL.md"
+    local dest="$legacy_dir/$skill.md"
+    [[ -L "$dest" ]] || continue
+    [[ "$(readlink "$dest")" == "$src" ]] || continue
+    run rm "$dest"
+    printf '  removed   %s (deprecated codex prompt)\n' "$dest"
+  done <<< "$skills"
+}
+
 main() {
   local skills; skills="$(list_skills)"
   if [[ -z "$skills" ]]; then
@@ -845,9 +864,9 @@ main() {
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    local dest_dir cmd_dir cmd_dir_ready=0
+    local dest_dir cmd_dir="" cmd_dir_ready=0
     dest_dir="$(target_dir_for "$target")"
-    cmd_dir="$(target_command_dir_for "$target")"
+    [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
     printf '%s: %s\n' "$target" "$dest_dir"
     if (( UNINSTALL == 0 )); then
       ensure_parent "$dest_dir"
@@ -856,7 +875,7 @@ main() {
       local src dest activation category
       activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
       category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
-      if [[ "$activation" == "command" ]]; then
+      if [[ "$activation" == "command" && "$target" != "codex" ]]; then
         # User-invoked: link the single SKILL.md into the command directory.
         src="$REPO_ROOT/skills/$skill/SKILL.md"
         dest="$cmd_dir/$skill.md"
@@ -882,6 +901,7 @@ main() {
       fi
     done <<< "$skills"
     if [[ "$target" == "codex" ]]; then
+      cleanup_codex_prompts_legacy "$skills"
       if (( UNINSTALL )); then
         uninstall_codex_mcp
         uninstall_codex_agents

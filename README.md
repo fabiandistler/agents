@@ -80,6 +80,13 @@ skills. `--target=codex` additionally:
   `--uninstall` only removes marker-carrying files. Model and sandbox
   are inherited from your Codex session (the Claude-specific `model:`
   and `tools:` fields have no Codex equivalent).
+- installs the user-invoked command skills (`activation: command`) as
+  regular skills under `~/.codex/skills/` rather than as Codex custom
+  prompts (which are deprecated). Each carries an `agents/openai.yaml`
+  sidecar with `policy.allow_implicit_invocation: false`, so Codex only
+  runs them on an explicit `$skill-name`, never on its own. The installer
+  also removes any leftover `~/.codex/prompts/<name>.md` symlinks a
+  previous version created.
 
 Restart Codex (or run `codex mcp list`) to pick up the new servers and
 agents.

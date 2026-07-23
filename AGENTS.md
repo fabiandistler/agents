@@ -143,12 +143,16 @@ machine consumption prefer `skills.json`.
 - Optional frontmatter fields:
   - `activation` — `auto` (default) or `command`. `auto` skills are
     model-triggered and their description counts toward the auto-trigger
-    budget. `command` skills are user-invoked only: `install.sh` routes them
-    to each target's command directory (`~/.claude/commands`,
-    `~/.codex/prompts`, `~/.config/opencode/command`) as `<name>.md` instead
-    of the skills directory, keeping them out of the auto-trigger metadata.
-    For Claude, pair it with `disable-model-invocation: true` in the same
-    frontmatter (the runtime realization Claude honors; ignored elsewhere).
+    budget. `command` skills are user-invoked only: for Claude and opencode
+    `install.sh` routes them to the target's command directory
+    (`~/.claude/commands`, `~/.config/opencode/command`) as `<name>.md`
+    instead of the skills directory, keeping them out of the auto-trigger
+    metadata. Codex custom prompts are deprecated, so under codex they install
+    into `~/.codex/skills/` like any skill, gated by an `agents/openai.yaml`
+    sidecar (`policy.allow_implicit_invocation: false`) that keeps Codex from
+    auto-triggering them. For Claude, pair `command` with
+    `disable-model-invocation: true` in the same frontmatter (the runtime
+    realization Claude honors; ignored elsewhere).
   - `compatibility` — runtime / language requirements in plain prose.
   - `environments` — comma-separated list of the environments the skill
     belongs to: `coding`, `chat`, or both (e.g. `environments: coding, chat`).
