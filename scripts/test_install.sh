@@ -173,7 +173,7 @@ command_count() {
 
 EXPECTED="$(skill_count)"
 [[ "$EXPECTED" -ge 1 ]] || fail "no skills detected in repo"
-CMD_EXPECTED="$(command_count)"
+CMD_EXPECTED="$(command_count all)"
 [[ "$CMD_EXPECTED" -ge 1 ]] || fail "no command skills detected in repo"
 
 # 1. dry-run for --target=all should not create anything.
