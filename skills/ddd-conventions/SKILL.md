@@ -3,7 +3,6 @@ name: ddd-conventions
 category: architecture
 environments: coding
 description: Correctness and design conventions to apply while writing or reviewing code in a codebase that practices Domain-Driven Design — aggregates, value objects, domain events, transaction scripts, event sourcing, and bounded-context integration. Use whenever implementing domain logic, persisting aggregates, publishing events, or wiring cross-context integration, even if the user never says "DDD". For the upfront design conversation (subdomain classification, pattern choice, context mapping) use ddd-advisor instead; this skill governs the code that comes out of those decisions.
-compatibility: Language-agnostic; examples use Java-ish pseudocode but every rule applies to any language. Pairs with ddd-advisor (the design-time counterpart), balanced-coupling (judging a specific cross-context dependency), and architecture-pattern-advisor (topology and code organization).
 metadata:
   version: "1.0"
 ---

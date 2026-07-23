@@ -3,7 +3,6 @@ name: logical-component-design
 category: architecture
 environments: coding
 description: Forward, generative decomposition of a NEW system or feature into named logical components — the iterative component identification and refactoring cycle from Richards & Ford's *Fundamentals of Software Architecture* (ch. 8). Use whenever someone is starting a design and asks "what components / modules do I need for …", "how do I break this new system into components", "decompose this domain", "how should I organize these user stories into components", "identify the building blocks for my <app>", or is filling empty buckets, applying the Workflow or Actor/Action approach, or worrying about the Entity Trap — even if they never name the book. Produces a first set of descriptively-named logical components with role statements, assigned user stories, and a coupling/Law-of-Demeter refinement pass. Not for analyzing existing code (→ analyze-cohesion / analyze-coupling) or choosing system topology and folder layout (→ architecture-pattern-advisor).
-compatibility: Language- and domain-agnostic. The workflow is reasoning-only — its input is workflows, actors, and user stories, not source code — so it needs no tooling and applies to any system being designed.
 ---
 
 # Logical Component Design

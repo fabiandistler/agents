@@ -3,7 +3,6 @@ name: adr-workflow
 category: architecture
 environments: coding
 description: Establish and maintain Architecture Decision Records (ADRs) in software repositories. Use whenever the user mentions ADRs, architecture decisions, decision logs, technical choices with long-term impact, or wants to set up a repo workflow for documenting why important decisions were made, even if they do not explicitly say "ADR".
-compatibility: Works in any software repository. No special dependencies.
 ---
 
 # ADR Workflow

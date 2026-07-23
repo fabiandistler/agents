@@ -3,7 +3,6 @@ name: fitness-functions
 category: architecture
 environments: coding
 description: Design and implement architecture fitness functions — automated, objective checks that govern architecture characteristics (modularity, layering, coupling, security, operational resilience) from Richards & Ford's *Fundamentals of Software Architecture*. Use whenever someone wants to "enforce architecture rules", "stop devs from breaking the layering", "prevent cyclic dependencies", "add an ArchUnit / dependency-cruiser / import-linter test", "automate architecture governance", "keep the architecture from eroding", asks how to make an architectural decision stick in CI, or mentions fitness functions, evolutionary architecture, or chaos engineering as governance — even if they never use the term "fitness function". Produces a concrete, CI-wired check plus the rationale developers need to accept it. Not for measuring current coupling/cohesion of existing code (→ analyze-coupling / analyze-cohesion) or choosing an architecture in the first place (→ architecture-pattern-advisor).
-compatibility: Language- and stack-agnostic workflow. Implementations use whatever governance tooling fits the ecosystem (references/tooling-catalog.md lists options for Java, .NET, JS/TS, Python, Go, and production/runtime checks).
 ---
 
 # Fitness Functions
