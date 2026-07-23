@@ -72,7 +72,7 @@ group the catalogue by those categories.
 | Skill | When to use |
 |---|---|
 | [r-error-constructors](skills/r-error-constructors/SKILL.md) | Recurring R error (3+ sites): build a stop_* constructor with class hierarchy, conditionMessage(), and class-based tests. |
-| [r-package-dev](skills/r-package-dev/SKILL.md) | Designing or refactoring R packages (data.table, roxygen2, testthat). |
+| [r-package-dev](skills/r-package-dev/SKILL.md) | Building or refactoring R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and deprecation, interface-focused testing. |
 
 ### AI & ML (`ai-ml`)
 

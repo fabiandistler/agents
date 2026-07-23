@@ -239,10 +239,10 @@
     },
     {
       "name": "r-package-dev",
-      "summary": "Design and develop R packages.",
+      "summary": "R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and API deprecation, and interface-focused testing with fixtures.",
       "category": "r-development",
       "path": "skills/r-package-dev/SKILL.md",
-      "compatibility": "Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required. Diagram generation uses DiagrammeR if installed.",
+      "compatibility": "Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required.",
       "environments": [
         "coding"
       ],
