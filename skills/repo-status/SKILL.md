@@ -1,9 +1,11 @@
 ---
 name: repo-status
 category: workflow
+activation: command
+disable-model-invocation: true
 environments: coding, chat
 argument-hint: "[yesterday | today | blockers]"
-description: Generate a standup / status update from recent development activity. Use this whenever the user is prepping for a daily standup or scrum, asks "what did I do yesterday", wants yesterday/today/blockers structured, needs to turn rough notes into a shareable update, or asks for a status update on their work — even if they don't say the word "standup". Pulls from connected tools (source control, issue tracker, chat, CI) when available, or structures the notes the user gives you.
+description: Generate a standup / status update from recent development activity — yesterday/today/blockers, turning rough notes or connected-tool activity into a shareable update.
 ---
 
 # Repo Status

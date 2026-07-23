@@ -2,7 +2,7 @@
 name: refactoring-checklist
 category: refactoring
 environments: coding
-description: Walk through a four-phase decision workflow for whether, when, and how to refactor code — deciding if a change is worth doing now, assessing the risk before touching anything, running the refactor safely in small steps, and confirming the result actually earned its keep — use it whenever a code smell is spotted and the question is not "how do I perform this refactoring" but "should I refactor this right now, and how do I do it safely." Covers prioritizing a backlog of smells, choosing between a normal refactor, the Mikado Method, Strangler Fig, or a rewrite, and running reversible steps under the Two-Hats rule. Includes a priority matrix (immediate / this week / next sprint / litter-pickup) with concrete code smells — among them an R-specific set (data.table chains, `<<-` misuse, growing objects in loops, `T`/`F` vs `TRUE`/`FALSE`, `1:length(x)` vs `seq_along()`, unclosed DBI connections) — a test-coverage and change-size risk gate, and quality gates to confirm the refactor helped.
+description: Decide whether, when, and how to refactor a spotted code smell — prioritize the backlog, gate on coverage and change size, and refactor safely in reversible small steps. The decision, not the mechanics (→ fowler-refactoring-catalog).
 metadata:
   version: "1.0"
 ---
@@ -17,6 +17,17 @@ this skill decides whether/when/how, the catalog explains the move itself.
 
 The workflow has four phases: decide, assess risk, implement in small steps,
 validate against quality gates.
+
+## When to use
+
+Reach for this whenever a code smell is spotted and the question is *should I
+refactor this now, and how safely* — not *how do I perform this technique*.
+Typical triggers: prioritizing a backlog of smells; choosing between a normal
+refactor, the Mikado Method, Strangler Fig, or a rewrite; running reversible
+steps under the Two-Hats rule. The priority matrix below includes an
+R-specific smell set (data.table chains, `<<-` misuse, growing objects in
+loops, `T`/`F` vs `TRUE`/`FALSE`, `1:length(x)` vs `seq_along()`, unclosed DBI
+connections).
 
 ## Quick decision path
 

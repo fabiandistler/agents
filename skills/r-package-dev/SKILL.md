@@ -2,11 +2,19 @@
 name: r-package-dev
 category: r-development
 environments: coding
-description: R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and API deprecation, and interface-focused testing with fixtures. Use when building or refactoring the internals of an R package. Does not cover project scaffolding (DESCRIPTION/NAMESPACE/pkgdown/CI); for the general deep-module and interface-first design workflow see codebase-design, for custom error/condition constructors see r-error-constructors, and for architecture diagrams see c4-modeling.
+description: R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and API deprecation, and interface-focused testing with fixtures. Internals, not project scaffolding (DESCRIPTION/NAMESPACE/pkgdown/CI).
 compatibility: Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required.
 metadata:
   version: "1.0"
 ---
+
+## When to use
+
+Building or refactoring the internals of an R package. Does not cover project
+scaffolding (DESCRIPTION/NAMESPACE/pkgdown/CI); for the general deep-module and
+interface-first design workflow see codebase-design, for custom
+error/condition constructors see r-error-constructors, and for architecture
+diagrams see c4-modeling.
 
 Purpose
 - Help agents implement safe and testable package-level state and persistence in R, aligned with tidyverse/CRAN practices.

@@ -2,7 +2,7 @@
 name: c4-modeling
 category: architecture
 environments: coding, chat
-description: Draft a C4 model of a software system together with the user and render it as high-quality architecture diagrams — Mermaid-first, so they display natively on GitHub and in chat. Use when someone asks to "draw the architecture", "create a C4 diagram", "make a context / container / component diagram", "visualize the system (landscape / deployment)", or wants architecture documentation with diagrams. Covers System Context, Container, Component, System Landscape, Dynamic, and Deployment diagrams — deliberately not Code (level 4). Elicits the model interview-style (one question at a time), keeps a single element/relationship table as the source of truth, derives every diagram from that table, and reviews the result against the c4model.com notation checklist. Not for inventing the component decomposition itself (→ logical-component-design) or choosing topology/code organization (→ architecture-pattern-advisor).
+description: Draft a C4 model of a software system with the user and render it as Mermaid diagrams. Covers Context, Container, Component, Landscape, Dynamic, and Deployment views (not Code / level 4), all derived from one element/relationship table.
 compatibility: No dependencies — Mermaid renders natively on GitHub, GitLab, VS Code, and most Markdown tools. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.
 ---
 
@@ -20,6 +20,16 @@ directly in the repository and in chat.
 The one habit that makes C4 diagrams stay consistent: **model first, diagrams
 second.** All diagrams are projections of one element/relationship table; you
 never edit a diagram directly, you edit the table and re-derive.
+
+## When to use
+
+When someone asks to "draw the architecture", "create a C4 diagram", "make a
+context / container / component diagram", "visualize the system (landscape /
+deployment)", or wants architecture documentation with diagrams. The model is
+elicited interview-style (one question at a time) and reviewed against the
+c4model.com notation checklist. Not for inventing the component decomposition
+itself (→ logical-component-design) or choosing topology / code organization
+(→ architecture-pattern-advisor).
 
 Reference pages (also served by the architecture knowledge-base MCP server):
 

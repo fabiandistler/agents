@@ -2,7 +2,7 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Summarizes evidence-based hypertrophy-training programming (weekly set volume, RIR/RPE intensity targets, the Stimulus:Fatigue ratio) and auto-regulation protocols with precise stop criteria (5% Fatigue Rule, Rep Drop, Myo-Reps) plus a two-step plateau diagnosis; use whenever an experienced trainee asks how many sets or how hard to train, how to auto-regulate a set or session, or why progress has stalled. Draws on meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022, Aube 2022, Robinson 2024) and is aimed at trainees with roughly 9+ years of systematic training experience, not beginners.
+description: Summarizes evidence-based hypertrophy-training programming and auto-regulation with precise stop criteria. Covers set volume, RIR/RPE targets, the Stimulus:Fatigue ratio, and the 5% Fatigue Rule, Rep Drop, and Myo-Reps. For experienced trainees.
 metadata:
   version: "1.0"
 ---
@@ -15,6 +15,14 @@ applying those principles set-by-set and session-by-session. It is aimed at
 **experienced trainees** (roughly 9+ years of systematic training) — the
 volume and intensity ranges below assume a trainee who has already exhausted
 the large, fast gains available to beginners and intermediates.
+
+## When to use
+
+Whenever an experienced trainee (roughly 9+ years of systematic training) asks
+how many sets or how hard to train, how to auto-regulate a set or session, or
+why progress has stalled (a two-step plateau diagnosis). Draws on
+meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022, Aube
+2022, Robinson 2024); not aimed at beginners.
 
 > **Scope and safety note.** This is an educational summary of
 > strength-training research, not medical, physical-therapy, or

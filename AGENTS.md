@@ -124,8 +124,24 @@ machine consumption prefer `skills.json`.
     `scripts/build_manifest.py`). Determines the catalogue section, the
     `install.sh --category` subset, and which plugin bundles the skill.
   - `description` — single paragraph; the first sentence becomes the
-    `summary` in `skills.json`.
+    `summary` in `skills.json`. Keep it within the description budget:
+    **≤250 chars** for most skills, **≤400 chars** for the small allowlist
+    of high-traffic skills in `scripts/check_descriptions.py`. Descriptions
+    are always-loaded metadata that competes for a tight context budget
+    (Codex CLI truncates the skill list past ~2% of context), so move
+    trigger lists and feature enumerations into the SKILL.md **body** (a
+    leading `## When to use` section) rather than the frontmatter. CI
+    enforces this with `python3 scripts/check_descriptions.py`, which also
+    caps the aggregate across all `auto` skills.
 - Optional frontmatter fields:
+  - `activation` — `auto` (default) or `command`. `auto` skills are
+    model-triggered and their description counts toward the auto-trigger
+    budget. `command` skills are user-invoked only: `install.sh` routes them
+    to each target's command directory (`~/.claude/commands`,
+    `~/.codex/prompts`, `~/.config/opencode/command`) as `<name>.md` instead
+    of the skills directory, keeping them out of the auto-trigger metadata.
+    For Claude, pair it with `disable-model-invocation: true` in the same
+    frontmatter (the runtime realization Claude honors; ignored elsewhere).
   - `compatibility` — runtime / language requirements in plain prose.
   - `environments` — comma-separated list of the environments the skill
     belongs to: `coding`, `chat`, or both (e.g. `environments: coding, chat`).

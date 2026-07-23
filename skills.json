@@ -12,7 +12,7 @@
     },
     {
       "name": "analyze-cohesion",
-      "summary": "Analyze the cohesion of a class, module, file, or package and recommend whether to split it, merge it, or leave it.",
+      "summary": "Analyze the cohesion of a class, module, file, or package and recommend split, merge, or leave — classify it on the cohesion scale and compute LCOM.",
       "category": "architecture",
       "path": "skills/analyze-cohesion/SKILL.md",
       "compatibility": "The bundled LCOM script needs Python 3.8+. It analyzes Python (precise, via AST), R, and Bash (heuristic) sources. The reasoning workflow is language-agnostic.",
@@ -22,7 +22,7 @@
     },
     {
       "name": "analyze-coupling",
-      "summary": "Use when measuring or judging how coupled / brittle a codebase is — computing afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finding components in…",
+      "summary": "Measure or judge how coupled or brittle a codebase is.",
       "category": "architecture",
       "path": "skills/analyze-coupling/SKILL.md",
       "compatibility": "Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go).",
@@ -41,7 +41,7 @@
     },
     {
       "name": "balanced-coupling",
-      "summary": "Judge whether a specific dependency between two components is acceptable — not by counting edges, but by weighing them along Vlad Khononov's Balanced Coupling model of integration strength (intrusive…",
+      "summary": "Judge whether a specific dependency between two components is acceptable.",
       "category": "architecture",
       "path": "skills/balanced-coupling/SKILL.md",
       "compatibility": "Works on any codebase or design document. The bundled checker script is stdlib-only Python 3.8+. No dependency-graph tooling required — the assessment is qualitative, per relationship.",
@@ -51,7 +51,7 @@
     },
     {
       "name": "c4-modeling",
-      "summary": "Draft a C4 model of a software system together with the user and render it as high-quality architecture diagrams — Mermaid-first, so they display natively on GitHub and in chat.",
+      "summary": "Draft a C4 model of a software system with the user and render it as Mermaid diagrams.",
       "category": "architecture",
       "path": "skills/c4-modeling/SKILL.md",
       "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, VS Code, and most Markdown tools. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
@@ -71,7 +71,7 @@
     },
     {
       "name": "communication-analysis",
-      "summary": "Analyze or rewrite a message, piece of feedback, or conversation transcript using Schulz von Thun's four-sides model and Carl Rogers-style active listening — decoding what is said on the factual, sel…",
+      "summary": "Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
       "category": "communication",
       "path": "skills/communication-analysis/SKILL.md",
       "environments": [
@@ -81,7 +81,7 @@
     },
     {
       "name": "ddd-advisor",
-      "summary": "Advise on Domain-Driven Design at the strategic level (classifying subdomains as Core, Generic, or Supporting; context-mapping between bounded contexts) and the tactical level (picking an implementat…",
+      "summary": "Advise on Domain-Driven Design strategically (subdomain classification, context-mapping) and tactically (choosing an implementation pattern, then modeling Entities, Value Objects, Aggregates).",
       "category": "architecture",
       "path": "skills/ddd-advisor/SKILL.md",
       "environments": [
@@ -91,7 +91,7 @@
     },
     {
       "name": "ddd-conventions",
-      "summary": "Correctness and design conventions to apply while writing or reviewing code in a codebase that practices Domain-Driven Design — aggregates, value objects, domain events, transaction scripts, event so…",
+      "summary": "Correctness and design conventions for writing or reviewing code in a Domain-Driven Design codebase — aggregates, value objects, domain events, event sourcing, bounded-context integration.",
       "category": "architecture",
       "path": "skills/ddd-conventions/SKILL.md",
       "environments": [
@@ -101,7 +101,7 @@
     },
     {
       "name": "fitness-functions",
-      "summary": "Design and implement architecture fitness functions — automated, objective checks that govern architecture characteristics (modularity, layering, coupling, security, operational resilience) from Rich…",
+      "summary": "Design and implement architecture fitness functions.",
       "category": "architecture",
       "path": "skills/fitness-functions/SKILL.md",
       "environments": [
@@ -123,6 +123,7 @@
       "summary": "Interview the user relentlessly about a plan or design.",
       "category": "workflow",
       "path": "skills/grilling/SKILL.md",
+      "activation": "command",
       "environments": [
         "coding",
         "chat"
@@ -130,7 +131,7 @@
     },
     {
       "name": "guideline-distillation",
-      "summary": "Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs, review checklists, onboarding docs) into lean, machine-actionable convention files such as CONVENTIONS.md, AGENTS.md,…",
+      "summary": "Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs) into lean, machine-actionable rules files (CONVENTIONS.md, AGENTS.md, CLAUDE.md) for coding agents.",
       "category": "workflow",
       "path": "skills/guideline-distillation/SKILL.md",
       "environments": [
@@ -143,13 +144,14 @@
       "summary": "Compact the current conversation into a handoff document for another agent to pick up.",
       "category": "workflow",
       "path": "skills/handoff/SKILL.md",
+      "activation": "command",
       "environments": [
         "coding"
       ]
     },
     {
       "name": "hypertrophy-training",
-      "summary": "Summarizes evidence-based hypertrophy-training programming (weekly set volume, RIR/RPE intensity targets, the Stimulus:Fatigue ratio) and auto-regulation protocols with precise stop criteria (5% Fati…",
+      "summary": "Summarizes evidence-based hypertrophy-training programming and auto-regulation with precise stop criteria.",
       "category": "personal",
       "path": "skills/hypertrophy-training/SKILL.md",
       "environments": [
@@ -159,7 +161,7 @@
     },
     {
       "name": "llm-application-engineering",
-      "summary": "Guide the engineering of a foundation-model application across three linked decisions -- adapting the model when its output is failing, deciding what architectural piece to build next, and monitoring…",
+      "summary": "Guide the engineering of a foundation-model application across three linked decisions.",
       "category": "ai-ml",
       "path": "skills/llm-application-engineering/SKILL.md",
       "environments": [
@@ -169,7 +171,7 @@
     },
     {
       "name": "logical-component-design",
-      "summary": "Forward, generative decomposition of a NEW system or feature into named logical components — the iterative component identification and refactoring cycle from Richards & Ford's *Fundamentals of Softw…",
+      "summary": "Forward, generative decomposition of a NEW system or feature into named logical components — Richards & Ford's iterative identify-and-refine cycle.",
       "category": "architecture",
       "path": "skills/logical-component-design/SKILL.md",
       "environments": [
@@ -178,7 +180,7 @@
     },
     {
       "name": "microservices-design",
-      "summary": "Apply distilled microservices design conventions (from Newman's Building Microservices) when designing, reviewing, or evolving how services interact — service boundary rules, inter-service coupling,…",
+      "summary": "Apply distilled microservices design conventions from Newman's *Building Microservices* when designing or reviewing how services interact.",
       "category": "architecture",
       "path": "skills/microservices-design/SKILL.md",
       "environments": [
@@ -188,7 +190,7 @@
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Guide a machine learning project from problem framing through model selection to production deployment — use it whenever someone is scoping an ML project, picking a model architecture, deciding how t…",
+      "summary": "Guide a machine learning project from problem framing through model selection to production deployment.",
       "category": "ai-ml",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "environments": [
@@ -198,9 +200,10 @@
     },
     {
       "name": "natural-planning",
-      "summary": "Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague or stuck project into concrete physical next actions.",
+      "summary": "Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague, stuck, or overwhelming project into concrete physical next actions.",
       "category": "workflow",
       "path": "skills/natural-planning/SKILL.md",
+      "activation": "command",
       "environments": [
         "coding",
         "chat"
@@ -209,7 +212,7 @@
     },
     {
       "name": "problem-first-explanation",
-      "summary": "Output-form skill for technical explanations.",
+      "summary": "Output-form skill for technical explanations — forces every explanation to start with the concrete problem the concept solves, before the abstract solution or implementation.",
       "category": "communication",
       "path": "skills/problem-first-explanation/SKILL.md",
       "environments": [
@@ -228,7 +231,7 @@
     },
     {
       "name": "r-error-constructors",
-      "summary": "Design custom condition/error constructors for R packages the tidyverse/rlang way — standardized functions that turn a recurring `stop()` call into a testable, documentable, and inheritable error typ…",
+      "summary": "Design custom condition/error constructors for R packages the tidyverse/rlang way.",
       "category": "r-development",
       "path": "skills/r-error-constructors/SKILL.md",
       "compatibility": "R packages using rlang for condition signaling and testthat for testing; assumes tidyverse-style package conventions (roxygen2 `@export`, `NAMESPACE`-managed S3 methods).",
@@ -250,7 +253,7 @@
     },
     {
       "name": "refactoring-checklist",
-      "summary": "Walk through a four-phase decision workflow for whether, when, and how to refactor code — deciding if a change is worth doing now, assessing the risk before touching anything, running the refactor sa…",
+      "summary": "Decide whether, when, and how to refactor a spotted code smell — prioritize the backlog, gate on coverage and change size, and refactor safely in reversible small steps.",
       "category": "refactoring",
       "path": "skills/refactoring-checklist/SKILL.md",
       "environments": [
@@ -260,9 +263,10 @@
     },
     {
       "name": "repo-status",
-      "summary": "Generate a standup / status update from recent development activity.",
+      "summary": "Generate a standup / status update from recent development activity — yesterday/today/blockers, turning rough notes or connected-tool activity into a shareable update.",
       "category": "workflow",
       "path": "skills/repo-status/SKILL.md",
+      "activation": "command",
       "environments": [
         "coding",
         "chat"
@@ -280,7 +284,7 @@
     },
     {
       "name": "sql-schema-design",
-      "summary": "Apply module-encapsulation thinking to SQL schema design and query patterns — expose views as the stable public interface, decompose complex queries into named CTE pipelines, hide physical storage (p…",
+      "summary": "Apply module-encapsulation thinking to SQL schema design and query patterns.",
       "category": "architecture",
       "path": "skills/sql-schema-design/SKILL.md",
       "environments": [
@@ -290,9 +294,10 @@
     },
     {
       "name": "stakeholder-update",
-      "summary": "Generate a stakeholder update tailored to audience and cadence.",
+      "summary": "Generate a stakeholder update tailored to audience and cadence — weekly/monthly leadership status, launch announcement, risk escalation, or exec/engineering/customer versions of the same progress.",
       "category": "communication",
       "path": "skills/stakeholder-update/SKILL.md",
+      "activation": "command",
       "environments": [
         "coding",
         "chat"
@@ -300,7 +305,7 @@
     },
     {
       "name": "stepdown-rule",
-      "summary": "Write, refactor, or review functions using the stepdown rule: make code read top-down, keep each function at one level of abstraction, and extract helpers so the reader can move from orchestration to…",
+      "summary": "Write, refactor, or review functions using the stepdown rule.",
       "category": "refactoring",
       "path": "skills/stepdown-rule/SKILL.md",
       "environments": [
@@ -321,6 +326,7 @@
       "summary": "Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices.",
       "category": "workflow",
       "path": "skills/to-issues/SKILL.md",
+      "activation": "command",
       "environments": [
         "coding"
       ]
@@ -337,7 +343,7 @@
     },
     {
       "name": "worry-management",
-      "summary": "Use when someone brings a specific distressing worry, anxious rumination, or recurring \"what if\" and explicitly wants help thinking it through — not when they want emotional support alone or when the…",
+      "summary": "Use when someone brings a specific distressing worry, anxious rumination, or recurring \"what if\" and explicitly wants help thinking it through.",
       "category": "personal",
       "path": "skills/worry-management/SKILL.md",
       "environments": [
@@ -347,7 +353,7 @@
     },
     {
       "name": "zettelkasten-value-hierarchy",
-      "summary": "Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet) and run bottom-up or top-down value-gener…",
+      "summary": "Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet).",
       "category": "personal",
       "path": "skills/zettelkasten-value-hierarchy/SKILL.md",
       "environments": [

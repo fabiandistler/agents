@@ -2,7 +2,7 @@
 name: skill-creator
 category: workflow
 environments: coding
-description: Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.
+description: Create new skills, modify and improve existing skills, and measure skill performance. Use when creating, editing, evaluating, or benchmarking a skill in this repo, or optimizing its description for better triggering.
 compatibility: Claude Code, Claude.ai, Cowork, Codex CLI, OpenCode (trigger evals need the claude CLI; codex trigger support is experimental)
 ---
 
@@ -67,7 +67,8 @@ Check available MCPs - if useful for research (searching docs, finding similar s
 Based on the user interview, fill in these components:
 
 - **name**: Skill identifier
-- **description**: When to trigger, what it does. This is the primary triggering mechanism - include both what the skill does AND specific contexts for when to use it. All "when to use" info goes here, not in the body. Note: currently models have a tendency to "undertrigger" skills -- to not use them when they'd be useful. To combat this, please make the skill descriptions a little bit "pushy". So for instance, instead of "How to build a simple fast dashboard to display internal Anthropic data.", you might write "How to build a simple fast dashboard to display internal Anthropic data. Make sure to use this skill whenever the user mentions dashboards, data visualization, internal metrics, or wants to display any kind of company data, even if they don't explicitly ask for a 'dashboard.'"
+- **description**: When to trigger, what it does. This is the primary triggering mechanism — the first sentence should be a self-contained what+when trigger, and the whole field must stay within this repo's **description budget: ≤250 characters** (≤400 for the small high-traffic allowlist in `scripts/check_descriptions.py`; CI enforces both plus an aggregate cap). Models tend to "undertrigger" skills, so keep the description crisp and slightly "pushy" about when to reach for the skill — but do **not** pad it with exhaustive trigger lists or feature enumerations. Those go in the SKILL.md **body**, in a leading `## When to use` section, where progressive disclosure loads them only once the skill triggers. So instead of a 900-char description that lists every phrase, write a tight one-to-two-sentence description and move the "use whenever the user mentions X, Y, Z, even if they don't say 'dashboard'" detail into `## When to use`.
+- **activation**: `command` for a user-invoked-only skill (a deliberate command like `handoff` or `repo-status`), `auto` (default, omit) for a model-triggered skill. For `command`, also set `disable-model-invocation: true`. See `references/SKILL-FORMAT.md`.
 - **compatibility**: Required tools, dependencies (optional, rarely needed)
 - **the rest of the skill :)**
 

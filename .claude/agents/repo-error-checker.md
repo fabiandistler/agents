@@ -29,13 +29,16 @@ Run each check from the repo root, mirroring `.github/workflows/ci.yml`.
 Do not stop at the first failure; collect all output.
 
 1. `python3 scripts/build_manifest.py --check` — skills.json in sync,
-   description length, strict-YAML frontmatter, valid category.
-2. `python3 scripts/check_docs.py` — README/AGENTS catalogue tables.
-3. `python3 scripts/check_plugins.py` — marketplace, plugin symlinks,
+   description length, strict-YAML frontmatter, valid category, valid
+   activation.
+2. `python3 scripts/check_descriptions.py` — per-skill description budget
+   and the aggregate auto-skill budget.
+3. `python3 scripts/check_docs.py` — README/AGENTS catalogue tables.
+4. `python3 scripts/check_plugins.py` — marketplace, plugin symlinks,
    kb/ links, .mcp.json, agent frontmatter.
-4. `ruff check .` and `python3 -m compileall -q scripts skills
+5. `ruff check .` and `python3 -m compileall -q scripts skills
    mcp-wiki-server` — Python lint/compile.
-5. `shellcheck -S warning install.sh scripts/test_install.sh
+6. `shellcheck -S warning install.sh scripts/test_install.sh
    eval-suite/run.sh` — skip with a note if shellcheck (or ruff) is not
    installed; never install tools yourself.
 

@@ -126,11 +126,19 @@ count_links() {
   echo "$n"
 }
 
+# True if a skill's frontmatter marks it `activation: command` (routed to the
+# command directory, not the skills directory).
+skill_is_command() {
+  grep -Eq '^activation:[[:space:]]*command[[:space:]]*$' "$1/SKILL.md" 2>/dev/null
+}
+
 skill_count() {
-  # Count skills, optionally filtered by environment ($1 = coding|chat|all).
+  # Count auto-triggered skills (those linked into the skills dir), optionally
+  # filtered by environment ($1 = coding|chat|all).
   local want="${1:-all}" n=0
   for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] || continue
+    skill_is_command "$d" && continue
     if [[ "$want" != "all" ]]; then
       local envs
       envs="$(grep -m1 '^environments:' "$d/SKILL.md" 2>/dev/null | sed 's/^environments://')"
@@ -144,8 +152,29 @@ skill_count() {
   echo "$n"
 }
 
+command_count() {
+  # Count `activation: command` skills (routed to the command dir), optionally
+  # filtered by environment ($1 = coding|chat|all).
+  local want="${1:-all}" n=0
+  for d in "$REPO_ROOT"/skills/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    skill_is_command "$d" || continue
+    if [[ "$want" != "all" ]]; then
+      local envs
+      envs="$(grep -m1 '^environments:' "$d/SKILL.md" 2>/dev/null | sed 's/^environments://')"
+      if [[ -n "${envs//[[:space:]]/}" ]] && [[ ",${envs// /}," != *",$want,"* ]]; then
+        continue
+      fi
+    fi
+    n=$((n + 1))
+  done
+  echo "$n"
+}
+
 EXPECTED="$(skill_count)"
 [[ "$EXPECTED" -ge 1 ]] || fail "no skills detected in repo"
+CMD_EXPECTED="$(command_count all)"
+[[ "$CMD_EXPECTED" -ge 1 ]] || fail "no command skills detected in repo"
 
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
@@ -155,12 +184,19 @@ HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run >/dev/null
 [[ ! -d "$HOME_DRY/.config/opencode" ]] || fail "dry-run created $HOME_DRY/.config/opencode"
 pass "dry-run creates no files"
 
-# 2. install --target=claude links every skill exactly once.
+# 2. install --target=claude links every auto skill into skills/ and every
+#    command skill into commands/.
 HOME_C="$(mktemp -d)"
 HOME="$HOME_C" "$INSTALL" --target=claude >/dev/null
 got="$(count_links "$HOME_C/.claude/skills")"
 [[ "$got" -eq "$EXPECTED" ]] || fail "claude install: expected $EXPECTED links, got $got"
-pass "claude install creates $EXPECTED symlinks"
+pass "claude install creates $EXPECTED skill symlinks"
+got="$(count_links "$HOME_C/.claude/commands")"
+[[ "$got" -eq "$CMD_EXPECTED" ]] || fail "claude install: expected $CMD_EXPECTED command links, got $got"
+# A command skill must land as <name>.md in commands/, not in skills/.
+[[ -L "$HOME_C/.claude/commands/handoff.md" ]] || fail "command skill handoff not linked into commands/"
+[[ ! -e "$HOME_C/.claude/skills/handoff" ]] || fail "command skill handoff leaked into skills/"
+pass "claude install routes $CMD_EXPECTED command skills to commands/"
 
 # 3. Re-running is idempotent (still exactly $EXPECTED links).
 HOME="$HOME_C" "$INSTALL" --target=claude >/dev/null
@@ -187,14 +223,26 @@ done
 [[ "$ours_remaining" -eq 0 ]] || fail "uninstall left $ours_remaining of our symlinks"
 pass "uninstall removes our symlinks only"
 
-# 6. install --target=all populates all three roots.
+# 6. install --target=all populates all three roots (skills + command dirs).
 HOME_A="$(mktemp -d)"
 HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
 for sub in ".claude/skills" ".codex/skills" ".config/opencode/skills"; do
   got="$(count_links "$HOME_A/$sub")"
   [[ "$got" -eq "$EXPECTED" ]] || fail "all install: $sub has $got links, expected $EXPECTED"
 done
-pass "all install populates claude, codex, opencode"
+for sub in ".claude/commands" ".codex/prompts" ".config/opencode/command"; do
+  got="$(count_links "$HOME_A/$sub")"
+  [[ "$got" -eq "$CMD_EXPECTED" ]] || fail "all install: $sub has $got command links, expected $CMD_EXPECTED"
+done
+pass "all install populates claude, codex, opencode (skills + commands)"
+
+# 6a. --uninstall removes command-dir links too.
+HOME="$HOME_A" "$INSTALL" --target=all --uninstall >/dev/null
+for sub in ".claude/commands" ".codex/prompts" ".config/opencode/command"; do
+  got="$(count_links "$HOME_A/$sub")"
+  [[ "$got" -eq 0 ]] || fail "all uninstall: $sub still has $got command links"
+done
+pass "all uninstall removes command-dir links"
 
 # 6b. opencode install migrates our symlinks out of the legacy agent dir
 # (~/.config/opencode/agent) while preserving foreign entries there.

@@ -2,12 +2,16 @@
 name: adr-workflow
 category: architecture
 environments: coding
-description: Establish and maintain Architecture Decision Records (ADRs) in software repositories. Use whenever the user mentions ADRs, architecture decisions, decision logs, technical choices with long-term impact, or wants to set up a repo workflow for documenting why important decisions were made, even if they do not explicitly say "ADR".
+description: Establish and maintain Architecture Decision Records (ADRs) in software repositories.
 ---
 
 # ADR Workflow
 
 Use this skill when a repository needs a durable record of important architectural choices. The goal is not to add more documentation for its own sake. The goal is to make the repo explain why key choices exist so future contributors can maintain or revisit them without rediscovering the same debate.
+
+## When to use
+
+Whenever the user mentions ADRs, architecture decisions, decision logs, technical choices with long-term impact, or wants to set up a repo workflow for documenting why important decisions were made — even if they don't explicitly say "ADR".
 
 ## Core principles
 

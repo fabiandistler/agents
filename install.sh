@@ -21,6 +21,12 @@
 # to skills whose `category:` frontmatter field matches one of the given
 # categories. Combinable with --env.
 #
+# Skills with `activation: command` in their frontmatter are user-invoked,
+# not model-triggered. They are linked into each target's command directory
+# (~/.claude/commands, ~/.codex/prompts, ~/.config/opencode/command) as
+# <name>.md instead of the skills directory, keeping them out of the
+# auto-trigger metadata. --uninstall reverses this.
+#
 # The codex target additionally installs the full plugins, not just the
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
 # reverses both. --env only filters skills; the plugin extras follow
@@ -111,6 +117,17 @@ target_dir_for() {
   esac
 }
 
+# Where each target discovers user-invoked commands. `activation: command`
+# skills go here (as <name>.md) instead of the skills directory.
+target_command_dir_for() {
+  case "$1" in
+    claude)   printf '%s/.claude/commands\n'         "$HOME" ;;
+    codex)    printf '%s/.codex/prompts\n'           "$HOME" ;;
+    opencode) printf '%s/.config/opencode/command\n' "$HOME" ;;
+    *) echo "unknown target: $1" >&2; return 1 ;;
+  esac
+}
+
 resolve_targets() {
   if [[ "$TARGET" == "all" ]]; then
     printf 'claude\ncodex\nopencode\n'
@@ -140,6 +157,17 @@ skill_matches_env() {
     [[ "$e" == "$want" ]] && return 0
   done
   return 1
+}
+
+# Read the `activation:` frontmatter value of a SKILL.md. Prints `command`
+# for user-invoked skills, `auto` otherwise (the default when absent).
+skill_activation() {
+  local skill_md="$1" line act
+  line="$(grep -m1 '^activation:' "$skill_md" 2>/dev/null || true)"
+  act="${line#activation:}"
+  act="${act//[[:space:]]/}"
+  [[ "$act" == "command" ]] && { printf 'command'; return; }
+  printf 'auto'
 }
 
 # True if a skill's `category:` frontmatter matches the requested filter.
@@ -784,14 +812,28 @@ main() {
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    local dest_dir; dest_dir="$(target_dir_for "$target")"
+    local dest_dir cmd_dir cmd_dir_ready=0
+    dest_dir="$(target_dir_for "$target")"
+    cmd_dir="$(target_command_dir_for "$target")"
     printf '%s: %s\n' "$target" "$dest_dir"
     if (( UNINSTALL == 0 )); then
       ensure_parent "$dest_dir"
     fi
     while IFS= read -r skill; do
-      local src="$REPO_ROOT/skills/$skill"
-      local dest="$dest_dir/$skill"
+      local src dest activation
+      activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
+      if [[ "$activation" == "command" ]]; then
+        # User-invoked: link the single SKILL.md into the command directory.
+        src="$REPO_ROOT/skills/$skill/SKILL.md"
+        dest="$cmd_dir/$skill.md"
+        if (( UNINSTALL == 0 )) && (( cmd_dir_ready == 0 )); then
+          ensure_parent "$cmd_dir"
+          cmd_dir_ready=1
+        fi
+      else
+        src="$REPO_ROOT/skills/$skill"
+        dest="$dest_dir/$skill"
+      fi
       if (( UNINSTALL )); then
         unlink_one "$src" "$dest"
       else

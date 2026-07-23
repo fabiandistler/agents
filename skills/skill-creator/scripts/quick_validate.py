@@ -98,6 +98,16 @@ def validate_skill(skill_path):
                 False,
                 f"Description is too long ({len(description)} characters). Maximum is 1024 characters.",
             )
+        # This repo budgets descriptions far tighter than the spec (≤250 chars,
+        # ≤400 for the allowlist in scripts/check_descriptions.py). Warn rather
+        # than fail here — CI's check_descriptions.py is the hard gate — so the
+        # validator stays usable for skills outside this repo.
+        if len(description) > 250:
+            print(
+                f"WARNING: description is {len(description)} chars; this repo's budget is "
+                "≤250 (≤400 for the high-traffic allowlist). Move trigger lists into a "
+                "'## When to use' body section. See references/SKILL-FORMAT.md."
+            )
 
     # Validate compatibility field if present (optional)
     compatibility = frontmatter.get("compatibility", "")

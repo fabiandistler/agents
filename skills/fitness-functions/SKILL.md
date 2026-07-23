@@ -2,7 +2,7 @@
 name: fitness-functions
 category: architecture
 environments: coding
-description: Design and implement architecture fitness functions — automated, objective checks that govern architecture characteristics (modularity, layering, coupling, security, operational resilience) from Richards & Ford's *Fundamentals of Software Architecture*. Use whenever someone wants to "enforce architecture rules", "stop devs from breaking the layering", "prevent cyclic dependencies", "add an ArchUnit / dependency-cruiser / import-linter test", "automate architecture governance", "keep the architecture from eroding", asks how to make an architectural decision stick in CI, or mentions fitness functions, evolutionary architecture, or chaos engineering as governance — even if they never use the term "fitness function". Produces a concrete, CI-wired check plus the rationale developers need to accept it. Not for measuring current coupling/cohesion of existing code (→ analyze-coupling / analyze-cohesion) or choosing an architecture in the first place (→ architecture-pattern-advisor).
+description: Design and implement architecture fitness functions. These are automated, CI-wired checks that govern architecture characteristics (modularity, layering, coupling, security, resilience) and keep the architecture from eroding.
 ---
 
 # Fitness Functions
@@ -22,6 +22,18 @@ catch this too late — a week of rampant imports has already done the damage.
 The fix is to encode the rule as an executable check and wire it into
 continuous integration, so the important-but-not-urgent concern is guarded
 without anyone having to remember it.
+
+## When to use
+
+Whenever someone wants to "enforce architecture rules", "stop devs from
+breaking the layering", "prevent cyclic dependencies", "add an ArchUnit /
+dependency-cruiser / import-linter test", "automate architecture governance",
+or "keep the architecture from eroding", asks how to make an architectural
+decision stick in CI, or mentions fitness functions, evolutionary
+architecture, or chaos engineering as governance — even without the term
+"fitness function". Not for measuring the current coupling/cohesion of
+existing code (→ analyze-coupling / analyze-cohesion) or choosing an
+architecture in the first place (→ architecture-pattern-advisor).
 
 Two framings to keep in mind, both from the source chapter:
 

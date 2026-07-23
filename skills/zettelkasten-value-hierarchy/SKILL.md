@@ -2,7 +2,7 @@
 name: zettelkasten-value-hierarchy
 category: personal
 environments: chat
-description: Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet) and run bottom-up or top-down value-generation passes that consolidate low-value notes into higher-value ones. Use whenever a note collection is reviewed for what it is "worth", when deciding whether a note should be promoted or merged, or when the user asks to find synthesis opportunities, generate value, or build a system/workflow/principle note out of existing snippets, tools, or checklists.
+description: Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet). Run bottom-up or top-down passes that consolidate low-value notes into higher ones.
 metadata:
   version: "1.0"
 ---
@@ -15,6 +15,13 @@ refined into higher-value notes. This skill encodes that value hierarchy and
 two workflows for climbing it: **bottom-up** (start from existing low-value
 notes and look for what they add up to) and **top-down** (start from a target
 high-value note and gather the material to support it).
+
+## When to use
+
+Whenever a note collection is reviewed for what it is "worth", when deciding
+whether a note should be promoted or merged, or when the user asks to find
+synthesis opportunities, generate value, or build a system/workflow/principle
+note out of existing snippets, tools, or checklists.
 
 This originates from one person's personal zettelkasten convention, not a
 universal standard. Treat the hierarchy and workflows as a lens to offer, not

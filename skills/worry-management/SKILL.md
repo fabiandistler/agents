@@ -2,7 +2,7 @@
 name: worry-management
 category: personal
 environments: chat
-description: Use when someone brings a specific distressing worry, anxious rumination, or recurring "what if" and explicitly wants help thinking it through — not when they want emotional support alone or when the distress looks clinical. Walks the worry through a structured six-step analysis — classify it as Concern or Worry, check whether it is controllable, then either run a four-question problem analysis or accept the worst case with the Carrier Formula, and close with a Stop-Loss limit and staying busy.
+description: Use when someone brings a specific distressing worry, anxious rumination, or recurring "what if" and explicitly wants help thinking it through. Not for emotional support alone, or when the distress looks clinical.
 metadata:
   version: "1.0"
 ---

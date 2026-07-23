@@ -2,11 +2,21 @@
 name: analyze-coupling
 category: architecture
 environments: coding
-description: Use when measuring or judging how coupled / brittle a codebase is — computing afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finding components in the Zone of Pain or Zone of Uselessness. Trigger whenever the user asks to "analyze coupling", "which modules are too coupled / brittle / tangled", "is this codebase over-abstracted", "dependency metrics for this repo", or mentions afferent/efferent coupling, instability vs abstractness, or the main sequence — even if they don't name the metrics explicitly. Goes beyond eyeballing imports — build the dependency graph, compute Martin's component metrics with the bundled script, classify into zones, and recommend concrete remediation.
+description: Measure or judge how coupled or brittle a codebase is. Computes afferent and efferent coupling, Instability, Abstractness, and Distance from the Main Sequence, and finds components in the Zone of Pain or Zone of Uselessness.
 compatibility: Works on any codebase. The bundled script is stdlib-only Python 3.8+. Dependency-graph extraction uses whatever tool fits the ecosystem (examples below for Python, JS/TS, Java, .NET, Go).
 ---
 
 # Analyze Coupling
+
+## When to use
+
+Whenever the user asks to "analyze coupling", "which modules are too coupled /
+brittle / tangled", "is this codebase over-abstracted", "dependency metrics
+for this repo", or mentions afferent/efferent coupling, instability vs
+abstractness, or the main sequence — even without naming the metrics. Goes
+beyond eyeballing imports: build the dependency graph, compute Martin's
+component metrics with the bundled script, classify into zones, and recommend
+concrete remediation.
 
 ## Overview
 

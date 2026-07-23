@@ -2,7 +2,7 @@
 name: sql-schema-design
 category: architecture
 environments: coding
-description: Apply module-encapsulation thinking to SQL schema design and query patterns — expose views as the stable public interface, decompose complex queries into named CTE pipelines, hide physical storage (partitioning) behind that interface, and gate deployments with INFORMATION_SCHEMA conformance checks. Use whenever a database schema is being designed or reviewed, a report/application queries tables directly, a query has deep subquery nesting, a table is outgrowing its read pattern, or CI/CD needs to catch schema drift before it reaches consumers.
+description: Apply module-encapsulation thinking to SQL schema design and query patterns. Expose views as the stable interface, decompose queries into named CTE pipelines, hide physical storage behind that interface, and gate deployments against schema drift.
 metadata:
   version: "1.0"
 ---

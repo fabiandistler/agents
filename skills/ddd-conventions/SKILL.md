@@ -2,7 +2,7 @@
 name: ddd-conventions
 category: architecture
 environments: coding
-description: Correctness and design conventions to apply while writing or reviewing code in a codebase that practices Domain-Driven Design — aggregates, value objects, domain events, transaction scripts, event sourcing, and bounded-context integration. Use whenever implementing domain logic, persisting aggregates, publishing events, or wiring cross-context integration, even if the user never says "DDD". For the upfront design conversation (subdomain classification, pattern choice, context mapping) use ddd-advisor instead; this skill governs the code that comes out of those decisions.
+description: Correctness and design conventions for writing or reviewing code in a Domain-Driven Design codebase — aggregates, value objects, domain events, event sourcing, bounded-context integration. The code, not the upfront design (→ ddd-advisor).
 metadata:
   version: "1.0"
 ---
@@ -13,6 +13,14 @@ metadata:
 > Non-obvious rules that correct a coding model's likely default behavior. Generic DDD
 > vocabulary (what an entity/VO/aggregate *is*, "use a ubiquitous language", "talk to
 > domain experts") is assumed and omitted. Chapter refs anchor each rule to the source.
+
+## When to use
+
+Whenever implementing domain logic, persisting aggregates, publishing events,
+or wiring cross-context integration — even if the user never says "DDD". For
+the upfront design conversation (subdomain classification, pattern choice,
+context mapping) use ddd-advisor; this skill governs the code that comes out
+of those decisions.
 
 ## Choosing the Business-Logic Pattern
 
