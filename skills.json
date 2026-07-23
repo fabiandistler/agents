@@ -275,11 +275,12 @@
     },
     {
       "name": "repo-status",
-      "summary": "Generate a status update from recent activity.",
+      "summary": "Generate a standup / status update from recent development activity.",
       "category": "workflow",
       "path": "skills/repo-status/SKILL.md",
       "environments": [
-        "coding"
+        "coding",
+        "chat"
       ]
     },
     {
