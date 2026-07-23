@@ -31,16 +31,23 @@ AGENTS_ROW = re.compile(r"^\| \[([a-z0-9-]+)\]\(skills/\1/SKILL\.md\) \| (.*) \|
 # Category sections look like: ### Architecture & design (`architecture`)
 SECTION_HEADING = re.compile(r"^### .+ \(`([a-z0-9-]+)`\)$")
 CATEGORY_FIELD = re.compile(r"^category:\s*(\S+)\s*$", re.M)
+ACTIVATION_FIELD = re.compile(r"^activation:\s*(\S+)\s*$", re.M)
 
 
 def skill_names() -> set[str]:
-    return {
-        child.name
-        for child in SKILLS_DIR.iterdir()
-        if child.is_dir()
-        and not child.name.startswith(".")
-        and (child / "SKILL.md").is_file()
-    }
+    # Router skills (activation: router) are per-category infrastructure, not a
+    # distinct capability, so they carry no "when to use" catalogue row; their
+    # members are listed individually as usual.
+    names: set[str] = set()
+    for child in SKILLS_DIR.iterdir():
+        skill_md = child / "SKILL.md"
+        if not (child.is_dir() and not child.name.startswith(".") and skill_md.is_file()):
+            continue
+        m = ACTIVATION_FIELD.search(skill_md.read_text(encoding="utf-8"))
+        if m and m.group(1) == "router":
+            continue
+        names.add(child.name)
+    return names
 
 
 def skill_categories(skills: set[str]) -> dict[str, str]:

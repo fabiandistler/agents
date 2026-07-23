@@ -27,6 +27,12 @@
 # <name>.md instead of the skills directory, keeping them out of the
 # auto-trigger metadata. --uninstall reverses this.
 #
+# A category may ship a router skill (`activation: router`, named after the
+# category). Its auto skills are nested under the router's members/ dir, so
+# only the router is linked at top level; the members load lazily when the
+# router routes to them, keeping the category to a single trigger entry. The
+# nested members are never linked flat and so are skipped by (un)install.
+#
 # The codex target additionally installs the full plugins, not just the
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
 # reverses both. --env only filters skills; the plugin extras follow
@@ -160,14 +166,40 @@ skill_matches_env() {
 }
 
 # Read the `activation:` frontmatter value of a SKILL.md. Prints `command`
-# for user-invoked skills, `auto` otherwise (the default when absent).
+# for user-invoked skills, `router` for a per-category router skill, `auto`
+# otherwise (the default when absent).
 skill_activation() {
   local skill_md="$1" line act
   line="$(grep -m1 '^activation:' "$skill_md" 2>/dev/null || true)"
   act="${line#activation:}"
   act="${act//[[:space:]]/}"
-  [[ "$act" == "command" ]] && { printf 'command'; return; }
-  printf 'auto'
+  case "$act" in
+    command) printf 'command' ;;
+    router)  printf 'router' ;;
+    *)       printf 'auto' ;;
+  esac
+}
+
+# Print the `category:` frontmatter value of a SKILL.md (empty if absent).
+skill_category() {
+  local skill_md="$1" line cat
+  line="$(grep -m1 '^category:' "$skill_md" 2>/dev/null || true)"
+  cat="${line#category:}"
+  printf '%s' "${cat//[[:space:]]/}"
+}
+
+# Space-padded list of categories that ship a router skill (activation:
+# router). A routed category's auto skills are nested under the router's
+# members/ dir, so install.sh links only the router and skips the members.
+routed_categories() {
+  local out=" "
+  for d in "$REPO_ROOT"/skills/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    if [[ "$(skill_activation "$d/SKILL.md")" == "router" ]]; then
+      out+="$(skill_category "$d/SKILL.md") "
+    fi
+  done
+  printf '%s' "$out"
 }
 
 # True if a skill's `category:` frontmatter matches the requested filter.
@@ -807,6 +839,7 @@ main() {
     echo "no skills found under $REPO_ROOT (env=$ENV, category=$CATEGORY)" >&2
     exit 1
   fi
+  local routed; routed="$(routed_categories)"
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
   [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
 
@@ -820,8 +853,9 @@ main() {
       ensure_parent "$dest_dir"
     fi
     while IFS= read -r skill; do
-      local src dest activation
+      local src dest activation category
       activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
+      category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
       if [[ "$activation" == "command" ]]; then
         # User-invoked: link the single SKILL.md into the command directory.
         src="$REPO_ROOT/skills/$skill/SKILL.md"
@@ -830,7 +864,14 @@ main() {
           ensure_parent "$cmd_dir"
           cmd_dir_ready=1
         fi
+      elif [[ "$activation" != "router" && "$routed" == *" $category "* ]]; then
+        # Auto member of a routed category: it is nested under the router's
+        # members/ dir and loads lazily when routed to, so it is never linked
+        # (or unlinked) at top level.
+        continue
       else
+        # A normal auto skill, or the router itself (linked as a whole dir so
+        # its nested members/ come along).
         src="$REPO_ROOT/skills/$skill"
         dest="$dest_dir/$skill"
       fi

@@ -37,6 +37,7 @@ PLUGINS_DIR = REPO_ROOT / "plugins"
 MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 
 CATEGORY_FIELD = re.compile(r"^category:\s*(\S+)\s*$", re.M)
+ACTIVATION_FIELD = re.compile(r"^activation:\s*(\S+)\s*$", re.M)
 
 
 def skill_categories() -> dict[str, str]:
@@ -47,6 +48,16 @@ def skill_categories() -> dict[str, str]:
             m = CATEGORY_FIELD.search(skill_md.read_text(encoding="utf-8"))
             categories[child.name] = m.group(1) if m else ""
     return categories
+
+
+def skill_activations() -> dict[str, str]:
+    activations: dict[str, str] = {}
+    for child in sorted(SKILLS_DIR.iterdir()):
+        skill_md = child / "SKILL.md"
+        if child.is_dir() and not child.name.startswith(".") and skill_md.is_file():
+            m = ACTIVATION_FIELD.search(skill_md.read_text(encoding="utf-8"))
+            activations[child.name] = m.group(1) if m else "auto"
+    return activations
 
 
 def check_marketplace(errors: list[str]) -> list[str]:
@@ -175,6 +186,15 @@ def check_agents(plugin: str, errors: list[str]) -> None:
 def main() -> int:
     errors: list[str] = []
     categories = skill_categories()
+    activations = skill_activations()
+    # A category is routed when it ships a skill with activation: router (named
+    # after the category). Its auto skills are nested under the router's
+    # members/ dir rather than symlinked flat into the plugin, so only the
+    # router itself (plus any user-invoked command skills) registers at top
+    # level. build_routers.py --check validates the nested members/ symlinks.
+    routed = {
+        cat for name, cat in categories.items() if activations.get(name) == "router"
+    }
     plugins = check_marketplace(errors)
 
     if PLUGINS_DIR.is_dir():
@@ -191,7 +211,16 @@ def main() -> int:
         check_mcp(plugin, errors)
         check_agents(plugin, errors)
         bundled = plugin_skills(plugin, errors)
-        expected = {s for s, c in categories.items() if c == plugin}
+        if plugin in routed:
+            # Only the router and any command skills register at top level;
+            # auto members ride nested under the router.
+            expected = {
+                s
+                for s, c in categories.items()
+                if c == plugin and activations.get(s) in ("router", "command")
+            }
+        else:
+            expected = {s for s, c in categories.items() if c == plugin}
         for s in sorted(expected - bundled):
             errors.append(f"{plugin}: skills/{s} has category: {plugin} but no symlink in plugins/{plugin}/skills/")
         for s in sorted(bundled - expected):

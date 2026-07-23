@@ -20,6 +20,9 @@ jobs:
       - name: Manifest in sync
         run: python scripts/build_manifest.py --check
 
+      - name: Router bodies in sync
+        run: python scripts/build_routers.py --check
+
       - name: Description budget
         run: python scripts/check_descriptions.py
 

@@ -39,7 +39,18 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 Each skill carries a `category` frontmatter field; the sections below
 group the catalogue by those categories.
 
+Some categories ship a **router** skill (`activation: router`, named after
+the category) as their single registered entry point. Its description is
+deliberately broad, and its body routes to the specific sub-skill to read
+before acting; the sub-skills nest under the router's `members/` directory
+and load only when routed to (progressive disclosure), so the category adds
+one trigger entry instead of many. The router's SKILL.md member table is
+generated from `skills.json` by `scripts/build_routers.py` (CI checks it for
+drift). The tables below still list every sub-skill individually.
+
 ### Architecture & design (`architecture`)
+
+Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
