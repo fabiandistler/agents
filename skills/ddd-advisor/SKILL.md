@@ -3,7 +3,6 @@ name: ddd-advisor
 category: architecture
 environments: coding
 description: Advise on Domain-Driven Design at the strategic level (classifying subdomains as Core, Generic, or Supporting; context-mapping between bounded contexts) and the tactical level (picking an implementation pattern along the Transaction Script → Active Record → Domain Model → Event-Sourced Domain Model spectrum, then modeling with Entities, Value Objects, and Aggregates) — use it whenever a design conversation touches subdomain classification, buy-vs-build for a capability, integration with a legacy or third-party system, bounded-context boundaries, or how much domain modeling a piece of business logic actually deserves. Applies even if the user never says "DDD" or "domain-driven design" explicitly.
-compatibility: Domain- and language-agnostic; the reasoning applies to any codebase practicing or considering Domain-Driven Design (examples below use SQL and R, but nothing is R-specific). Pairs with architecture-pattern-advisor for topology/microservice-boundary decisions and with adr-workflow to record the classification and pattern choices.
 metadata:
   version: "1.0"
 ---

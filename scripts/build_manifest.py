@@ -119,13 +119,26 @@ def _maybe_join_continuation(value: str, lines: list[str], idx: int) -> tuple[st
     return " ".join(p.strip() for p in parts), consumed
 
 
-def first_sentence(text: str, limit: int = 200) -> str:
+# The manifest summary is the description's first sentence, capped here; a
+# longer first sentence is truncated with an ellipsis and loses its trigger.
+SUMMARY_LIMIT = 200
+
+
+def first_sentence(text: str) -> str:
+    """The description's leading sentence, whitespace-normalized (untruncated)."""
     text = re.sub(r"\s+", " ", text).strip()
     m = re.search(r"\.\s", text)
-    sentence = text[: m.end()].strip() if m else text
+    return text[: m.end()].strip() if m else text
+
+
+def truncate_summary(sentence: str, limit: int = SUMMARY_LIMIT) -> str:
     if len(sentence) > limit:
-        sentence = sentence[: limit - 1].rstrip() + "…"
+        return sentence[: limit - 1].rstrip() + "…"
     return sentence
+
+
+def warn(message: str) -> None:
+    sys.stderr.write(f"warning: {message}\n")
 
 
 # Agent-skills spec limit; Claude.ai silently drops skills that exceed it.
@@ -172,9 +185,17 @@ def build_entry(skill_md: Path) -> dict[str, object]:
             f"{skill_md}: frontmatter 'category' must be one of {', '.join(CATEGORIES)}"
             f" (got {category!r})"
         )
+    sentence = first_sentence(description)
+    if len(sentence) > SUMMARY_LIMIT:
+        warn(
+            f"{skill_md}: description's first sentence is {len(sentence)} chars;"
+            f" the skills.json summary is truncated at {SUMMARY_LIMIT}, losing its"
+            f" what+when trigger. Rewrite the first sentence to stand alone under"
+            f" {SUMMARY_LIMIT} chars."
+        )
     entry: dict[str, object] = {
         "name": name,
-        "summary": first_sentence(description),
+        "summary": truncate_summary(sentence),
         "category": category,
         "path": str(skill_md.relative_to(REPO_ROOT)),
     }

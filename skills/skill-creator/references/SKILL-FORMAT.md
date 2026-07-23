@@ -12,6 +12,8 @@ The authoritative frontmatter constraints for `SKILL.md`, per the Agent Skills f
 | `compatibility` | No | Max 500 characters. Environment requirements (intended product, system packages, network access). Most skills don't need it. |
 | `metadata` | No | Arbitrary string-to-string map for client-specific properties. |
 | `allowed-tools` | No | Space-separated string of pre-approved tools. Experimental; support varies by agent implementation. |
+| `argument-hint` | No | Placeholder text describing the arguments a user can pass when invoking the skill as a command (e.g. `"[yesterday \| today \| blockers]"`). Client-specific (Claude Code); ignored by agents that don't surface commands. |
+| `disable-model-invocation` | No | Boolean. When `true`, the model won't auto-load the skill; it runs only when the user invokes it explicitly. Client-specific (Claude Code); ignored elsewhere. |
 
 ## Where this repo is stricter than the general spec
 
