@@ -1,5 +1,5 @@
 {
-  "_comment": "Toy assessment covering every quadrant. 'orders -> inventory' shares the domain model across a service boundary in the volatile core -> knowledge leak. 'reporting -> mainframe' does the same but the mainframe is frozen -> tolerated stable leak. 'orders -> pricing' is heavy sharing inside one package -> high cohesion. 'web -> orders' crosses a service boundary behind a versioned contract -> loose coupling. 'utils' hosts two strangers -> low cohesion. Run: python3 balance_check.py example_input.json",
+  "_comment": "Toy assessment covering every quadrant. 'orders -> inventory' shares the domain model across a service boundary in the volatile core -> knowledge leak. 'reporting -> mainframe' does the same but the mainframe is frozen -> tolerated stable leak. 'orders -> pricing' is heavy sharing inside one package -> high cohesion. 'web -> orders' crosses a service boundary behind a versioned contract -> loose coupling. 'utils' hosts two strangers -> low cohesion. Run: python3 balance_check.py balance_check.example.json",
   "level": "service",
   "edges": [
     {"from": "orders", "to": "inventory", "strength": "model", "distance": "service", "volatility": "core", "note": "stock entities shared verbatim in events"},

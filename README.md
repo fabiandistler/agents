@@ -130,14 +130,11 @@ A skill without an `environments` field belongs to every environment.
 | Skill | When to use |
 |---|---|
 | `skills/adr-workflow/` | Establishing or maintaining Architecture Decision Records in a repo. |
-| `skills/analyze-cohesion/` | Analyzing whether a class, module, file, or package is cohesive — classify it on the best-to-worst cohesion scale, compute LCOM, and recommend a split/merge/leave. |
-| `skills/analyze-coupling/` | Measuring how coupled or brittle a codebase is — afferent/efferent coupling, Instability, Abstractness, Distance from the Main Sequence, and the Zones of Pain and Uselessness. |
 | `skills/architecture-pattern-advisor/` | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
-| `skills/balanced-coupling/` | Weighing a specific dependency along Khononov's Balanced Coupling model — integration strength (intrusive/functional/model/contract), distance, and volatility — flagging knowledge leaks and recommending how to rebalance them. |
 | `skills/c4-modeling/` | Drafting a C4 model of a system interactively and rendering it as Mermaid diagrams — System Context, Container, and Component views plus landscape, dynamic, and deployment — per c4model.com best practices. |
 | `skills/codebase-design/` | Shared vocabulary and workflow for designing deep modules. |
-| `skills/ddd-advisor/` | Subdomain classification, buy-vs-build, bounded-context integration, or choosing a DDD implementation pattern. |
-| `skills/ddd-conventions/` | Implementation-time DDD correctness rules — aggregates (one per transaction, optimistic concurrency), value objects, past-tense domain events, outbox-pattern publishing, event-sourcing mechanics, and bounded-context integration conventions. |
+| `skills/coupling-cohesion/` | Measuring coupling or cohesion of existing code — a module's cohesion and LCOM, codebase-wide coupling metrics (instability, abstractness, Zones of Pain/Uselessness), or whether one specific dependency is balanced (Khononov strength/distance/volatility). |
+| `skills/ddd/` | Domain-Driven Design across strategy and code — subdomain classification, context mapping, choosing an implementation pattern, and the correctness conventions for aggregates, value objects, domain events, and event sourcing. |
 | `skills/fitness-functions/` | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
 | `skills/logical-component-design/` | Decomposing a new system or feature into named logical components — the iterative Workflow / Actor-Action identification cycle, the Entity-Trap antipattern, cohesion and coupling refinement, and the Law of Demeter. |
 | `skills/microservices-design/` | Designing or reviewing how microservices interact — boundaries, coupling, communication style, contract versioning, cross-service code reuse, sagas, and resiliency patterns (timeouts, bulkheads, circuit breakers, retries) — via a distilled Newman ruleset. |
@@ -147,8 +144,7 @@ A skill without an `environments` field belongs to every environment.
 
 | Skill | When to use |
 |---|---|
-| `skills/fowler-refactoring-catalog/` | Naming the right Fowler refactoring for a code smell and getting its step-by-step mechanics. |
-| `skills/refactoring-checklist/` | Deciding whether and when a spotted code smell is worth refactoring now, and how to do it safely in small steps. |
+| `skills/refactoring/` | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
 | `skills/stepdown-rule/` | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 | `skills/tdd/` | Test-driven development. |
 | `skills/uncertainty-management/` | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |

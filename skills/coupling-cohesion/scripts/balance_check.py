@@ -11,7 +11,7 @@ Each edge is an already-made qualitative assessment (see the skill's
 workflow steps 2-4); this script only reduces the levels to high/low,
 applies the rule uniformly, and sorts the trouble to the top.
 
-Input is JSON (see scripts/example_input.json):
+Input is JSON (see scripts/balance_check.example.json):
 
     {
       "level": "service",

@@ -2,7 +2,7 @@
 name: logical-component-design
 category: architecture
 environments: coding
-description: Forward, generative decomposition of a NEW system or feature into named logical components — Richards & Ford's iterative identify-and-refine cycle. Creates the decomposition; measuring an existing one is analyze-cohesion.
+description: Forward, generative decomposition of a NEW system or feature into named logical components — Richards & Ford's iterative identify-and-refine cycle. Creates the decomposition; measuring an existing one is coupling-cohesion.
 ---
 
 # Logical Component Design
@@ -12,7 +12,7 @@ represented in code as a namespace or directory (`com.app.order.placement`,
 `order/placement/`). This skill takes a system or feature you are *about to
 build* and produces a first set of named components, then refines them. It is the
 generative front end to the analysis skills: it *creates* the decomposition;
-`analyze-cohesion` and `analyze-coupling` *measure* one that already exists.
+the `coupling-cohesion` skill *measures* one that already exists.
 
 The core idea, from *Fundamentals of Software Architecture* (ch. 8), is that
 component identification is an **iterative feedback loop**, not a one-shot act of
@@ -34,8 +34,8 @@ domain", "how should I organize these user stories into components", or
 applying the Workflow or Actor/Action approach, or worrying about the Entity
 Trap — even without naming the book. Produces descriptively-named components
 with role statements, assigned user stories, and a coupling/Law-of-Demeter
-refinement pass. Not for analyzing existing code (→ analyze-cohesion /
-analyze-coupling) or choosing system topology and folder layout
+refinement pass. Not for analyzing existing code (→ coupling-cohesion)
+or choosing system topology and folder layout
 (→ architecture-pattern-advisor).
 Read it when you need the full examples or the worksheet; this file is the
 workflow.
@@ -96,7 +96,7 @@ responsibility" is also literally "too much code in one place." Extract the
 strayed responsibilities into their own components (e.g. pull payment,
 inventory, and email out of an over-broad `Order Placement`). For a deeper,
 metric-backed split/merge/leave decision on a specific class or module, hand off
-to the **`analyze-cohesion`** skill.
+to the **`coupling-cohesion`** skill.
 
 ### 4. Analyze architectural characteristics
 
@@ -134,7 +134,7 @@ Once a candidate set of components exists, examine how they depend on each other
   catches this; surface it from the design and note it explicitly.
 
 For coupling **metrics on code that already exists** (instability, distance from
-the main sequence, zones of pain/uselessness), hand off to **`analyze-coupling`**.
+the main sequence, zones of pain/uselessness), hand off to **`coupling-cohesion`**.
 
 ## Refinement lens: Law of Demeter (Least Knowledge)
 

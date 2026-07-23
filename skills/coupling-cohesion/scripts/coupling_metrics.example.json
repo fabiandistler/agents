@@ -1,5 +1,5 @@
 {
-  "_comment": "Toy 5-component system illustrating each corner of the graph. 'core' is concrete and heavily depended-on -> Zone of Pain. 'experimental' is abstract but depends on others while nothing depends on it -> Zone of Uselessness. 'contracts' is abstract and stable (ideal). 'web' is concrete and unstable (ideal). Run: python3 coupling_metrics.py example_input.json",
+  "_comment": "Toy 5-component system illustrating each corner of the graph. 'core' is concrete and heavily depended-on -> Zone of Pain. 'experimental' is abstract but depends on others while nothing depends on it -> Zone of Uselessness. 'contracts' is abstract and stable (ideal). 'web' is concrete and unstable (ideal). Run: python3 coupling_metrics.py coupling_metrics.example.json",
   "components": [
     {"name": "web", "abstract": 0, "concrete": 14},
     {"name": "billing", "abstract": 1, "concrete": 9},

@@ -1,21 +1,237 @@
 ---
-name: fowler-refactoring-catalog
+name: refactoring
 category: refactoring
 environments: coding
-description: Look up Martin Fowler's refactoring catalog to name the exact technique for a code smell and get its atomic mechanics.
+description: Refactor a spotted code smell end to end — decide whether, when, and how safely to act, then apply the right Martin Fowler technique with its atomic mechanics.
 metadata:
-  version: "1.0"
+  version: "2.0"
 ---
 
-# Fowler Refactoring Catalog
+# Refactoring
 
-Refactoring is restructuring code so its external behavior stays the same while its internal structure improves. This skill is a lookup tool: given a smell in the code, it names the specific technique that addresses it and lays out the technique's mechanics as an ordered checklist. It does not replace judgment about *whether* to refactor — it removes the guesswork about *which* named technique to reach for and *how* to execute it safely.
+Two questions, one skill. **Part 1 — the decision:** is this smell worth fixing
+now, is it safe to touch, and how do you touch it without breaking anything?
+**Part 2 — the mechanics:** which named Fowler technique fits the smell, and
+what are its atomic, test-after-each-step moves? Walk Part 1 first to decide
+whether/when/how; drop into Part 2 for the specific move once you've decided to
+go.
 
-The full technique index (62 entries) lives in [references/CATALOG.md](references/CATALOG.md). This file covers the twelve highest-value techniques in enough depth to apply directly, plus the shared discipline that makes every technique in the catalog safe to run.
+The full technique index (62 entries) lives in
+[references/CATALOG.md](references/CATALOG.md). This file covers the decision
+workflow plus the twelve highest-value techniques in enough depth to apply
+directly.
 
 ## When to use
 
-Whenever code needs restructuring without changing observable behavior — a function is too long or hard to name, a conditional is deeply nested or duplicated, data travels as loose primitives or repeated parameter groups, a class exposes its internals or does too much — or the user names a Fowler technique directly (Extract Function, Replace Conditional with Polymorphism, Introduce Parameter Object, etc.) or asks "what refactoring is this called" / "how do I refactor this safely".
+Whenever a code smell is spotted and the question is *should I refactor this
+now, and how safely* — prioritizing a backlog of smells; choosing between a
+normal refactor, the Mikado Method, Strangler Fig, or a rewrite; running
+reversible steps under the Two-Hats rule — **and/or** whenever code needs
+restructuring without changing observable behavior and you need *which* named
+technique to reach for and *how* to execute it (Extract Function, Replace
+Conditional with Polymorphism, Introduce Parameter Object, "what refactoring is
+this called", "how do I refactor this safely"). The priority matrix below
+includes an R-specific smell set (data.table chains, `<<-` misuse, growing
+objects in loops, `T`/`F` vs `TRUE`/`FALSE`, `1:length(x)` vs `seq_along()`,
+unclosed DBI connections).
+
+---
+
+# Part 1 — Decide whether, when, and how safely
+
+The workflow has four phases: decide, assess risk, implement in small steps,
+validate against quality gates.
+
+## Quick decision path
+
+Walk this in order. Stop as soon as a step tells you to stop.
+
+1. **Code smell detected?**
+   No → no refactoring needed. Yes → continue.
+2. **Test coverage > 80%?**
+   No → write characterization tests first, capturing current behavior,
+   before changing anything. Yes → continue.
+3. **Determine priority** using the matrix below.
+4. **Change-size check:**
+   - < 2 weeks → normal refactoring, continue to step 5.
+   - 2–8 weeks → use the Mikado Method or the Strangler Fig pattern instead
+     of a single refactor.
+   - \> 8 weeks → evaluate rewrite vs. refactor (see Phase 2).
+5. **Two-Hats rule:** are you refactoring, or also building a feature?
+   - Refactoring only → start the Small-Steps Protocol.
+   - Both → stop. Finish the feature first, then refactor separately.
+
+Don't jump straight to step 3 on the first duplicate you see — the Rule of
+Three exists for a reason: one repetition is a coincidence, two is worth
+watching, three (or crossing a size threshold below) is when it becomes a
+smell worth the matrix.
+
+## Priority matrix
+
+Classify the smell, then act on the matching timeline.
+
+| Priority | Timeline | What lands here |
+|---|---|---|
+| **Immediate** | System-critical — fix now | Crashes, security holes, dead code, complexity > 10 |
+| **This week** | High impact | > 20 lines, complexity 5–10, duplication, coupling smells |
+| **Next sprint** | Medium impact | Naming, structural/design smells |
+| **Litter-pickup** | Opportunistic, low impact | Cosmetic issues |
+
+### Immediate — production & security
+
+- **Dead code** — a security risk and a source of confusion for developers.
+- **Security vulnerabilities** — SQL injection, hardcoded passwords.
+- **Memory leaks** — in R: unclosed connections, large objects never cleaned up.
+- **Infinite loops** — cause system crashes.
+- **Growing objects in loops** — `result <- c(result, new_value)`.
+- **Unclosed DB connections** — `DBI::dbConnect()` without a matching `on.exit()`.
+- **Global assignments** — the `<<-` operator misused.
+
+### Immediate — performance killers
+
+- **N+1 queries** — database performance.
+- **Missing indexes** — slow queries.
+- **Non-vectorized R code** — `for` loops instead of `apply`/data.table.
+
+### This week — code understandability
+
+| Smell | Threshold | Technique (see catalog) |
+|---|---|---|
+| Duplicate Code | > 30 lines, or repeated 3× | Extract Function |
+| Long Method | > 20 lines | Extract Function |
+| Large Class | > 500 lines | Extract Class |
+| Complex Conditional | > 5 conditions | Decompose Conditional |
+| Switch Statements | > 5 cases | Replace Conditional with Polymorphism |
+| data.table chains | > 10 operations | Split into intermediate steps |
+| Nested `apply()` | > 3 levels deep | Refactor into clear named functions |
+| Copy-on-modify on large objects | — | Use data.table's `:=` |
+
+### This week — maintainability
+
+- **Shotgun Surgery** — one change forces edits across many classes.
+- **Divergent Change** — one class changes for many unrelated reasons.
+- **Feature Envy** — a method mostly uses another class's data.
+
+### Next sprint — design problems
+
+- **Long Parameter List** (> 4 parameters) → Introduce Parameter Object.
+- **Data Clumps** — the same group of parameters shows up everywhere.
+- **Primitive Obsession** — primitives used where a small object belongs.
+- **Message Chains** — `a.getB().getC().getD()`.
+- **`stringsAsFactors` legacy** — set explicitly rather than relying on defaults.
+- **`T`/`F` instead of `TRUE`/`FALSE`** — `T`/`F` are ordinary variables and can be reassigned.
+- **`1:length(x)` on a possibly-empty `x`** — use `seq_along(x)` instead.
+
+### Next sprint — naming
+
+- **Mysterious Names** — unclear variables or functions.
+- **Inconsistent Naming** — different names for the same concept.
+
+### Litter-pickup — cosmetic
+
+- **Comments** — superfluous or stale.
+- **Formatting** — inconsistent indentation.
+- **Unused Imports** — libraries loaded but not used.
+- **Magic Numbers** — hardcoded values without named constants.
+
+## Phase 2 — risk assessment & preparation
+
+Before touching code, validate:
+
+**Test coverage**
+- [ ] Minimum standard: 80%+ test coverage in place?
+- [ ] Critical path: is the core functionality fully tested?
+- [ ] Characterization tests: is current behavior documented in tests?
+- [ ] Code understanding: is the function of this code fully understood?
+- [ ] Test quality: no test smells (fragile, obscure, slow tests)?
+
+**Change size**
+- [ ] Small change (< 2 weeks): direct refactoring.
+- [ ] Medium change (2–8 weeks): Mikado Method (incremental, with dependency
+      mapping) or Strangler Fig (replace the old code incrementally).
+- [ ] Large change (> 8 weeks): evaluate rewrite vs. refactor (below).
+
+**Rewrite vs. refactor decision**
+
+```
+IF (fundamental architectural problems OR technology obsolescence)
+  → REWRITE
+ELSE IF (core functionality sound AND team has domain knowledge)
+  → REFACTOR
+ELSE
+  → HYBRID APPROACH (Strangler Fig pattern)
+```
+
+## Phase 3 — implementation workflow
+
+**Golden rules (never violate these):**
+- [ ] **Two-Hats principle** — never refactor and add features at the same time.
+- [ ] **Behavior preservation** — external interfaces stay identical; all tests stay green.
+
+**Small-Steps Protocol** — one cycle is 15–30 minutes:
+
+```
+LOOP until quality gates are met:
+  1. Tests green?          Yes → continue | No → STOP
+  2. One atomic step (max 30 min)
+  3. Tests still green?    Yes → commit  | No → rollback
+  4. Step took > 30 min?   → split it into smaller steps
+```
+
+Time rule: any refactoring step that runs longer than 30 minutes gets split
+into smaller steps — don't push through.
+
+**Tool integration**
+- [ ] Prefer automated IDE refactorings over hand edits.
+- [ ] Respect static-analysis warnings (e.g. SonarQube/CheckStyle-class tools).
+- [ ] If an AI assistant proposes a refactor, validate it manually before accepting.
+- [ ] Use a feature branch for larger refactorings.
+
+## Phase 4 — quality gates & validation
+
+A refactor isn't done when the steps stop; it's done when these hold:
+
+**Code quality metrics**
+- [ ] Cyclomatic complexity reduced (target: < 10)?
+- [ ] No remaining duplication?
+- [ ] Method/class length under reasonable limits (methods < 20 lines)?
+- [ ] Coupling (dependency metrics) reduced?
+
+**Development velocity**
+- [ ] Feature delivery speed the same or better?
+- [ ] Bugs resolved faster?
+- [ ] Code review cycles shorter?
+
+**Business value**
+- [ ] No performance regression.
+- [ ] Changes are genuinely easier to make now?
+- [ ] Development team more confident in the code?
+
+## Test adaptation during refactoring
+
+- **Interface changed?** → adjust the tests.
+- **Only internal structure changed?** → tests stay the same.
+- **Tests failing?** → check whether behavior actually changed, or roll back.
+- **New methods added?** → write new tests for them.
+- **Check test quality** → don't introduce new test smells while adapting tests.
+
+## When something goes wrong
+
+| Symptom | Response |
+|---|---|
+| Tests turn red | Roll back and use smaller steps |
+| Behavior changed | Restore the original behavior |
+| Interface changed | Adjust the tests to match |
+| Turns out more complex than expected | Split the work further, or switch strategy (Mikado / Strangler Fig / rewrite) |
+
+---
+
+# Part 2 — The Fowler catalogue: which technique, and how
+
+Refactoring is restructuring code so its external behavior stays the same while
+its internal structure improves. Once Part 1 says *go*, this half removes the
+guesswork about *which* named technique to reach for and *how* to execute it
+safely.
 
 ## Core principles (apply to every technique in the catalog)
 
@@ -188,7 +404,7 @@ Each entry: **when to reach for it**, then **mechanics** as an ordered checklist
 3. Repeat inward for the next unusual condition.
 4. If several guard clauses end up returning the same result, consolidate them into a single condition (Consolidate Conditional Expression).
 
-## Workflow for using this catalog
+## Workflow for using the catalogue
 
 1. **Name the smell.** Describe the code's problem in plain language before reaching for a technique — "this function does two unrelated things" is more actionable than "this feels messy."
 2. **Match it in the quick map** above, or scan [references/CATALOG.md](references/CATALOG.md) if it isn't one of the twelve.
@@ -207,8 +423,7 @@ Each entry: **when to reach for it**, then **mechanics** as an ordered checklist
 
 ## Related skills
 
-- **refactoring-checklist** — decides *whether/when/how-safely* to refactor a spotted smell (priority matrix, risk gate, small-steps protocol); this catalog supplies the mechanics once that skill says go. Use the two together.
 - **stepdown-rule** — decomposition inside a single function once its parts have the right names; complements Extract Function.
-- **analyze-cohesion** — decide *whether* a class or module should split at all before reaching for Extract Class / Combine Functions into Class.
+- **coupling-cohesion** — decide *whether* a class or module should split at all (cohesion analysis) before reaching for Extract Class / Combine Functions into Class.
 - **codebase-design** — the deep-module vocabulary for judging whether an Extract Function/Class result is actually a better seam, not just a smaller one.
 - **tdd** — the test discipline that makes "test after each step" possible in the first place.

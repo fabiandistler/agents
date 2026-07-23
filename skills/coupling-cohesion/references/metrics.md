@@ -107,9 +107,9 @@ exactly the two ways to violate this.
 
 ## Worked example
 
-`scripts/example_input.json` models five components. Running
-`python3 scripts/coupling_metrics.py scripts/example_input.json` from the
-skill root yields:
+`scripts/coupling_metrics.example.json` models five components. Running
+`python3 scripts/coupling_metrics.py scripts/coupling_metrics.example.json` from
+the skill root yields:
 
 | Component | Ca | Ce | I | A | D | Zone |
 |---|---|---|---|---|---|---|

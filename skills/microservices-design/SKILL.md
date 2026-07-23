@@ -28,7 +28,7 @@ service or endpoint, an event or message schema, a shared library crossing
 service boundaries, a cross-service workflow, or code that calls another
 service. Not for deciding whether to use microservices at all
 (→ architecture-pattern-advisor) or where domain boundaries lie
-(→ ddd-advisor).
+(→ ddd).
 
 ## How to apply
 
@@ -66,12 +66,12 @@ service. Not for deciding whether to use microservices at all
   database-per-service, strangler-fig) intentionally restate that skill's
   Microservice Boundary Design section so the reference file stands alone as
   a review checklist.
-- **ddd-advisor** — derives the bounded contexts and aggregates that the
+- **ddd** — derives the bounded contexts and aggregates that the
   Service Boundaries cluster assumes as given; context-mapping patterns live
   there.
-- **balanced-coupling** — when a specific inter-service dependency flagged by
+- **coupling-cohesion** — when a specific inter-service dependency flagged by
   the Coupling cluster needs a deeper verdict (integration strength ×
-  distance × volatility), hand it to that skill.
+  distance × volatility), hand it to that skill's balanced-coupling mode.
 - **adr-workflow** — record saga orchestration choices, versioning
   strategies, and boundary decisions as ADRs.
 
