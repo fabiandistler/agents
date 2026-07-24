@@ -69,7 +69,7 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [refactoring](skills/refactoring/SKILL.md) | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
+| [refactoring-techniques](skills/refactoring-techniques/SKILL.md) | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
 | [stepdown-rule](skills/stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 | [tdd](skills/tdd/SKILL.md) | Test-driven development. |
 | [uncertainty-management](skills/uncertainty-management/SKILL.md) | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |

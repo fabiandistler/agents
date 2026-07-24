@@ -159,7 +159,7 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/refactoring/` | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
+| `skills/refactoring-techniques/` | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
 | `skills/stepdown-rule/` | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 | `skills/tdd/` | Test-driven development. |
 | `skills/uncertainty-management/` | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |

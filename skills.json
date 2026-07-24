@@ -11,6 +11,16 @@
       ]
     },
     {
+      "name": "ai-ml",
+      "summary": "Building AI/ML systems — engineering an LLM or foundation-model application (prompts, tool calling, evals) or running a machine-learning project from framing to deployment.",
+      "category": "ai-ml",
+      "path": "skills/ai-ml/SKILL.md",
+      "activation": "router",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "architecture",
       "summary": "Any software architecture or design question — ADRs, DDD, C4 diagrams, coupling/cohesion analysis, microservices, component design, fitness functions, SQL schema design.",
       "category": "architecture",
@@ -200,6 +210,16 @@
       ]
     },
     {
+      "name": "r-development",
+      "summary": "R package development — custom rlang condition/error constructors, and package internals such as private state, loading/attaching, lifecycle hooks, deprecation, and interface-focused testing.",
+      "category": "r-development",
+      "path": "skills/r-development/SKILL.md",
+      "activation": "router",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "r-error-constructors",
       "summary": "Design custom condition/error constructors for R packages the tidyverse/rlang way.",
       "category": "r-development",
@@ -223,9 +243,19 @@
     },
     {
       "name": "refactoring",
-      "summary": "Refactor a spotted code smell end to end — decide whether, when, and how safely to act, then apply the right Martin Fowler technique with its atomic mechanics.",
+      "summary": "Improving existing code safely — refactoring a code smell with the right Fowler technique, the stepdown rule for function structure, test-driven development, and staging risky changes.",
       "category": "refactoring",
       "path": "skills/refactoring/SKILL.md",
+      "activation": "router",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
+      "name": "refactoring-techniques",
+      "summary": "Refactor a spotted code smell end to end — decide whether, when, and how safely to act, then apply the right Martin Fowler technique with its atomic mechanics.",
+      "category": "refactoring",
+      "path": "skills/refactoring-techniques/SKILL.md",
       "environments": [
         "coding"
       ],
@@ -310,6 +340,16 @@
         "coding"
       ],
       "version": "1.0"
+    },
+    {
+      "name": "workflow",
+      "summary": "Development workflow helpers — distilling messy docs into rules files (CONVENTIONS/AGENTS/CLAUDE.md), throwaway prototypes to validate a design, and authoring or improving Claude skills.",
+      "category": "workflow",
+      "path": "skills/workflow/SKILL.md",
+      "activation": "router",
+      "environments": [
+        "coding"
+      ]
     },
     {
       "name": "worry-management",
