@@ -883,10 +883,12 @@ main() {
           ensure_parent "$cmd_dir"
           cmd_dir_ready=1
         fi
-      elif [[ "$activation" != "router" && "$routed" == *" $category "* ]]; then
+      elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
         # Auto member of a routed category: it is nested under the router's
         # members/ dir and loads lazily when routed to, so it is never linked
-        # (or unlinked) at top level.
+        # (or unlinked) at top level. Command skills bypass routing (handled
+        # above for non-codex; linked as skills for codex), so they are not
+        # skipped here.
         continue
       else
         # A normal auto skill, or the router itself (linked as a whole dir so

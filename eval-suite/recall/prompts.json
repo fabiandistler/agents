@@ -12,7 +12,7 @@
     { "prompt": "Review how our microservices talk to each other — boundaries, contract versioning, sagas, circuit breakers.", "expected": "microservices-design" },
     { "prompt": "Design the SQL schema for this feature and help me think about partitioning and query patterns.", "expected": "sql-schema-design" },
 
-    { "prompt": "I spotted a long method with duplicated branches. Should I refactor it, and which Fowler technique applies?", "expected": "refactoring" },
+    { "prompt": "I spotted a long method with duplicated branches. Should I refactor it, and which Fowler technique applies?", "expected": "refactoring-techniques" },
     { "prompt": "Rewrite these functions so the file reads top-down, one level of abstraction per function.", "expected": "stepdown-rule" },
     { "prompt": "Let's build this feature test-first — write the failing test before the implementation.", "expected": "tdd" },
     { "prompt": "This migration is risky and I can't foresee all the impact. How do I stage the rollout safely?", "expected": "uncertainty-management" },

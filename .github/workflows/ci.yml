@@ -15,7 +15,10 @@ jobs:
           python-version: "3.12"
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned: ruff 0.16.0 shipped stricter defaults (EXE001, FURB167, I001,
+        # …) that flag pre-existing first-party files unrelated to any given PR.
+        # Bump deliberately alongside a lint-cleanup pass, not implicitly per run.
+        run: pip install ruff==0.15.8
 
       - name: Manifest in sync
         run: python scripts/build_manifest.py --check
