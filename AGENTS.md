@@ -21,9 +21,11 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
   plugin marketplace in Claude Code, claude.ai, Claude Desktop, and
-  Cowork. The `architecture` plugin additionally ships two read-only
-  analysis subagents (`coupling-analyst`, `cohesion-analyst`), and the
-  `architecture` and `refactoring` plugins each embed a knowledge-base
+  Cowork. The `architecture` plugin additionally ships five read-only
+  analysis subagents (`coupling-analyst`, `cohesion-analyst`,
+  `c4-analyst`, `fitness-functions-advisor`, `microservices-advisor`),
+  and the `communication` plugin ships one (`communication-analyst`).
+  The `architecture` and `refactoring` plugins each embed a knowledge-base
   MCP server (a reuse of `mcp-wiki-server/` over each skill's
   `references/`, wired up via `kb/` symlinks and a plugin `.mcp.json`;
   requires `uv` at runtime).

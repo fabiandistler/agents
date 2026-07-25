@@ -16,10 +16,12 @@ This repo doubles as a Claude plugin marketplace: every skill category is
 packaged as one plugin (see `plugins/` and
 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)), so
 you can install exactly the domains you want. Beyond skills, the
-`architecture` plugin ships two read-only analysis subagents
-(`coupling-analyst`, `cohesion-analyst`), and the `architecture` and
-`refactoring` plugins each embed a knowledge-base MCP server built on
-[`mcp-wiki-server/`](mcp-wiki-server/) that serves their reference
+`architecture` plugin ships five read-only analysis subagents
+(`coupling-analyst`, `cohesion-analyst`, `c4-analyst`,
+`fitness-functions-advisor`, `microservices-advisor`), and the
+`communication` plugin ships one (`communication-analyst`). The
+`architecture` and `refactoring` plugins each embed a knowledge-base
+MCP server built on [`mcp-wiki-server/`](mcp-wiki-server/) that serves their reference
 catalogs as lookup tools (requires [`uv`](https://docs.astral.sh/uv/)).
 
 - **Claude Code**:
@@ -73,7 +75,9 @@ skills. `--target=codex` additionally:
   fallback that would fail at tool start. The venv is removed again on
   `--uninstall`.
 - converts each selected plugin's subagents (`coupling-analyst`,
-  `cohesion-analyst`) into [Codex custom
+  `cohesion-analyst`, `c4-analyst`,
+  `fitness-functions-advisor`, `microservices-advisor`,
+  `communication-analyst`) into [Codex custom
   agents](https://developers.openai.com/codex/subagents) under
   `~/.codex/agents/<name>.toml`. The generated files carry a marker
   comment; files you created yourself are never overwritten, and
