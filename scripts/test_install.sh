@@ -562,21 +562,22 @@ PY
 pass "codex install disables nested router members"
 
 # 21b. a routed category without an .mcp.json still writes only the override
-#      block (no mcp_servers), and reinstalling is byte-identical.
+#      block (no mcp_servers), and reinstalling is byte-identical. r-development
+#      is routed but ships no plugin MCP server.
 HOME_OV2="$(mktemp -d)"
-HOME="$HOME_OV2" "$INSTALL" --target=codex --category=workflow >/dev/null
+HOME="$HOME_OV2" "$INSTALL" --target=codex --category=r-development >/dev/null
 CONFIG_OV2="$HOME_OV2/.codex/config.toml"
-[[ -f "$CONFIG_OV2" ]] || fail "routed category=workflow created no config.toml"
+[[ -f "$CONFIG_OV2" ]] || fail "routed category=r-development created no config.toml"
 grep -q '^\[mcp_servers\.' "$CONFIG_OV2" \
-  && fail "category=workflow wrote mcp_servers with no .mcp.json"
+  && fail "category=r-development wrote mcp_servers with no .mcp.json"
 before="$(cat "$CONFIG_OV2")"
-HOME="$HOME_OV2" "$INSTALL" --target=codex --category=workflow >/dev/null
+HOME="$HOME_OV2" "$INSTALL" --target=codex --category=r-development >/dev/null
 [[ "$(cat "$CONFIG_OV2")" == "$before" ]] || fail "override registration is not idempotent"
 pass "override-only config is written and idempotent"
 
 # 21c. uninstall removes the override block but keeps foreign config.
 printf '\n[foreign]\nkeep = true\n' >> "$CONFIG_OV2"
-HOME="$HOME_OV2" "$INSTALL" --target=codex --category=workflow --uninstall >/dev/null
+HOME="$HOME_OV2" "$INSTALL" --target=codex --category=r-development --uninstall >/dev/null
 grep -Fxq '[foreign]' "$CONFIG_OV2" || fail "override uninstall dropped foreign config"
 grep -q 'skills\.config\|routed-member skill overrides' "$CONFIG_OV2" \
   && fail "override uninstall left our block behind"
