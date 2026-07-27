@@ -786,4 +786,26 @@ HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture --uninsta
 [[ ! -e "$ROUTED_SKILLS/architecture" ]] || fail "uninstall left the router behind"
 pass "routed category registers only its router; members ride nested"
 
+# 37. Agents from more than one selected category are all converted, and the
+#     paths they name resolve under the plugin they were installed from.
+HOME_MULTI="$(mktemp -d)"
+HOME="$HOME_MULTI" "$INSTALL" --target=codex --category=architecture,communication >/dev/null
+MULTI_AGENTS="$HOME_MULTI/.codex/agents"
+for agent in coupling-analyst cohesion-analyst c4-analyst \
+             fitness-functions-advisor microservices-advisor \
+             communication-analyst; do
+  [[ -f "$MULTI_AGENTS/$agent.toml" ]] || fail "missing $agent.toml across categories"
+done
+python3 - "$MULTI_AGENTS" <<'PY' || fail "agent instructions name a path that does not exist"
+import re, sys, tomllib
+from pathlib import Path
+agents_dir = Path(sys.argv[1])
+for toml_path in sorted(agents_dir.glob("*.toml")):
+    with open(toml_path, "rb") as f:
+        instructions = tomllib.load(f)["developer_instructions"]
+    for ref in re.findall(r"(/\S*/plugins/\S+)", instructions):
+        assert Path(ref.rstrip(".,;:")).exists(), f"{toml_path.name}: {ref}"
+PY
+pass "multi-category install converts every agent with resolvable paths"
+
 echo "all install.sh tests passed"

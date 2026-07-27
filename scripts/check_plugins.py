@@ -21,7 +21,8 @@ Checked invariants:
     references `${CLAUDE_PLUGIN_ROOT}/mcp-wiki-server` the plugin has a
     `mcp-wiki-server` symlink to `../../mcp-wiki-server`.
   - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
-    `name:` (matching the filename stem) and `description:`.
+    `name:` (matching the filename stem) and `description:`, and every
+    `${CLAUDE_PLUGIN_ROOT}/...` path in its body resolves inside the plugin.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 
 CATEGORY_FIELD = re.compile(r"^category:\s*(\S+)\s*$", re.M)
 ACTIVATION_FIELD = re.compile(r"^activation:\s*(\S+)\s*$", re.M)
+PLUGIN_ROOT_PATH = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s)]+)")
 
 
 def skill_categories() -> dict[str, str]:
@@ -162,8 +164,23 @@ def check_mcp(plugin: str, errors: list[str]) -> None:
             )
 
 
+def check_agent_paths(md: Path, plugin_dir: Path, rel: Path, text: str, errors: list[str]) -> None:
+    """Every ${CLAUDE_PLUGIN_ROOT}/... path an agent names must exist.
+
+    install.sh --target=codex resolves these against the plugin directory, and
+    Claude Code resolves them the same way at runtime, so a path that does not
+    exist is an instruction the subagent cannot follow. Routed categories nest
+    their skills under `skills/<router>/members/`, which is the usual way these
+    go stale.
+    """
+    for m in PLUGIN_ROOT_PATH.finditer(text):
+        ref = m.group(1).rstrip(".,;:")
+        if not (plugin_dir / ref).exists():
+            errors.append(f"{rel}: ${{CLAUDE_PLUGIN_ROOT}}/{ref} does not exist")
+
+
 def check_agents(plugin: str, errors: list[str]) -> None:
-    """Validate frontmatter of the plugin's agents/*.md, if any."""
+    """Validate frontmatter and plugin-root paths of the plugin's agents/*.md."""
     agents_dir = PLUGINS_DIR / plugin / "agents"
     if not agents_dir.is_dir():
         return
@@ -181,6 +198,7 @@ def check_agents(plugin: str, errors: list[str]) -> None:
             errors.append(f"{rel}: frontmatter name {m.group(1)!r} != filename stem {md.stem!r}")
         if not re.search(r"^description:", frontmatter, re.M):
             errors.append(f"{rel}: frontmatter has no 'description'")
+        check_agent_paths(md, PLUGINS_DIR / plugin, rel, text, errors)
 
 
 def main() -> int:
