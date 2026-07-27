@@ -47,6 +47,8 @@ model-enabled job) before flipping a category.
 
 Add prompts to `prompts.json` (`{ "prompt": ..., "expected": <skill name> }`)
 when you add or reword a skill; keep `expected` names in sync with
-`skills.json`. Before routing the next category (workflow, refactoring, …), add
-a few prompts per member and confirm the routed recall holds for that
-`--category`.
+`skills.json`. Before routing a further category, add a few prompts per member
+and confirm the routed recall holds for that `--category`. The `workflow`
+category is deliberately not routed: its skills are invoked explicitly rather
+than picked by description matching, so a router would add a hop without
+saving trigger surface.
