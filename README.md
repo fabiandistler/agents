@@ -21,8 +21,9 @@ you can install exactly the domains you want. Beyond skills, the
 `fitness-functions-advisor`, `microservices-advisor`), and the
 `communication` plugin ships one (`communication-analyst`). The
 `architecture` and `refactoring` plugins each embed a knowledge-base
-MCP server built on [`mcp-wiki-server/`](mcp-wiki-server/) that serves their reference
-catalogs as lookup tools (requires [`uv`](https://docs.astral.sh/uv/)).
+MCP server built on [`mcp-wiki-server/`](mcp-wiki-server/) that serves
+their reference catalogs as lookup tools (requires
+[`uv`](https://docs.astral.sh/uv/)).
 
 - **Claude Code**:
 
@@ -74,10 +75,8 @@ skills. `--target=codex` additionally:
   (and removes only its previous managed block), rather than leaving a `uv`
   fallback that would fail at tool start. The venv is removed again on
   `--uninstall`.
-- converts each selected plugin's subagents (`coupling-analyst`,
-  `cohesion-analyst`, `c4-analyst`,
-  `fitness-functions-advisor`, `microservices-advisor`,
-  `communication-analyst`) into [Codex custom
+- converts each selected plugin's subagents
+  (`plugins/<category>/agents/*.md`) into [Codex custom
   agents](https://developers.openai.com/codex/subagents) under
   `~/.codex/agents/<name>.toml`. The generated files carry a marker
   comment; files you created yourself are never overwritten, and
