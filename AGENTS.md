@@ -166,6 +166,14 @@ machine consumption prefer `skills.json`.
     belongs to: `coding`, `chat`, or both (e.g. `environments: coding, chat`).
     `install.sh --env=coding|chat` uses this to install only the matching
     subset. A skill without the field belongs to every environment.
+  - `targets` — comma-separated subset of `claude`, `codex`, `opencode`
+    (e.g. `targets: codex, opencode`). `install.sh` never links the skill for
+    an agent the field leaves out, and removes a link it had created there
+    before. Use it when a runtime already ships an equivalent of its own —
+    `skill-creator` opts out of claude for exactly that reason. A skill
+    without the field is installed for every target. Because `plugins/` is
+    the Claude distribution, a skill that excludes `claude` also gets no
+    plugin symlink (`scripts/check_plugins.py` knows this).
   - `metadata.version` — semver-ish string.
 - The body is plain Markdown. Avoid agent-specific vocabulary
   (slash-commands, "the Skill tool", proprietary tool names). Prefer

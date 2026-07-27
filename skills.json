@@ -280,6 +280,10 @@
       "compatibility": "Claude Code, Claude.ai, Cowork, Codex CLI, OpenCode (trigger evals need the claude CLI; codex trigger support is experimental)",
       "environments": [
         "coding"
+      ],
+      "targets": [
+        "codex",
+        "opencode"
       ]
     },
     {
@@ -340,16 +344,6 @@
         "coding"
       ],
       "version": "1.0"
-    },
-    {
-      "name": "workflow",
-      "summary": "Development workflow helpers — distilling messy docs into rules files (CONVENTIONS/AGENTS/CLAUDE.md), throwaway prototypes to validate a design, and authoring or improving Claude skills.",
-      "category": "workflow",
-      "path": "skills/workflow/SKILL.md",
-      "activation": "router",
-      "environments": [
-        "coding"
-      ]
     },
     {
       "name": "worry-management",

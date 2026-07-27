@@ -156,15 +156,26 @@ skill_is_nested_member() {
   [[ "$ROUTED_CATEGORIES" == *" $(skill_dir_category "$1") "* ]]
 }
 
+# True if a skill is installed for the given target ($2). A skill without a
+# `targets:` field belongs to every target.
+skill_matches_target() {
+  local targets
+  targets="$(grep -m1 '^targets:' "$1/SKILL.md" 2>/dev/null | sed 's/^targets://')"
+  [[ -z "${targets//[[:space:]]/}" ]] && return 0
+  [[ ",${targets// /}," == *",$2,"* ]]
+}
+
 skill_count() {
   # Count auto-triggered skills (those linked into the skills dir), optionally
-  # filtered by environment ($1 = coding|chat|all).
-  local want="${1:-all}" n=0
+  # filtered by environment ($1 = coding|chat|all) and target ($2, default
+  # claude — skills may opt out of a target via `targets:`).
+  local want="${1:-all}" target="${2:-claude}" n=0
   for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] || continue
     skill_is_command "$d" && continue
     # Nested members ride under their router, so they are not linked flat.
     skill_is_nested_member "$d" && continue
+    skill_matches_target "$d" "$target" || continue
     if [[ "$want" != "all" ]]; then
       local envs
       envs="$(grep -m1 '^environments:' "$d/SKILL.md" 2>/dev/null | sed 's/^environments://')"
@@ -180,11 +191,13 @@ skill_count() {
 
 command_count() {
   # Count `activation: command` skills (routed to the command dir), optionally
-  # filtered by environment ($1 = coding|chat|all).
-  local want="${1:-all}" n=0
+  # filtered by environment ($1 = coding|chat|all) and target ($2, default
+  # claude).
+  local want="${1:-all}" target="${2:-claude}" n=0
   for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] || continue
     skill_is_command "$d" || continue
+    skill_matches_target "$d" "$target" || continue
     if [[ "$want" != "all" ]]; then
       local envs
       envs="$(grep -m1 '^environments:' "$d/SKILL.md" 2>/dev/null | sed 's/^environments://')"
@@ -201,6 +214,12 @@ EXPECTED="$(skill_count)"
 [[ "$EXPECTED" -ge 1 ]] || fail "no skills detected in repo"
 CMD_EXPECTED="$(command_count all)"
 [[ "$CMD_EXPECTED" -ge 1 ]] || fail "no command skills detected in repo"
+# Skills may opt out of a target via `targets:`, so each target has its own
+# expected link count.
+CODEX_EXPECTED="$(skill_count all codex)"
+OPENCODE_EXPECTED="$(skill_count all opencode)"
+CODEX_CMD_EXPECTED="$(command_count all codex)"
+OPENCODE_CMD_EXPECTED="$(command_count all opencode)"
 
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
@@ -252,20 +271,22 @@ pass "uninstall removes our symlinks only"
 # 6. install --target=all populates all three roots. claude and opencode keep
 #    command skills in their command dir; codex has no command dir, so its
 #    command skills land in the skills dir instead.
-CODEX_SKILLS_EXPECTED=$((EXPECTED + CMD_EXPECTED))
+CODEX_SKILLS_EXPECTED=$((CODEX_EXPECTED + CODEX_CMD_EXPECTED))
 HOME_A="$(mktemp -d)"
 HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
-for sub in ".claude/skills" ".config/opencode/skills"; do
-  got="$(count_links "$HOME_A/$sub")"
-  [[ "$got" -eq "$EXPECTED" ]] || fail "all install: $sub has $got links, expected $EXPECTED"
-done
+got="$(count_links "$HOME_A/.claude/skills")"
+[[ "$got" -eq "$EXPECTED" ]] || fail "all install: .claude/skills has $got links, expected $EXPECTED"
+got="$(count_links "$HOME_A/.config/opencode/skills")"
+[[ "$got" -eq "$OPENCODE_EXPECTED" ]] \
+  || fail "all install: opencode skills has $got links, expected $OPENCODE_EXPECTED"
 got="$(count_links "$HOME_A/.codex/skills")"
 [[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] \
   || fail "all install: .codex/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
-for sub in ".claude/commands" ".config/opencode/command"; do
-  got="$(count_links "$HOME_A/$sub")"
-  [[ "$got" -eq "$CMD_EXPECTED" ]] || fail "all install: $sub has $got command links, expected $CMD_EXPECTED"
-done
+got="$(count_links "$HOME_A/.claude/commands")"
+[[ "$got" -eq "$CMD_EXPECTED" ]] || fail "all install: claude commands has $got links, expected $CMD_EXPECTED"
+got="$(count_links "$HOME_A/.config/opencode/command")"
+[[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] \
+  || fail "all install: opencode command has $got links, expected $OPENCODE_CMD_EXPECTED"
 [[ -L "$HOME_A/.codex/skills/handoff" ]] || fail "codex: command skill handoff not linked into skills/"
 [[ -f "$HOME_A/.codex/skills/handoff/agents/openai.yaml" ]] \
   || fail "codex: command skill handoff missing its openai.yaml sidecar"
@@ -323,7 +344,7 @@ HOME="$HOME_OC" "$INSTALL" --target=opencode >/dev/null
 [[ ! -L "$legacy_dir/$first_skill" ]] || fail "legacy opencode symlink for $first_skill not migrated"
 [[ -L "$legacy_dir/foreign-agent" ]] || fail "legacy cleanup removed a foreign symlink"
 got="$(count_links "$HOME_OC/.config/opencode/skills")"
-[[ "$got" -eq "$EXPECTED" ]] || fail "opencode install: expected $EXPECTED links, got $got"
+[[ "$got" -eq "$OPENCODE_EXPECTED" ]] || fail "opencode install: expected $OPENCODE_EXPECTED links, got $got"
 pass "opencode install links skills/ and cleans the legacy agent dir"
 
 # 7. --env=chat links only the chat subset (non-empty, strictly fewer than all).
@@ -363,12 +384,14 @@ pass "invalid --env is rejected"
 
 # 12. --category links only the matching subset (non-empty, fewer than all).
 category_count() {
-  # Count skills whose category: frontmatter is in the comma-separated list $1.
-  local want="$1" n=0
+  # Count skills whose category: frontmatter is in the comma-separated list $1,
+  # as installed for target $2 (default claude).
+  local want="$1" target="${2:-claude}" n=0
   for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] || continue
     skill_is_command "$d" && continue
     skill_is_nested_member "$d" && continue
+    skill_matches_target "$d" "$target" || continue
     local cat
     cat="$(grep -m1 '^category:' "$d/SKILL.md" 2>/dev/null | sed 's/^category://')"
     cat="${cat//[[:space:]]/}"
@@ -844,5 +867,38 @@ done
 HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture --uninstall >/dev/null
 [[ ! -e "$ROUTED_SKILLS/architecture" ]] || fail "uninstall left the router behind"
 pass "routed category registers only its router; members ride nested"
+
+# 37. A `targets:` skill installs only for the agents it lists. skill-creator
+#     opts out of claude (which ships its own), so it must reach codex and
+#     opencode only — and a stale link in the claude skills dir is cleaned up
+#     by the next install.
+HOME_TGT="$(mktemp -d)"
+mkdir -p "$HOME_TGT/.claude/skills"
+ln -s "$REPO_ROOT/skills/skill-creator" "$HOME_TGT/.claude/skills/skill-creator"
+HOME="$HOME_TGT" "$INSTALL" --target=all --category=workflow >/dev/null
+[[ ! -e "$HOME_TGT/.claude/skills/skill-creator" ]] \
+  || fail "targets: skill-creator installed for claude"
+[[ -f "$HOME_TGT/.codex/skills/skill-creator/scripts/run_eval.py" ]] \
+  || fail "targets: skill-creator missing (or incomplete) under codex"
+[[ -f "$HOME_TGT/.config/opencode/skills/skill-creator/scripts/run_eval.py" ]] \
+  || fail "targets: skill-creator missing (or incomplete) under opencode"
+# Its category-mates are unaffected and keep their bundled files.
+[[ -f "$HOME_TGT/.claude/skills/prototype/LOGIC.md" ]] \
+  || fail "prototype not installed as a whole directory for claude"
+pass "targets: skips excluded agents and prunes a stale link"
+
+# 38. A dangling symlink left by a skill the repo no longer ships is pruned;
+#     foreign and still-valid links are left alone.
+HOME_STALE="$(mktemp -d)"
+HOME="$HOME_STALE" "$INSTALL" --target=claude --category=workflow >/dev/null
+STALE_SKILLS="$HOME_STALE/.claude/skills"
+ln -s "$REPO_ROOT/skills/removed-skill" "$STALE_SKILLS/removed-skill"
+foreign_dangling="$(mktemp -d)/gone"
+ln -s "$foreign_dangling" "$STALE_SKILLS/foreign-dangling"
+HOME="$HOME_STALE" "$INSTALL" --target=claude --category=workflow >/dev/null
+[[ ! -L "$STALE_SKILLS/removed-skill" ]] || fail "stale link for a removed skill survived"
+[[ -L "$STALE_SKILLS/foreign-dangling" ]] || fail "prune removed a foreign dangling symlink"
+[[ -L "$STALE_SKILLS/prototype" ]] || fail "prune removed a valid skill link"
+pass "install prunes dangling links to skills the repo dropped"
 
 echo "all install.sh tests passed"

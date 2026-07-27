@@ -21,6 +21,12 @@
 # to skills whose `category:` frontmatter field matches one of the given
 # categories. Combinable with --env.
 #
+# A skill may also restrict itself to some agents with a `targets:` frontmatter
+# field (comma-separated subset of claude, codex, opencode; absent means all).
+# A skill that excludes a target is never linked there, and an existing link we
+# own is removed on the next install — `skill-creator` uses this to stay out of
+# Claude, which ships its own.
+#
 # Skills with `activation: command` in their frontmatter are user-invoked,
 # not model-triggered. For claude and opencode they are linked into the
 # target's command directory (~/.claude/commands, ~/.config/opencode/command)
@@ -64,6 +70,9 @@
 #   - Regular file or non-empty dir:   skip with a warning, never overwrite.
 #   - Uninstall only removes a symlink whose target is a path inside this
 #     repo, so foreign files at that location are never touched.
+#   - Both install and uninstall prune dangling symlinks left over from
+#     skills this repo no longer ships, again only when the (now missing)
+#     target was inside this repo.
 #   - MCP servers are written to ~/.codex/config.toml only between our own
 #     marker comments; a foreign [mcp_servers.<name>] table with the same
 #     name is never overwritten, and uninstall only removes our blocks.
@@ -88,7 +97,7 @@ CATEGORY="all"
 # Must match the category list in scripts/build_manifest.py.
 CATEGORIES="architecture refactoring r-development ai-ml workflow communication personal"
 
-usage() { sed -n '2,46p' "$0"; }
+usage() { sed -n '2,53p' "$0"; }
 
 for arg in "$@"; do
   case "$arg" in
@@ -172,6 +181,28 @@ skill_matches_env() {
   for e in $envs; do
     e="${e//[[:space:]]/}"
     [[ "$e" == "$want" ]] && return 0
+  done
+  return 1
+}
+
+# Read the comma-separated `targets:` frontmatter value of a SKILL.md.
+# Prints the raw value (may be empty if the field is absent).
+skill_targets() {
+  local skill_md="$1" line
+  line="$(grep -m1 '^targets:' "$skill_md" 2>/dev/null || true)"
+  printf '%s' "${line#targets:}"
+}
+
+# True if a skill should be installed for the given target. A skill with no
+# `targets:` field belongs to every target.
+skill_matches_target() {
+  local skill_md="$1" want="$2" targets
+  targets="$(skill_targets "$skill_md")"
+  [[ -z "${targets//[[:space:]]/}" ]] && return 0
+  local IFS=','
+  for t in $targets; do
+    t="${t//[[:space:]]/}"
+    [[ "$t" == "$want" ]] && return 0
   done
   return 1
 }
@@ -949,6 +980,25 @@ unlink_one() {
   printf '  removed   %s\n' "$dest"
 }
 
+# Remove dangling symlinks a previous install left behind for skills that no
+# longer exist in this repo (e.g. a skill that was renamed or deleted, or a
+# router that was dismantled): --uninstall only walks the skills the repo
+# currently ships, so those links would linger forever. Only broken symlinks
+# whose target lies inside this repo's skills/ directory are removed; foreign
+# links and anything that still resolves are left untouched.
+prune_stale_skill_links() {
+  local dir="$1" entry target
+  [[ -d "$dir" ]] || return 0
+  for entry in "$dir"/*; do
+    [[ -L "$entry" ]] || continue
+    [[ -e "$entry" ]] && continue
+    target="$(readlink "$entry")"
+    [[ "$target" == "$REPO_ROOT/skills/"* ]] || continue
+    run rm "$entry"
+    printf '  removed   %s (skill no longer in repo)\n' "$entry"
+  done
+}
+
 # Earlier versions linked skills into OpenCode's agent directory
 # (~/.config/opencode/agent), where the skill loader never looks. Remove any
 # of our leftover symlinks from there — on install (migration) and uninstall
@@ -1029,12 +1079,17 @@ main() {
         src="$REPO_ROOT/skills/$skill"
         dest="$dest_dir/$skill"
       fi
-      if (( UNINSTALL )); then
+      # A skill whose `targets:` field excludes this agent is never linked
+      # here; unlinking instead keeps the tree self-healing when the field is
+      # added to a skill that was already installed.
+      if (( UNINSTALL )) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
         unlink_one "$src" "$dest"
       else
         link_one "$src" "$dest"
       fi
     done <<< "$skills"
+    prune_stale_skill_links "$dest_dir"
+    [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
     if [[ "$target" == "codex" ]]; then
       cleanup_codex_prompts_legacy "$skills"
       if (( UNINSTALL )); then

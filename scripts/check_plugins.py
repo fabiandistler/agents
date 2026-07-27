@@ -13,7 +13,8 @@ Checked invariants:
     `../../../skills/<skill>` whose target contains a SKILL.md.
   - Plugin membership mirrors the `category:` frontmatter exactly: plugin
     `<cat>` contains precisely the skills with `category: <cat>`, so each
-    skill ships in exactly one plugin.
+    skill ships in exactly one plugin. Skills whose `targets:` frontmatter
+    excludes `claude` are left out — the plugins are the Claude distribution.
   - Every `plugins/<plugin>/kb/<topic>` is a relative symlink to
     `../../../skills/<skill>/references` whose target contains at least one
     Markdown page.
@@ -38,6 +39,7 @@ MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 
 CATEGORY_FIELD = re.compile(r"^category:\s*(\S+)\s*$", re.M)
 ACTIVATION_FIELD = re.compile(r"^activation:\s*(\S+)\s*$", re.M)
+TARGETS_FIELD = re.compile(r"^targets:\s*(.+)$", re.M)
 
 
 def skill_categories() -> dict[str, str]:
@@ -58,6 +60,20 @@ def skill_activations() -> dict[str, str]:
             m = ACTIVATION_FIELD.search(skill_md.read_text(encoding="utf-8"))
             activations[child.name] = m.group(1) if m else "auto"
     return activations
+
+
+def claude_skills() -> set[str]:
+    """Skills the Claude distribution ships — i.e. `targets:` allows claude."""
+    allowed: set[str] = set()
+    for child in sorted(SKILLS_DIR.iterdir()):
+        skill_md = child / "SKILL.md"
+        if not (child.is_dir() and not child.name.startswith(".") and skill_md.is_file()):
+            continue
+        m = TARGETS_FIELD.search(skill_md.read_text(encoding="utf-8"))
+        targets = [t.strip() for t in m.group(1).split(",")] if m else []
+        if not targets or "claude" in targets:
+            allowed.add(child.name)
+    return allowed
 
 
 def check_marketplace(errors: list[str]) -> list[str]:
@@ -195,6 +211,7 @@ def main() -> int:
     routed = {
         cat for name, cat in categories.items() if activations.get(name) == "router"
     }
+    for_claude = claude_skills()
     plugins = check_marketplace(errors)
 
     if PLUGINS_DIR.is_dir():
@@ -221,6 +238,9 @@ def main() -> int:
             }
         else:
             expected = {s for s, c in categories.items() if c == plugin}
+        # Plugins are the Claude distribution, so a skill that opts out of the
+        # claude target ships in neither.
+        expected &= for_claude
         for s in sorted(expected - bundled):
             errors.append(f"{plugin}: skills/{s} has category: {plugin} but no symlink in plugins/{plugin}/skills/")
         for s in sorted(bundled - expected):
