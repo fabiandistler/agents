@@ -2,6 +2,7 @@
 name: skill-creator
 category: workflow
 environments: coding
+targets: codex, opencode
 description: Create new skills, modify and improve existing skills, and measure skill performance. Use when creating, editing, evaluating, or benchmarking a skill in this repo, or optimizing its description for better triggering.
 compatibility: Claude Code, Claude.ai, Cowork, Codex CLI, OpenCode (trigger evals need the claude CLI; codex trigger support is experimental)
 ---

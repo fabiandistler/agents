@@ -120,6 +120,20 @@ coding agent gets the coding ones:
 `--env` defaults to `all`, so omitting it installs every skill as before.
 A skill without an `environments` field belongs to every environment.
 
+### Skills that skip an agent
+
+A skill can opt out of individual agents with a `targets` frontmatter field
+(a comma-separated subset of `claude`, `codex`, `opencode`; absent means all
+of them). `install.sh` never links it for an excluded agent, and removes a
+link it created there before. `skill-creator` uses this — it installs for
+codex and opencode only, because Claude Code ships a skill-creator of its
+own. For the same reason it is not part of the `workflow` plugin, which is
+the Claude distribution of these skills.
+
+The installer also prunes leftovers: a dangling symlink pointing at a skill
+this repo no longer ships is removed on the next install or uninstall.
+Symlinks that point outside this repo are never touched.
+
 ## Contents
 
 | Directory | Description |

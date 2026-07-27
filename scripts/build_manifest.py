@@ -42,6 +42,11 @@ CATEGORIES = (
 # the category's auto skills, which load lazily when the router routes to them.
 ACTIVATIONS = ("auto", "command", "router")
 
+# Which agents a skill is installed for. Absent (the default) means all of
+# them; `targets: codex, opencode` keeps install.sh from linking the skill
+# under claude — e.g. when the Claude runtime ships its own version.
+TARGETS = ("claude", "codex", "opencode")
+
 
 def find_skill_files() -> list[Path]:
     skills = []
@@ -223,6 +228,16 @@ def build_entry(skill_md: Path) -> dict[str, object]:
     environments = fm.get("environments")
     if isinstance(environments, str) and environments.strip():
         entry["environments"] = [e.strip() for e in environments.split(",") if e.strip()]
+    targets = fm.get("targets")
+    if isinstance(targets, str) and targets.strip():
+        parsed = [t.strip() for t in targets.split(",") if t.strip()]
+        unknown = [t for t in parsed if t not in TARGETS]
+        if unknown:
+            raise ValueError(
+                f"{skill_md}: frontmatter 'targets' has unknown value(s)"
+                f" {', '.join(unknown)} (allowed: {', '.join(TARGETS)})"
+            )
+        entry["targets"] = parsed
     metadata = fm.get("metadata")
     if isinstance(metadata, dict) and metadata.get("version"):
         entry["version"] = str(metadata["version"])
