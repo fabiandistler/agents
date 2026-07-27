@@ -43,6 +43,13 @@
 # only the router is linked at top level; the members load lazily when the
 # router routes to them, keeping the category to a single trigger entry. The
 # nested members are never linked flat and so are skipped by (un)install.
+# Claude registers only top-level skills, so the members stay hidden there.
+# Codex, however, discovers skills recursively and follows symlinks
+# (openai/codex#22275), so it would register each nested members/<name>/SKILL.md
+# as its own skill. To preserve the router's progressive disclosure under codex,
+# install additionally disables every nested member by name in
+# ~/.codex/config.toml via a managed [[skills.config]] block (enabled = false),
+# which drops them from the model's skill list; --uninstall removes the block.
 #
 # The codex target additionally installs the full plugins, not just the
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
@@ -374,6 +381,130 @@ strip_mcp_block() {
     $0 == "" { if (pending && printed) print ""; pending = 1; next }
     { if (pending && printed) print ""; pending = 0; print; printed = 1 }
   '
+}
+
+# --- Codex routed-member skill overrides -----------------------------------
+#
+# Codex discovers skills by scanning its skill roots recursively and following
+# symlinks (openai/codex#22275), so the sub-skills nested under a router's
+# members/ dir get registered as independent skills — defeating the router's
+# progressive disclosure. (Claude registers only top-level skills, so it is
+# unaffected.) To keep the members hidden under codex, disable each nested
+# member by name in ~/.codex/config.toml via a [[skills.config]] entry
+# (enabled = false), which drops it from the model's skill list. The block is
+# marker-delimited so install and uninstall stay idempotent and never touch
+# config we do not own.
+
+skill_override_begin_marker() {
+  printf '# >>> agents routed-member skill overrides (managed by install.sh, do not edit) >>>'
+}
+
+skill_override_end_marker() {
+  printf '# <<< agents routed-member skill overrides <<<'
+}
+
+# True if stdin's override marker lines are absent or form a properly nested
+# begin/end pair (see mcp_markers_balanced for the rationale).
+skill_override_markers_balanced() {
+  awk -v b="$(skill_override_begin_marker)" -v e="$(skill_override_end_marker)" '
+    $0 == b { if (open) bad = 1; open = 1; next }
+    $0 == e { if (!open) bad = 1; open = 0; next }
+    END { exit (bad || open) ? 1 : 0 }
+  '
+}
+
+# Filter stdin, dropping the override marker block (inclusive) and normalising
+# surrounding blank lines (see strip_mcp_block).
+strip_skill_override_block() {
+  awk -v b="$(skill_override_begin_marker)" -v e="$(skill_override_end_marker)" '
+    $0 == b { skip = 1; pending = 0; next }
+    $0 == e { skip = 0; next }
+    skip { next }
+    $0 == "" { if (pending && printed) print ""; pending = 1; next }
+    { if (pending && printed) print ""; pending = 0; print; printed = 1 }
+  '
+}
+
+# Render one [[skills.config]] disable table per member name read on stdin.
+render_skill_override_toml() {
+  local name first=1
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]]; then
+      printf '  WARN      skill name %q is not a bare identifier (skipping override)\n' \
+        "$name" >&2
+      continue
+    fi
+    (( first )) || printf '\n'
+    first=0
+    printf '[[skills.config]]\nname = "%s"\nenabled = false\n' "$name"
+  done
+}
+
+# Strip our override block from ~/.codex/config.toml (leaving foreign config).
+remove_codex_member_overrides() {
+  local config; config="$(codex_config_path)"
+  [[ -f "$config" ]] || return 0
+  local before after
+  before="$(cat "$config")"
+  if ! skill_override_markers_balanced <<< "$before"; then
+    printf '  WARN      unbalanced skill-override marker lines in %s (leaving it untouched)\n' \
+      "$config" >&2
+    return 0
+  fi
+  after="$(strip_skill_override_block <<< "$before")"
+  [[ "$after" != "$before" ]] || return 0
+  if (( DRY_RUN )); then
+    printf '[dry-run] remove routed-member skill overrides from %s\n' "$config"
+    return 0
+  fi
+  if [[ -n "$after" ]]; then
+    printf '%s\n' "$after" > "$config"
+  else
+    : > "$config"
+  fi
+  printf '  removed   routed-member skill overrides from %s\n' "$config"
+}
+
+# Write the managed override block that disables the nested router members
+# named on stdin (one per line). With no names, any stale block is removed.
+# Uses only shell built-ins and the same core tools as the rest of install.sh
+# (no sort/wc/tr) so it works under the minimal sandboxed PATH.
+install_codex_member_overrides() {
+  local config; config="$(codex_config_path)"
+  local members="" count=0 name
+  while IFS= read -r name; do
+    [[ -n "${name//[[:space:]]/}" ]] || continue
+    members+="$name"$'\n'
+    count=$((count + 1))
+  done
+  if [[ -z "$members" ]]; then
+    remove_codex_member_overrides
+    return 0
+  fi
+  if (( DRY_RUN )); then
+    remove_codex_member_overrides
+    printf '[dry-run] disable %s routed member skills in %s\n' "$count" "$config"
+    return 0
+  fi
+  mkdir -p "$(dirname "$config")"
+  [[ -f "$config" ]] || : > "$config"
+  if ! skill_override_markers_balanced < "$config"; then
+    printf '  WARN      unbalanced skill-override marker lines in %s (leaving it untouched)\n' \
+      "$config" >&2
+    return 0
+  fi
+  local rest toml
+  rest="$(strip_skill_override_block < "$config")"
+  toml="$(printf '%s' "$members" | render_skill_override_toml)"
+  {
+    if [[ -n "$rest" ]]; then printf '%s\n\n' "$rest"; fi
+    skill_override_begin_marker; printf '\n'
+    printf '%s\n' "$toml"
+    skill_override_end_marker; printf '\n'
+  } > "$config.tmp.$$"
+  mv "$config.tmp.$$" "$config"
+  printf '  skills    %s routed members disabled in %s\n' "$count" "$config"
 }
 
 # --- Codex MCP runtime venv -------------------------------------------------
@@ -914,7 +1045,7 @@ main() {
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    local dest_dir cmd_dir="" cmd_dir_ready=0
+    local dest_dir cmd_dir="" cmd_dir_ready=0 codex_disabled_members=""
     dest_dir="$(target_dir_for "$target")"
     [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
     printf '%s: %s\n' "$target" "$dest_dir"
@@ -938,7 +1069,9 @@ main() {
         # members/ dir and loads lazily when routed to, so it is never linked
         # (or unlinked) at top level. Command skills bypass routing (handled
         # above for non-codex; linked as skills for codex), so they are not
-        # skipped here.
+        # skipped here. Codex discovers the nested member recursively anyway, so
+        # record it to disable by name in ~/.codex/config.toml further down.
+        [[ "$target" == "codex" ]] && codex_disabled_members+="$skill"$'\n'
         continue
       else
         # A normal auto skill, or the router itself (linked as a whole dir so
@@ -962,9 +1095,11 @@ main() {
       if (( UNINSTALL )); then
         uninstall_codex_mcp
         uninstall_codex_agents
+        remove_codex_member_overrides
       else
         install_codex_mcp
         install_codex_agents
+        printf '%s' "$codex_disabled_members" | install_codex_member_overrides
       fi
     fi
     if [[ "$target" == "opencode" ]]; then

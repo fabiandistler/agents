@@ -48,6 +48,14 @@ one trigger entry instead of many. The router's SKILL.md member table is
 generated from `skills.json` by `scripts/build_routers.py` (CI checks it for
 drift). The tables below still list every sub-skill individually.
 
+Claude registers only top-level skills, so the members stay hidden there. Codex
+discovers skills recursively and follows symlinks
+([openai/codex#22275](https://github.com/openai/codex/issues/22275)), so it
+would otherwise register each nested `members/<name>/SKILL.md` as its own skill;
+`install.sh --target=codex` therefore disables every nested member by name in
+`~/.codex/config.toml` (a managed `[[skills.config]]` block, `enabled = false`),
+dropping them from the model's skill list. `--uninstall` removes the block.
+
 ### Architecture & design (`architecture`)
 
 Registered through the [`architecture`](skills/architecture/SKILL.md) router.

@@ -475,12 +475,13 @@ fi
   && fail "uninstall left the MCP runtime venv behind"
 pass "codex uninstall removes only our MCP servers"
 
-# 18. a category without an .mcp.json registers no MCP servers.
+# 18. a category with neither MCP servers nor a router leaves config.toml alone
+#     (communication ships neither, so nothing is written to config.toml).
 HOME_NOMCP="$(mktemp -d)"
-HOME="$HOME_NOMCP" "$INSTALL" --target=codex --category=workflow >/dev/null
+HOME="$HOME_NOMCP" "$INSTALL" --target=codex --category=communication >/dev/null
 [[ ! -f "$HOME_NOMCP/.codex/config.toml" ]] \
-  || fail "category=workflow created config.toml"
-pass "category without MCP servers leaves config.toml alone"
+  || fail "category=communication created config.toml"
+pass "category without MCP servers or router leaves config.toml alone"
 
 # 19. a foreign server table with our name is never overwritten.
 HOME_FOREIGN="$(mktemp -d)"
@@ -507,11 +508,13 @@ with open(sys.argv[1], "rb") as f:
 PY
 pass "quoted-key foreign table is preserved and config stays valid TOML"
 
-# 21. unbalanced markers (hand-deleted end marker) leave the file untouched.
+# 21. unbalanced markers (hand-deleted end markers) leave the file untouched.
+# Drop both managed end markers (the MCP block and the skill-override block) so
+# each managed writer sees an unbalanced pair and bails.
 HOME_UNBAL="$(mktemp -d)"
 HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null
 CONFIG_UNBAL="$HOME_UNBAL/.codex/config.toml"
-grep -v '^# <<< agents:architecture' "$CONFIG_UNBAL" > "$CONFIG_UNBAL.tmp"
+grep -vE '^# <<< agents' "$CONFIG_UNBAL" > "$CONFIG_UNBAL.tmp"
 printf '\n[mcp_servers.precious]\ncommand = "keep-me"\n' >> "$CONFIG_UNBAL.tmp"
 mv "$CONFIG_UNBAL.tmp" "$CONFIG_UNBAL"
 before="$(cat "$CONFIG_UNBAL")"
@@ -522,6 +525,63 @@ HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture --uninstall
 [[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] \
   || fail "uninstall modified a config with unbalanced markers"
 pass "unbalanced markers leave config.toml untouched"
+
+# 21a. codex install disables every nested router member via [[skills.config]].
+HOME_OV="$(mktemp -d)"
+HOME="$HOME_OV" "$INSTALL" --target=codex --category=refactoring >/dev/null
+CONFIG_OV="$HOME_OV/.codex/config.toml"
+[[ -f "$CONFIG_OV" ]] || fail "codex install did not create config.toml for overrides"
+# Every nested member of the refactoring router must be disabled; the router
+# itself must not be.
+declare -A OV_DISABLED=()
+while IFS= read -r name; do OV_DISABLED["$name"]=1; done < <(
+  python3 - "$CONFIG_OV" <<'PY'
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    cfg = tomllib.load(f)
+for entry in cfg.get("skills", {}).get("config", []):
+    if entry.get("enabled") is False and "name" in entry:
+        print(entry["name"])
+PY
+)
+for d in "$REPO_ROOT"/skills/*/; do
+  [[ -f "$d/SKILL.md" ]] || continue
+  [[ "$(skill_dir_category "$d")" == "refactoring" ]] || continue
+  name="$(basename "$d")"
+  if skill_is_router "$d"; then
+    [[ -z "${OV_DISABLED[$name]:-}" ]] || fail "override disabled the router $name"
+  elif skill_is_nested_member "$d"; then
+    [[ -n "${OV_DISABLED[$name]:-}" ]] || fail "nested member $name not disabled in config.toml"
+  fi
+done
+python3 - "$CONFIG_OV" <<'PY' || fail "override block is not valid TOML"
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    tomllib.load(f)
+PY
+pass "codex install disables nested router members"
+
+# 21b. a routed category without an .mcp.json still writes only the override
+#      block (no mcp_servers), and reinstalling is byte-identical. r-development
+#      is routed but ships no plugin MCP server.
+HOME_OV2="$(mktemp -d)"
+HOME="$HOME_OV2" "$INSTALL" --target=codex --category=r-development >/dev/null
+CONFIG_OV2="$HOME_OV2/.codex/config.toml"
+[[ -f "$CONFIG_OV2" ]] || fail "routed category=r-development created no config.toml"
+grep -q '^\[mcp_servers\.' "$CONFIG_OV2" \
+  && fail "category=r-development wrote mcp_servers with no .mcp.json"
+before="$(cat "$CONFIG_OV2")"
+HOME="$HOME_OV2" "$INSTALL" --target=codex --category=r-development >/dev/null
+[[ "$(cat "$CONFIG_OV2")" == "$before" ]] || fail "override registration is not idempotent"
+pass "override-only config is written and idempotent"
+
+# 21c. uninstall removes the override block but keeps foreign config.
+printf '\n[foreign]\nkeep = true\n' >> "$CONFIG_OV2"
+HOME="$HOME_OV2" "$INSTALL" --target=codex --category=r-development --uninstall >/dev/null
+grep -Fxq '[foreign]' "$CONFIG_OV2" || fail "override uninstall dropped foreign config"
+grep -q 'skills\.config\|routed-member skill overrides' "$CONFIG_OV2" \
+  && fail "override uninstall left our block behind"
+pass "override uninstall removes only our block"
 
 # 22. codex install converts plugin subagents to valid custom-agent TOML.
 HOME_AG="$(mktemp -d)"
