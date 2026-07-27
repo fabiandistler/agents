@@ -437,14 +437,20 @@ remove_codex_member_overrides() {
 
 # Write the managed override block that disables the nested router members
 # named on stdin (one per line). With no names, any stale block is removed.
+# Uses only shell built-ins and the same core tools as the rest of install.sh
+# (no sort/wc/tr) so it works under the minimal sandboxed PATH.
 install_codex_member_overrides() {
   local config; config="$(codex_config_path)"
-  local members; members="$(sed '/^[[:space:]]*$/d' | sort -u)"
+  local members="" count=0 name
+  while IFS= read -r name; do
+    [[ -n "${name//[[:space:]]/}" ]] || continue
+    members+="$name"$'\n'
+    count=$((count + 1))
+  done
   if [[ -z "$members" ]]; then
     remove_codex_member_overrides
     return 0
   fi
-  local count; count="$(printf '%s\n' "$members" | wc -l | tr -d ' ')"
   if (( DRY_RUN )); then
     remove_codex_member_overrides
     printf '[dry-run] disable %s routed member skills in %s\n' "$count" "$config"
@@ -459,7 +465,7 @@ install_codex_member_overrides() {
   fi
   local rest toml
   rest="$(strip_skill_override_block < "$config")"
-  toml="$(printf '%s\n' "$members" | render_skill_override_toml)"
+  toml="$(printf '%s' "$members" | render_skill_override_toml)"
   {
     if [[ -n "$rest" ]]; then printf '%s\n\n' "$rest"; fi
     skill_override_begin_marker; printf '\n'
