@@ -185,7 +185,6 @@
       "path": "skills/natural-planning/SKILL.md",
       "activation": "command",
       "environments": [
-        "coding",
         "chat"
       ],
       "version": "1.0"
