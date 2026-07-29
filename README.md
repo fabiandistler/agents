@@ -173,10 +173,7 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/refactoring-techniques/` | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
-| `skills/stepdown-rule/` | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
-| `skills/tdd/` | Test-driven development. |
-| `skills/uncertainty-management/` | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
+| `skills/refactoring/` | Restructuring existing code safely, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
 
 ### AI & ML (`ai-ml`)
 
@@ -211,5 +208,4 @@ sub-skill is still listed individually below.
 | Skill | When to use |
 |---|---|
 | `skills/hypertrophy-training/` | Experienced trainee: set volume, RIR/effort, auto-regulation, or diagnosing a stalled lift (educational). |
-| `skills/worry-management/` | When someone brings a specific worry and explicitly wants help analyzing or resolving it (not a therapy substitute). |
 | `skills/zettelkasten-value-hierarchy/` | Classifying or promoting notes by value, or synthesizing higher-value systems/workflows from low-value notes. |

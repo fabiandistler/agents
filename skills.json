@@ -211,23 +211,13 @@
     },
     {
       "name": "refactoring",
-      "summary": "Improving existing code safely — refactoring a code smell with the right Fowler technique, the stepdown rule for function structure, test-driven development, and staging risky changes.",
+      "summary": "Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict.",
       "category": "refactoring",
       "path": "skills/refactoring/SKILL.md",
-      "activation": "router",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
-      "name": "refactoring-techniques",
-      "summary": "Refactor a spotted code smell end to end — decide whether, when, and how safely to act, then apply the right Martin Fowler technique with its atomic mechanics.",
-      "category": "refactoring",
-      "path": "skills/refactoring-techniques/SKILL.md",
       "environments": [
         "coding"
       ],
-      "version": "2.0"
+      "version": "3.0"
     },
     {
       "name": "repo-status",
@@ -276,24 +266,6 @@
       ]
     },
     {
-      "name": "stepdown-rule",
-      "summary": "Write, refactor, or review functions using the stepdown rule.",
-      "category": "refactoring",
-      "path": "skills/stepdown-rule/SKILL.md",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
-      "name": "tdd",
-      "summary": "Test-driven development.",
-      "category": "refactoring",
-      "path": "skills/tdd/SKILL.md",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
       "name": "to-issues",
       "summary": "Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices.",
       "category": "workflow",
@@ -302,26 +274,6 @@
       "environments": [
         "coding"
       ]
-    },
-    {
-      "name": "uncertainty-management",
-      "summary": "Manage risky, hard-to-predict changes by decomposing them into small validated steps, checkpointing before each one, and rolling back on trouble.",
-      "category": "refactoring",
-      "path": "skills/uncertainty-management/SKILL.md",
-      "environments": [
-        "coding"
-      ],
-      "version": "1.0"
-    },
-    {
-      "name": "worry-management",
-      "summary": "Use when someone brings a specific distressing worry, anxious rumination, or recurring \"what if\" and explicitly wants help thinking it through.",
-      "category": "personal",
-      "path": "skills/worry-management/SKILL.md",
-      "environments": [
-        "chat"
-      ],
-      "version": "1.0"
     },
     {
       "name": "zettelkasten-value-hierarchy",

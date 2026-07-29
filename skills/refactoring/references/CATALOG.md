@@ -1,28 +1,30 @@
 # Full Technique Index (62 techniques)
 
 One line per technique, grouped the way Fowler's catalog groups them. Named
-inverse/paired techniques are cross-referenced with "↔". The twelve techniques
-with full mechanics live in the main [SKILL.md](../SKILL.md); everything else
-here is a pointer — go to the source note (or Fowler's book) for the mechanics
-when you need to execute one of these.
+inverse/paired techniques are cross-referenced with "↔".
+
+This is a lookup for the unfamiliar tail of the catalogue. The mechanics for the
+common techniques are deliberately not repeated in this skill — they get applied
+correctly without prompting. For anything here you have not executed before, go
+to Fowler's book for the mechanics.
 
 ## Composing functions
 
-- **Extract Function** ↔ Inline Function — pull a code fragment into a well-named function; the most common refactoring. *(full mechanics in SKILL.md)*
-- **Inline Function** ↔ Extract Function — collapse a function into its callers when the body is as clear as the name. *(full mechanics in SKILL.md)*
-- **Extract Variable** ↔ Inline Variable — name a piece of a complex expression. *(full mechanics in SKILL.md)*
+- **Extract Function** ↔ Inline Function — pull a code fragment into a well-named function; the most common refactoring.
+- **Inline Function** ↔ Extract Function — collapse a function into its callers when the body is as clear as the name.
+- **Extract Variable** ↔ Inline Variable — name a piece of a complex expression.
 - **Inline Variable** ↔ Extract Variable — remove a variable that communicates no more than the expression it holds.
 - **Rename Variable** — improve a variable's name; names are described as "the heart of clear programming."
-- **Encapsulate Variable** — replace direct data access with functions, turning a hard data reorganization into an easier function reorganization. *(full mechanics in SKILL.md)*
-- **Introduce Parameter Object** — replace a recurring group of parameters (a data clump) with one structured object. *(full mechanics in SKILL.md)*
-- **Combine Functions into Class** ↔ (alt: Combine Functions into Transform) — group functions that operate on the same data into a class. *(full mechanics in SKILL.md)*
-- **Split Phase** — split code that does two different things into sequential phases joined by an intermediate data structure. *(full mechanics in SKILL.md)*
+- **Encapsulate Variable** — replace direct data access with functions, turning a hard data reorganization into an easier function reorganization.
+- **Introduce Parameter Object** — replace a recurring group of parameters (a data clump) with one structured object.
+- **Combine Functions into Class** ↔ (alt: Combine Functions into Transform) — group functions that operate on the same data into a class.
+- **Split Phase** — split code that does two different things into sequential phases joined by an intermediate data structure.
 
 ## Encapsulation
 
 - **Encapsulate Record** — turn a plain record structure into a class, replacing direct field access with controlled accessors.
 - **Encapsulate Collection** — stop direct manipulation of a collection's contents; replace it with controlled add/remove methods.
-- **Replace Primitive with Object** — turn a primitive that has grown domain behavior into a small value class. *(full mechanics in SKILL.md)*
+- **Replace Primitive with Object** — turn a primitive that has grown domain behavior into a small value class.
 - **Replace Temp with Query** — replace a temporary variable with a method call, making the value re-extractable elsewhere.
 - **Extract Class** — split an overloaded class into focused, single-responsibility classes.
 - **Inline Class** ↔ Extract Class — collapse a class that no longer earns its keep into another class.
@@ -40,7 +42,7 @@ when you need to execute one of these.
 - **Slide Statements** — move related code so it sits next to the other code it's related to.
 - **Split Loop** — split a loop that does more than one thing into separate, single-purpose loops.
 - **Replace Loop with Pipeline** — replace an imperative loop with a declarative collection pipeline.
-- **Remove Dead Code** — delete code nothing calls anymore. *(full mechanics in SKILL.md)*
+- **Remove Dead Code** — delete code nothing calls anymore.
 
 ## Organizing data
 
@@ -52,10 +54,10 @@ when you need to execute one of these.
 
 ## Simplifying conditional logic
 
-- **Decompose Conditional** — extract a complex condition and its branches into named functions. *(full mechanics in SKILL.md)*
+- **Decompose Conditional** — extract a complex condition and its branches into named functions.
 - **Consolidate Conditional Expression** ↔ Replace Nested Conditional with Guard Clauses — combine multiple conditionals that produce the same result into a single expression.
-- **Replace Nested Conditional with Guard Clauses** ↔ Consolidate Conditional Expression — turn "unusual case" branches into early-return guard clauses. *(full mechanics in SKILL.md)*
-- **Replace Conditional with Polymorphism** — replace type-code dispatch logic with polymorphic subclasses. *(full mechanics in SKILL.md)*
+- **Replace Nested Conditional with Guard Clauses** ↔ Consolidate Conditional Expression — turn "unusual case" branches into early-return guard clauses.
+- **Replace Conditional with Polymorphism** — replace type-code dispatch logic with polymorphic subclasses.
 - **Introduce Special Case** — replace duplicated special-case checks with a Special Case object (e.g. a Null Object).
 - **Introduce Assertion** — make an implicit assumption explicit as an assertion.
 - **Replace Control Flag with Break** — replace a control-flag variable with `break`/`continue`/`return`.
