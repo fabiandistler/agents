@@ -105,7 +105,8 @@ R/
 tests/testthat/
   test-users-service.R
   test-billing-service.R
-# Delegate package scaffolding (DESCRIPTION, NAMESPACE, etc.) to the r-package-dev skill.
+DESCRIPTION
+NAMESPACE
 ```
 
 ### Ports & Adapters (Hexagonal)

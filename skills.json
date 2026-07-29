@@ -210,38 +210,6 @@
       ]
     },
     {
-      "name": "r-development",
-      "summary": "R package development — custom rlang condition/error constructors, and package internals such as private state, loading/attaching, lifecycle hooks, deprecation, and interface-focused testing.",
-      "category": "r-development",
-      "path": "skills/r-development/SKILL.md",
-      "activation": "router",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
-      "name": "r-error-constructors",
-      "summary": "Design custom condition/error constructors for R packages the tidyverse/rlang way.",
-      "category": "r-development",
-      "path": "skills/r-error-constructors/SKILL.md",
-      "compatibility": "R packages using rlang for condition signaling and testthat for testing; assumes tidyverse-style package conventions (roxygen2 `@export`, `NAMESPACE`-managed S3 methods).",
-      "environments": [
-        "coding"
-      ],
-      "version": "1.0"
-    },
-    {
-      "name": "r-package-dev",
-      "summary": "R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and API deprecation, and interface-focused testing with fixtures.",
-      "category": "r-development",
-      "path": "skills/r-package-dev/SKILL.md",
-      "compatibility": "Requires R 4.0+ for tools::R_user_dir() (use rappdirs fallback on older R). No network required.",
-      "environments": [
-        "coding"
-      ],
-      "version": "1.0"
-    },
-    {
       "name": "refactoring",
       "summary": "Improving existing code safely — refactoring a code smell with the right Fowler technique, the stepdown rule for function structure, test-driven development, and staging risky changes.",
       "category": "refactoring",

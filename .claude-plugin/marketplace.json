@@ -18,11 +18,6 @@
       "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes. Includes a Fowler-catalog knowledge-base MCP server."
     },
     {
-      "name": "r-development",
-      "source": "./plugins/r-development",
-      "description": "R development skills: designing R packages and building tidyverse-style error constructors."
-    },
-    {
       "name": "ai-ml",
       "source": "./plugins/ai-ml",
       "description": "AI and ML engineering skills: diagnosing and architecting LLM applications, and guiding ML projects from framing to deployment."

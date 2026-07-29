@@ -1,7 +1,0 @@
-{
-  "name": "r-development",
-  "description": "R development skills: designing R packages and building tidyverse-style error constructors.",
-  "author": {
-    "name": "Fabian Distler"
-  }
-}

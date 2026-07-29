@@ -95,7 +95,7 @@ ENV="all"
 CATEGORY="all"
 
 # Must match the category list in scripts/build_manifest.py.
-CATEGORIES="architecture refactoring r-development ai-ml workflow communication personal"
+CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 
 usage() { sed -n '2,53p' "$0"; }
 

@@ -62,7 +62,7 @@ The runner is opencode-agnostic on purpose: it just sets up a workdir, drops
 get loaded is up to you — typical options:
 
 - Edit `configs/with-skill/AGENTS.md` to inline-reference the skill, e.g.
-  `Follow the skill at ~/.agents/r-package-dev/SKILL.md`.
+  `Follow the skill at ~/.agents/<skill-name>/SKILL.md`.
 - Or load the skill via your global opencode config and leave `AGENTS.md` as
   a bare opt-in marker.
 
