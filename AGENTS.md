@@ -82,13 +82,6 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 | [tdd](skills/tdd/SKILL.md) | Test-driven development. |
 | [uncertainty-management](skills/uncertainty-management/SKILL.md) | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
 
-### R development (`r-development`)
-
-| Skill | When to use |
-|---|---|
-| [r-error-constructors](skills/r-error-constructors/SKILL.md) | Recurring R error (3+ sites): build a stop_* constructor with class hierarchy, conditionMessage(), and class-based tests. |
-| [r-package-dev](skills/r-package-dev/SKILL.md) | Building or refactoring R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and deprecation, interface-focused testing. |
-
 ### AI & ML (`ai-ml`)
 
 | Skill | When to use |
@@ -134,7 +127,7 @@ machine consumption prefer `skills.json`.
 - A skill lives in `skills/<skill-name>/` and has a `SKILL.md` at its root.
 - `SKILL.md` starts with YAML frontmatter providing at minimum:
   - `name` — must match the directory name.
-  - `category` — one of `architecture`, `refactoring`, `r-development`,
+  - `category` — one of `architecture`, `refactoring`,
     `ai-ml`, `workflow`, `communication`, `personal` (the fixed list in
     `scripts/build_manifest.py`). Determines the catalogue section, the
     `install.sh --category` subset, and which plugin bundles the skill.

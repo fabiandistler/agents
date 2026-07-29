@@ -26,7 +26,6 @@ MANIFEST_VERSION = "1"
 CATEGORIES = (
     "architecture",
     "refactoring",
-    "r-development",
     "ai-ml",
     "workflow",
     "communication",

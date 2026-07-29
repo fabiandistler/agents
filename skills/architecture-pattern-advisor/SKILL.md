@@ -57,13 +57,13 @@ Once chosen, document it. **REQUIRED SUB-SKILL:** use the `adr-workflow` skill t
 
 ### 5. Implement — scaffold or migrate
 
-- **New repo:** generate the folder/file skeleton from the annotated example tree for the chosen pattern in [references/pattern-catalog.md](references/pattern-catalog.md), adapted to the repo name and language. For R packages, **REQUIRED SUB-SKILL:** delegate structure to `r-package-dev`.
+- **New repo:** generate the folder/file skeleton from the annotated example tree for the chosen pattern in [references/pattern-catalog.md](references/pattern-catalog.md), adapted to the repo name and language.
 - **Existing repo:** produce an **incremental migration plan** (strangler-fig): smallest first move, what moves where, keeping the build green at every step. Never a big-bang rewrite.
 - Apply deep-module thinking when shaping boundaries. **OPTIONAL SUB-SKILL:** `codebase-design` (small interfaces, hidden complexity).
 
 ### 6. Verify
 
-Sanity-check the result: Python — package imports, a minimal `pyproject.toml`; R — defer to `r-package-dev` checks. For a migration, confirm the first step builds before listing the rest.
+Sanity-check the result: Python — package imports, a minimal `pyproject.toml`; R — package loads via `devtools::load_all()`. For a migration, confirm the first step builds before listing the rest.
 
 ## Trade-off Analysis
 

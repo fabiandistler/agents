@@ -22,9 +22,6 @@
 
     { "prompt": "Turn our messy internal style notes into a distilled, enforceable set of coding guidelines.", "expected": "guideline-distillation" },
     { "prompt": "I want to quickly throw together a throwaway prototype to validate this idea.", "expected": "prototype" },
-    { "prompt": "Help me author a new Claude skill for this repo, with the right frontmatter and structure.", "expected": "skill-creator" },
-
-    { "prompt": "Write me a small stdlib-only constructor for structured R error conditions.", "expected": "r-error-constructors" },
-    { "prompt": "Set up a proper R package with the right structure, state handling, and tests.", "expected": "r-package-dev" }
+    { "prompt": "Help me author a new Claude skill for this repo, with the right frontmatter and structure.", "expected": "skill-creator" }
   ]
 }

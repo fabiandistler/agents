@@ -94,7 +94,7 @@ agents.
 ### Selecting skills by category
 
 Every skill carries a `category` field in its `SKILL.md` frontmatter —
-one of `architecture`, `refactoring`, `r-development`, `ai-ml`,
+one of `architecture`, `refactoring`, `ai-ml`,
 `workflow`, `communication`, `personal` (the same grouping as the
 plugins and the catalogue below). `--category` installs only the chosen
 domains:
@@ -177,13 +177,6 @@ sub-skill is still listed individually below.
 | `skills/stepdown-rule/` | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
 | `skills/tdd/` | Test-driven development. |
 | `skills/uncertainty-management/` | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
-
-### R development (`r-development`)
-
-| Skill | When to use |
-|---|---|
-| `skills/r-error-constructors/` | Recurring R error (3+ sites): build a stop_* constructor with class hierarchy, conditionMessage(), and class-based tests. |
-| `skills/r-package-dev/` | Building or refactoring R package internals — package-private state and persistence, loading/attaching, lifecycle hooks and deprecation, interface-focused testing. |
 
 ### AI & ML (`ai-ml`)
 
