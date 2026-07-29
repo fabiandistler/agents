@@ -30,7 +30,7 @@ from build_manifest import (
 DEFAULT_BUDGET = 250
 ALLOWLIST_BUDGET = 400
 # High-traffic skills allowed the wider budget. Keep this list short.
-ALLOWLIST = frozenset({"architecture-pattern-advisor", "tdd"})
+ALLOWLIST = frozenset({"architecture-pattern-advisor", "refactoring"})
 
 # Total description size across auto-triggered skills must stay under the Codex
 # ~2% cap (~5,400 tokens at ~270k context); ~10,000 chars ≈ ~2,500 tokens.

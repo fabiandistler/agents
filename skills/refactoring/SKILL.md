@@ -1,10 +1,10 @@
 ---
 name: refactoring
-description: Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict. Use this skill whenever the user wants to restructure existing code, asks what to fix first from a list of code-review findings, asks whether a refactor is worth doing now or safe to start, wants to build something test-first or mentions red-green-refactor, or is planning a migration, cutover, rollout, or deployment where "what could go wrong" matters — even when they name no pattern and just describe the situation.
+category: refactoring
+environments: coding
+description: Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict. Use whenever the user wants to restructure existing code, triage code-review findings, judge whether a refactor is safe to start, build a feature test-first or in red-green-refactor cycles, or plan a migration, cutover, or rollout where what could go wrong matters.
 metadata:
   version: "3.0"
-  category: refactoring
-  environments: coding
 ---
 
 # Refactoring & risky changes

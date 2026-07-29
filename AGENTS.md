@@ -77,10 +77,7 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [refactoring-techniques](skills/refactoring-techniques/SKILL.md) | Deciding whether, when, and how safely to refactor a spotted code smell, then naming the right Fowler technique and applying its step-by-step mechanics. |
-| [stepdown-rule](skills/stepdown-rule/SKILL.md) | Writing or refactoring functions so the code reads top-down, one level of abstraction per function. |
-| [tdd](skills/tdd/SKILL.md) | Test-driven development. |
-| [uncertainty-management](skills/uncertainty-management/SKILL.md) | Facing a risky change whose full impact can't be foreseen: migrations, refactors, deployments, staged rollouts. |
+| [refactoring](skills/refactoring/SKILL.md) | Restructuring existing code safely, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
 
 ### AI & ML (`ai-ml`)
 
@@ -115,7 +112,6 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 | Skill | When to use |
 |---|---|
 | [hypertrophy-training](skills/hypertrophy-training/SKILL.md) | Experienced trainee: set volume, RIR/effort, auto-regulation, or diagnosing a stalled lift (educational). |
-| [worry-management](skills/worry-management/SKILL.md) | When someone brings a specific worry and explicitly wants help analyzing or resolving it (not a therapy substitute). |
 | [zettelkasten-value-hierarchy](skills/zettelkasten-value-hierarchy/SKILL.md) | Classifying or promoting notes by value, or synthesizing higher-value systems/workflows from low-value notes. |
 
 For agents that auto-load `AGENTS.md` (Codex CLI, opencode, Aider): the
