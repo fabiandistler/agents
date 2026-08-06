@@ -2,10 +2,104 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 from pathlib import Path
+
+# The only shape the trigger-eval tools accept. Kept in one place so every
+# error message names the same format.
+EVAL_SET_SHAPE = '[{"query": "...", "should_trigger": true}, ...]'
+
+
+class EvalSetFormatError(ValueError):
+    """Raised when an eval set does not match the trigger-eval shape."""
+
+
+def _describe(value: object) -> str:
+    """Short, human-readable name for a JSON value's type."""
+    return {
+        dict: "object",
+        list: "array",
+        str: "string",
+        bool: "boolean",
+        int: "number",
+        float: "number",
+        type(None): "null",
+    }.get(type(value), type(value).__name__)
+
+
+def validate_eval_set(eval_set: object, source: str | None = None) -> list[dict]:
+    """Check that ``eval_set`` is a trigger-eval array and return it.
+
+    The trigger-eval tools expect a flat array of ``{"query", "should_trigger"}``
+    objects. A common mistake is passing a skill's ``evals/evals.json``, which
+    wraps its cases in a ``{"skill_name": ..., "evals": [...]}`` object; that
+    used to blow up deep inside the runner with ``TypeError: string indices
+    must be integers``. Raise :class:`EvalSetFormatError` naming the expected
+    shape instead.
+    """
+    where = f" in {source}" if source else ""
+
+    if isinstance(eval_set, dict):
+        if isinstance(eval_set.get("evals"), list):
+            raise EvalSetFormatError(
+                f"eval set{where} is the two-level object shape"
+                ' ({"skill_name": ..., "evals": [...]}), which this tool does not'
+                f" accept. Pass the trigger-eval array directly: {EVAL_SET_SHAPE}"
+            )
+        raise EvalSetFormatError(
+            f"eval set{where} is a JSON object; expected an array: {EVAL_SET_SHAPE}"
+        )
+
+    if not isinstance(eval_set, list):
+        raise EvalSetFormatError(
+            f"eval set{where} is a JSON {_describe(eval_set)}; expected an array: {EVAL_SET_SHAPE}"
+        )
+
+    if not eval_set:
+        raise EvalSetFormatError(
+            f"eval set{where} is empty; expected at least one {EVAL_SET_SHAPE}"
+        )
+
+    for idx, item in enumerate(eval_set):
+        prefix = f"eval set{where} item {idx}"
+        if not isinstance(item, dict):
+            raise EvalSetFormatError(
+                f"{prefix} is a {_describe(item)}; expected an object: {EVAL_SET_SHAPE}"
+            )
+        if "query" not in item:
+            raise EvalSetFormatError(f'{prefix} is missing "query": {EVAL_SET_SHAPE}')
+        if not isinstance(item["query"], str) or not item["query"].strip():
+            raise EvalSetFormatError(f'{prefix} needs a non-empty string "query": {EVAL_SET_SHAPE}')
+        if "should_trigger" not in item:
+            raise EvalSetFormatError(f'{prefix} is missing "should_trigger": {EVAL_SET_SHAPE}')
+        if not isinstance(item["should_trigger"], bool):
+            raise EvalSetFormatError(
+                f'{prefix} has a non-boolean "should_trigger": {EVAL_SET_SHAPE}'
+            )
+
+    return eval_set
+
+
+def load_eval_set(path: Path) -> list[dict]:
+    """Read and validate an eval-set JSON file.
+
+    Raises :class:`EvalSetFormatError` for unreadable, malformed, or
+    wrongly-shaped files so callers can report one kind of failure.
+    """
+    try:
+        raw = path.read_text()
+    except OSError as exc:
+        raise EvalSetFormatError(f"cannot read eval set {path}: {exc}") from exc
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise EvalSetFormatError(f"eval set {path} is not valid JSON: {exc}") from exc
+
+    return validate_eval_set(parsed, source=str(path))
 
 
 # Mapping from $CODER_CLI value to the argv prefix needed to run a one-shot

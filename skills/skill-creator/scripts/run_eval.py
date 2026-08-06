@@ -32,7 +32,7 @@ import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from scripts.utils import parse_skill_md
+from scripts.utils import EvalSetFormatError, load_eval_set, parse_skill_md, validate_eval_set
 
 TRIGGER_BACKENDS = ("claude", "codex")
 
@@ -358,7 +358,12 @@ def run_eval(
     model: str | None = None,
     backend: str = "claude",
 ) -> dict:
-    """Run the full eval set and return results."""
+    """Run the full eval set and return results.
+
+    Raises EvalSetFormatError if ``eval_set`` is not a trigger-eval array,
+    before any backend subprocess is started.
+    """
+    eval_set = validate_eval_set(eval_set)
     results = []
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
@@ -462,7 +467,12 @@ def main():
         print(f"Error: unsupported trigger-eval backend {backend!r} ({hint})", file=sys.stderr)
         sys.exit(1)
 
-    eval_set = json.loads(Path(args.eval_set).read_text())
+    try:
+        eval_set = load_eval_set(Path(args.eval_set))
+    except EvalSetFormatError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     skill_path = Path(args.skill_path)
 
     if not (skill_path / "SKILL.md").exists():
