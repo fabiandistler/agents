@@ -24,7 +24,7 @@ from pathlib import Path
 from scripts.generate_report import generate_html
 from scripts.improve_description import improve_description
 from scripts.run_eval import TRIGGER_BACKENDS, find_project_root, run_eval
-from scripts.utils import parse_skill_md
+from scripts.utils import EvalSetFormatError, load_eval_set, parse_skill_md, validate_eval_set
 
 
 def split_eval_set(
@@ -68,7 +68,12 @@ def run_loop(
     log_dir: Path | None = None,
     backend: str = "claude",
 ) -> dict:
-    """Run the eval + improvement loop."""
+    """Run the eval + improvement loop.
+
+    Raises EvalSetFormatError if ``eval_set`` is not a trigger-eval array,
+    before any backend subprocess is started.
+    """
+    eval_set = validate_eval_set(eval_set)
     project_root = find_project_root()
     name, original_description, content = parse_skill_md(skill_path)
     current_description = description_override or original_description
@@ -331,7 +336,12 @@ def main():
     # same backend as the eval half.
     os.environ["CODER_CLI"] = backend
 
-    eval_set = json.loads(Path(args.eval_set).read_text())
+    try:
+        eval_set = load_eval_set(Path(args.eval_set))
+    except EvalSetFormatError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     skill_path = Path(args.skill_path)
 
     if not (skill_path / "SKILL.md").exists():

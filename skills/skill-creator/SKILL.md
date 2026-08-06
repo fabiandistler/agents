@@ -352,6 +352,8 @@ Create 20 eval queries — a mix of should-trigger and should-not-trigger. Save 
 ]
 ```
 
+This flat array is the only shape `run_eval.py` / `run_loop.py` accept. A skill's `evals/evals.json` (the two-level `{"skill_name": ..., "evals": [...]}` object used for behavioural evals) is a different file for a different purpose — passing it to `--eval-set` is rejected with a format error.
+
 The queries must be realistic and something a real user of the target environment would actually type. Not abstract requests, but requests that are concrete and specific and have a good amount of detail. For instance, file paths, personal context about the user's job or situation, column names and values, company names, URLs. A little bit of backstory. Some might be in lowercase or contain abbreviations or typos or casual speech. Use a mix of different lengths, and focus on edge cases rather than making them clear-cut (the user will get a chance to sign off on them).
 
 Bad: `"Format this data"`, `"Extract text from PDF"`, `"Create a chart"`
