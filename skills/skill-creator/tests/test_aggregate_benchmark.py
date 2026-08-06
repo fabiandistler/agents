@@ -53,9 +53,11 @@ class FlatLayoutTests(unittest.TestCase):
 
     def test_generate_benchmark_payload(self):
         benchmark = generate_benchmark(FIXTURES / "flat")
-        self.assertEqual(benchmark["metadata"]["runs_per_configuration"], 2)
+        # Two evals run once each — not two runs of one configuration.
+        self.assertEqual(benchmark["metadata"]["runs_per_configuration"], 1)
+        # Ordered by eval_id, not lexicographically by name.
         self.assertEqual(
-            benchmark["metadata"]["evals_run"], ["flat-eval-one", "flat-eval-zero"]
+            benchmark["metadata"]["evals_run"], ["flat-eval-zero", "flat-eval-one"]
         )
         run = benchmark["runs"][0]
         self.assertIn("eval_name", run)
@@ -105,6 +107,14 @@ class NestedLayoutTests(unittest.TestCase):
         self.assertEqual(run_2["time_seconds"], 0.6)
         self.assertEqual(run_2["tokens"], 600)
 
+    def test_runs_per_configuration_counts_runs_of_one_eval(self):
+        benchmark = generate_benchmark(FIXTURES / "nested")
+        self.assertEqual(benchmark["metadata"]["runs_per_configuration"], 2)
+
+    def test_tokens_come_from_grading_timing_block(self):
+        run_1 = next(run for run in self.results["with_skill"] if run["run_number"] == 1)
+        self.assertEqual(run_1["tokens"], 800)
+
     def test_baseline_run_values(self):
         run_1 = next(run for run in self.results["without_skill"] if run["run_number"] == 1)
         run_2 = next(run for run in self.results["without_skill"] if run["run_number"] == 2)
@@ -131,12 +141,51 @@ class EdgeCaseTests(unittest.TestCase):
         self.assertEqual(results["with_skill"][0]["pass_rate"], 0.9)
         self.assertEqual(results["without_skill"][0]["pass_rate"], 0.1)
 
-    def test_outputs_without_grading_yields_empty_config_key(self):
+    def test_outputs_without_grading_is_omitted_not_zeroed(self):
         results = load_run_results(FIXTURES / "partial")
-        self.assertIn("with_skill", results)
-        self.assertEqual(results["with_skill"], [])
+        self.assertNotIn("with_skill", results)
         self.assertEqual(len(results["without_skill"]), 1)
         self.assertEqual(results["without_skill"][0]["pass_rate"], 0.75)
+
+    def test_ungraded_config_does_not_appear_as_zero_percent(self):
+        benchmark = generate_benchmark(FIXTURES / "partial")
+        self.assertNotIn("with_skill", benchmark["run_summary"])
+        self.assertEqual(benchmark["metadata"]["runs_per_configuration"], 1)
+
+
+    def test_config_metadata_inherits_eval_name_from_eval_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_dir = Path(tmp) / "eval-0" / "with_skill"
+            config_dir.mkdir(parents=True)
+            (config_dir.parent / "eval_metadata.json").write_text(
+                json.dumps({"eval_id": 7, "eval_name": "inherited-name"})
+            )
+            # Config-dir copy overrides eval_id but says nothing about the name.
+            (config_dir / "eval_metadata.json").write_text(json.dumps({"eval_id": 9}))
+            (config_dir / "grading.json").write_text(
+                json.dumps({"summary": {"pass_rate": 1.0}})
+            )
+            run = load_run_results(Path(tmp))["with_skill"][0]
+            self.assertEqual(run["eval_id"], 9)
+            self.assertEqual(run["eval_name"], "inherited-name")
+
+    def test_timing_json_supplies_tokens_when_grading_has_duration_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_dir = Path(tmp) / "eval-0" / "with_skill"
+            config_dir.mkdir(parents=True)
+            (config_dir / "grading.json").write_text(
+                json.dumps(
+                    {
+                        "summary": {"pass_rate": 1.0},
+                        "timing": {"total_duration_seconds": 4.0},
+                        "execution_metrics": {"output_chars": 123},
+                    }
+                )
+            )
+            (config_dir / "timing.json").write_text(json.dumps({"total_tokens": 4200}))
+            run = load_run_results(Path(tmp))["with_skill"][0]
+            self.assertEqual(run["time_seconds"], 4.0)
+            self.assertEqual(run["tokens"], 4200)
 
 
 class EndToEndTests(unittest.TestCase):
