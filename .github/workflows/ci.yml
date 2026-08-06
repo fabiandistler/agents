@@ -41,6 +41,10 @@ jobs:
       - name: Python compiles
         run: python -m compileall -q scripts skills mcp-wiki-server
 
+      - name: Skill-creator unit tests
+        working-directory: skills/skill-creator
+        run: python -m unittest discover -s tests -v
+
       - name: Shell lint (shellcheck)
         # -S warning: gate on real problems; skip advisory info/style notes
         # (eval-suite/run.sh intentionally word-splits flag lists and passes

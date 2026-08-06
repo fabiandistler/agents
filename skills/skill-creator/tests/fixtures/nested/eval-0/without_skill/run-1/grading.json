@@ -1,0 +1,21 @@
+{
+  "summary": {"passed": 1, "failed": 1, "total": 2, "pass_rate": 0.5},
+  "expectations": [
+    {
+      "text": "Imports are reordered alphabetically",
+      "passed": false,
+      "evidence": "Standard library block unchanged"
+    }
+  ],
+  "timing": {"total_duration_seconds": 0.2, "total_tokens": 200},
+  "execution_metrics": {
+    "total_tool_calls": 4,
+    "output_chars": 400,
+    "errors_encountered": 0
+  },
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  }
+}

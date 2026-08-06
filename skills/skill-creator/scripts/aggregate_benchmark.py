@@ -12,9 +12,21 @@ Usage:
 Example:
     python aggregate_benchmark.py benchmarks/2026-01-15T10-30-00/
 
-The script supports two directory layouts:
+The script supports three directory layouts:
 
-    Workspace layout (from skill-creator iterations):
+    Documented flat layout (grading.json alongside outputs/):
+    <benchmark_dir>/
+    └── eval-N/
+        ├── with_skill/
+        │   ├── grading.json
+        │   ├── timing.json
+        │   └── outputs/
+        └── without_skill/
+            ├── grading.json
+            ├── timing.json
+            └── outputs/
+
+    Legacy nested layout (run-* subdirectories per config):
     <benchmark_dir>/
     └── eval-N/
         ├── with_skill/
@@ -24,7 +36,7 @@ The script supports two directory layouts:
             ├── run-1/grading.json
             └── run-2/grading.json
 
-    Legacy layout (with runs/ subdirectory):
+    Legacy wrapped layout (with runs/ subdirectory):
     <benchmark_dir>/
     └── runs/
         └── eval-N/
@@ -64,6 +76,79 @@ def calculate_stats(values: list[float]) -> dict:
     }
 
 
+def _is_config_dir(config_dir: Path) -> bool:
+    """Return whether a directory holds runs of one configuration."""
+    if list(config_dir.glob("run-*")):
+        return True
+    if (config_dir / "outputs").is_dir():
+        return True
+    if (config_dir / "grading.json").is_file() or (config_dir / "timing.json").is_file():
+        return True
+    return False
+
+
+def _iter_run_specs(config_dir: Path) -> list[dict]:
+    """Return one spec per run, nested run-* dirs taking precedence over flat files."""
+    specs = []
+    for run_dir in sorted(config_dir.glob("run-*")):
+        if not run_dir.is_dir():
+            continue
+        try:
+            run_number = int(run_dir.name.split("-")[1])
+        except (ValueError, IndexError):
+            print(f"Warning: skipping run directory with non-numeric name: {run_dir.name}")
+            continue
+        specs.append(
+            {
+                "config": config_dir.name,
+                "config_dir": config_dir,
+                "run_number": run_number,
+                "grading_file": run_dir / "grading.json",
+                "timing_file": run_dir / "timing.json",
+            }
+        )
+    if specs:
+        return specs
+    if _is_config_dir(config_dir):
+        specs.append(
+            {
+                "config": config_dir.name,
+                "config_dir": config_dir,
+                "run_number": 1,
+                "grading_file": config_dir / "grading.json",
+                "timing_file": config_dir / "timing.json",
+            }
+        )
+    return specs
+
+
+def _load_eval_metadata(eval_dir: Path, config_dir: Path | None = None) -> dict:
+    """Load eval_metadata.json, preferring a config-dir copy over the eval-dir copy."""
+    candidates = [eval_dir / "eval_metadata.json"]
+    if config_dir is not None:
+        candidates.insert(0, config_dir / "eval_metadata.json")
+    metadata = {}
+    for candidate in candidates:
+        if candidate.exists():
+            try:
+                with open(candidate) as mf:
+                    metadata = json.load(mf)
+            except (json.JSONDecodeError, OSError):
+                metadata = {}
+            break
+    if not isinstance(metadata, dict):
+        return {}
+    return metadata
+
+
+def _fallback_eval_id(eval_dir: Path, fallback: int) -> int:
+    """Derive an eval id from the directory name when metadata has none."""
+    try:
+        return int(eval_dir.name.split("-")[1])
+    except (ValueError, IndexError):
+        return fallback
+
+
 def load_run_results(benchmark_dir: Path) -> dict:
     """
     Load all run results from a benchmark directory.
@@ -84,36 +169,22 @@ def load_run_results(benchmark_dir: Path) -> dict:
     results: dict[str, list] = {}
 
     for eval_idx, eval_dir in enumerate(sorted(search_dir.glob("eval-*"))):
-        metadata_path = eval_dir / "eval_metadata.json"
-        if metadata_path.exists():
-            try:
-                with open(metadata_path) as mf:
-                    eval_id = json.load(mf).get("eval_id", eval_idx)
-            except (json.JSONDecodeError, OSError):
-                eval_id = eval_idx
-        else:
-            try:
-                eval_id = int(eval_dir.name.split("-")[1])
-            except ValueError:
-                eval_id = eval_idx
-
-        # Discover config directories dynamically rather than hardcoding names
         for config_dir in sorted(eval_dir.iterdir()):
-            if not config_dir.is_dir():
-                continue
-            # Skip non-config directories (inputs, outputs, etc.)
-            if not list(config_dir.glob("run-*")):
+            if not config_dir.is_dir() or not _is_config_dir(config_dir):
                 continue
             config = config_dir.name
-            if config not in results:
-                results[config] = []
+            metadata = _load_eval_metadata(eval_dir, config_dir)
+            eval_id = metadata.get("eval_id")
+            if eval_id is None:
+                eval_id = _fallback_eval_id(eval_dir, eval_idx)
+            eval_name = metadata.get("eval_name")
 
-            for run_dir in sorted(config_dir.glob("run-*")):
-                run_number = int(run_dir.name.split("-")[1])
-                grading_file = run_dir / "grading.json"
+            for spec in _iter_run_specs(config_dir):
+                results.setdefault(config, [])
+                grading_file = spec["grading_file"]
 
                 if not grading_file.exists():
-                    print(f"Warning: grading.json not found in {run_dir}")
+                    print(f"Warning: grading.json not found in {spec['config_dir']}")
                     continue
 
                 try:
@@ -126,7 +197,8 @@ def load_run_results(benchmark_dir: Path) -> dict:
                 # Extract metrics
                 result = {
                     "eval_id": eval_id,
-                    "run_number": run_number,
+                    "eval_name": eval_name,
+                    "run_number": spec["run_number"],
                     "pass_rate": grading.get("summary", {}).get("pass_rate", 0.0),
                     "passed": grading.get("summary", {}).get("passed", 0),
                     "failed": grading.get("summary", {}).get("failed", 0),
@@ -136,7 +208,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
                 # Extract timing — check grading.json first, then sibling timing.json
                 timing = grading.get("timing", {})
                 result["time_seconds"] = timing.get("total_duration_seconds", 0.0)
-                timing_file = run_dir / "timing.json"
+                timing_file = spec["timing_file"]
                 if result["time_seconds"] == 0.0 and timing_file.exists():
                     try:
                         with open(timing_file) as tf:
@@ -246,6 +318,7 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
             runs.append(
                 {
                     "eval_id": result["eval_id"],
+                    "eval_name": result["eval_name"],
                     "configuration": config,
                     "run_number": result["run_number"],
                     "result": {
@@ -263,8 +336,14 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
                 }
             )
 
-    # Determine eval IDs from results
-    eval_ids = sorted(set(r["eval_id"] for config in results.values() for r in config))
+    # Determine eval identifiers from results — names when present, else IDs
+    all_runs = [r for config in results.values() for r in config]
+    eval_ids = sorted({r["eval_id"] for r in all_runs})
+    has_names = all(r.get("eval_name") for r in all_runs)
+    if has_names:
+        evals_run = sorted({r["eval_name"] for r in all_runs})
+    else:
+        evals_run = eval_ids
 
     benchmark = {
         "metadata": {
@@ -273,8 +352,10 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
             "executor_model": "<model-name>",
             "analyzer_model": "<model-name>",
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "evals_run": eval_ids,
-            "runs_per_configuration": 3,
+            "evals_run": evals_run,
+            "runs_per_configuration": max(
+                (len(runs) for runs in results.values()), default=0
+            ),
         },
         "runs": runs,
         "run_summary": run_summary,
@@ -343,7 +424,7 @@ def generate_markdown(benchmark: dict) -> str:
     return "\n".join(lines)
 
 
-def main():
+def main(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(
         description="Aggregate benchmark run results into summary statistics"
     )
@@ -357,7 +438,7 @@ def main():
         help="Output path for benchmark.json (default: <benchmark_dir>/benchmark.json)",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if not args.benchmark_dir.exists():
         print(f"Directory not found: {args.benchmark_dir}")

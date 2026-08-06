@@ -1,0 +1,5 @@
+{
+  "eval_id": 0,
+  "eval_name": "mixed-eval",
+  "prompt": "Expose the reorder check through both entry points."
+}
