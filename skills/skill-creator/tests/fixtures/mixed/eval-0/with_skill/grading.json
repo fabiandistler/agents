@@ -1,0 +1,21 @@
+{
+  "summary": {"passed": 1, "failed": 1, "total": 2, "pass_rate": 0.5},
+  "expectations": [
+    {
+      "text": "Both entry points expose the check",
+      "passed": false,
+      "evidence": "Flat copy used instead of nested run"
+    }
+  ],
+  "timing": {"total_duration_seconds": 0.3, "total_tokens": 300},
+  "execution_metrics": {
+    "total_tool_calls": 4,
+    "output_chars": 400,
+    "errors_encountered": 0
+  },
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "summary": {"passed": 2, "failed": 1, "total": 3, "pass_rate": 0.7},
+  "expectations": [
+    {
+      "text": "Imports are reordered alphabetically",
+      "passed": false,
+      "evidence": "One import group left unsorted"
+    }
+  ],
+  "execution_metrics": {
+    "total_tool_calls": 5,
+    "output_chars": 700,
+    "errors_encountered": 0
+  },
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  }
+}

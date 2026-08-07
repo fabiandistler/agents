@@ -1,0 +1,5 @@
+{
+  "eval_id": 1,
+  "eval_name": "flat-eval-one",
+  "prompt": "Refactor the plugin to use an AST visitor instead of regex."
+}
