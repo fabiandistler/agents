@@ -55,12 +55,6 @@
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
 # reverses both. --env only filters skills; the plugin extras follow
 # --category:
-#   - Each selected plugin's knowledge-base MCP servers
-#     (plugins/<category>/.mcp.json) are registered in ~/.codex/config.toml.
-#     Their `uv run --with mcp[cli]...` dependency is resolved once here into
-#     a runtime venv (~/.codex/agents-mcp-runtime) and the generated config
-#     points at that interpreter, so tool starts need no uv cache or PyPI
-#     access — the fix for sandboxed Codex setups that deny both.
 #   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
 #     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
 #
@@ -73,13 +67,11 @@
 #   - Both install and uninstall prune dangling symlinks left over from
 #     skills this repo no longer ships, again only when the (now missing)
 #     target was inside this repo.
-#   - MCP servers are written to ~/.codex/config.toml only between our own
-#     marker comments; a foreign [mcp_servers.<name>] table with the same
-#     name is never overwritten, and uninstall only removes our blocks.
-#     If the marker lines have been hand-edited into an unbalanced state,
-#     the whole file is left untouched rather than risk stripping too much.
-#     The runtime venv lives at a fixed path we own and is removed on
-#     uninstall.
+#   - Earlier versions registered knowledge-base MCP servers in
+#     ~/.codex/config.toml. They are gone; install and uninstall both strip
+#     any leftover managed block and its runtime venv. Only our own marker
+#     block is touched — a foreign [mcp_servers.<name>] table survives, and
+#     hand-edited unbalanced markers leave the whole file alone.
 #   - Generated agent files carry a marker comment; a file at the same path
 #     without the marker is never overwritten, and uninstall only removes
 #     marker-carrying files.
@@ -267,14 +259,22 @@ list_skills() {
   done
 }
 
-# --- Codex MCP server registration -----------------------------------------
+# --- Legacy Codex MCP cleanup ----------------------------------------------
 #
-# Claude installs plugins/<category>/.mcp.json natively; Codex CLI reads MCP
-# servers from ~/.codex/config.toml instead. Each selected plugin's .mcp.json
-# is translated into a marker-delimited TOML block so install and uninstall
-# stay idempotent and never touch config we do not own.
+# Earlier versions registered each plugin's knowledge-base MCP server in
+# ~/.codex/config.toml between marker comments, backed by a runtime venv at a
+# fixed path. Those servers are gone — the skills' references/ pages are read
+# directly now — so both install and uninstall strip whatever a previous
+# version left behind. Install has to do it too: an upgrade would otherwise
+# keep Codex pointing at a server script this repo no longer ships.
 
 codex_config_path() { printf '%s/.codex/config.toml' "$HOME"; }
+
+# Categories that ever shipped an .mcp.json. Hardcoded, because the files this
+# list was once derived from no longer exist.
+LEGACY_MCP_CATEGORIES="architecture refactoring"
+
+codex_mcp_runtime_dir() { printf '%s/.codex/agents-mcp-runtime' "$HOME"; }
 
 mcp_begin_marker() {
   printf '# >>> agents:%s MCP servers (managed by install.sh, do not edit) >>>' "$1"
@@ -282,78 +282,6 @@ mcp_begin_marker() {
 
 mcp_end_marker() {
   printf '# <<< agents:%s MCP servers <<<' "$1"
-}
-
-# Categories selected by --category that ship an .mcp.json.
-mcp_categories() {
-  local c
-  if [[ "$CATEGORY" == "all" ]]; then
-    for c in $CATEGORIES; do
-      if [[ -f "$REPO_ROOT/plugins/$c/.mcp.json" ]]; then printf '%s\n' "$c"; fi
-    done
-  else
-    local IFS=','
-    for c in $CATEGORY; do
-      c="${c//[[:space:]]/}"
-      if [[ -n "$c" && -f "$REPO_ROOT/plugins/$c/.mcp.json" ]]; then
-        printf '%s\n' "$c"
-      fi
-    done
-  fi
-  return 0
-}
-
-# Render plugins/<category>/.mcp.json as Codex config.toml tables, with
-# ${CLAUDE_PLUGIN_ROOT} resolved to the plugin directory in this repo.
-#
-# $2 is the validated interpreter of the install-time runtime venv (see
-# install_codex_mcp_runtime). Servers launched via `uv run ... python
-# <script>` are rewritten to invoke that interpreter on <script> directly, so
-# the tool start needs neither uv cache writes nor PyPI access — the dependency
-# was resolved once at install time.
-plugin_mcp_toml() {
-  local plugin_dir="$REPO_ROOT/plugins/$1" runtime_python="${2:-}" render_python="${3:-$2}"
-  "$render_python" - "$plugin_dir" "$runtime_python" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-plugin_dir = Path(sys.argv[1])
-runtime_python = sys.argv[2]
-spec = json.loads((plugin_dir / ".mcp.json").read_text(encoding="utf-8"))
-
-
-def toml_str(value: str) -> str:
-    value = value.replace("${CLAUDE_PLUGIN_ROOT}", str(plugin_dir))
-    return json.dumps(value)  # JSON string escaping is valid TOML
-
-
-def resolve(command: str, args: list[str]) -> tuple[str, list[str]]:
-    """Rewrite a `uv run ... python <script> [extra]` launch to run <script>
-    with the install-time runtime interpreter, dropping the uv/dependency
-    flags. Anything else is returned unchanged."""
-    if command != "uv":
-        return command, args
-    for i, a in enumerate(args):
-        if a in ("python", "python3") and i + 1 < len(args):
-            return runtime_python, args[i + 1 :]
-    raise ValueError("cannot resolve uv launch to a direct Python command")
-
-
-lines = []
-for name, server in spec.get("mcpServers", {}).items():
-    command, args = resolve(server["command"], server.get("args", []))
-    lines.append(f"[mcp_servers.{name}]")
-    lines.append(f"command = {toml_str(command)}")
-    rendered = ", ".join(toml_str(a) for a in args)
-    lines.append(f"args = [{rendered}]")
-    env = server.get("env", {})
-    if env:
-        pairs = ", ".join(f"{k} = {toml_str(v)}" for k, v in env.items())
-        lines.append(f"env = {{ {pairs} }}")
-    lines.append("")
-print("\n".join(lines).rstrip())
-PY
 }
 
 # True if stdin's marker lines for a category are absent or form properly
@@ -381,6 +309,46 @@ strip_mcp_block() {
     $0 == "" { if (pending && printed) print ""; pending = 1; next }
     { if (pending && printed) print ""; pending = 0; print; printed = 1 }
   '
+}
+
+# Drop every managed MCP block a previous version wrote, plus the runtime venv
+# it provisioned. Foreign [mcp_servers.*] tables live outside our markers and
+# are never touched; a hand-edited unbalanced marker pair leaves the file alone.
+remove_legacy_codex_mcp() {
+  local config; config="$(codex_config_path)"
+  local cat before after
+  if [[ -f "$config" ]]; then
+    for cat in $LEGACY_MCP_CATEGORIES; do
+      before="$(cat "$config")"
+      if ! mcp_markers_balanced "$cat" <<< "$before"; then
+        printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
+          "$cat" "$config" >&2
+        continue
+      fi
+      after="$(strip_mcp_block "$cat" <<< "$before")"
+      [[ "$after" != "$before" ]] || continue
+      if (( DRY_RUN )); then
+        printf '[dry-run] remove legacy %s MCP servers from %s\n' "$cat" "$config"
+        continue
+      fi
+      if [[ -n "$after" ]]; then
+        printf '%s\n' "$after" > "$config"
+      else
+        : > "$config"
+      fi
+      printf '  removed   legacy %s MCP servers from %s\n' "$cat" "$config"
+    done
+  fi
+
+  local venv; venv="$(codex_mcp_runtime_dir)"
+  if [[ -d "$venv" ]]; then
+    if (( DRY_RUN )); then
+      printf '[dry-run] remove legacy MCP runtime venv %s\n' "$venv"
+    else
+      rm -rf "$venv"
+      printf '  removed   legacy MCP runtime venv %s\n' "$venv"
+    fi
+  fi
 }
 
 # --- Codex routed-member skill overrides -----------------------------------
@@ -505,282 +473,6 @@ install_codex_member_overrides() {
   } > "$config.tmp.$$"
   mv "$config.tmp.$$" "$config"
   printf '  skills    %s routed members disabled in %s\n' "$count" "$config"
-}
-
-# --- Codex MCP runtime venv -------------------------------------------------
-#
-# Under Claude the servers run via `uv run --with mcp[cli]>=1.2 ...`, which
-# resolves the dependency on every launch — needing uv cache writes and PyPI
-# access. Codex tool starts often run under a restrictive sandbox where both
-# are denied, so we resolve the dependency once here, at install time, into a
-# dedicated venv and point the generated config at its interpreter.
-
-codex_mcp_runtime_dir() { printf '%s/.codex/agents-mcp-runtime' "$HOME"; }
-codex_mcp_runtime_python() { printf '%s/bin/python' "$(codex_mcp_runtime_dir)"; }
-
-# Print the first usable Python interpreter in the documented preference
-# order. A name alone is not enough: installations often retain a python3
-# symlink to an unsupported interpreter after an OS upgrade.
-codex_mcp_python() {
-  local candidate version major minor
-  for candidate in python3 python3.13 python3.12 python3.11 python3.10; do
-    command -v "$candidate" >/dev/null 2>&1 || continue
-    version="$("$candidate" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null)" \
-      || continue
-    if [[ "$version" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-      major="${BASH_REMATCH[1]}"
-      minor="${BASH_REMATCH[2]}"
-      if (( major > 3 || (major == 3 && minor >= 10) )); then
-        command -v "$candidate"
-        return 0
-      fi
-    fi
-  done
-  return 1
-}
-
-# A runtime is usable only when both the Python and mcp contracts hold. The
-# import check catches interrupted installs that still leave mcp dist-info
-# metadata behind.
-codex_mcp_runtime_valid() {
-  local py="$1" version major minor
-  [[ -x "$py" ]] || return 1
-  version="$("$py" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")' 2>/dev/null)" \
-    || return 1
-  [[ "$version" =~ ^([0-9]+)\.([0-9]+)$ ]] || return 1
-  major="${BASH_REMATCH[1]}"
-  minor="${BASH_REMATCH[2]}"
-  (( major > 3 || (major == 3 && minor >= 10) )) || return 1
-  "$py" -c '
-from importlib.metadata import PackageNotFoundError, version
-import re
-
-try:
-    raw = version("mcp").strip().lower()
-except PackageNotFoundError:
-    raise SystemExit(1)
-
-# PEP 440 public-version parser used only for the >=1.2 threshold. It keeps
-# the runtime-valid contract independent of pip vendored modules.
-match = re.fullmatch(r"""
-    v?(?:(?P<epoch>\d+)!)?
-    (?P<release>\d+(?:\.\d+)*)
-    (?:(?P<pre_sep>[-_.]?)(?P<pre>alpha|beta|preview|pre|rc|c|a|b)[-_.]?(?P<pre_n>\d*))?
-    (?P<post>(?:[-_.]?(?:post|rev|r)[-_.]?\d*)|(?:-\d+))?
-    (?:(?P<dev_sep>[-_.]?)dev[-_.]?(?P<dev_n>\d*))?
-    (?:\+(?P<local>[a-z0-9]+(?:[-_.][a-z0-9]+)*))?
-""", raw, re.VERBOSE)
-if not match:
-    raise SystemExit(1)
-epoch = int(match.group("epoch") or 0)
-release = [int(part) for part in match.group("release").split(".")]
-while len(release) > 1 and release[-1] == 0:
-    release.pop()
-base = [1, 2]
-if epoch == 0 and release < base:
-    raise SystemExit(1)
-if epoch == 0 and release == base:
-    # A pre/dev release of the base version is older than 1.2. A post release
-    # remains newer even when it carries a following development segment.
-    if match.group("pre") or (match.group("dev_n") is not None and not match.group("post")):
-        raise SystemExit(1)
-import mcp.server.fastmcp
-' >/dev/null 2>&1
-}
-
-# Collect the unique `--with <spec>` dependency specs across the selected
-# plugins' uv-launched MCP servers, one per line.
-codex_mcp_requirements() {
-  local render_python="$1"
-  local cats; cats="$(mcp_categories)"
-  [[ -n "$cats" ]] || return 0
-  "$render_python" - "$REPO_ROOT" $cats <<'PY'
-import json
-import sys
-from pathlib import Path
-
-repo_root = Path(sys.argv[1])
-seen: list[str] = []
-for cat in sys.argv[2:]:
-    spec = json.loads((repo_root / "plugins" / cat / ".mcp.json").read_text("utf-8"))
-    for server in spec.get("mcpServers", {}).values():
-        if server.get("command") != "uv":
-            continue
-        args = server.get("args", [])
-        for i, a in enumerate(args):
-            if a == "--with" and i + 1 < len(args) and args[i + 1] not in seen:
-                seen.append(args[i + 1])
-print("\n".join(seen))
-PY
-}
-
-# Provision the runtime venv and install the collected requirements into it.
-# Prints the interpreter path only after validation. On failure it prints a
-# concrete warning and returns no interpreter, so callers can fail closed
-# rather than write a broken uv fallback into Codex's config.
-install_codex_mcp_runtime() {
-  local cats; cats="$(mcp_categories)"
-  [[ -n "$cats" ]] || return 0
-
-  local venv; venv="$(codex_mcp_runtime_dir)"
-  local py; py="$(codex_mcp_runtime_python)"
-  local bootstrap_python reqs
-
-  if (( DRY_RUN )); then
-    if bootstrap_python="$(codex_mcp_python)"; then
-      reqs="$(codex_mcp_requirements "$bootstrap_python")"
-      printf '[dry-run] create MCP runtime venv %s with %s and install: %s\n' \
-        "$venv" "$bootstrap_python" "$(printf '%s ' $reqs)" >&2
-      printf '%s\n' "$py"
-    else
-      printf '  WARN      no Python >=3.10 found; MCP servers will not be registered\n' >&2
-    fi
-    return 0
-  fi
-
-  if codex_mcp_runtime_valid "$py"; then
-    printf '  runtime   reusing validated MCP runtime %s\n' "$venv" >&2
-    printf '%s\n' "$py"
-    return 0
-  fi
-
-  if [[ -e "$venv" ]]; then
-    rm -rf "$venv"
-  fi
-  if ! bootstrap_python="$(codex_mcp_python)"; then
-    printf '  WARN      no compatible Python >=3.10 found; MCP servers were not registered\n' >&2
-    return 0
-  fi
-  reqs="$(codex_mcp_requirements "$bootstrap_python")"
-  [[ -n "${reqs//[[:space:]]/}" ]] || return 0  # no uv server; nothing to do
-  if ! "$bootstrap_python" -m venv "$venv" 1>&2; then
-    printf '  WARN      could not create MCP runtime venv %s with %s; MCP servers were not registered\n' \
-      "$venv" "$bootstrap_python" >&2
-    return 0
-  fi
-  # shellcheck disable=SC2086
-  if ! "$py" -m pip install --quiet --upgrade $reqs 1>&2; then
-    printf '  WARN      could not install MCP dependencies into %s; MCP servers were not registered\n' \
-      "$venv" >&2
-    return 0
-  fi
-  if ! codex_mcp_runtime_valid "$py"; then
-    printf '  WARN      MCP runtime %s failed validation; MCP servers were not registered\n' \
-      "$venv" >&2
-    return 0
-  fi
-  printf '  runtime   MCP dependencies installed in %s\n' "$venv" >&2
-  printf '%s\n' "$py"
-}
-
-remove_codex_mcp_blocks() {
-  local config; config="$(codex_config_path)"
-  [[ -f "$config" ]] || return 0
-  local cat before after
-  while IFS= read -r cat; do
-    [[ -n "$cat" ]] || continue
-    before="$(cat "$config")"
-    if ! mcp_markers_balanced "$cat" <<< "$before"; then
-      printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
-        "$cat" "$config" >&2
-      continue
-    fi
-    after="$(strip_mcp_block "$cat" <<< "$before")"
-    [[ "$after" != "$before" ]] || continue
-    if (( DRY_RUN )); then
-      printf '[dry-run] remove %s MCP servers from %s\n' "$cat" "$config"
-      continue
-    fi
-    if [[ -n "$after" ]]; then
-      printf '%s\n' "$after" > "$config"
-    else
-      : > "$config"
-    fi
-    printf '  removed   %s MCP servers from %s\n' "$cat" "$config"
-  done < <(
-    if (( $# )); then
-      printf '%s\n' "$@"
-    else
-      mcp_categories
-    fi
-  )
-}
-
-install_codex_mcp() {
-  local config; config="$(codex_config_path)"
-  local cats; cats="$(mcp_categories)"
-  [[ -n "$cats" ]] || return 0
-  local runtime_python; runtime_python="$(install_codex_mcp_runtime)"
-  if [[ -z "$runtime_python" ]]; then
-    remove_codex_mcp_blocks
-    return 0
-  fi
-  if (( DRY_RUN )); then
-    remove_codex_mcp_blocks
-    while IFS= read -r cat; do
-      [[ -n "$cat" ]] || continue
-      printf '[dry-run] register %s MCP servers in %s\n' "$cat" "$config"
-    done <<< "$cats"
-    return 0
-  fi
-  local cat toml rest name skip
-  while IFS= read -r cat; do
-    [[ -n "$cat" ]] || continue
-    if ! toml="$(plugin_mcp_toml "$cat" "$runtime_python" "$runtime_python")"; then
-      printf '  WARN      failed to render plugins/%s/.mcp.json; removing managed block\n' "$cat" >&2
-      remove_codex_mcp_blocks "$cat"
-      continue
-    fi
-    mkdir -p "$(dirname "$config")"
-    [[ -f "$config" ]] || : > "$config"
-    if ! mcp_markers_balanced "$cat" < "$config"; then
-      printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
-        "$cat" "$config" >&2
-      continue
-    fi
-    rest="$(strip_mcp_block "$cat" < "$config")"
-    skip=0
-    while IFS= read -r name; do
-      if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]]; then
-        printf '  WARN      MCP server name %q is not a bare TOML key (skipping %s)\n' \
-          "$name" "$cat" >&2
-        skip=1
-        continue
-      fi
-      # Match bare and quoted forms of the table header, with optional
-      # trailing whitespace or comment: [mcp_servers."<name>"] # note
-      if printf '%s\n' "$rest" \
-        | grep -Eq "^\[mcp_servers\.\"?$name\"?\][[:space:]]*(#.*)?$"; then
-        printf '  WARN      [mcp_servers.%s] already in %s (not ours, skipping %s)\n' \
-          "$name" "$config" "$cat" >&2
-        skip=1
-      fi
-    done < <(printf '%s\n' "$toml" | sed -n 's/^\[mcp_servers\.\([^]]*\)\]$/\1/p')
-    if (( skip )); then continue; fi
-    {
-      if [[ -n "$rest" ]]; then printf '%s\n\n' "$rest"; fi
-      mcp_begin_marker "$cat"; printf '\n'
-      printf '%s\n' "$toml"
-      mcp_end_marker "$cat"; printf '\n'
-    } > "$config.tmp.$$"
-    mv "$config.tmp.$$" "$config"
-    printf '  mcp       %s servers registered in %s\n' "$cat" "$config"
-  done <<< "$cats"
-}
-
-uninstall_codex_mcp() {
-  remove_codex_mcp_blocks
-
-  # Remove the install-time runtime venv we provisioned for these servers.
-  local venv; venv="$(codex_mcp_runtime_dir)"
-  if [[ -d "$venv" ]]; then
-    if (( DRY_RUN )); then
-      printf '[dry-run] remove MCP runtime venv %s\n' "$venv"
-    else
-      rm -rf "$venv"
-      printf '  removed   MCP runtime venv %s\n' "$venv"
-    fi
-  fi
 }
 
 # --- Codex custom agent registration ----------------------------------------
@@ -1092,12 +784,13 @@ main() {
     [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
     if [[ "$target" == "codex" ]]; then
       cleanup_codex_prompts_legacy "$skills"
+      # Runs on both paths: an upgrade must drop a managed block left by a
+      # version that still registered the knowledge-base MCP servers.
+      remove_legacy_codex_mcp
       if (( UNINSTALL )); then
-        uninstall_codex_mcp
         uninstall_codex_agents
         remove_codex_member_overrides
       else
-        install_codex_mcp
         install_codex_agents
         printf '%s' "$codex_disabled_members" | install_codex_member_overrides
       fi
