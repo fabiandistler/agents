@@ -130,6 +130,16 @@
       ]
     },
     {
+      "name": "html-artifacts",
+      "summary": "Produce a self-contained HTML file instead of a markdown reply when the content has spatial, comparative, or interactive structure.",
+      "category": "communication",
+      "path": "skills/html-artifacts/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
+      ]
+    },
+    {
       "name": "hypertrophy-training",
       "summary": "Summarizes evidence-based hypertrophy-training programming and auto-regulation with precise stop criteria.",
       "category": "personal",
