@@ -50,6 +50,7 @@ import argparse
 import json
 import math
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -122,22 +123,27 @@ def _iter_run_specs(config_dir: Path) -> list[dict]:
     return specs
 
 
-def _load_eval_metadata(eval_dir: Path, config_dir: Path | None = None) -> dict:
-    """Load eval_metadata.json, preferring a config-dir copy over the eval-dir copy."""
-    candidates = [eval_dir / "eval_metadata.json"]
-    if config_dir is not None:
-        candidates.insert(0, config_dir / "eval_metadata.json")
-    metadata = {}
-    for candidate in candidates:
-        if candidate.exists():
-            try:
-                with open(candidate) as mf:
-                    metadata = json.load(mf)
-            except (json.JSONDecodeError, OSError):
-                metadata = {}
-            break
-    if not isinstance(metadata, dict):
+def _read_eval_metadata_file(path: Path) -> dict:
+    """Read one eval_metadata.json, returning {} when absent or unusable."""
+    if not path.exists():
         return {}
+    try:
+        with open(path) as mf:
+            metadata = json.load(mf)
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _load_eval_metadata(eval_dir: Path, config_dir: Path | None = None) -> dict:
+    """Merge eval-dir and config-dir eval_metadata.json, config-dir keys winning.
+
+    Merging rather than picking one file means a config-dir copy carrying only
+    eval_id still inherits eval_name from the eval-dir copy.
+    """
+    metadata = _read_eval_metadata_file(eval_dir / "eval_metadata.json")
+    if config_dir is not None:
+        metadata = {**metadata, **_read_eval_metadata_file(config_dir / "eval_metadata.json")}
     return metadata
 
 
@@ -180,11 +186,10 @@ def load_run_results(benchmark_dir: Path) -> dict:
             eval_name = metadata.get("eval_name")
 
             for spec in _iter_run_specs(config_dir):
-                results.setdefault(config, [])
                 grading_file = spec["grading_file"]
 
                 if not grading_file.exists():
-                    print(f"Warning: grading.json not found in {spec['config_dir']}")
+                    print(f"Warning: grading.json not found in {grading_file.parent}")
                     continue
 
                 try:
@@ -205,18 +210,23 @@ def load_run_results(benchmark_dir: Path) -> dict:
                     "total": grading.get("summary", {}).get("total", 0),
                 }
 
-                # Extract timing — check grading.json first, then sibling timing.json
+                # Extract timing — grading.json wins for duration, but a sibling
+                # timing.json is still the best token source when it exists, so
+                # read it regardless of whether grading.json carried a duration.
                 timing = grading.get("timing", {})
                 result["time_seconds"] = timing.get("total_duration_seconds", 0.0)
+                result["tokens"] = timing.get("total_tokens", 0)
                 timing_file = spec["timing_file"]
-                if result["time_seconds"] == 0.0 and timing_file.exists():
+                if timing_file.exists():
                     try:
                         with open(timing_file) as tf:
                             timing_data = json.load(tf)
+                    except (json.JSONDecodeError, OSError):
+                        timing_data = {}
+                    if result["time_seconds"] == 0.0:
                         result["time_seconds"] = timing_data.get("total_duration_seconds", 0.0)
+                    if not result["tokens"]:
                         result["tokens"] = timing_data.get("total_tokens", 0)
-                    except json.JSONDecodeError:
-                        pass
 
                 # Extract metrics if available
                 metrics = grading.get("execution_metrics", {})
@@ -242,7 +252,10 @@ def load_run_results(benchmark_dir: Path) -> dict:
                 notes.extend(notes_summary.get("workarounds", []))
                 result["notes"] = notes
 
-                results[config].append(result)
+                # Only register the config once a run actually loaded — a config
+                # dir with outputs/ but no grading.json contributes nothing, and
+                # must not surface as a fabricated 0% result in the delta.
+                results.setdefault(config, []).append(result)
 
     return results
 
@@ -336,14 +349,21 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
                 }
             )
 
-    # Determine eval identifiers from results — names when present, else IDs
+    # Determine eval identifiers from results — names when present, else IDs.
+    # Ordered by eval_id either way so the viewer's eval order stays stable.
     all_runs = [r for config in results.values() for r in config]
-    eval_ids = sorted({r["eval_id"] for r in all_runs})
-    has_names = all(r.get("eval_name") for r in all_runs)
-    if has_names:
-        evals_run = sorted({r["eval_name"] for r in all_runs})
+    names_by_id = {r["eval_id"]: r.get("eval_name") for r in all_runs}
+    if all(names_by_id.values()):
+        evals_run = [names_by_id[eval_id] for eval_id in sorted(names_by_id)]
     else:
-        evals_run = eval_ids
+        evals_run = sorted(names_by_id)
+
+    # Runs per configuration is per eval — results[config] spans every eval, so
+    # counting that list would report num_evals * runs_per_eval.
+    runs_per_configuration = max(
+        Counter((r["eval_id"], config) for config in results for r in results[config]).values(),
+        default=0,
+    )
 
     benchmark = {
         "metadata": {
@@ -353,9 +373,7 @@ def generate_benchmark(benchmark_dir: Path, skill_name: str = "", skill_path: st
             "analyzer_model": "<model-name>",
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "evals_run": evals_run,
-            "runs_per_configuration": max(
-                (len(runs) for runs in results.values()), default=0
-            ),
+            "runs_per_configuration": runs_per_configuration,
         },
         "runs": runs,
         "run_summary": run_summary,
