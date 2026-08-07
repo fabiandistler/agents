@@ -35,7 +35,7 @@ Do not stop at the first failure; collect all output.
    and the aggregate auto-skill budget.
 3. `python3 scripts/check_docs.py` — README/AGENTS catalogue tables.
 4. `python3 scripts/check_plugins.py` — marketplace, plugin symlinks,
-   kb/ links, .mcp.json, agent frontmatter.
+   agent frontmatter.
 5. `ruff check .` and `python3 -m compileall -q scripts skills
    mcp-wiki-server` — Python lint/compile.
 6. `shellcheck -S warning install.sh scripts/test_install.sh

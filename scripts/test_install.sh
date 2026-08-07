@@ -7,108 +7,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL="$REPO_ROOT/install.sh"
-HOST_PYTHON="$(command -v python3)"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "ok: $*"; }
-
-# Build a local mcp wheel so installer tests are hermetic.
-MCP_WHEEL_DIR="$(mktemp -d)"
-build_mcp_wheel() {
-  local version="$1"
-  "$HOST_PYTHON" - "$MCP_WHEEL_DIR" "$version" <<'PY'
-import sys
-import zipfile
-from pathlib import Path
-
-wheel_dir, version = Path(sys.argv[1]), sys.argv[2]
-dist_info = f"mcp-{version}.dist-info"
-target = wheel_dir / f"mcp-{version}-py3-none-any.whl"
-files = {
-    "mcp/__init__.py": "",
-    "mcp/server/__init__.py": "",
-    "mcp/server/fastmcp.py": "class FastMCP: pass\n",
-    f"{dist_info}/METADATA": f"Metadata-Version: 2.1\nName: mcp\nVersion: {version}\nProvides-Extra: cli\n",
-    f"{dist_info}/WHEEL": "Wheel-Version: 1.0\nGenerator: test_install.sh\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
-    f"{dist_info}/RECORD": "",
-}
-with zipfile.ZipFile(target, "w") as wheel:
-    for name, content in files.items():
-        wheel.writestr(name, content)
-PY
-}
-build_mcp_wheel "1.2.0"
-build_mcp_wheel "1.2rc1"
-build_mcp_wheel "1.2.dev1"
-PIP_NO_INDEX=1
-PIP_FIND_LINKS="$MCP_WHEEL_DIR"
-PIP_NO_CACHE_DIR=1
-export PIP_NO_INDEX PIP_FIND_LINKS PIP_NO_CACHE_DIR
-
-make_python_candidate() {
-  local path="$1" version="$2" log="$3"
-  {
-    printf '%s\n' '#!/usr/bin/env bash'
-    printf 'printf %q "${0##*/} $*" >> %q\n' '%s\n' "$log"
-    printf '%s\n' 'if [[ "${1:-}" == "-c" ]]; then'
-    printf '  printf %q %q\n' '%s\n' "$version"
-    printf '%s\n' '  exit 0'
-    printf '%s\n' 'fi'
-    printf 'exec %q "$@"\n' "$HOST_PYTHON"
-  } > "$path"
-  chmod +x "$path"
-}
-make_noisy_python_candidate() {
-  local path="$1" version="$2"
-  {
-    printf '%s\n' '#!/usr/bin/env bash'
-    printf 'if [[ "${1:-}" == "-c" ]]; then printf "%%s\\n" %q; exit 0; fi\n' "$version"
-    printf '%s\n' 'if [[ "${1:-}" == "-m" && "${2:-}" == "venv" ]]; then printf "bootstrap stdout noise\n"; fi'
-    printf 'exec %q "$@"\n' "$HOST_PYTHON"
-  } > "$path"
-  chmod +x "$path"
-}
-make_unavailable_candidate() {
-  local path="$1"
-  printf '%s\n' '#!/usr/bin/env bash' 'exit 127' > "$path"
-  chmod +x "$path"
-}
-make_local_runtime() {
-  local runtime="$1"
-  "$HOST_PYTHON" -m venv "$runtime"
-  "$runtime/bin/python" -m pip install --quiet --upgrade 'mcp[cli]>=1.2'
-}
-make_local_runtime_with_mcp_version() {
-  local runtime="$1" version="$2"
-  "$HOST_PYTHON" -m venv "$runtime"
-  "$runtime/bin/python" -m pip install --quiet "$MCP_WHEEL_DIR/mcp-$version-py3-none-any.whl"
-}
-
-set_mcp_version() {
-  local runtime="$1" wanted="$2"
-  "$HOST_PYTHON" - "$runtime" "$wanted" <<'PY'
-import sys
-from pathlib import Path
-
-runtime, wanted = Path(sys.argv[1]), sys.argv[2]
-metadata = next(runtime.glob("lib/python*/site-packages/mcp-*.dist-info/METADATA"))
-metadata.write_text(
-    "\n".join(
-        f"Version: {wanted}" if line.startswith("Version:") else line
-        for line in metadata.read_text().splitlines()
-    ) + "\n",
-    encoding="utf-8",
-)
-PY
-}
-
-make_core_path() {
-  local dir="$1" command command_path
-  for command in env bash dirname grep basename awk sed mkdir ln readlink rm cat mv; do
-    command_path="$(type -P "$command")"
-    ln -s "$command_path" "$dir/$command"
-  done
-}
 
 with_fake_home() {
   local fake; fake="$(mktemp -d)"
@@ -422,100 +323,22 @@ if HOME="$(mktemp -d)" "$INSTALL" --target=claude --category=bogus >/dev/null 2>
 fi
 pass "invalid --category is rejected"
 
-# 15. codex install registers the plugin MCP servers in config.toml.
-HOME_MCP="$(mktemp -d)"
-HOME="$HOME_MCP" "$INSTALL" --target=codex >/dev/null
-CONFIG="$HOME_MCP/.codex/config.toml"
-[[ -f "$CONFIG" ]] || fail "codex install did not create config.toml"
-grep -Fxq '[mcp_servers.architecture-kb]' "$CONFIG" \
-  || fail "architecture-kb missing from config.toml"
-grep -Fxq '[mcp_servers.refactoring-kb]' "$CONFIG" \
-  || fail "refactoring-kb missing from config.toml"
-python3 - "$CONFIG" <<'PY' || fail "config.toml is not valid TOML"
-import sys, tomllib
-with open(sys.argv[1], "rb") as f:
-    cfg = tomllib.load(f)
-servers = cfg["mcp_servers"]
-for name in ("architecture-kb", "refactoring-kb"):
-    assert servers[name]["command"], name
-    assert "${CLAUDE_PLUGIN_ROOT}" not in " ".join(servers[name]["args"]), name
-PY
-pass "codex install registers MCP servers as valid TOML"
-
-# 15b. Managed MCP commands never retain a uv fallback.
-RUNTIME_PY="$HOME_MCP/.codex/agents-mcp-runtime/bin/python"
-python3 - "$CONFIG" "$RUNTIME_PY" <<'PY' || fail "MCP runtime rewrite is inconsistent"
-import sys, tomllib
-config, runtime_py = sys.argv[1], sys.argv[2]
-with open(config, "rb") as f:
-    servers = tomllib.load(f)["mcp_servers"]
-for name in ("architecture-kb", "refactoring-kb"):
-    cmd, args = servers[name]["command"], servers[name]["args"]
-    assert cmd == runtime_py, (name, cmd)
-    assert args and args[0].endswith("server.py"), (name, args)
-    assert cmd != "uv" and not any("--with" in a for a in args), (name, args)
-PY
-pass "runtime venv rewrites MCP blocks to its interpreter"
-
-# 16. re-running leaves config.toml byte-identical.
-before="$(cat "$CONFIG")"
-HOME="$HOME_MCP" "$INSTALL" --target=codex >/dev/null
-[[ "$(cat "$CONFIG")" == "$before" ]] || fail "MCP registration is not idempotent"
-pass "MCP registration is idempotent"
-
-# 17. codex uninstall removes our blocks but keeps foreign config.
-printf '\n[mcp_servers.foreign]\ncommand = "keep-me"\n' >> "$CONFIG"
-HOME="$HOME_MCP" "$INSTALL" --target=codex --uninstall >/dev/null
-grep -Fxq '[mcp_servers.foreign]' "$CONFIG" \
-  || fail "uninstall dropped a foreign MCP server"
-if grep -q 'mcp_servers\.\(architecture\|refactoring\)-kb' "$CONFIG"; then
-  fail "uninstall left our MCP servers in config.toml"
-fi
-[[ -d "$HOME_MCP/.codex/agents-mcp-runtime" ]] \
-  && fail "uninstall left the MCP runtime venv behind"
-pass "codex uninstall removes only our MCP servers"
-
-# 18. a category with neither MCP servers nor a router leaves config.toml alone
-#     (communication ships neither, so nothing is written to config.toml).
+# 18. a category without a router leaves config.toml alone (communication
+#     ships no router, so nothing managed is written to config.toml).
 HOME_NOMCP="$(mktemp -d)"
 HOME="$HOME_NOMCP" "$INSTALL" --target=codex --category=communication >/dev/null
 [[ ! -f "$HOME_NOMCP/.codex/config.toml" ]] \
   || fail "category=communication created config.toml"
-pass "category without MCP servers or router leaves config.toml alone"
-
-# 19. a foreign server table with our name is never overwritten.
-HOME_FOREIGN="$(mktemp -d)"
-mkdir -p "$HOME_FOREIGN/.codex"
-printf '[mcp_servers.architecture-kb]\ncommand = "mine"\n' \
-  > "$HOME_FOREIGN/.codex/config.toml"
-HOME="$HOME_FOREIGN" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-grep -Fxq 'command = "mine"' "$HOME_FOREIGN/.codex/config.toml" \
-  || fail "foreign architecture-kb table was overwritten"
-pass "foreign MCP server table is preserved"
-
-# 20. a foreign table using a quoted key is also detected and preserved.
-HOME_QUOTED="$(mktemp -d)"
-mkdir -p "$HOME_QUOTED/.codex"
-printf '[mcp_servers."architecture-kb"]\ncommand = "mine"\n' \
-  > "$HOME_QUOTED/.codex/config.toml"
-HOME="$HOME_QUOTED" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-grep -Fxq 'command = "mine"' "$HOME_QUOTED/.codex/config.toml" \
-  || fail "quoted-key foreign table was overwritten"
-python3 - "$HOME_QUOTED/.codex/config.toml" <<'PY' || fail "quoted-key case left invalid TOML"
-import sys, tomllib
-with open(sys.argv[1], "rb") as f:
-    tomllib.load(f)
-PY
-pass "quoted-key foreign table is preserved and config stays valid TOML"
+pass "category without a router leaves config.toml alone"
 
 # 21. unbalanced markers (hand-deleted end markers) leave the file untouched.
-# Drop both managed end markers (the MCP block and the skill-override block) so
-# each managed writer sees an unbalanced pair and bails.
+# Drop the managed skill-override end marker so its writer sees an unbalanced
+# pair and bails.
 HOME_UNBAL="$(mktemp -d)"
 HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null
 CONFIG_UNBAL="$HOME_UNBAL/.codex/config.toml"
 grep -vE '^# <<< agents' "$CONFIG_UNBAL" > "$CONFIG_UNBAL.tmp"
-printf '\n[mcp_servers.precious]\ncommand = "keep-me"\n' >> "$CONFIG_UNBAL.tmp"
+printf '\n[precious]\nkeep = true\n' >> "$CONFIG_UNBAL.tmp"
 mv "$CONFIG_UNBAL.tmp" "$CONFIG_UNBAL"
 before="$(cat "$CONFIG_UNBAL")"
 HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
@@ -527,11 +350,13 @@ HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture --uninstall
 pass "unbalanced markers leave config.toml untouched"
 
 # 21a. codex install disables every nested router member via [[skills.config]].
+#      architecture is routed and has the most members, so it exercises the
+#      block best.
 HOME_OV="$(mktemp -d)"
-HOME="$HOME_OV" "$INSTALL" --target=codex --category=refactoring >/dev/null
+HOME="$HOME_OV" "$INSTALL" --target=codex --category=architecture >/dev/null
 CONFIG_OV="$HOME_OV/.codex/config.toml"
 [[ -f "$CONFIG_OV" ]] || fail "codex install did not create config.toml for overrides"
-# Every nested member of the refactoring router must be disabled; the router
+# Every nested member of the architecture router must be disabled; the router
 # itself must not be.
 declare -A OV_DISABLED=()
 while IFS= read -r name; do OV_DISABLED["$name"]=1; done < <(
@@ -546,7 +371,7 @@ PY
 )
 for d in "$REPO_ROOT"/skills/*/; do
   [[ -f "$d/SKILL.md" ]] || continue
-  [[ "$(skill_dir_category "$d")" == "refactoring" ]] || continue
+  [[ "$(skill_dir_category "$d")" == "architecture" ]] || continue
   name="$(basename "$d")"
   if skill_is_router "$d"; then
     [[ -z "${OV_DISABLED[$name]:-}" ]] || fail "override disabled the router $name"
@@ -561,15 +386,14 @@ with open(sys.argv[1], "rb") as f:
 PY
 pass "codex install disables nested router members"
 
-# 21b. a routed category without an .mcp.json still writes only the override
-#      block (no mcp_servers), and reinstalling is byte-identical. ai-ml
-#      is routed but ships no plugin MCP server.
+# 21b. a routed category writes only the override block — the installer no
+#      longer registers MCP servers at all — and reinstalling is byte-identical.
 HOME_OV2="$(mktemp -d)"
 HOME="$HOME_OV2" "$INSTALL" --target=codex --category=ai-ml >/dev/null
 CONFIG_OV2="$HOME_OV2/.codex/config.toml"
 [[ -f "$CONFIG_OV2" ]] || fail "routed category=ai-ml created no config.toml"
 grep -q '^\[mcp_servers\.' "$CONFIG_OV2" \
-  && fail "category=ai-ml wrote mcp_servers with no .mcp.json"
+  && fail "install wrote mcp_servers into config.toml"
 before="$(cat "$CONFIG_OV2")"
 HOME="$HOME_OV2" "$INSTALL" --target=codex --category=ai-ml >/dev/null
 [[ "$(cat "$CONFIG_OV2")" == "$before" ]] || fail "override registration is not idempotent"
@@ -582,6 +406,79 @@ grep -Fxq '[foreign]' "$CONFIG_OV2" || fail "override uninstall dropped foreign 
 grep -q 'skills\.config\|routed-member skill overrides' "$CONFIG_OV2" \
   && fail "override uninstall left our block behind"
 pass "override uninstall removes only our block"
+
+# 21d. a config left behind by a version that still registered the
+#      knowledge-base MCP servers is cleaned up — by install as well as by
+#      uninstall — across every legacy category, foreign tables untouched.
+make_legacy_mcp_home() {
+  local home="$1"
+  mkdir -p "$home/.codex"
+  printf '%s\n' \
+    '[mcp_servers.foreign]' \
+    'command = "keep-me"' \
+    '' \
+    '# >>> agents:architecture MCP servers (managed by install.sh, do not edit) >>>' \
+    '[mcp_servers.architecture-kb]' \
+    'command = "/gone/bin/python"' \
+    '# <<< agents:architecture MCP servers <<<' \
+    '' \
+    '# >>> agents:refactoring MCP servers (managed by install.sh, do not edit) >>>' \
+    '[mcp_servers.refactoring-kb]' \
+    'command = "/gone/bin/python"' \
+    '# <<< agents:refactoring MCP servers <<<' \
+    > "$home/.codex/config.toml"
+  mkdir -p "$home/.codex/agents-mcp-runtime/bin"
+  : > "$home/.codex/agents-mcp-runtime/bin/python"
+}
+
+assert_legacy_mcp_gone() {
+  local config="$1" what="$2"
+  grep -Fxq '[mcp_servers.foreign]' "$config" \
+    || fail "$what dropped a foreign MCP server"
+  grep -Fxq 'command = "keep-me"' "$config" \
+    || fail "$what dropped the foreign server's body"
+  if grep -q 'MCP servers\|mcp_servers\.\(architecture\|refactoring\)-kb' "$config"; then
+    fail "$what left a legacy managed MCP block behind"
+  fi
+}
+
+# Install path: cleanup runs even for a category that never shipped a server.
+HOME_LEGACY="$(mktemp -d)"
+make_legacy_mcp_home "$HOME_LEGACY"
+CONFIG_LEGACY="$HOME_LEGACY/.codex/config.toml"
+HOME="$HOME_LEGACY" "$INSTALL" --target=codex --category=ai-ml >/dev/null
+assert_legacy_mcp_gone "$CONFIG_LEGACY" "install"
+[[ -d "$HOME_LEGACY/.codex/agents-mcp-runtime" ]] \
+  && fail "install left the legacy MCP runtime venv behind"
+python3 - "$CONFIG_LEGACY" <<'PY' || fail "legacy cleanup left invalid TOML"
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    tomllib.load(f)
+PY
+before="$(cat "$CONFIG_LEGACY")"
+HOME="$HOME_LEGACY" "$INSTALL" --target=codex --category=ai-ml >/dev/null
+[[ "$(cat "$CONFIG_LEGACY")" == "$before" ]] || fail "legacy cleanup is not idempotent"
+pass "install strips legacy MCP blocks and the runtime venv"
+
+# Uninstall path: same cleanup, and a dry-run changes nothing.
+HOME_LEGACY_UN="$(mktemp -d)"
+make_legacy_mcp_home "$HOME_LEGACY_UN"
+CONFIG_LEGACY_UN="$HOME_LEGACY_UN/.codex/config.toml"
+before="$(cat "$CONFIG_LEGACY_UN")"
+dry_output="$(HOME="$HOME_LEGACY_UN" "$INSTALL" --target=codex --dry-run 2>&1)"
+[[ "$(cat "$CONFIG_LEGACY_UN")" == "$before" ]] \
+  || fail "dry-run modified the legacy config"
+[[ -d "$HOME_LEGACY_UN/.codex/agents-mcp-runtime" ]] \
+  || fail "dry-run removed the legacy runtime venv"
+[[ "$dry_output" == *"remove legacy architecture MCP servers"* ]] \
+  || fail "dry-run did not plan legacy block removal"
+[[ "$dry_output" == *"remove legacy MCP runtime venv"* ]] \
+  || fail "dry-run did not plan legacy venv removal"
+HOME="$HOME_LEGACY_UN" "$INSTALL" --target=codex --uninstall >/dev/null
+assert_legacy_mcp_gone "$CONFIG_LEGACY_UN" "uninstall"
+[[ -d "$HOME_LEGACY_UN/.codex/agents-mcp-runtime" ]] \
+  && fail "uninstall left the legacy MCP runtime venv behind"
+pass "uninstall strips legacy MCP blocks; dry-run only reports them"
 
 # 22. codex install converts plugin subagents to valid custom-agent TOML.
 HOME_AG="$(mktemp -d)"
@@ -628,224 +525,6 @@ HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=workflow >/dev/null
 [[ ! -d "$HOME_NOAG/.codex/agents" ]] \
   || fail "category=workflow created an agents directory"
 pass "category without subagents leaves agents directory alone"
-
-# 26. Runtime provisioning ignores a Python 3.9 candidate, selects 3.12,
-# and generates only direct interpreter commands for managed MCP servers.
-HOME_RUNTIME="$(mktemp -d)"
-RUNTIME_BIN="$(mktemp -d)"
-RUNTIME_LOG="$(mktemp)"
-make_python_candidate "$RUNTIME_BIN/python3" "3.9" "$RUNTIME_LOG"
-make_python_candidate "$RUNTIME_BIN/python3.12" "3.12" "$RUNTIME_LOG"
-for candidate in python3.13 python3.11 python3.10; do
-  make_unavailable_candidate "$RUNTIME_BIN/$candidate"
-done
-mkdir -p "$HOME_RUNTIME/.codex/agents-mcp-runtime/bin"
-{
-  printf '%s\n' '#!/usr/bin/env bash'
-  printf '%s\n' 'if [[ "${1:-}" == "-c" ]]; then printf "%s\\n" "3.9"; exit 0; fi'
-  printf '%s\n' 'exit 70'
-} > "$HOME_RUNTIME/.codex/agents-mcp-runtime/bin/python"
-chmod +x "$HOME_RUNTIME/.codex/agents-mcp-runtime/bin/python"
-PATH="$RUNTIME_BIN:$PATH" HOME="$HOME_RUNTIME" "$INSTALL" --target=codex >/dev/null
-RUNTIME_PY="$HOME_RUNTIME/.codex/agents-mcp-runtime/bin/python"
-[[ -x "$RUNTIME_PY" ]] || fail "compatible runtime venv was not created"
-grep -Fq 'python3.12 -m venv' "$RUNTIME_LOG" \
-  || fail "installer did not select the Python 3.12 candidate"
-if grep -Eq '^(command = "uv"|.*uv run)' "$HOME_RUNTIME/.codex/config.toml"; then
-  fail "managed MCP command still falls back to uv"
-fi
-pass "runtime rejects Python 3.9 and writes direct MCP commands"
-
-# 27. A venv that advertises mcp 1.2 but cannot import fastmcp is replaced.
-HOME_INCOMPLETE="$(mktemp -d)"
-INCOMPLETE_RUNTIME="$HOME_INCOMPLETE/.codex/agents-mcp-runtime"
-mkdir -p "$HOME_INCOMPLETE/.codex"
-make_local_runtime "$INCOMPLETE_RUNTIME"
-rm -rf "$INCOMPLETE_RUNTIME/lib"/python*/site-packages/mcp
-HOME="$HOME_INCOMPLETE" "$INSTALL" --target=codex --category=architecture >/dev/null
-"$INCOMPLETE_RUNTIME/bin/python" -c 'import mcp.server.fastmcp' \
-  || fail "incomplete runtime was reused instead of replaced"
-pass "incomplete MCP runtime is replaced"
-
-# 28. A validated runtime is reused without invoking pip, so it also works
-# when a later run is offline.
-HOME_HEALTHY="$(mktemp -d)"
-HEALTHY_RUNTIME="$HOME_HEALTHY/.codex/agents-mcp-runtime"
-mkdir -p "$HOME_HEALTHY/.codex"
-make_local_runtime "$HEALTHY_RUNTIME"
-touch "$HEALTHY_RUNTIME/reuse-sentinel"
-mv "$HEALTHY_RUNTIME/bin/python" "$HEALTHY_RUNTIME/bin/python.real"
-{
-  printf '%s\n' '#!/usr/bin/env bash'
-  printf '%s\n' 'if [[ "${1:-}" == "-m" && "${2:-}" == "pip" ]]; then exit 71; fi'
-  printf 'exec %q "$@"\n' "$HEALTHY_RUNTIME/bin/python.real"
-} > "$HEALTHY_RUNTIME/bin/python"
-chmod +x "$HEALTHY_RUNTIME/bin/python"
-HOME="$HOME_HEALTHY" "$INSTALL" --target=codex --category=architecture >/dev/null
-grep -Fxq "command = \"$HEALTHY_RUNTIME/bin/python\"" "$HOME_HEALTHY/.codex/config.toml" \
-  || fail "healthy runtime was not reused offline"
-[[ -f "$HEALTHY_RUNTIME/reuse-sentinel" ]] \
-  || fail "healthy runtime was rebuilt instead of reused"
-pass "healthy MCP runtime is reused offline"
-
-# 29. Provisioning failure removes only our selected marker blocks and never
-# leaves a managed uv command behind; foreign config remains untouched.
-HOME_FAILURE="$(mktemp -d)"
-FAILURE_BIN="$(mktemp -d)"
-FAILURE_LOG="$(mktemp)"
-mkdir -p "$HOME_FAILURE/.codex"
-printf '%s\n' \
-  '[mcp_servers.foreign]' \
-  'command = "keep-me"' \
-  '' \
-  '# >>> agents:architecture MCP servers (managed by install.sh, do not edit) >>>' \
-  '[mcp_servers.architecture-kb]' \
-  'command = "uv"' \
-  '# <<< agents:architecture MCP servers <<<' \
-  > "$HOME_FAILURE/.codex/config.toml"
-make_python_candidate "$FAILURE_BIN/python3" "3.9" "$FAILURE_LOG"
-for candidate in python3.13 python3.12 python3.11 python3.10; do
-  make_unavailable_candidate "$FAILURE_BIN/$candidate"
-done
-PATH="$FAILURE_BIN:$PATH" HOME="$HOME_FAILURE" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-grep -Fxq '[mcp_servers.foreign]' "$HOME_FAILURE/.codex/config.toml" \
-  || fail "provisioning failure removed foreign MCP config"
-if grep -q 'agents:architecture MCP servers\|mcp_servers.architecture-kb\|command = "uv"' "$HOME_FAILURE/.codex/config.toml"; then
-  fail "provisioning failure left a broken managed MCP block"
-fi
-pass "provisioning failure fails closed and preserves foreign config"
-
-# 30. A compatible python3.12 is sufficient when python3 is absent from PATH.
-HOME_PY312="$(mktemp -d)"
-PY312_BIN="$(mktemp -d)"
-PY312_CORE="$(mktemp -d)"
-PY312_LOG="$(mktemp)"
-make_python_candidate "$PY312_BIN/python3.12" "3.12" "$PY312_LOG"
-make_core_path "$PY312_CORE"
-PATH="$PY312_BIN:$PY312_CORE" HOME="$HOME_PY312" bash "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-PY312_CONFIG="$HOME_PY312/.codex/config.toml"
-[[ -f "$PY312_CONFIG" ]] || fail "python3.12-only install did not register MCP config"
-grep -Fxq "command = \"$HOME_PY312/.codex/agents-mcp-runtime/bin/python\"" "$PY312_CONFIG" \
-  || fail "python3.12-only install did not use the runtime interpreter"
-pass "python3.12-only install registers direct MCP commands"
-
-# 31. PEP 440 prereleases below 1.2 are not reused as healthy runtimes.
-for prerelease in 1.2rc1 1.2.dev1; do
-  HOME_PRERELEASE="$(mktemp -d)"
-  PRERELEASE_RUNTIME="$HOME_PRERELEASE/.codex/agents-mcp-runtime"
-  mkdir -p "$HOME_PRERELEASE/.codex"
-  make_local_runtime_with_mcp_version "$PRERELEASE_RUNTIME" "$prerelease"
-  HOME="$HOME_PRERELEASE" "$INSTALL" --target=codex --category=architecture >/dev/null
-  "$PRERELEASE_RUNTIME/bin/python" - "$prerelease" <<'PY' || fail "pre-release MCP runtime was reused: $prerelease"
-import sys
-from importlib.metadata import version
-
-assert version("mcp") == "1.2.0", version("mcp")
-PY
-done
-pass "pre-release MCP runtimes below 1.2 are replaced"
-# 32. A failed noisy provisioner cannot leave a managed block behind.
-HOME_NOISY="$(mktemp -d)"
-NOISY_BIN="$(mktemp -d)"
-NOISY_LINKS="$(mktemp -d)"
-mkdir -p "$HOME_NOISY/.codex"
-printf '%s\n' \
-  '[mcp_servers.foreign]' \
-  'command = "keep-me"' \
-  '' \
-  '# >>> agents:architecture MCP servers (managed by install.sh, do not edit) >>>' \
-  '[mcp_servers.architecture-kb]' \
-  'command = "uv"' \
-  '# <<< agents:architecture MCP servers <<<' \
-  > "$HOME_NOISY/.codex/config.toml"
-make_noisy_python_candidate "$NOISY_BIN/python3" "3.12"
-for candidate in python3.13 python3.12 python3.11 python3.10; do
-  make_unavailable_candidate "$NOISY_BIN/$candidate"
-done
-PIP_FIND_LINKS="$NOISY_LINKS" PATH="$NOISY_BIN:$PATH" HOME="$HOME_NOISY" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-grep -Fxq '[mcp_servers.foreign]' "$HOME_NOISY/.codex/config.toml" \
-  || fail "noisy provisioning failure removed foreign config"
-if grep -q 'agents:architecture MCP servers\|mcp_servers.architecture-kb' "$HOME_NOISY/.codex/config.toml"; then
-  fail "noisy provisioning failure left a managed MCP block"
-fi
-pass "provisioning stdout cannot become a managed runtime command"
-
-# 33. An unresolved uv command removes only its managed block.
-HOME_BAD_UV="$(mktemp -d)"
-REPO_BAD_UV="$(mktemp -d)/agents-copy"
-cp -a "$REPO_ROOT" "$REPO_BAD_UV"
-printf '%s\n' \
-  '{"mcpServers":{"architecture-kb":{"command":"uv","args":["run","--with","mcp[cli]>=1.2","not-python"]}}}' \
-  > "$REPO_BAD_UV/plugins/architecture/.mcp.json"
-mkdir -p "$HOME_BAD_UV/.codex"
-printf '%s\n' \
-  '[mcp_servers.foreign]' \
-  'command = "keep-me"' \
-  '' \
-  '# >>> agents:architecture MCP servers (managed by install.sh, do not edit) >>>' \
-  '[mcp_servers.architecture-kb]' \
-  'command = "uv"' \
-  '# <<< agents:architecture MCP servers <<<' \
-  > "$HOME_BAD_UV/.codex/config.toml"
-HOME="$HOME_BAD_UV" "$REPO_BAD_UV/install.sh" --target=codex --category=architecture >/dev/null 2>&1
-grep -Fxq '[mcp_servers.foreign]' "$HOME_BAD_UV/.codex/config.toml" \
-  || fail "unresolved uv removed foreign config"
-if grep -q 'agents:architecture MCP servers\|mcp_servers.architecture-kb' "$HOME_BAD_UV/.codex/config.toml"; then
-  fail "unresolved uv left a managed MCP block"
-fi
-pass "unresolved uv command fails closed"
-
-# 34. PEP 440 post releases reuse; invalid suffixes fail closed.
-PEP_CORE="$(mktemp -d)"
-PEP_BIN="$(mktemp -d)"
-make_core_path "$PEP_CORE"
-for candidate in python3 python3.13 python3.12 python3.11 python3.10; do
-  make_unavailable_candidate "$PEP_BIN/$candidate"
-done
-for accepted in 1.2-1 1.2rev1 1.2r1 1.2.post1.dev1 1.3alpha1; do
-  HOME_PEP="$(mktemp -d)"
-  PEP_RUNTIME="$HOME_PEP/.codex/agents-mcp-runtime"
-  mkdir -p "$HOME_PEP/.codex"
-  make_local_runtime "$PEP_RUNTIME"
-  set_mcp_version "$PEP_RUNTIME" "$accepted"
-  touch "$PEP_RUNTIME/accepted-sentinel"
-  PATH="$PEP_BIN:$PEP_CORE" HOME="$HOME_PEP" bash "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-  [[ -f "$PEP_RUNTIME/accepted-sentinel" ]] \
-    || fail "valid PEP 440 version was not reused: $accepted"
-done
-HOME_BAD_VERSION="$(mktemp -d)"
-BAD_VERSION_RUNTIME="$HOME_BAD_VERSION/.codex/agents-mcp-runtime"
-mkdir -p "$HOME_BAD_VERSION/.codex"
-make_local_runtime "$BAD_VERSION_RUNTIME"
-set_mcp_version "$BAD_VERSION_RUNTIME" "1.2nonsense"
-PATH="$PEP_BIN:$PEP_CORE" HOME="$HOME_BAD_VERSION" bash "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-[[ ! -d "$BAD_VERSION_RUNTIME" ]] \
-  || fail "invalid PEP 440 suffix was accepted"
-pass "PEP 440 threshold accepts post releases and rejects invalid suffixes"
-
-# 35. Dry-run plans replacement without changing managed TOML.
-HOME_DRY_MCP="$(mktemp -d)"
-mkdir -p "$HOME_DRY_MCP/.codex"
-printf '%s\n' \
-  '[mcp_servers.foreign]' \
-  'command = "keep-me"' \
-  '' \
-  '# >>> agents:architecture MCP servers (managed by install.sh, do not edit) >>>' \
-  '[mcp_servers.architecture-kb]' \
-  'command = "uv"' \
-  '# <<< agents:architecture MCP servers <<<' \
-  > "$HOME_DRY_MCP/.codex/config.toml"
-DRY_CONFIG="$HOME_DRY_MCP/.codex/config.toml"
-before="$(cat "$DRY_CONFIG")"
-dry_output="$(HOME="$HOME_DRY_MCP" "$INSTALL" --target=codex --category=architecture --dry-run 2>&1)"
-[[ "$(cat "$DRY_CONFIG")" == "$before" ]] || fail "dry-run modified managed MCP config"
-[[ "$dry_output" == *"create MCP runtime venv"* ]] \
-  || fail "dry-run did not plan runtime creation"
-[[ "$dry_output" == *"remove architecture MCP servers"* ]] \
-  || fail "dry-run did not plan managed-block replacement"
-[[ "$dry_output" == *"register architecture MCP servers"* ]] \
-  || fail "dry-run did not plan MCP registration"
-pass "dry-run plans runtime replacement without changing config"
 
 # 36. A routed category links only its router at top level; the auto members
 #     ride nested under the router's members/ dir (readable, not registered),

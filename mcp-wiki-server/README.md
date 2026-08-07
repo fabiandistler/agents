@@ -61,25 +61,16 @@ Copy `.mcp.json.example` into your project as `.mcp.json` (or merge it into
 `~/.claude.json` for global use), restart Claude Code, then run `/mcp` to
 verify the connection.
 
-## Used by the plugins
+## Relationship to the skills in this repo
 
-The `architecture` and `refactoring` plugins in this repo embed this server
-to serve their skills' reference catalogs. Each plugin has:
+None. The `architecture` and `refactoring` plugins used to embed this server
+over their skills' `references/` folders; that wiring was removed because it
+only duplicated what an agent gets by reading those pages directly. The
+skills now rely on plain progressive disclosure, and this server stands on
+its own for wikis that live outside a skill.
 
-- a `mcp-wiki-server` symlink to this directory,
-- a `kb/` folder of topic symlinks pointing at `skills/<skill>/references/`
-  (each topic becomes one `wiki_*` tool),
-- a `.mcp.json` that launches the server with
-  `uv run --no-project --with "mcp[cli]>=1.2"` and `WIKI_PATH` set to the
-  plugin's `kb/`.
-
-Under Claude this requires `uv` on the machine running the plugin. For
-Codex, `install.sh --target=codex` instead resolves `mcp[cli]` once into a
-runtime venv (`~/.codex/agents-mcp-runtime`) and generates a config block
-that runs `server.py` with that interpreter directly — so the tool start
-needs neither `uv` nor PyPI access and works under a sandbox that denies
-both. The server follows directory symlinks, so the topic folders may
-themselves be links.
+The server follows directory symlinks, so topic folders under `WIKI_PATH`
+may themselves be links.
 
 ## Adding your own content
 

@@ -17,10 +17,8 @@ packaged as one plugin (see `plugins/` and
 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)), so
 you can install exactly the domains you want. Beyond skills, the
 `architecture` plugin ships two read-only analysis subagents
-(`coupling-analyst`, `cohesion-analyst`), and the `architecture` and
-`refactoring` plugins each embed a knowledge-base MCP server built on
-[`mcp-wiki-server/`](mcp-wiki-server/) that serves their reference
-catalogs as lookup tools (requires [`uv`](https://docs.astral.sh/uv/)).
+(`coupling-analyst`, `cohesion-analyst`). Skills carry their own reference
+catalogs under `references/`, read on demand — no extra runtime needed.
 
 - **Claude Code**:
 
@@ -55,23 +53,6 @@ setup while developing skills in this repo.
 For Codex CLI the installer covers the full plugins, not just the
 skills. `--target=codex` additionally:
 
-- registers each selected plugin's knowledge-base MCP server
-  (`architecture-kb`, `refactoring-kb`) in `~/.codex/config.toml`,
-  inside clearly marked blocks that `--uninstall` removes again.
-  Existing `[mcp_servers.*]` entries you added yourself are never
-  touched. Unlike under Claude, the servers do **not** need
-  [`uv`](https://docs.astral.sh/uv/) at runtime: the installer resolves
-  their `mcp[cli]` dependency once into a runtime venv
-  (`~/.codex/agents-mcp-runtime`) and points the generated config at that
-  interpreter. So the tool start needs no uv cache writes and no PyPI
-  access — which is what lets the servers run under a restrictive Codex
-  sandbox. This requires Python 3.10 or later. The installer checks the
-  available Python interpreters, repairs an incomplete or outdated runtime
-  automatically, and reuses a validated one without contacting PyPI. If it
-  cannot provision and validate that runtime, it writes no managed MCP block
-  (and removes only its previous managed block), rather than leaving a `uv`
-  fallback that would fail at tool start. The venv is removed again on
-  `--uninstall`.
 - converts each selected plugin's subagents (`coupling-analyst`,
   `cohesion-analyst`) into [Codex custom
   agents](https://developers.openai.com/codex/subagents) under
@@ -88,8 +69,13 @@ skills. `--target=codex` additionally:
   also removes any leftover `~/.codex/prompts/<name>.md` symlinks a
   previous version created.
 
-Restart Codex (or run `codex mcp list`) to pick up the new servers and
-agents.
+Earlier versions also registered a knowledge-base MCP server per plugin.
+Those are gone — the skills' `references/` pages are read directly instead.
+Both install and `--uninstall` strip whatever an older version left in
+`~/.codex/config.toml` and remove its `~/.codex/agents-mcp-runtime` venv.
+Any `[mcp_servers.*]` entries you added yourself are untouched.
+
+Restart Codex to pick up the new agents.
 
 ### Selecting skills by category
 
@@ -139,9 +125,9 @@ Symlinks that point outside this repo are never touched.
 | Directory | Description |
 |---|---|
 | `skills/` | All installable skills (each subdirectory has a `SKILL.md`), grouped below by category |
-| `plugins/` | The same skills packaged as Claude plugins, one plugin per category (architecture adds analysis subagents; architecture and refactoring embed a knowledge-base MCP server) |
+| `plugins/` | The same skills packaged as Claude plugins, one plugin per category (architecture adds analysis subagents) |
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
-| `mcp-wiki-server/` | MCP server exposing a wiki / knowledge-base tool to MCP-aware agents; also embedded by the architecture and refactoring plugins |
+| `mcp-wiki-server/` | Standalone MCP server exposing a wiki / knowledge-base tool to MCP-aware agents. Not used by the plugins |
 | `scripts/` | Repo tooling (manifest generator, consistency checks) |
 
 ## Skill catalogue
