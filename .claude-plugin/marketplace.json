@@ -30,7 +30,7 @@
     {
       "name": "communication",
       "source": "./plugins/communication",
-      "description": "Communication skills: stakeholder updates, communication analysis, and problem-first technical explanations."
+      "description": "Communication skills: stakeholder updates, communication analysis, problem-first technical explanations, and self-contained HTML artifacts."
     },
     {
       "name": "personal",

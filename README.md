@@ -186,6 +186,7 @@ sub-skill is still listed individually below.
 | Skill | When to use |
 |---|---|
 | `skills/communication-analysis/` | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
+| `skills/html-artifacts/` | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
 | `skills/problem-first-explanation/` | Producing technical explanations that lead with the concrete problem before the abstract solution. |
 | `skills/stakeholder-update/` | Generating a stakeholder update tailored to audience and cadence — weekly/monthly status, launch announcement, risk escalation, exec/engineering/customer versions. |
 
