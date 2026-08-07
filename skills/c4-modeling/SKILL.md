@@ -31,7 +31,7 @@ c4model.com notation checklist. Not for inventing the component decomposition
 itself (→ logical-component-design) or choosing topology / code organization
 (→ architecture-pattern-advisor).
 
-Reference pages (also served by the architecture knowledge-base MCP server):
+Reference pages:
 
 - [references/c4-best-practices.md](references/c4-best-practices.md) — the
   four abstractions, all six diagram types with audience guidance, notation

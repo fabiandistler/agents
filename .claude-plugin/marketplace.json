@@ -10,12 +10,12 @@
     {
       "name": "architecture",
       "source": "./plugins/architecture",
-      "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), logical component design, deep-module design, fitness functions, SQL schema design, and coupling/cohesion analysis (cohesion + LCOM, codebase coupling metrics, and Khononov balanced-coupling). Includes read-only coupling/cohesion analyst subagents and an architecture knowledge-base MCP server."
+      "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), logical component design, deep-module design, fitness functions, SQL schema design, and coupling/cohesion analysis (cohesion + LCOM, codebase coupling metrics, and Khononov balanced-coupling). Includes read-only coupling/cohesion analyst subagents."
     },
     {
       "name": "refactoring",
       "source": "./plugins/refactoring",
-      "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes. Includes a Fowler-catalog knowledge-base MCP server."
+      "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes."
     },
     {
       "name": "ai-ml",

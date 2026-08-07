@@ -13,26 +13,25 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   tree.
 - `install.sh` (repo root) symlinks the skills into the conventional
   install paths for Claude Code, Codex CLI, and opencode. For Codex CLI
-  it also registers the plugins' knowledge-base MCP servers in
-  `~/.codex/config.toml` and converts the plugins' subagents to Codex
-  custom agents in `~/.codex/agents/` (both marker-delimited, removed
-  by `--uninstall`). See `./install.sh --help`.
+  it also converts the plugins' subagents to Codex custom agents in
+  `~/.codex/agents/` and disables routed members via a marker-delimited
+  block in `~/.codex/config.toml` (both removed by `--uninstall`). See
+  `./install.sh --help`.
 - `plugins/` packages the same skills as Claude plugins, one plugin per
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
   plugin marketplace in Claude Code, claude.ai, Claude Desktop, and
   Cowork. The `architecture` plugin additionally ships two read-only
-  analysis subagents (`coupling-analyst`, `cohesion-analyst`), and the
-  `architecture` and `refactoring` plugins each embed a knowledge-base
-  MCP server (a reuse of `mcp-wiki-server/` over each skill's
-  `references/`, wired up via `kb/` symlinks and a plugin `.mcp.json`;
-  requires `uv` at runtime).
+  analysis subagents (`coupling-analyst`, `cohesion-analyst`).
+- Reference material stays inside the skill that owns it, under
+  `skills/<skill>/references/`. SKILL.md names the pages it has; an agent
+  opens one only when it needs it. There is no lookup service in front of
+  them — plain progressive disclosure is the whole mechanism.
 - `eval-suite/` is an A/B harness for measuring whether a skill
   improves an agent's output. It is not a skill itself.
-- `mcp-wiki-server/` is a small MCP server exposing a wiki /
-  knowledge-base tool to any MCP-aware agent. It works standalone, and
-  is also embedded by the `architecture` and `refactoring` plugins to
-  serve their skills' reference catalogs.
+- `mcp-wiki-server/` is a small standalone MCP server exposing a wiki /
+  knowledge-base tool to any MCP-aware agent. Nothing else in this repo
+  depends on it.
 
 ## Skill catalogue
 
