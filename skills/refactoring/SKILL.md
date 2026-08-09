@@ -4,7 +4,7 @@ category: refactoring
 environments: coding
 description: Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict. Use whenever the user wants to restructure existing code, triage code-review findings, judge whether a refactor is safe to start, build a feature test-first or in red-green-refactor cycles, or plan a migration, cutover, or rollout where what could go wrong matters.
 metadata:
-  version: "3.0"
+  version: "3.1"
 ---
 
 # Refactoring & risky changes
@@ -124,6 +124,27 @@ that forces generalization. Reaching for the full implementation on the first
 green skips that separation and gives up the design feedback the ordering was
 meant to buy.
 
+## When nobody knows where to start
+
+For "where should we refactor first?" in a codebase nobody in the conversation
+knows well, the bundled script ranks files by git churn instead of by guess:
+
+```
+python3 skills/refactoring/scripts/churn.py [path] [--since '12 months ago'] [--json]
+```
+
+It reports, per file: commits in the window, distinct authors, current size,
+recency, and one composite score (change frequency × size — the classic hotspot
+heuristic). Its own docstring explains each column.
+
+Read the output as a reading list, not a work queue. Churn on its own is not a
+defect: config files, route tables, and well-tested integration points churn
+because the system is alive. The candidate is a file that changes often *and*
+is hard to change safely, and only opening it tells you which. Skip the script
+entirely when the repo is younger than the window, when a bulk reformat sits
+inside it, or when the user already named the target — in all three the ranking
+is noise.
+
 ## Long-tail technique lookup
 
 [references/CATALOG.md](references/CATALOG.md) indexes all 62 Fowler techniques
@@ -140,6 +161,7 @@ Recorded so it doesn't get helpfully re-added:
 - **Wall-clock and calendar rules** ("steps under 30 minutes", "changes under 2 weeks"). An agent has no calibration for either, so they resolve to noise.
 - **Outcome checklists** ("complexity below 10", "team more confident", "delivery speed improved"). Not observable from inside the task, so they get answered by assertion rather than evidence.
 - **A router with separate sub-skills.** At this size the indirection cost more than it saved.
+- **Co-change / temporal-coupling analysis in the churn script.** Which files keep changing together is a real signal, but it needs a pair pass over the log and a section explaining how to read it — enough weight to stop the script being the small thing it is. Deliberately left out; reconsider only with evidence that the hotspot ranking alone leaves the question unanswered.
 
 Before adding anything back, check it against a no-skill baseline on the same
 prompt. If both arms produce it, it belongs here as a note like this one, not
