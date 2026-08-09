@@ -90,6 +90,16 @@
       "version": "2.0"
     },
     {
+      "name": "documentation",
+      "summary": "Producing technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide.",
+      "category": "communication",
+      "path": "skills/documentation/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
+      ]
+    },
+    {
       "name": "fitness-functions",
       "summary": "Design and implement architecture fitness functions.",
       "category": "architecture",
