@@ -8,6 +8,45 @@ import re
 import yaml
 from pathlib import Path
 
+# Frontmatter keys accepted in a SKILL.md: the Agent Skills format, the
+# client-specific fields Claude Code honors, and the repo-specific catalogue
+# fields consumed by build_manifest.py, install.sh and check_plugins.py.
+#
+# These vocabularies mirror CATEGORIES / ACTIVATIONS / TARGETS in
+# scripts/build_manifest.py and the table in references/SKILL-FORMAT.md. They
+# are restated rather than imported so this validator keeps working on skills
+# outside this repo, where that tooling is not on the path. When the manifest
+# builder gains a category, activation or target, update it here too.
+ALLOWED_PROPERTIES = {
+    # Agent Skills format
+    "name",
+    "description",
+    "license",
+    "allowed-tools",
+    "metadata",
+    "compatibility",
+    # Client-specific (Claude Code); ignored by other agents
+    "argument-hint",
+    "disable-model-invocation",
+    # Repo-specific catalogue fields
+    "category",
+    "activation",
+    "environments",
+    "targets",
+}
+
+CATEGORIES = {
+    "architecture",
+    "refactoring",
+    "ai-ml",
+    "workflow",
+    "communication",
+    "personal",
+}
+ACTIVATIONS = {"auto", "command", "router"}
+TARGETS = {"claude", "codex", "opencode"}
+ENVIRONMENTS = {"coding", "chat"}
+
 
 def validate_skill(skill_path):
     """Basic validation of a skill"""
@@ -38,16 +77,6 @@ def validate_skill(skill_path):
     except yaml.YAMLError as e:
         return False, f"Invalid YAML in frontmatter: {e}"
 
-    # Define allowed properties
-    ALLOWED_PROPERTIES = {
-        "name",
-        "description",
-        "license",
-        "allowed-tools",
-        "metadata",
-        "compatibility",
-    }
-
     # Check for unexpected properties (excluding nested keys under metadata)
     unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
     if unexpected_keys:
@@ -55,6 +84,32 @@ def validate_skill(skill_path):
             f"Unexpected key(s) in SKILL.md frontmatter: {', '.join(sorted(unexpected_keys))}. "
             f"Allowed properties are: {', '.join(sorted(ALLOWED_PROPERTIES))}"
         )
+
+    # Check enumerated values of the repo-specific fields, when present.
+    for field, allowed in (("category", CATEGORIES), ("activation", ACTIVATIONS)):
+        value = frontmatter.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, str) or value not in allowed:
+            return False, (
+                f"'{field}' must be one of {', '.join(sorted(allowed))} (got {value!r})"
+            )
+
+    for field, allowed in (("environments", ENVIRONMENTS), ("targets", TARGETS)):
+        value = frontmatter.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            return False, f"'{field}' must be a comma-separated string, got {type(value).__name__}"
+        items = [v.strip() for v in value.split(",") if v.strip()]
+        if not items:
+            return False, f"'{field}' is present but empty"
+        unknown = [v for v in items if v not in allowed]
+        if unknown:
+            return False, (
+                f"'{field}' has unknown value(s) {', '.join(unknown)} "
+                f"(allowed: {', '.join(sorted(allowed))})"
+            )
 
     # Check required fields
     if "name" not in frontmatter:
@@ -89,9 +144,13 @@ def validate_skill(skill_path):
         return False, f"Description must be a string, got {type(description).__name__}"
     description = description.strip()
     if description:
-        # Check for angle brackets
-        if "<" in description or ">" in description:
-            return False, "Description cannot contain angle brackets (< or >)"
+        # Descriptions are interpolated into the agent's system prompt, often
+        # inside XML-ish scaffolding, so a '<' can open a tag that was never
+        # meant to exist. A bare '>' cannot, and reads naturally as an arrow or
+        # a hierarchy separator ("Principle > System > Workflow"), so it stays
+        # allowed — banning it only forces trigger text to be mangled.
+        if "<" in description:
+            return False, "Description cannot contain '<' (it can open a tag in the system prompt)"
         # Check description length (max 1024 characters per spec)
         if len(description) > 1024:
             return (

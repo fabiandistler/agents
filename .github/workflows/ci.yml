@@ -35,6 +35,22 @@ jobs:
       - name: Plugin marketplace in sync
         run: python scripts/check_plugins.py
 
+      - name: Skill frontmatter valid
+        # Executes the validator skill-creator points authors at, over every
+        # skill. compileall proves it parses; only running it proves its
+        # allowlist still matches the frontmatter this repo actually ships.
+        run: |
+          pip install "pyyaml>=6"
+          fail=0
+          for d in skills/*/; do
+            [ -f "$d/SKILL.md" ] || continue
+            python3 skills/skill-creator/scripts/quick_validate.py "$d" >/dev/null || {
+              echo "::error file=${d}SKILL.md::$(python3 skills/skill-creator/scripts/quick_validate.py "$d" 2>&1)"
+              fail=1
+            }
+          done
+          exit $fail
+
       - name: Lint (ruff)
         run: ruff check .
 
