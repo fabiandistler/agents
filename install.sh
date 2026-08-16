@@ -90,7 +90,10 @@ CATEGORY="all"
 # Must match the category list in scripts/build_manifest.py.
 CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 
-usage() { sed -n '2,53p' "$0"; }
+# Print the header comment block: from line 2 up to the first line that is not
+# a comment, minus that line. A hardcoded end line silently truncates as the
+# block grows — this one cannot drift.
+usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
 
 for arg in "$@"; do
   case "$arg" in
