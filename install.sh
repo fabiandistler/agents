@@ -274,6 +274,21 @@ list_skills() {
 
 codex_config_path() { printf '%s/.codex/config.toml' "$HOME"; }
 
+# Replace ~/.codex/config.toml with the given content, atomically. A plain
+# `> "$config"` truncates before writing, so an interrupt in between leaves a
+# file we do not own in pieces; a temp file plus mv either lands whole or not
+# at all. install_codex_member_overrides already writes this way.
+write_codex_config() {
+  local config="$1" content="$2"
+  local tmp="$config.tmp.$$"
+  if [[ -n "$content" ]]; then
+    printf '%s\n' "$content" > "$tmp"
+  else
+    : > "$tmp"
+  fi
+  mv "$tmp" "$config"
+}
+
 # Categories that ever shipped an .mcp.json. Hardcoded, because the files this
 # list was once derived from no longer exist.
 LEGACY_MCP_CATEGORIES="architecture refactoring"
@@ -335,11 +350,7 @@ remove_legacy_codex_mcp() {
         printf '[dry-run] remove legacy %s MCP servers from %s\n' "$cat" "$config"
         continue
       fi
-      if [[ -n "$after" ]]; then
-        printf '%s\n' "$after" > "$config"
-      else
-        : > "$config"
-      fi
+      write_codex_config "$config" "$after"
       printf '  removed   legacy %s MCP servers from %s\n' "$cat" "$config"
     done
   fi
@@ -430,11 +441,7 @@ remove_codex_member_overrides() {
     printf '[dry-run] remove routed-member skill overrides from %s\n' "$config"
     return 0
   fi
-  if [[ -n "$after" ]]; then
-    printf '%s\n' "$after" > "$config"
-  else
-    : > "$config"
-  fi
+  write_codex_config "$config" "$after"
   printf '  removed   routed-member skill overrides from %s\n' "$config"
 }
 
