@@ -31,9 +31,21 @@ def resolve_wiki_root() -> Path:
     if url := os.getenv("WIKI_GIT_URL"):
         branch = os.getenv("WIKI_GIT_BRANCH", "main")
         cache = Path(os.getenv("WIKI_CACHE_DIR", tempfile.gettempdir())) / "mcp-wiki-cache"
-        if not cache.exists():
+        if cache.exists():
+            # Refresh, so a long-lived cache does not serve the wiki frozen at
+            # whenever it was first cloned. Best-effort: a failed fetch (offline,
+            # revoked credentials) still leaves a usable, if stale, checkout.
+            refresh = subprocess.run(
+                ["git", "-C", str(cache), "pull", "--ff-only", "--quiet"],
+                capture_output=True,
+            )
+            if refresh.returncode != 0:
+                detail = refresh.stderr.decode("utf-8", errors="replace").strip()
+                print(f"[wiki] refresh failed, serving cached copy: {detail}", file=sys.stderr)
+        else:
+            # `--` keeps a url beginning with '-' from being parsed as an option.
             subprocess.run(
-                ["git", "clone", "--depth", "1", "-b", branch, url, str(cache)],
+                ["git", "clone", "--depth", "1", "-b", branch, "--", url, str(cache)],
                 check=True,
             )
         return cache
@@ -50,7 +62,7 @@ def render(topic: Path, query: str | None, page: str | None) -> str:
         target = (base / page).resolve()
         if not target.is_relative_to(base) or not target.is_file():
             return f"Page not found: {page}"
-        text = target.read_text(encoding="utf-8")
+        text = target.read_text(encoding="utf-8", errors="replace")
         if len(text) > MAX_PAGE_CHARS:
             return text[:MAX_PAGE_CHARS] + "\n\n... [truncated]"
         return text
@@ -61,7 +73,7 @@ def render(topic: Path, query: str | None, page: str | None) -> str:
         ql = query.lower()
         hits: list[str] = []
         for f in files:
-            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), start=1):
+            for i, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
                 if ql in line.lower():
                     rel = f.relative_to(topic)
                     hits.append(f"**{rel}:{i}** — {line.strip()}")
@@ -74,7 +86,7 @@ def render(topic: Path, query: str | None, page: str | None) -> str:
     lines = [f"# {topic.name} pages", ""]
     for f in files:
         first = next(
-            (ln for ln in f.read_text(encoding="utf-8").splitlines() if ln.strip()),
+            (ln for ln in f.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()),
             "",
         )
         lines.append(f"- `{f.relative_to(topic)}` — {first[:100]}")
@@ -100,9 +112,23 @@ def register_topics(root: Path) -> None:
     if not topics:
         print(f"[wiki] no topic folders in {root}", file=sys.stderr)
         return
+    # sanitize() maps every non-alphanumeric character to '_', so sibling
+    # folders like "sql-1" and "sql_1" collapse to one tool name and the later
+    # registration silently replaces the earlier one. Skip the collision and say
+    # so, rather than serving a topic under a name that reaches someone else.
+    registered: dict[str, str] = {}
     for d in topics:
-        mcp.tool(name=sanitize(d.name))(make_handler(d))
-    print(f"[wiki] registered {len(topics)} topic tool(s) from {root}", file=sys.stderr)
+        tool_name = sanitize(d.name)
+        if tool_name in registered:
+            print(
+                f"[wiki] skipping topic {d.name!r}: tool name {tool_name!r} is already"
+                f" taken by {registered[tool_name]!r} — rename one of them",
+                file=sys.stderr,
+            )
+            continue
+        registered[tool_name] = d.name
+        mcp.tool(name=tool_name)(make_handler(d))
+    print(f"[wiki] registered {len(registered)} topic tool(s) from {root}", file=sys.stderr)
 
 
 register_topics(resolve_wiki_root())

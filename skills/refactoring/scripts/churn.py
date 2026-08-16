@@ -22,11 +22,16 @@ Each surviving file gets five numbers and one derived score:
     Recency separates "actively churning" from "churned last spring, settled
     since".
 
-  * SCORE   -- normalized COMMITS x normalized LINES, each divided by the
-    largest value in the result set, so the top file scores 1.00 and the rest
-    read as a fraction of it. This is Tornhill's hotspot heuristic (change
-    frequency x size): the intersection is where change is both frequent and
-    expensive. The score exists to order the list. The raw columns are what you
+  * SCORE   -- normalized COMMITS x normalized LINES: each column is divided by
+    the largest value in the result set, then the two are multiplied. This is
+    Tornhill's hotspot heuristic (change frequency x size): the intersection is
+    where change is both frequent and expensive.
+
+    The scale is relative, and 1.00 is a ceiling almost nothing reaches -- it
+    requires one file to hold BOTH the most commits and the most lines. Usually
+    the busiest file and the biggest file are different files, so a real top
+    score of 0.3 is ordinary and means nothing on its own. Read the column as a
+    ranking, never as a percentage of some ideal. The raw columns are what you
     actually reason about -- a 0.31 and a 0.29 are the same answer.
 
 This script is a reducer, not a judge. It sorts what git already recorded; it

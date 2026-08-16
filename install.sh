@@ -42,7 +42,8 @@
 # category). Its auto skills are nested under the router's members/ dir, so
 # only the router is linked at top level; the members load lazily when the
 # router routes to them, keeping the category to a single trigger entry. The
-# nested members are never linked flat and so are skipped by (un)install.
+# nested members are never linked flat; a flat link left by a pre-router
+# install is removed, on both the install and the uninstall path.
 # Claude registers only top-level skills, so the members stay hidden there.
 # Codex, however, discovers skills recursively and follows symlinks
 # (openai/codex#22275), so it would register each nested members/<name>/SKILL.md
@@ -89,7 +90,10 @@ CATEGORY="all"
 # Must match the category list in scripts/build_manifest.py.
 CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 
-usage() { sed -n '2,53p' "$0"; }
+# Print the header comment block: from line 2 up to the first line that is not
+# a comment, minus that line. A hardcoded end line silently truncates as the
+# block grows — this one cannot drift.
+usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
 
 for arg in "$@"; do
   case "$arg" in
@@ -270,6 +274,21 @@ list_skills() {
 
 codex_config_path() { printf '%s/.codex/config.toml' "$HOME"; }
 
+# Replace ~/.codex/config.toml with the given content, atomically. A plain
+# `> "$config"` truncates before writing, so an interrupt in between leaves a
+# file we do not own in pieces; a temp file plus mv either lands whole or not
+# at all. install_codex_member_overrides already writes this way.
+write_codex_config() {
+  local config="$1" content="$2"
+  local tmp="$config.tmp.$$"
+  if [[ -n "$content" ]]; then
+    printf '%s\n' "$content" > "$tmp"
+  else
+    : > "$tmp"
+  fi
+  mv "$tmp" "$config"
+}
+
 # Categories that ever shipped an .mcp.json. Hardcoded, because the files this
 # list was once derived from no longer exist.
 LEGACY_MCP_CATEGORIES="architecture refactoring"
@@ -331,11 +350,7 @@ remove_legacy_codex_mcp() {
         printf '[dry-run] remove legacy %s MCP servers from %s\n' "$cat" "$config"
         continue
       fi
-      if [[ -n "$after" ]]; then
-        printf '%s\n' "$after" > "$config"
-      else
-        : > "$config"
-      fi
+      write_codex_config "$config" "$after"
       printf '  removed   legacy %s MCP servers from %s\n' "$cat" "$config"
     done
   fi
@@ -426,11 +441,7 @@ remove_codex_member_overrides() {
     printf '[dry-run] remove routed-member skill overrides from %s\n' "$config"
     return 0
   fi
-  if [[ -n "$after" ]]; then
-    printf '%s\n' "$after" > "$config"
-  else
-    : > "$config"
-  fi
+  write_codex_config "$config" "$after"
   printf '  removed   routed-member skill overrides from %s\n' "$config"
 }
 
@@ -759,11 +770,18 @@ main() {
       elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
         # Auto member of a routed category: it is nested under the router's
         # members/ dir and loads lazily when routed to, so it is never linked
-        # (or unlinked) at top level. Command skills bypass routing (handled
-        # above for non-codex; linked as skills for codex), so they are not
-        # skipped here. Codex discovers the nested member recursively anyway, so
-        # record it to disable by name in ~/.codex/config.toml further down.
+        # at top level. Command skills bypass routing (handled above for
+        # non-codex; linked as skills for codex), so they are not skipped here.
+        # Codex discovers the nested member recursively anyway, so record it to
+        # disable by name in ~/.codex/config.toml further down.
         [[ "$target" == "codex" ]] && codex_disabled_members+="$skill"$'\n'
+        # Migration: before this category was routed, the member was linked
+        # flat here. That link still resolves, so prune_stale_skill_links (which
+        # only removes broken ones) leaves it, and the member keeps registering
+        # at top level — exactly what routing exists to prevent. Remove it on
+        # both paths. unlink_one only touches a symlink pointing at our own
+        # path, so foreign entries and real directories are left alone.
+        unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
         continue
       else
         # A normal auto skill, or the router itself (linked as a whole dir so

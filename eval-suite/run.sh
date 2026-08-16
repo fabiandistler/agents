@@ -27,7 +27,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+# Absolute, because usage() reads this file after the cd below — a relative $0
+# stops resolving the moment the working directory changes.
+SELF="$ROOT/$(basename "$0")"
 cd "$ROOT"
+
+# Print the header comment block: from line 2 up to the first line that is not
+# a comment, minus that line. A hardcoded end line silently truncates as the
+# block grows — this one cannot drift.
+usage() { sed -n '2,/^[^#]/p' "$SELF" | sed '$d'; }
 
 TASK_FILTER=""
 CONFIG_FILTER=""
@@ -42,7 +50,7 @@ while [[ $# -gt 0 ]]; do
     --config)      CONFIG_FILTER="$2"; shift 2 ;;
     --score-only)  SCORE_ONLY="$2"; shift 2 ;;
     --no-judge)    NO_JUDGE=1; shift ;;
-    -h|--help)     sed -n '2,18p' "$0"; exit 0 ;;
+    -h|--help)     usage; exit 0 ;;
     *)             echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done

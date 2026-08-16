@@ -548,6 +548,48 @@ HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture --uninsta
 [[ ! -e "$ROUTED_SKILLS/architecture" ]] || fail "uninstall left the router behind"
 pass "routed category registers only its router; members ride nested"
 
+# 36a. Migration from a pre-router install: members used to be linked flat at
+#      top level. Those links still resolve, so the dangling-link prune cannot
+#      catch them — install must unlink them explicitly, or the members keep
+#      registering alongside the router. Foreign entries must survive.
+HOME_MIG="$(mktemp -d)"
+MIG_SKILLS="$HOME_MIG/.claude/skills"
+mkdir -p "$MIG_SKILLS"
+mig_members=""
+for d in "$REPO_ROOT"/skills/*/; do
+  [[ -f "$d/SKILL.md" ]] || continue
+  [[ "$(skill_dir_category "$d")" == "architecture" ]] || continue
+  skill_is_nested_member "$d" || continue
+  name="$(basename "$d")"
+  ln -s "$REPO_ROOT/skills/$name" "$MIG_SKILLS/$name"
+  mig_members+="$name"$'\n'
+done
+[[ -n "$mig_members" ]] || fail "no nested architecture members found for the migration test"
+mig_foreign="$(mktemp -d)/foreign"
+mkdir "$mig_foreign"
+ln -s "$mig_foreign" "$MIG_SKILLS/foreign-skill"
+HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture >/dev/null
+while IFS= read -r name; do
+  [[ -n "$name" ]] || continue
+  [[ ! -e "$MIG_SKILLS/$name" ]] \
+    || fail "pre-router flat link for $name survived the upgrade"
+done <<< "$mig_members"
+[[ -L "$MIG_SKILLS/architecture" ]] || fail "migration did not link the router"
+[[ -L "$MIG_SKILLS/foreign-skill" ]] || fail "migration removed a foreign symlink"
+# ... and --uninstall clears the flat links too, not just the router.
+HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture >/dev/null
+while IFS= read -r name; do
+  [[ -n "$name" ]] || continue
+  ln -s "$REPO_ROOT/skills/$name" "$MIG_SKILLS/$name"
+done <<< "$mig_members"
+HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture --uninstall >/dev/null
+while IFS= read -r name; do
+  [[ -n "$name" ]] || continue
+  [[ ! -e "$MIG_SKILLS/$name" ]] || fail "uninstall left the pre-router flat link for $name"
+done <<< "$mig_members"
+[[ -L "$MIG_SKILLS/foreign-skill" ]] || fail "uninstall removed a foreign symlink"
+pass "pre-router flat member links are cleaned up on install and uninstall"
+
 # 37. A `targets:` skill installs only for the agents it lists. skill-creator
 #     opts out of claude (which ships its own), so it must reach codex and
 #     opencode only — and a stale link in the claude skills dir is cleaned up
