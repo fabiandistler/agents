@@ -42,7 +42,8 @@
 # category). Its auto skills are nested under the router's members/ dir, so
 # only the router is linked at top level; the members load lazily when the
 # router routes to them, keeping the category to a single trigger entry. The
-# nested members are never linked flat and so are skipped by (un)install.
+# nested members are never linked flat; a flat link left by a pre-router
+# install is removed, on both the install and the uninstall path.
 # Claude registers only top-level skills, so the members stay hidden there.
 # Codex, however, discovers skills recursively and follows symlinks
 # (openai/codex#22275), so it would register each nested members/<name>/SKILL.md
@@ -759,11 +760,18 @@ main() {
       elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
         # Auto member of a routed category: it is nested under the router's
         # members/ dir and loads lazily when routed to, so it is never linked
-        # (or unlinked) at top level. Command skills bypass routing (handled
-        # above for non-codex; linked as skills for codex), so they are not
-        # skipped here. Codex discovers the nested member recursively anyway, so
-        # record it to disable by name in ~/.codex/config.toml further down.
+        # at top level. Command skills bypass routing (handled above for
+        # non-codex; linked as skills for codex), so they are not skipped here.
+        # Codex discovers the nested member recursively anyway, so record it to
+        # disable by name in ~/.codex/config.toml further down.
         [[ "$target" == "codex" ]] && codex_disabled_members+="$skill"$'\n'
+        # Migration: before this category was routed, the member was linked
+        # flat here. That link still resolves, so prune_stale_skill_links (which
+        # only removes broken ones) leaves it, and the member keeps registering
+        # at top level — exactly what routing exists to prevent. Remove it on
+        # both paths. unlink_one only touches a symlink pointing at our own
+        # path, so foreign entries and real directories are left alone.
+        unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
         continue
       else
         # A normal auto skill, or the router itself (linked as a whole dir so
