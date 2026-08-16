@@ -89,7 +89,9 @@ def parse_frontmatter(block: str) -> dict[str, object]:
                     sub = lines[i].strip()
                     if sub and ":" in sub:
                         k, _, v = sub.partition(":")
-                        nested[k.strip()] = _strip_quotes_and_continuation(v.strip(), lines, i)
+                        # Nested values are short scalars (metadata.version), so
+                        # unlike top-level ones they never span lines.
+                        nested[k.strip()] = _strip_quotes(v.strip())
                     i += 1
                 out[key] = nested
                 continue
@@ -106,10 +108,6 @@ def _strip_quotes(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
         return value[1:-1]
     return value
-
-
-def _strip_quotes_and_continuation(value: str, lines: list[str], idx: int) -> str:
-    return _strip_quotes(value)
 
 
 def _maybe_join_continuation(value: str, lines: list[str], idx: int) -> tuple[str, int]:

@@ -210,7 +210,12 @@ def main() -> int:
         )
         return 1
 
-    print(f"plugin marketplace in sync ({len(plugins)} plugins, {len(categories)} skills)")
+    # `categories` covers every skill including routers, so this count is
+    # deliberately higher than check_docs.py's, which excludes them.
+    print(
+        f"plugin marketplace in sync ({len(plugins)} plugins, "
+        f"{len(categories)} skills incl. routers)"
+    )
     return 0
 
 
