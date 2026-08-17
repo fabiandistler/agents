@@ -1,6 +1,6 @@
 {
   "name": "architecture",
-  "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), C4 model drafting and diagram rendering, microservices design conventions, logical component design, deep-module design, fitness functions, SQL schema design, and coupling/cohesion analysis. Includes read-only coupling/cohesion analyst subagents.",
+  "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), C4 model drafting and diagram rendering, microservices design conventions, logical component design, fitness functions, SQL schema design, and coupling/cohesion analysis. Includes read-only coupling/cohesion analyst subagents.",
   "author": {
     "name": "Fabian Distler"
   }

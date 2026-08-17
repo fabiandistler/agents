@@ -31,7 +31,6 @@ model's trigger surface.
 | adr-workflow | Establish and maintain Architecture Decision Records (ADRs) in software repositories. | `members/adr-workflow/SKILL.md` |
 | architecture-pattern-advisor | Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). | `members/architecture-pattern-advisor/SKILL.md` |
 | c4-modeling | Draft a C4 model of a software system with the user and render it as Mermaid diagrams. | `members/c4-modeling/SKILL.md` |
-| codebase-design | Shared vocabulary and workflow for designing deep modules. | `members/codebase-design/SKILL.md` |
 | coupling-cohesion | Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov). | `members/coupling-cohesion/SKILL.md` |
 | ddd | Domain-Driven Design end to end — strategic subdomain classification and context mapping, tactical pattern choice, and implementation conventions for aggregates, value objects, and events. | `members/ddd/SKILL.md` |
 | fitness-functions | Design and implement architecture fitness functions. | `members/fitness-functions/SKILL.md` |

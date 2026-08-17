@@ -269,8 +269,9 @@ For each component that is genuinely off the Main Sequence, recommend a fix from
 
 - For significant restructuring, capture the decision (and the metrics baseline
   that motivated it) with the `adr-workflow` skill.
-- The durable cure for chronic coupling is deeper modules — see `codebase-design`.
-  If the topology itself is wrong, escalate to `architecture-pattern-advisor`.
+- The durable cure for chronic coupling is deeper modules: more functionality
+  behind smaller interfaces. If the topology itself is wrong, escalate to
+  `architecture-pattern-advisor`.
 - Re-run the script after changes to confirm components moved toward the Main
   Sequence; the same input format makes it a repeatable baseline.
 
@@ -463,8 +464,6 @@ coupling half measurable (graph metrics) and judgeable (the balance model).
 
 - **logical-component-design** — the generative front end: *creates* a
   decomposition for a new system; this skill *measures* one that already exists.
-- **codebase-design** — the deep-module vocabulary; the durable cure for chronic
-  coupling and low cohesion alike.
 - **architecture-pattern-advisor** — when the topology itself is wrong, not just
   one module or dependency.
 - **ddd** — subdomain classification feeds the volatility judgment in Mode C;

@@ -51,15 +51,6 @@
       ]
     },
     {
-      "name": "codebase-design",
-      "summary": "Shared vocabulary and workflow for designing deep modules.",
-      "category": "architecture",
-      "path": "skills/codebase-design/SKILL.md",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
       "name": "communication-analysis",
       "summary": "Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
       "category": "communication",
@@ -109,17 +100,6 @@
       ]
     },
     {
-      "name": "grilling",
-      "summary": "Interview the user relentlessly about a plan or design.",
-      "category": "workflow",
-      "path": "skills/grilling/SKILL.md",
-      "activation": "command",
-      "environments": [
-        "coding",
-        "chat"
-      ]
-    },
-    {
       "name": "guideline-distillation",
       "summary": "Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs) into lean, machine-actionable rules files (CONVENTIONS.md, AGENTS.md, CLAUDE.md) for coding agents.",
       "category": "workflow",
@@ -128,16 +108,6 @@
         "coding"
       ],
       "version": "1.0"
-    },
-    {
-      "name": "handoff",
-      "summary": "Compact the current conversation into a handoff document for another agent to pick up.",
-      "category": "workflow",
-      "path": "skills/handoff/SKILL.md",
-      "activation": "command",
-      "environments": [
-        "coding"
-      ]
     },
     {
       "name": "html-artifacts",
@@ -220,15 +190,6 @@
       ]
     },
     {
-      "name": "prototype",
-      "summary": "Build a throwaway prototype to flesh out a design — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route.",
-      "category": "workflow",
-      "path": "skills/prototype/SKILL.md",
-      "environments": [
-        "coding"
-      ]
-    },
-    {
       "name": "refactoring",
       "summary": "Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict.",
       "category": "refactoring",
@@ -282,16 +243,6 @@
       "environments": [
         "coding",
         "chat"
-      ]
-    },
-    {
-      "name": "to-issues",
-      "summary": "Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices.",
-      "category": "workflow",
-      "path": "skills/to-issues/SKILL.md",
-      "activation": "command",
-      "environments": [
-        "coding"
       ]
     },
     {

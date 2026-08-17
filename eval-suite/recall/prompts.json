@@ -4,7 +4,7 @@
     { "prompt": "We keep re-litigating past architecture decisions. Set up a durable record of the important ones in this repo.", "expected": "adr-workflow" },
     { "prompt": "I'm starting a new service and can't decide between a modular monolith and microservices, or how to organize the code inside it.", "expected": "architecture-pattern-advisor" },
     { "prompt": "Can you help me sketch a C4 diagram of our system — context and container views — and render it as Mermaid?", "expected": "c4-modeling" },
-    { "prompt": "What vocabulary should I use to reason about whether a module is 'deep' or 'shallow' as I design it?", "expected": "codebase-design" },
+    { "prompt": "Write the API reference for the payments service — endpoints, parameters, error codes, and an example for each call.", "expected": "documentation" },
     { "prompt": "This codebase feels tangled. Measure the coupling and cohesion — instability, abstractness, LCOM — and tell me which modules are in the zone of pain.", "expected": "coupling-cohesion" },
     { "prompt": "Help me do domain-driven design: classify our subdomains, map bounded contexts, and get the aggregate and value-object conventions right in code.", "expected": "ddd" },
     { "prompt": "I want automated CI checks that fail the build when someone violates our layering rules or introduces a dependency cycle.", "expected": "fitness-functions" },
@@ -21,7 +21,7 @@
     { "prompt": "Walk me through the lifecycle of an ML project from framing to deployment and monitoring.", "expected": "ml-project-lifecycle" },
 
     { "prompt": "Turn our messy internal style notes into a distilled, enforceable set of coding guidelines.", "expected": "guideline-distillation" },
-    { "prompt": "I want to quickly throw together a throwaway prototype to validate this idea.", "expected": "prototype" },
+    { "prompt": "Draft the standup status update from this week's commits and my notes — what I did yesterday, what's next, blockers.", "expected": "repo-status" },
     { "prompt": "Help me author a new Claude skill for this repo, with the right frontmatter and structure.", "expected": "skill-creator" },
 
     { "prompt": "Write up the three migration options side by side so the team can weigh them, with a timeline and a diagram of each.", "expected": "html-artifacts" }
