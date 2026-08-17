@@ -69,7 +69,7 @@ Based on the user interview, fill in these components:
 
 - **name**: Skill identifier
 - **description**: When to trigger, what it does. This is the primary triggering mechanism — the first sentence should be a self-contained what+when trigger, and the whole field must stay within this repo's **description budget: ≤250 characters** (≤400 for the small high-traffic allowlist in `scripts/check_descriptions.py`; CI enforces both plus an aggregate cap). Models tend to "undertrigger" skills, so keep the description crisp and slightly "pushy" about when to reach for the skill — but do **not** pad it with exhaustive trigger lists or feature enumerations. Those go in the SKILL.md **body**, in a leading `## When to use` section, where progressive disclosure loads them only once the skill triggers. So instead of a 900-char description that lists every phrase, write a tight one-to-two-sentence description and move the "use whenever the user mentions X, Y, Z, even if they don't say 'dashboard'" detail into `## When to use`.
-- **activation**: `command` for a user-invoked-only skill (a deliberate command like `handoff` or `repo-status`), `auto` (default, omit) for a model-triggered skill. For `command`, also set `disable-model-invocation: true`. See `references/SKILL-FORMAT.md`.
+- **activation**: `command` for a user-invoked-only skill (a deliberate command like `repo-status` or `natural-planning`), `auto` (default, omit) for a model-triggered skill. For `command`, also set `disable-model-invocation: true`. See `references/SKILL-FORMAT.md`.
 - **compatibility**: Required tools, dependencies (optional, rarely needed)
 - **the rest of the skill :)**
 

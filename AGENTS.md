@@ -64,7 +64,6 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 | [adr-workflow](skills/adr-workflow/SKILL.md) | Establishing or maintaining Architecture Decision Records in a repo. |
 | [architecture-pattern-advisor](skills/architecture-pattern-advisor/SKILL.md) | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
 | [c4-modeling](skills/c4-modeling/SKILL.md) | Drafting a C4 model of a system interactively and rendering it as Mermaid diagrams — System Context, Container, and Component views plus landscape, dynamic, and deployment — per c4model.com best practices. |
-| [codebase-design](skills/codebase-design/SKILL.md) | Shared vocabulary and workflow for designing deep modules. |
 | [coupling-cohesion](skills/coupling-cohesion/SKILL.md) | Measuring coupling or cohesion of existing code — a module's cohesion and LCOM, codebase-wide coupling metrics (instability, abstractness, Zones of Pain/Uselessness), or whether one specific dependency is balanced (Khononov strength/distance/volatility). |
 | [ddd](skills/ddd/SKILL.md) | Domain-Driven Design across strategy and code — subdomain classification, context mapping, choosing an implementation pattern, and the correctness conventions for aggregates, value objects, domain events, and event sourcing. |
 | [fitness-functions](skills/fitness-functions/SKILL.md) | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
@@ -89,14 +88,10 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [grilling](skills/grilling/SKILL.md) | Interview the user relentlessly about a plan or design. |
 | [guideline-distillation](skills/guideline-distillation/SKILL.md) | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
-| [handoff](skills/handoff/SKILL.md) | Compact the current conversation into a handoff document for another agent to pick up. |
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
-| [prototype](skills/prototype/SKILL.md) | Build a throwaway prototype to flesh out a design — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. |
 | [repo-status](skills/repo-status/SKILL.md) | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
 | [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
-| [to-issues](skills/to-issues/SKILL.md) | Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. |
 
 ### Communication & writing (`communication`)
 
@@ -179,3 +174,17 @@ machine consumption prefer `skills.json`.
   symlink `plugins/<category>/skills/<skill-name>` →
   `../../../skills/<skill-name>`. CI enforces this with
   `python3 scripts/check_plugins.py`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

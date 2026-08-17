@@ -140,8 +140,8 @@ pass "claude install creates $EXPECTED skill symlinks"
 got="$(count_links "$HOME_C/.claude/commands")"
 [[ "$got" -eq "$CMD_EXPECTED" ]] || fail "claude install: expected $CMD_EXPECTED command links, got $got"
 # A command skill must land as <name>.md in commands/, not in skills/.
-[[ -L "$HOME_C/.claude/commands/handoff.md" ]] || fail "command skill handoff not linked into commands/"
-[[ ! -e "$HOME_C/.claude/skills/handoff" ]] || fail "command skill handoff leaked into skills/"
+[[ -L "$HOME_C/.claude/commands/repo-status.md" ]] || fail "command skill repo-status not linked into commands/"
+[[ ! -e "$HOME_C/.claude/skills/repo-status" ]] || fail "command skill repo-status leaked into skills/"
 pass "claude install routes $CMD_EXPECTED command skills to commands/"
 
 # 3. Re-running is idempotent (still exactly $EXPECTED links).
@@ -188,10 +188,10 @@ got="$(count_links "$HOME_A/.claude/commands")"
 got="$(count_links "$HOME_A/.config/opencode/command")"
 [[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] \
   || fail "all install: opencode command has $got links, expected $OPENCODE_CMD_EXPECTED"
-[[ -L "$HOME_A/.codex/skills/handoff" ]] || fail "codex: command skill handoff not linked into skills/"
-[[ -f "$HOME_A/.codex/skills/handoff/agents/openai.yaml" ]] \
-  || fail "codex: command skill handoff missing its openai.yaml sidecar"
-[[ ! -e "$HOME_A/.codex/prompts/handoff.md" ]] || fail "codex: command skill handoff leaked into deprecated prompts/"
+[[ -L "$HOME_A/.codex/skills/repo-status" ]] || fail "codex: command skill repo-status not linked into skills/"
+[[ -f "$HOME_A/.codex/skills/repo-status/agents/openai.yaml" ]] \
+  || fail "codex: command skill repo-status missing its openai.yaml sidecar"
+[[ ! -e "$HOME_A/.codex/prompts/repo-status.md" ]] || fail "codex: command skill repo-status leaked into deprecated prompts/"
 pass "all install populates claude, codex, opencode (codex commands as skills)"
 
 # 6a. --uninstall removes command-dir links (and the codex skill links).
@@ -200,7 +200,7 @@ for sub in ".claude/commands" ".config/opencode/command"; do
   got="$(count_links "$HOME_A/$sub")"
   [[ "$got" -eq 0 ]] || fail "all uninstall: $sub still has $got command links"
 done
-[[ ! -e "$HOME_A/.codex/skills/handoff" ]] || fail "codex uninstall left command skill handoff behind"
+[[ ! -e "$HOME_A/.codex/skills/repo-status" ]] || fail "codex uninstall left command skill repo-status behind"
 pass "all uninstall removes command-dir links"
 
 # 6c. codex install migrates our symlinks out of the deprecated prompts dir
@@ -605,8 +605,8 @@ HOME="$HOME_TGT" "$INSTALL" --target=all --category=workflow >/dev/null
 [[ -f "$HOME_TGT/.config/opencode/skills/skill-creator/scripts/run_eval.py" ]] \
   || fail "targets: skill-creator missing (or incomplete) under opencode"
 # Its category-mates are unaffected and keep their bundled files.
-[[ -f "$HOME_TGT/.claude/skills/prototype/LOGIC.md" ]] \
-  || fail "prototype not installed as a whole directory for claude"
+[[ -f "$HOME_TGT/.claude/skills/guideline-distillation/SKILL.md" ]] \
+  || fail "guideline-distillation not installed as a whole directory for claude"
 pass "targets: skips excluded agents and prunes a stale link"
 
 # 38. A dangling symlink left by a skill the repo no longer ships is pruned;
@@ -620,7 +620,7 @@ ln -s "$foreign_dangling" "$STALE_SKILLS/foreign-dangling"
 HOME="$HOME_STALE" "$INSTALL" --target=claude --category=workflow >/dev/null
 [[ ! -L "$STALE_SKILLS/removed-skill" ]] || fail "stale link for a removed skill survived"
 [[ -L "$STALE_SKILLS/foreign-dangling" ]] || fail "prune removed a foreign dangling symlink"
-[[ -L "$STALE_SKILLS/prototype" ]] || fail "prune removed a valid skill link"
+[[ -L "$STALE_SKILLS/guideline-distillation" ]] || fail "prune removed a valid skill link"
 pass "install prunes dangling links to skills the repo dropped"
 
 echo "all install.sh tests passed"

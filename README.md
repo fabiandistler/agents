@@ -147,7 +147,6 @@ sub-skill is still listed individually below.
 | `skills/adr-workflow/` | Establishing or maintaining Architecture Decision Records in a repo. |
 | `skills/architecture-pattern-advisor/` | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
 | `skills/c4-modeling/` | Drafting a C4 model of a system interactively and rendering it as Mermaid diagrams — System Context, Container, and Component views plus landscape, dynamic, and deployment — per c4model.com best practices. |
-| `skills/codebase-design/` | Shared vocabulary and workflow for designing deep modules. |
 | `skills/coupling-cohesion/` | Measuring coupling or cohesion of existing code — a module's cohesion and LCOM, codebase-wide coupling metrics (instability, abstractness, Zones of Pain/Uselessness), or whether one specific dependency is balanced (Khononov strength/distance/volatility). |
 | `skills/ddd/` | Domain-Driven Design across strategy and code — subdomain classification, context mapping, choosing an implementation pattern, and the correctness conventions for aggregates, value objects, domain events, and event sourcing. |
 | `skills/fitness-functions/` | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
@@ -172,14 +171,10 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/grilling/` | Interview the user relentlessly about a plan or design. |
 | `skills/guideline-distillation/` | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
-| `skills/handoff/` | Compact the current conversation into a handoff document for another agent to pick up. |
 | `skills/natural-planning/` | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
-| `skills/prototype/` | Build a throwaway prototype to flesh out a design — a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route. |
 | `skills/repo-status/` | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
 | `skills/skill-creator/` | Creating, editing, evaluating, or benchmarking skills in this repo. |
-| `skills/to-issues/` | Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. |
 
 ### Communication & writing (`communication`)
 

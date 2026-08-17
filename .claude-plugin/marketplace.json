@@ -10,7 +10,7 @@
     {
       "name": "architecture",
       "source": "./plugins/architecture",
-      "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), logical component design, deep-module design, fitness functions, SQL schema design, and coupling/cohesion analysis (cohesion + LCOM, codebase coupling metrics, and Khononov balanced-coupling). Includes read-only coupling/cohesion analyst subagents."
+      "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), logical component design, fitness functions, SQL schema design, and coupling/cohesion analysis (cohesion + LCOM, codebase coupling metrics, and Khononov balanced-coupling). Includes read-only coupling/cohesion analyst subagents."
     },
     {
       "name": "refactoring",
@@ -25,7 +25,7 @@
     {
       "name": "workflow",
       "source": "./plugins/workflow",
-      "description": "Planning and workflow skills: natural planning, breaking plans into issues, design grilling, throwaway prototypes, handoffs, status updates, skill authoring, and guideline distillation."
+      "description": "Planning and workflow skills: natural planning, status updates, skill authoring, and guideline distillation."
     },
     {
       "name": "communication",

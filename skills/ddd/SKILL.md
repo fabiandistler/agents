@@ -375,8 +375,6 @@ aggregate** — a gatekeeper:
 - **adr-workflow** — record the subdomain classification and the chosen
   context-mapping / implementation pattern as an ADR when the decision is
   significant or likely to be revisited.
-- **codebase-design** — general deep-module vocabulary for shaping the
-  interface of a Domain Model or Aggregate Root once the pattern is chosen.
 
 ## Source
 

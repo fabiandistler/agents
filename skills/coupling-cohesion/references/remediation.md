@@ -59,8 +59,8 @@ goal is to **remove indirection**, not add more.
 Recurrent, system-wide high coupling is rarely cured one outlier at a time —
 it usually reflects shallow modules with wide interfaces. The durable remedy is
 **deeper modules**: more functionality behind smaller interfaces, so there are
-simply fewer edges to couple on. Defer to the `codebase-design` skill for that
-work. If the coupling is structural — the wrong components exist at all, or the
-topology is wrong — escalate to `architecture-pattern-advisor`. And record any
-significant restructuring decision with `adr-workflow` so the rationale (and
-the metrics baseline that motivated it) survives.
+simply fewer edges to couple on. If the coupling is structural — the wrong
+components exist at all, or the topology is wrong — escalate to
+`architecture-pattern-advisor`. And record any significant restructuring
+decision with `adr-workflow` so the rationale (and the metrics baseline that
+motivated it) survives.
