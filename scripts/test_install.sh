@@ -11,12 +11,6 @@ INSTALL="$REPO_ROOT/install.sh"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "ok: $*"; }
 
-with_fake_home() {
-  local fake; fake="$(mktemp -d)"
-  HOME="$fake" "$@"
-  echo "$fake"
-}
-
 count_links() {
   # POSIX-portable: -L returns 0 only for symlinks.
   local dir="$1" n=0
