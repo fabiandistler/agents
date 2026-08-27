@@ -5,7 +5,7 @@ Run from repo root:
     python3 scripts/check_docs.py    # exit 1 on any drift
 
 The "when to use" catalogue is duplicated by hand in two places:
-  - README.md   (`## Contents`)      rows like `| `skills/<name>/` | … |`
+  - README.md   (`## Skill catalogue`) rows like `| `skills/<name>/` | … |`
   - AGENTS.md   (`## Skill catalogue`) rows like `| [<name>](…) | … |`
 
 They are intentionally phrased differently from the auto-generated
@@ -125,8 +125,8 @@ def main() -> int:
         for e in errors:
             sys.stderr.write(f"  - {e}\n")
         sys.stderr.write(
-            "\nUpdate the tables in README.md (## Contents) and "
-            "AGENTS.md (## Skill catalogue) so both list every skill "
+            "\nUpdate the tables in README.md and AGENTS.md "
+            "(## Skill catalogue in both) so they list every skill "
             "with matching text.\n"
         )
         return 1

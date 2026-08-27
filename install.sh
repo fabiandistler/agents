@@ -54,7 +54,7 @@
 #
 # The codex target additionally installs the full plugins, not just the
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
-# reverses both. --env only filters skills; the plugin extras follow
+# reverses it. --env only filters skills; the plugin extras follow
 # --category:
 #   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
 #     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
