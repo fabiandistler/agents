@@ -48,11 +48,11 @@ without a run; ties break by catalogue order.
 | 3 | `dead-code` | never | due now |
 | 4 | `error-edges` | never | due now |
 | 5 | `test-flakiness` | never | due now |
-| 6 | `security-footguns` | never | due now |
+| 6 | `security-footguns` | 2026-08-27 | 2026-09-10 |
 | 7 | `perf-quickwins` | never | due now |
 
 **Next job to run: `doc-drift` (#2)** — never run, and the lowest-numbered of
-the six jobs tied at "never".
+the jobs still tied at "never".
 
 ## Run log
 
@@ -70,3 +70,50 @@ Branch note: this run was pushed to `claude/roomba-deps-audit-6f8r6o` rather
 than `roomba/deps-audit-2026-08-25`, because the branch was pinned by the
 session that bootstrapped this catalogue. Later runs follow the naming rule
 above.
+
+### 2026-08-27 — `security-footguns`
+
+Report: [`roomba/reports/2026-08-27-security-footguns.md`](roomba/reports/2026-08-27-security-footguns.md)
+
+Seven findings. Nothing here handles credentials, so the interesting surface is
+elsewhere: this repo's outputs get *fed to agents and opened in browsers*, and
+two places put content the operator did not write somewhere it is trusted. Both
+were reproduced.
+
+**F1 — the wiki cache is `/tmp/mcp-wiki-cache` and `cache.exists()` is the only
+check.** The path does not depend on `WIKI_GIT_URL`, nothing verifies the
+directory is a clone of it (or a git repo at all), and a failed refresh
+deliberately serves whatever is there. A plain directory planted at that path is
+served as the wiki with the configured URL never contacted — reproduced against
+a nonexistent remote, output `- joins.md — # planted`. On a multi-user host that
+is one `mkdir` in `/tmp` to write an agent's reference material. Without an
+adversary the same shape silently serves a stale wiki forever after the URL
+changes.
+
+**F2 — `generate_viewer.R` splices model output into a `<script>` block.**
+`payload$…$solution` is the verbatim `solution.R` the CLI under test produced;
+JSON escaping covers `"` and `\` but not `<` or `/`, so a solution containing
+`</script>` closes the element early. Reproduced against the real
+`viewer.html.template`: the first `</script>` the browser sees is the one inside
+the payload, `DATA` is never assigned, and the injected element runs when the
+maintainer opens `viewer.html`. The template's DOM code is careful — all
+`textContent`, no `innerHTML` — but that care is defeated at HTML-parse time.
+Fix is three `gsub` calls to `\uXXXX`-escape `< > &`.
+
+Also: F3 the hardcoded `/home/user/agents` paths in `.mcp.json.example` (handed
+over by the 2026-08-25 `deps-audit` run — the same-day `doc-drift` run left it
+alone deliberately, since the fix is the config, not the prose); F4 `meta.json`
+built by string interpolation; F5 no `permissions:` block in CI; F6 `pyyaml>=6`
+unpinned in a workflow that pins ruff on principle; F7 the recall check passing
+its prompt on argv where `coder_cli_invoke` two directories away uses stdin.
+
+Report-only by design — this job never patches. Recorded six boundaries that
+are already sound (the `page=` traversal guard, the `--` guard on `git clone`,
+`install.sh`'s TOML name validation and marker discipline, no secrets in the
+tree, `coder_cli_invoke`'s backend allowlist) so a later run does not
+re-litigate them.
+
+*Method note:* R is not installed here, so F2's serialization step was
+reproduced with an equivalent JSON serializer rather than `jsonlite` itself.
+The claim rests on the RFC 8259 escape set, which `jsonlite` implements and
+offers no option to widen; worth re-confirming with `Rscript` where available.
