@@ -45,14 +45,14 @@ without a run; ties break by catalogue order.
 |---|-----|----------|----------|
 | 1 | `deps-audit` | 2026-08-25 | 2026-09-01 |
 | 2 | `doc-drift` | 2026-08-27 | 2026-09-10 |
-| 3 | `dead-code` | never | due now |
+| 3 | `dead-code` | 2026-08-27 | 2026-09-10 |
 | 4 | `error-edges` | never | due now |
 | 5 | `test-flakiness` | never | due now |
 | 6 | `security-footguns` | never | due now |
 | 7 | `perf-quickwins` | never | due now |
 
-**Next job to run: `dead-code` (#3)** — never run, and the lowest-numbered of
-the five jobs still tied at "never".
+**Next job to run: `error-edges` (#4)** — never run, and the lowest-numbered of
+the four jobs still tied at "never".
 
 ## Run log
 
@@ -114,3 +114,31 @@ reference `/triage`, `/wayfinder`, `/domain-modeling`, `/grill-with-docs` and
 config surfaces for skills installed from elsewhere, so whether they should
 stay is a scope call for the maintainer, not a drift fix. Noted here as the
 remainder.
+
+### 2026-08-27 — `dead-code`
+
+Four removals, each backed by a reference search across the whole tree
+(`git grep` for the identifier; counted against its definition sites):
+
+1. `eval-suite/recall/check_recall.py` — `score()` built
+   `valid = {e["name"] for e in menu}` and then discarded it via
+   `_ = valid  # (kept for future strict-menu validation)`. The `_ =` binding
+   is exactly what kept ruff's F841 quiet. No other reference to `valid` in
+   the file; removed both lines.
+2. `skills/coupling-cohesion/scripts/lcom.py` — `_r_oo_report(path, src,
+   oo_spans)` never reads `path`. Private helper (leading underscore) with one
+   call site, `analyze_r()` line 305; dropped the parameter at both ends.
+3. `scripts/test_install.sh` — `with_fake_home()` was defined at line 14 and
+   never called. `grep -c '\bwith_fake_home\b'` over the repo returns 1, the
+   definition itself. Every test in the file sets up its own `mktemp -d` HOME
+   inline; the helper has been unused since it was introduced.
+4. `eval-suite/import_vitals.R` — `title_to_pretty()` likewise defined and
+   never called; the importer writes `title: <slug>` straight into task.yaml.
+
+Verification: `ruff check .` clean, `python -m compileall` clean,
+`bash -n scripts/test_install.sh` clean, `scripts/test_install.sh` passes end
+to end (all 38 assertions), `check_recall.py --dry-run` prints the same menus
+as before (20 flat / 11 routed entries), and `lcom.py` produces identical
+output on an R fixture exercising both the R6 class path and the file path.
+
+Nothing behavioural: no branch, no output, and no public entry point changed.

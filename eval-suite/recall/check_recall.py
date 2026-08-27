@@ -123,7 +123,6 @@ def score(
 ) -> tuple[int, list[str]]:
     hits = 0
     misses: list[str] = []
-    valid = {e["name"] for e in menu}
     for item in prompts:
         expected = item["expected"]
         want = {expected}
@@ -138,7 +137,6 @@ def score(
             hits += 1
         else:
             misses.append(f"{label}: {expected!r} -> picked {choice!r}")
-    _ = valid  # (kept for future strict-menu validation)
     return hits, misses
 
 
