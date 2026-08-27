@@ -47,12 +47,12 @@ without a run; ties break by catalogue order.
 | 2 | `doc-drift` | never | due now |
 | 3 | `dead-code` | never | due now |
 | 4 | `error-edges` | never | due now |
-| 5 | `test-flakiness` | never | due now |
+| 5 | `test-flakiness` | 2026-08-27 | 2026-09-26 |
 | 6 | `security-footguns` | never | due now |
 | 7 | `perf-quickwins` | never | due now |
 
 **Next job to run: `doc-drift` (#2)** — never run, and the lowest-numbered of
-the six jobs tied at "never".
+the jobs still tied at "never".
 
 ## Run log
 
@@ -70,3 +70,49 @@ Branch note: this run was pushed to `claude/roomba-deps-audit-6f8r6o` rather
 than `roomba/deps-audit-2026-08-25`, because the branch was pinned by the
 session that bootstrapped this catalogue. Later runs follow the naming rule
 above.
+
+### 2026-08-27 — `test-flakiness`
+
+Both of the repo's test suites reach into the *shared* system temp directory
+and assume it behaves like private scratch space. Two fixes, one per suite.
+
+**`test_eval_set_validation.py::test_rejects_a_missing_file` failed on the
+contents of `/tmp`.** It called
+`load_eval_set(Path(tempfile.gettempdir()) / "definitely-missing-eval-set.json")`
+and asserted the read raises — i.e. it bet that no other process on the machine
+had ever written that exact name. Reproduced on `6181c31` by creating the file
+and running the suite:
+
+    AssertionError: EvalSetFormatError not raised
+    Ran 5 tests in 0.002s
+    FAILED (failures=1)
+
+The path now lives inside the test's own `TemporaryDirectory`, so "missing" is
+a fact the test controls. Re-run under the same condition (the `/tmp` file
+still present): 5 tests, OK.
+
+Same class, same cause: `_write()` called `tempfile.mkdtemp()` per invocation
+and never cleaned up, so every run left four directories in that same shared
+namespace. Moved to one `TemporaryDirectory` per test via `addCleanup`, with a
+counter in the filename so repeated `_write()` calls in one test stay distinct
+(`test_rejects_the_two_level_object_shape` asserts on the exact path, so the
+name has to stay predictable).
+
+**`scripts/test_install.sh` leaked 29 directories per run.** It builds a
+throwaway `$HOME` with `mktemp -d` for nearly every assertion — 30 call sites —
+and deleted none of them. Measured on `6181c31`: `/tmp` went from 57 entries to
+86 across a single run. `TMPDIR` now points at one root the script owns, so all
+30 land inside it, and an `EXIT` trap removes that root — but only on success,
+so a red CI run stays inspectable and says where the tree is.
+
+Verification: 37 skill-creator unit tests pass; `scripts/test_install.sh`
+passes end to end with `/tmp` unchanged at 57 entries before and after;
+`ruff check .` and `bash -n scripts/test_install.sh` clean. No assertion was
+weakened, added, or removed — `test_rejects_a_missing_file` still exercises
+exactly the `OSError` path in `utils.load_eval_set`.
+
+Checked and found clean: nothing in either suite depends on wall-clock time,
+randomness, or the network. `test_aggregate_benchmark.py` reads only committed
+fixtures; the `timeout=1` arguments in `EntryPointValidationTest` are never
+reached, since validation raises before any subprocess starts; every
+`$INSTALL` invocation in `test_install.sh` sets its own `HOME`.
