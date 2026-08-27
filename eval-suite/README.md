@@ -113,7 +113,7 @@ In skip cases, `judge.R` still writes a stub `judge.json` with `skipped: true`
 so downstream aggregation and the viewer handle it uniformly.
 
 Override the judge model with `JUDGE_MODEL=claude-...` (default
-`claude-sonnet-4-5`). Each `judge.json` records `judge_model` and
+`claude-sonnet-4-20250514`). Each `judge.json` records `judge_model` and
 `judge_prompt_sha256` so reruns can detect drift.
 
 Cost: ~1 API call per (config, task), so the default 2 × 33 = 66 calls per run.
