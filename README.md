@@ -61,6 +61,12 @@ skills. `--target=codex` additionally:
   `--uninstall` only removes marker-carrying files. Model and sandbox
   are inherited from your Codex session (the Claude-specific `model:`
   and `tools:` fields have no Codex equivalent).
+- disables every nested router member by name in `~/.codex/config.toml`,
+  via a marker-delimited `[[skills.config]]` block (`enabled = false`).
+  Codex discovers skills recursively and follows symlinks, so without this
+  each `members/<name>/SKILL.md` would register as its own skill and the
+  router's progressive disclosure would be lost. `--uninstall` removes the
+  block.
 - installs the user-invoked command skills (`activation: command`) as
   regular skills under `~/.codex/skills/` rather than as Codex custom
   prompts (which are deprecated). Each carries an `agents/openai.yaml`

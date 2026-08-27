@@ -42,7 +42,11 @@ WIKI_CACHE_DIR=/tmp/my-wiki    # optional, defaults to system tempdir
 ```
 
 `WIKI_GIT_URL` takes precedence over `WIKI_PATH`. The repo is cloned shallowly
-once on first run; delete the cache dir to refresh.
+on first run and refreshed with `git pull --ff-only` on every start after that,
+so a long-lived cache does not serve the wiki frozen at whenever it was first
+cloned. A failed refresh (offline, revoked credentials) is reported on stderr
+and the cached copy is served as-is; delete the cache dir to force a fresh
+clone.
 
 ## Running
 
@@ -88,6 +92,11 @@ my-wiki/
 Restart the server. New tools `wiki_kubernetes` and `wiki_terraform` will
 appear automatically. Folder names with non-identifier characters are
 sanitized: `data-science/` becomes `wiki_data_science`.
+
+Sanitizing maps every non-alphanumeric character to `_`, so sibling folders can
+collapse onto one tool name — `sql-1/` and `sql_1/` both become `wiki_sql_1`.
+The server registers the first and skips the rest, naming the collision on
+stderr; rename one of them.
 
 ## Limits
 
