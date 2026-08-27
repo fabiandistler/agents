@@ -87,9 +87,19 @@ class ValidateEvalSetTest(unittest.TestCase):
 
 
 class LoadEvalSetTest(unittest.TestCase):
+    def setUp(self):
+        # One directory per test, removed on teardown. Everything this class
+        # touches has to live inside it: the system temp dir is shared with
+        # every other process on the machine, so neither "this file is mine"
+        # nor "this name is free" holds there.
+        tmp = tempfile.TemporaryDirectory(prefix="eval-set-test-")
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self._written = 0
+
     def _write(self, payload: object, *, raw: str | None = None) -> Path:
-        tmpdir = tempfile.mkdtemp(prefix="eval-set-test-")
-        path = Path(tmpdir) / "eval_set.json"
+        self._written += 1
+        path = self.tmp / f"eval_set_{self._written}.json"
         path.write_text(raw if raw is not None else json.dumps(payload))
         return path
 
@@ -114,8 +124,10 @@ class LoadEvalSetTest(unittest.TestCase):
         self.assertIn("not valid JSON", str(ctx.exception))
 
     def test_rejects_a_missing_file(self):
+        # Inside this test's own directory, so "missing" is a fact we control
+        # rather than a bet that nothing else on the machine wrote this name.
         with self.assertRaises(EvalSetFormatError) as ctx:
-            load_eval_set(Path(tempfile.gettempdir()) / "definitely-missing-eval-set.json")
+            load_eval_set(self.tmp / "definitely-missing-eval-set.json")
         self.assertIn("cannot read eval set", str(ctx.exception))
 
 

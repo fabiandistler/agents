@@ -8,6 +8,22 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL="$REPO_ROOT/install.sh"
 
+# One temp root per run. The tests below build ~30 throwaway $HOME trees with
+# `mktemp -d`; pointing TMPDIR at a directory we own puts every one of them
+# inside it, so a run leaves nothing behind in the shared system temp dir. Kept
+# on failure so a red CI run is still inspectable.
+TEST_TMP_ROOT="$(mktemp -d)"
+export TMPDIR="$TEST_TMP_ROOT"
+cleanup_tmp_root() {
+  local rc=$?
+  if (( rc == 0 )); then
+    rm -rf "$TEST_TMP_ROOT"
+  else
+    echo "temp tree kept for inspection: $TEST_TMP_ROOT" >&2
+  fi
+}
+trap cleanup_tmp_root EXIT
+
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "ok: $*"; }
 
