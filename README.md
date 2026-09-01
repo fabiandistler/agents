@@ -117,10 +117,9 @@ A skill without an `environments` field belongs to every environment.
 A skill can opt out of individual agents with a `targets` frontmatter field
 (a comma-separated subset of `claude`, `codex`, `opencode`; absent means all
 of them). `install.sh` never links it for an excluded agent, and removes a
-link it created there before. `skill-creator` uses this — it installs for
-codex and opencode only, because Claude Code ships a skill-creator of its
-own. For the same reason it is not part of the `workflow` plugin, which is
-the Claude distribution of these skills.
+link it created there before. Use it when a runtime already ships an
+equivalent of its own. A skill that excludes `claude` also gets no plugin
+symlink, since `plugins/` is the Claude distribution of these skills.
 
 The installer also prunes leftovers: a dangling symlink pointing at a skill
 this repo no longer ships is removed on the next install or uninstall.
@@ -177,10 +176,8 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/guideline-distillation/` | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
 | `skills/natural-planning/` | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
 | `skills/repo-status/` | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
-| `skills/skill-creator/` | Creating, editing, evaluating, or benchmarking skills in this repo. |
 
 ### Communication & writing (`communication`)
 
@@ -197,4 +194,3 @@ sub-skill is still listed individually below.
 | Skill | When to use |
 |---|---|
 | `skills/hypertrophy-training/` | Experienced trainee: set volume, RIR/effort, auto-regulation, or diagnosing a stalled lift (educational). |
-| `skills/zettelkasten-value-hierarchy/` | Classifying or promoting notes by value, or synthesizing higher-value systems/workflows from low-value notes. |

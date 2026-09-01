@@ -24,8 +24,8 @@
 # A skill may also restrict itself to some agents with a `targets:` frontmatter
 # field (comma-separated subset of claude, codex, opencode; absent means all).
 # A skill that excludes a target is never linked there, and an existing link we
-# own is removed on the next install — `skill-creator` uses this to stay out of
-# Claude, which ships its own.
+# own is removed on the next install. Use it when a runtime already ships an
+# equivalent of its own.
 #
 # Skills with `activation: command` in their frontmatter are user-invoked,
 # not model-triggered. For claude and opencode they are linked into the
