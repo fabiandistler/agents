@@ -111,13 +111,13 @@
     },
     {
       "name": "hypertrophy-training",
-      "summary": "Summarizes evidence-based hypertrophy-training programming and auto-regulation with precise stop criteria.",
+      "summary": "Evidence-based hypertrophy programming and auto-regulation with precise stop criteria, for experienced trainees.",
       "category": "personal",
       "path": "skills/hypertrophy-training/SKILL.md",
       "environments": [
         "chat"
       ],
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "name": "llm-application-engineering",

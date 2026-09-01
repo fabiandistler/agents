@@ -2,9 +2,9 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Summarizes evidence-based hypertrophy-training programming and auto-regulation with precise stop criteria. Covers set volume, RIR/RPE targets, the Stimulus:Fatigue ratio, and the 5% Fatigue Rule, Rep Drop, and Myo-Reps. For experienced trainees.
+description: Evidence-based hypertrophy programming and auto-regulation with precise stop criteria, for experienced trainees. Covers set volume, RIR targets, the Stimulus:Fatigue ratio, training when injury risk is elevated, and returning after an injury.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Hypertrophy Training
@@ -20,9 +20,12 @@ the large, fast gains available to beginners and intermediates.
 
 Whenever an experienced trainee (roughly 9+ years of systematic training) asks
 how many sets or how hard to train, how to auto-regulate a set or session, or
-why progress has stalled (a two-step plateau diagnosis). Draws on
-meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022, Aube
-2022, Robinson 2024); not aimed at beginners.
+why progress has stalled (a two-step plateau diagnosis). Also when the
+question is how to keep training while injury risk is elevated — an irritated
+joint, heavy sleep debt, high life stress, a return after a layoff — or how to
+work back to normal training after an injury and completed physical therapy.
+Draws on meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022,
+Aube 2022, Robinson 2024) and Israetel et al.; not aimed at beginners.
 
 > **Scope and safety note.** This is an educational summary of
 > strength-training research, not medical, physical-therapy, or
@@ -34,6 +37,14 @@ meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022, Aube
 > Apply this material only when explicitly asked to help with training
 > programming or auto-regulation, and treat every number as a starting range
 > to individualize, not a prescription.
+>
+> **This applies with particular force to Part C.** Anything touching an
+> existing or healing injury is the treating clinician's call, not this
+> document's. The return-to-training progression in Part C.2 assumes physical
+> therapy has been completed and medical clearance obtained; it describes the
+> gap between "cleared for daily life" and "training normally again", and it
+> replaces neither the therapy nor the clinician. Do not follow it if a
+> medical professional advises against it, or if it is causing pain.
 
 ## Part A — Programming principles
 
@@ -252,6 +263,90 @@ keep intensity and per-session volume unchanged
 Volume cycling (Part A.6) is the preventive version of this test — cycling
 volume down periodically before a genuine plateau forces the diagnosis.
 
+## Part C — Training under elevated injury risk
+
+### C.1 — Nine modifications while risk is elevated
+
+This is not rehabilitation (for that, see C.2). It is a normal hypertrophy
+program run under conditions that push injury risk up: an irritated joint,
+heavy sleep debt, high life stress, a return after a layoff, or a phase that
+has already driven fatigue high. The trade-off is explicit and worth stating
+plainly — these modifications cost growth. They are the right trade when
+other variables are already raising risk.
+
+| # | Modification | Why |
+|---|---|---|
+| 1 | **Cap load at 70% 1RM** — equivalently, never go below ~15RM on any exercise | Removes the load range where a technique breakdown does the most damage |
+| 2 | **Full pause at every direction change of every rep** — e.g. on a pulldown, pause at the top in the stretch *and* at the bottom with the bar at the upper chest | Peak forces are highest in the eccentric→concentric transition; a full pause removes the rebound that generates them |
+| 3 | **Tempo ~3 s eccentric, ~2 s concentric** | Holds technique together under fatigue and prevents force spikes |
+| 4 | **Train the mind-muscle connection deliberately** | On its own this lowers the load used and raises the Stimulus:Fatigue ratio (Part A.4) without adding risk |
+| 5 | **End accumulation phases at ~⅔–¾ of MRV** | If MRV is unknown: that volume usually coincides with the point where sessions start producing very strong pumps and a lot of soreness — when that shows up, deload |
+| 6 | **Progress reps, not load,** week to week | Keeps stimulus progression running without buying strength gains at a risk premium |
+| 7 | **Favor machines over free weights** | More stability, fewer technique deviations, and fewer force spikes spent correcting them |
+| 8 | **Leave at least 2 RIR** | Very low RIR produces instability under the bar. Partly follows already from the shortened accumulation in #5 |
+| 9 | **Add sets very conservatively** — where you would ideally add two, add one | Rapid volume increases are a documented injury-risk driver |
+
+Run together, the nine produce a program with very low injury risk and a real
+but submaximal growth effect. They are a package for a period, not a
+permanent style.
+
+**Conflict with Part A, resolved.** Part A.2 puts the working range at 0–2
+RIR; C.8 requires ≥2 RIR, and C.1 caps load where Part A assumes heavier
+work. This is deliberate, not an inconsistency: **Part A is the normal case,
+Part C overrides it for as long as the elevated-risk condition holds.** When
+the condition clears, Part A's ranges resume. Do not blend the two — running
+Part A's intensity with Part C's exercise selection gets the cost of both and
+the benefit of neither.
+
+### C.2 — Returning to training after an injury
+
+Physical therapy targets *normal function*: sitting, stairs, carrying
+groceries. For a trainee the injury is not resolved until they are back in
+the gym and can safely run progressive stimulus increases again. PT usually
+stops before that point, and this progression covers the gap — it does not
+replace the therapy. Re-read the scope and safety note above before using it:
+completed PT and medical clearance are preconditions, and a clinician's
+advice overrides anything here.
+
+| Phase | What | Load / intensity | Gate to the next phase |
+|---|---|---|---|
+| **1. Finish PT** | Complete physical therapy as prescribed | — | Cleared for most activities of daily living |
+| **2. Occluded isolation** | Occlusion training, isolation only. Start with **1 set** in the first session; target muscle at most **3×/week**; only as much ROM as is pain-free. Raise set count slowly, but soreness must clear between sessions — especially at the injury site. Skip this phase for muscles that cannot be occluded (e.g. pecs) | **~20% 1RM**, very slowly toward ~30%, **≥3 RIR** | 30% 1RM reached |
+| **3. Short-rest isolation + ROM increases** | Drop occlusion, keep isolation. Rest only long enough for the metabolite burn to clear. 2–3 sessions/week with full recovery between them. Widen ROM gradually | **30 → 50% 1RM**; first working set **~25+ reps**; toward the end of the phase down to **1 RIR** | Full or near-full joint ROM at minimal discomfort |
+| **4. Add compounds** | Bring compounds in (e.g. leg press or squat for quads). Full pauses between eccentric and concentric; prioritize stability. Isolation work can be cut back or dropped — **if kept, put it before the compound** in the session so less load is needed on the compound | up to **~60% 1RM**, i.e. first sets at **~15–20 reps** | 60% 1RM with clean technique and minimal to no discomfort |
+| **5. Load increases** | Raise load on the compounds slowly and steadily | toward **10RM**; takes **at least a month** from the end of Phase 4 | 10RM across several sets with no symptoms of the old injury |
+| **6. Normal training** | Regularly programmed training (Parts A and B) | — | — |
+
+The same progression as a load ladder — read left to right, one column at a
+time:
+
+```
+             PHASE 2       PHASE 3        PHASE 4        PHASE 5      PHASE 6
+Load  %1RM   20 ──▶ 30     30 ──▶ 50      50 ──▶ 60      60 ──▶ 10RM   normal
+RIR          >= 3          3 ──▶ 1        1-2            1-2           0-2
+ROM          pain-free     widening       full           full          full
+Exercise     isolation     isolation      + compounds    compounds     all
+             (occluded)    (short rest)
+Frequency    <= 3x/wk      2-3x/wk        normal         normal        normal
+
+Gate         30% 1RM       full ROM,      60% 1RM,       10RM, no      —
+             reached       minimal        clean          old-injury
+                           discomfort     technique      symptoms
+```
+
+**Time horizon.** For an average injury involving surgery or serious
+rehabilitation, expect **6–12 months** back to normal training. The lost
+muscle itself is largely back much sooner — roughly **3 months** into this
+process; everything after that is new growth. Knowing this ahead of time is
+what keeps the middle phases from feeling like wasted work.
+
+**The transferable pattern**, worth keeping even when the protocol is not
+followed literally: *isolation → compound, high RIR → low RIR, low load →
+high load, restricted ROM → full ROM.* Loosen **one variable at a time**,
+with the order fixed in advance rather than decided in the moment. The gates
+in the table are what make that enforceable; without them the variables all
+loosen at once on the first good day.
+
 ## Realistic expectations
 
 For experienced trainees (9+ years), realistic gains are modest by beginner
@@ -280,9 +375,24 @@ and individual genetics can still shift the outcome by roughly ±50%.
 - **Applying these ranges to beginners or intermediates.** This material is
   calibrated to experienced (9+ year) trainees; lower-experience trainees
   need substantially less volume to progress.
+- **Running Part C's restrictions permanently.** They cost growth by design.
+  They are a package for a defined period; when the elevated-risk condition
+  clears, Part A's ranges resume.
+- **Loosening several variables at once when returning from injury.** Part
+  C.2 works because exactly one of load, RIR, ROM, and exercise type moves at
+  a time, in an order fixed before the first session.
 
 ## Sources
 
 Baz-Valle et al. (2022); Schoenfeld et al. (2017); Refalo et al. (2022); Aube
 et al. (2022); Robinson meta-analysis (2024); Alan Aragon, Lyle McDonald, Eric
 Helms (muscle-gain-rate estimates).
+
+**Part C** (both sections) is distilled from Israetel et al., *Scientific
+Principles of Hypertrophy Training* (Renaissance Periodization), pp. 352–357.
+Unlike Parts A and B, it rests on a single expert-practice source rather than
+meta-analytic evidence — treat its numbers as one coherent scheme rather than
+as measured optima. Reviewed 2026-09-01; re-check by 2028-09-01. **Retire or
+revise Part C** if controlled evidence contradicts the load and RIR caps in
+C.1, or if the return-to-training progression in C.2 is superseded by
+clinical return-to-sport guidance.
