@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""
-Quick validation script for skills - minimal version
+"""Validate a skill's SKILL.md frontmatter.
+
+Run from repo root:
+    python3 scripts/quick_validate.py skills/<name>/    # exit 1 if invalid
+
+Checks the Agent Skills format plus this repo's catalogue fields. CI runs it
+over every skill; it also works standalone on a skill directory outside this
+repo.
 """
 
 import sys
@@ -13,10 +19,10 @@ from pathlib import Path
 # fields consumed by build_manifest.py, install.sh and check_plugins.py.
 #
 # These vocabularies mirror CATEGORIES / ACTIVATIONS / TARGETS in
-# scripts/build_manifest.py and the table in references/SKILL-FORMAT.md. They
-# are restated rather than imported so this validator keeps working on skills
-# outside this repo, where that tooling is not on the path. When the manifest
-# builder gains a category, activation or target, update it here too.
+# scripts/build_manifest.py. They are restated rather than imported so this
+# validator keeps working on skills outside this repo, where that tooling is
+# not on the path. When the manifest builder gains a category, activation or
+# target, update it here too.
 ALLOWED_PROPERTIES = {
     # Agent Skills format
     "name",
@@ -165,7 +171,7 @@ def validate_skill(skill_path):
             print(
                 f"WARNING: description is {len(description)} chars; this repo's budget is "
                 "≤250 (≤400 for the high-traffic allowlist). Move trigger lists into a "
-                "'## When to use' body section. See references/SKILL-FORMAT.md."
+                "'## When to use' body section."
             )
 
     # Validate compatibility field if present (optional)
@@ -184,7 +190,7 @@ def validate_skill(skill_path):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python quick_validate.py <skill_directory>")
+        print("Usage: python3 scripts/quick_validate.py <skill_directory>")
         sys.exit(1)
 
     valid, message = validate_skill(sys.argv[1])

@@ -100,16 +100,6 @@
       ]
     },
     {
-      "name": "guideline-distillation",
-      "summary": "Distill messy source documents (style guides, ADRs, RFCs, wikis, linter configs) into lean, machine-actionable rules files (CONVENTIONS.md, AGENTS.md, CLAUDE.md) for coding agents.",
-      "category": "workflow",
-      "path": "skills/guideline-distillation/SKILL.md",
-      "environments": [
-        "coding"
-      ],
-      "version": "1.0"
-    },
-    {
       "name": "html-artifacts",
       "summary": "Produce a self-contained HTML file instead of a markdown reply when the content has spatial, comparative, or interactive structure.",
       "category": "communication",
@@ -211,20 +201,6 @@
       ]
     },
     {
-      "name": "skill-creator",
-      "summary": "Create new skills, modify and improve existing skills, and measure skill performance.",
-      "category": "workflow",
-      "path": "skills/skill-creator/SKILL.md",
-      "compatibility": "Claude Code, Claude.ai, Cowork, Codex CLI, OpenCode (trigger evals need the claude CLI; codex trigger support is experimental)",
-      "environments": [
-        "coding"
-      ],
-      "targets": [
-        "codex",
-        "opencode"
-      ]
-    },
-    {
       "name": "sql-schema-design",
       "summary": "Apply module-encapsulation thinking to SQL schema design and query patterns.",
       "category": "architecture",
@@ -244,16 +220,6 @@
         "coding",
         "chat"
       ]
-    },
-    {
-      "name": "zettelkasten-value-hierarchy",
-      "summary": "Classify personal knowledge-base notes on an 8-level value hierarchy (Principle > System > Workflow > Automated Tool > Template > Checklist > Tool > Snippet).",
-      "category": "personal",
-      "path": "skills/zettelkasten-value-hierarchy/SKILL.md",
-      "environments": [
-        "chat"
-      ],
-      "version": "1.0"
     }
   ]
 }

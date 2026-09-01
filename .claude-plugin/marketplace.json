@@ -25,7 +25,7 @@
     {
       "name": "workflow",
       "source": "./plugins/workflow",
-      "description": "Planning and workflow skills: natural planning, status updates, skill authoring, and guideline distillation."
+      "description": "Planning and workflow skills: natural planning and repo status updates."
     },
     {
       "name": "communication",
@@ -35,7 +35,7 @@
     {
       "name": "personal",
       "source": "./plugins/personal",
-      "description": "Personal-domain skills: structured worry management, hypertrophy training programming, and Zettelkasten note valuation."
+      "description": "Personal-domain skills: hypertrophy training programming."
     }
   ]
 }

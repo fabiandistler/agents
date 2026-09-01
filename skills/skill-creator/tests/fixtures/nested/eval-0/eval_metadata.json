@@ -1,5 +1,0 @@
-{
-  "eval_id": 0,
-  "eval_name": "nested-eval-zero",
-  "prompt": "Write a plugin that reorders imports."
-}

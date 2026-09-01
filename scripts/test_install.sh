@@ -584,37 +584,54 @@ done <<< "$mig_members"
 [[ -L "$MIG_SKILLS/foreign-skill" ]] || fail "uninstall removed a foreign symlink"
 pass "pre-router flat member links are cleaned up on install and uninstall"
 
-# 37. A `targets:` skill installs only for the agents it lists. skill-creator
-#     opts out of claude (which ships its own), so it must reach codex and
-#     opencode only — and a stale link in the claude skills dir is cleaned up
-#     by the next install.
+# 37. A `targets:` skill installs only for the agents it lists. No shipped skill
+#     currently uses the field, so exercise it with a temporary fixture skill
+#     that opts out of claude: it must reach codex and opencode only — and a
+#     stale link in the claude skills dir is cleaned up by the next install.
+TGT_FIXTURE="$REPO_ROOT/skills/zz-targets-fixture"
+rm_tgt_fixture() { rm -rf "$TGT_FIXTURE"; }
+trap rm_tgt_fixture EXIT
+mkdir -p "$TGT_FIXTURE/scripts"
+cat >"$TGT_FIXTURE/SKILL.md" <<'FIXTURE'
+---
+name: zz-targets-fixture
+description: Temporary fixture used by test_install.sh to exercise the targets field.
+category: communication
+targets: codex, opencode
+---
+
+# Fixture
+FIXTURE
+: >"$TGT_FIXTURE/scripts/bundled.txt"
 HOME_TGT="$(mktemp -d)"
 mkdir -p "$HOME_TGT/.claude/skills"
-ln -s "$REPO_ROOT/skills/skill-creator" "$HOME_TGT/.claude/skills/skill-creator"
-HOME="$HOME_TGT" "$INSTALL" --target=all --category=workflow >/dev/null
-[[ ! -e "$HOME_TGT/.claude/skills/skill-creator" ]] \
-  || fail "targets: skill-creator installed for claude"
-[[ -f "$HOME_TGT/.codex/skills/skill-creator/scripts/run_eval.py" ]] \
-  || fail "targets: skill-creator missing (or incomplete) under codex"
-[[ -f "$HOME_TGT/.config/opencode/skills/skill-creator/scripts/run_eval.py" ]] \
-  || fail "targets: skill-creator missing (or incomplete) under opencode"
+ln -s "$TGT_FIXTURE" "$HOME_TGT/.claude/skills/zz-targets-fixture"
+HOME="$HOME_TGT" "$INSTALL" --target=all --category=communication >/dev/null
+[[ ! -e "$HOME_TGT/.claude/skills/zz-targets-fixture" ]] \
+  || fail "targets: fixture installed for claude"
+[[ -f "$HOME_TGT/.codex/skills/zz-targets-fixture/scripts/bundled.txt" ]] \
+  || fail "targets: fixture missing (or incomplete) under codex"
+[[ -f "$HOME_TGT/.config/opencode/skills/zz-targets-fixture/scripts/bundled.txt" ]] \
+  || fail "targets: fixture missing (or incomplete) under opencode"
 # Its category-mates are unaffected and keep their bundled files.
-[[ -f "$HOME_TGT/.claude/skills/guideline-distillation/SKILL.md" ]] \
-  || fail "guideline-distillation not installed as a whole directory for claude"
+[[ -f "$HOME_TGT/.claude/skills/documentation/SKILL.md" ]] \
+  || fail "documentation not installed as a whole directory for claude"
+rm_tgt_fixture
+trap - EXIT
 pass "targets: skips excluded agents and prunes a stale link"
 
 # 38. A dangling symlink left by a skill the repo no longer ships is pruned;
 #     foreign and still-valid links are left alone.
 HOME_STALE="$(mktemp -d)"
-HOME="$HOME_STALE" "$INSTALL" --target=claude --category=workflow >/dev/null
+HOME="$HOME_STALE" "$INSTALL" --target=claude --category=communication >/dev/null
 STALE_SKILLS="$HOME_STALE/.claude/skills"
 ln -s "$REPO_ROOT/skills/removed-skill" "$STALE_SKILLS/removed-skill"
 foreign_dangling="$(mktemp -d)/gone"
 ln -s "$foreign_dangling" "$STALE_SKILLS/foreign-dangling"
-HOME="$HOME_STALE" "$INSTALL" --target=claude --category=workflow >/dev/null
+HOME="$HOME_STALE" "$INSTALL" --target=claude --category=communication >/dev/null
 [[ ! -L "$STALE_SKILLS/removed-skill" ]] || fail "stale link for a removed skill survived"
 [[ -L "$STALE_SKILLS/foreign-dangling" ]] || fail "prune removed a foreign dangling symlink"
-[[ -L "$STALE_SKILLS/guideline-distillation" ]] || fail "prune removed a valid skill link"
+[[ -L "$STALE_SKILLS/documentation" ]] || fail "prune removed a valid skill link"
 pass "install prunes dangling links to skills the repo dropped"
 
 echo "all install.sh tests passed"
