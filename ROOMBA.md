@@ -45,14 +45,14 @@ without a run; ties break by catalogue order.
 |---|-----|----------|----------|
 | 1 | `deps-audit` | 2026-08-25 | 2026-09-01 |
 | 2 | `doc-drift` | 2026-08-27 | 2026-09-10 |
-| 3 | `dead-code` | never | due now |
-| 4 | `error-edges` | never | due now |
+| 3 | `dead-code` | 2026-08-27 | 2026-09-10 |
+| 4 | `error-edges` | 2026-08-27 | 2026-09-10 |
 | 5 | `test-flakiness` | 2026-08-27 | 2026-09-26 |
 | 6 | `security-footguns` | never | due now |
 | 7 | `perf-quickwins` | never | due now |
 
-**Next job to run: `dead-code` (#3)** — never run, and the lowest-numbered of
-the four jobs still tied at "never".
+**Next job to run: `security-footguns` (#6)** — never run, and the lower-numbered
+of the two jobs still tied at "never".
 
 ## Run log
 
@@ -115,6 +115,64 @@ config surfaces for skills installed from elsewhere, so whether they should
 stay is a scope call for the maintainer, not a drift fix. Noted here as the
 remainder.
 
+### 2026-08-27 — `dead-code`
+
+Four removals, each backed by a reference search across the whole tree
+(`git grep` for the identifier; counted against its definition sites):
+
+1. `eval-suite/recall/check_recall.py` — `score()` built
+   `valid = {e["name"] for e in menu}` and then discarded it via
+   `_ = valid  # (kept for future strict-menu validation)`. The `_ =` binding
+   is exactly what kept ruff's F841 quiet. No other reference to `valid` in
+   the file; removed both lines.
+2. `skills/coupling-cohesion/scripts/lcom.py` — `_r_oo_report(path, src,
+   oo_spans)` never reads `path`. Private helper (leading underscore) with one
+   call site, `analyze_r()` line 305; dropped the parameter at both ends.
+3. `scripts/test_install.sh` — `with_fake_home()` was defined at line 14 and
+   never called. `grep -c '\bwith_fake_home\b'` over the repo returns 1, the
+   definition itself. Every test in the file sets up its own `mktemp -d` HOME
+   inline; the helper has been unused since it was introduced.
+4. `eval-suite/import_vitals.R` — `title_to_pretty()` likewise defined and
+   never called; the importer writes `title: <slug>` straight into task.yaml.
+
+Verification: `ruff check .` clean, `python -m compileall` clean,
+`bash -n scripts/test_install.sh` clean, `scripts/test_install.sh` passes end
+to end (all 38 assertions), `check_recall.py --dry-run` prints the same menus
+as before (20 flat / 11 routed entries), and `lcom.py` produces identical
+output on an R fixture exercising both the R6 class path and the file path.
+
+Nothing behavioural: no branch, no output, and no public entry point changed.
+
+### 2026-08-27 — `error-edges`
+
+Report: [`roomba/reports/2026-08-27-error-edges.md`](roomba/reports/2026-08-27-error-edges.md)
+
+Nine findings across `scripts/`, `install.sh`, `mcp-wiki-server/`,
+`eval-suite/` and the skill scripts, each reproduced against a scratch copy of
+`6181c31`. Two shapes dominate.
+
+*Messages that never reach anyone.* `build_manifest.py`, `build_routers.py` and
+`check_descriptions.py` all raise `ValueError` with sentences written for a
+contributor, and none of their `main()` functions catch it — so the repo's
+most-hit CI failure ("Manifest in sync") prints a six-frame traceback instead.
+`install.sh`'s agent converter is worse: `except Exception: sys.exit(1)`
+discards the reason, the caller prints `WARN failed to convert <path>
+(skipping)` with no detail, and the install still exits 0 with one of the two
+promised subagents missing.
+
+*Failures that change results silently.* `eval-suite/run.sh` sends `setup.R`'s
+stderr to `/dev/null`, then runs the task anyway — a broken setup and a genuine
+model failure are indistinguishable in `results.csv`, which is the one thing
+the harness exists to compare. `churn.py` counts an unreadable file as one
+"gone from the tree". One dangling `*.md` symlink makes every call on a wiki
+topic raise `FileNotFoundError`, table of contents included.
+
+Report-only by catalogue rule; nothing changed. Five of the nine are a handful
+of lines each and need no behavioural decision. Also recorded four boundaries
+that are already handled well (`check_plugins.py`'s JSON reads,
+`utils.load_eval_set`, `churn.run_git`, the wiki server's `page=` traversal
+guard) so a later run does not re-litigate them.
+
 ### 2026-08-27 — `test-flakiness`
 
 Both of the repo's test suites reach into the *shared* system temp directory
@@ -160,3 +218,8 @@ randomness, or the network. `test_aggregate_benchmark.py` reads only committed
 fixtures; the `timeout=1` arguments in `EntryPointValidationTest` are never
 reached, since validation raises before any subprocess starts; every
 `$INSTALL` invocation in `test_install.sh` sets its own `HOME`.
+
+*Merge note (2026-09-01):* the `skill-creator` skill was removed from the repo
+after this run, so the `test_eval_set_validation.py` half of the fix no longer
+has a file to apply to and was dropped when this branch was merged up to
+`main`. The `scripts/test_install.sh` fix is unaffected and stands.

@@ -88,10 +88,8 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [guideline-distillation](skills/guideline-distillation/SKILL.md) | Distilling a style guide, ADR, RFC, wiki, or linter config into a lean project rules file for coding agents. |
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
 | [repo-status](skills/repo-status/SKILL.md) | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
-| [skill-creator](skills/skill-creator/SKILL.md) | Creating, editing, evaluating, or benchmarking skills in this repo. |
 
 ### Communication & writing (`communication`)
 
@@ -108,7 +106,6 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 | Skill | When to use |
 |---|---|
 | [hypertrophy-training](skills/hypertrophy-training/SKILL.md) | Experienced trainee: set volume, RIR/effort, auto-regulation, or diagnosing a stalled lift (educational). |
-| [zettelkasten-value-hierarchy](skills/zettelkasten-value-hierarchy/SKILL.md) | Classifying or promoting notes by value, or synthesizing higher-value systems/workflows from low-value notes. |
 
 For agents that auto-load `AGENTS.md` (Codex CLI, opencode, Aider): the
 links above are valid relative paths and may be fetched on demand. For
@@ -154,9 +151,8 @@ machine consumption prefer `skills.json`.
   - `targets` — comma-separated subset of `claude`, `codex`, `opencode`
     (e.g. `targets: codex, opencode`). `install.sh` never links the skill for
     an agent the field leaves out, and removes a link it had created there
-    before. Use it when a runtime already ships an equivalent of its own —
-    `skill-creator` opts out of claude for exactly that reason. A skill
-    without the field is installed for every target. Because `plugins/` is
+    before. Use it when a runtime already ships an equivalent of its own. A
+    skill without the field is installed for every target. Because `plugins/` is
     the Claude distribution, a skill that excludes `claude` also gets no
     plugin symlink (`scripts/check_plugins.py` knows this).
   - `metadata.version` — semver-ish string.

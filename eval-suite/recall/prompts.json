@@ -20,9 +20,7 @@
     { "prompt": "Help me wire up an LLM application — prompt structure, tool calling, evals for the agent.", "expected": "llm-application-engineering" },
     { "prompt": "Walk me through the lifecycle of an ML project from framing to deployment and monitoring.", "expected": "ml-project-lifecycle" },
 
-    { "prompt": "Turn our messy internal style notes into a distilled, enforceable set of coding guidelines.", "expected": "guideline-distillation" },
     { "prompt": "Draft the standup status update from this week's commits and my notes — what I did yesterday, what's next, blockers.", "expected": "repo-status" },
-    { "prompt": "Help me author a new Claude skill for this repo, with the right frontmatter and structure.", "expected": "skill-creator" },
 
     { "prompt": "Write up the three migration options side by side so the team can weigh them, with a timeline and a diagram of each.", "expected": "html-artifacts" }
   ]
