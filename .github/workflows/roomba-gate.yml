@@ -30,8 +30,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      # hashFiles() liest den Workspace und ist daher erst nach dem Checkout
-      # aussagekraeftig - auf Job-Ebene waere die Bedingung immer leer.
       - name: ruff (ungenutzte Imports/Variablen, unsichere Muster)
         if: hashFiles('pyproject.toml', 'requirements.txt') != ''
         run: uvx ruff check --select E,F,B,S .
