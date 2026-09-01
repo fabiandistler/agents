@@ -48,11 +48,11 @@ without a run; ties break by catalogue order.
 | 3 | `dead-code` | 2026-08-27 | 2026-09-10 |
 | 4 | `error-edges` | 2026-08-27 | 2026-09-10 |
 | 5 | `test-flakiness` | 2026-08-27 | 2026-09-26 |
-| 6 | `security-footguns` | never | due now |
-| 7 | `perf-quickwins` | never | due now |
+| 6 | `security-footguns` | 2026-08-27 | 2026-09-10 |
+| 7 | `perf-quickwins` | 2026-08-27 | 2026-09-26 |
 
-**Next job to run: `security-footguns` (#6)** — never run, and the lower-numbered
-of the two jobs still tied at "never".
+**Next job to run: `deps-audit` (#1)** — every job has now run; `deps-audit`
+is the only one past its cooldown (7d from 2026-08-25).
 
 ## Run log
 
@@ -223,3 +223,92 @@ reached, since validation raises before any subprocess starts; every
 after this run, so the `test_eval_set_validation.py` half of the fix no longer
 has a file to apply to and was dropped when this branch was merged up to
 `main`. The `scripts/test_install.sh` fix is unaffected and stands.
+
+### 2026-08-27 — `security-footguns`
+
+Report: [`roomba/reports/2026-08-27-security-footguns.md`](roomba/reports/2026-08-27-security-footguns.md)
+
+Seven findings. Nothing here handles credentials, so the interesting surface is
+elsewhere: this repo's outputs get *fed to agents and opened in browsers*, and
+two places put content the operator did not write somewhere it is trusted. Both
+were reproduced.
+
+**F1 — the wiki cache is `/tmp/mcp-wiki-cache` and `cache.exists()` is the only
+check.** The path does not depend on `WIKI_GIT_URL`, nothing verifies the
+directory is a clone of it (or a git repo at all), and a failed refresh
+deliberately serves whatever is there. A plain directory planted at that path is
+served as the wiki with the configured URL never contacted — reproduced against
+a nonexistent remote, output `- joins.md — # planted`. On a multi-user host that
+is one `mkdir` in `/tmp` to write an agent's reference material. Without an
+adversary the same shape silently serves a stale wiki forever after the URL
+changes.
+
+**F2 — `generate_viewer.R` splices model output into a `<script>` block.**
+`payload$…$solution` is the verbatim `solution.R` the CLI under test produced;
+JSON escaping covers `"` and `\` but not `<` or `/`, so a solution containing
+`</script>` closes the element early. Reproduced against the real
+`viewer.html.template`: the first `</script>` the browser sees is the one inside
+the payload, `DATA` is never assigned, and the injected element runs when the
+maintainer opens `viewer.html`. The template's DOM code is careful — all
+`textContent`, no `innerHTML` — but that care is defeated at HTML-parse time.
+Fix is three `gsub` calls to `\uXXXX`-escape `< > &`.
+
+Also: F3 the hardcoded `/home/user/agents` paths in `.mcp.json.example` (handed
+over by the 2026-08-25 `deps-audit` run — the same-day `doc-drift` run left it
+alone deliberately, since the fix is the config, not the prose); F4 `meta.json`
+built by string interpolation; F5 no `permissions:` block in CI; F6 `pyyaml>=6`
+unpinned in a workflow that pins ruff on principle; F7 the recall check passing
+its prompt on argv where `coder_cli_invoke` two directories away uses stdin.
+
+Report-only by design — this job never patches. Recorded six boundaries that
+are already sound (the `page=` traversal guard, the `--` guard on `git clone`,
+`install.sh`'s TOML name validation and marker discipline, no secrets in the
+tree, `coder_cli_invoke`'s backend allowlist) so a later run does not
+re-litigate them.
+
+*Method note:* R is not installed here, so F2's serialization step was
+reproduced with an equivalent JSON serializer rather than `jsonlite` itself.
+The claim rests on the RFC 8259 escape set, which `jsonlite` implements and
+offers no option to widen; worth re-confirming with `Rscript` where available.
+
+### 2026-08-27 — `perf-quickwins`
+
+Report: [`roomba/reports/2026-08-27-perf-quickwins.md`](roomba/reports/2026-08-27-perf-quickwins.md)
+
+Six findings, every number measured on `6181c31` — best-of-7 for wall clock,
+exact IO counts from patching `pathlib.Path.read_text` and shimming `grep` on
+`PATH`. Two are worth acting on; the report says so plainly rather than dressing
+up the other four.
+
+**F1 — `install.sh` forks 219 greps for one `--target=all` run.** Five
+frontmatter helpers each launch `grep -m1` against the same `SKILL.md`, nothing
+caches, and the main loop re-asks per (target, skill) pair. Attributed: 384 ms
+of the 875 ms run is those forks (44%), against 3.3 ms for the same 219 answers
+read in-process. Grows as skills × targets. One `awk` pass into an associative
+array fixes it without changing a single helper signature, and
+`test_install.sh` already covers the behaviour.
+
+**F2 — the wiki table of contents reads every page in full to take one line.**
+Measured over a realistic 61-page corpus: 523,633 bytes read to produce 1,038
+bytes of first lines, **504× amplification**, per call, uncached — and this is
+the no-argument call an agent makes to see what a topic holds. Fix is to iterate
+the file object and break; it composes with the `error-edges` job's F4, which
+wants a guarded read on that exact loop.
+
+**F3 — CI launches Python 25 times to validate 25 files** (1055 ms, 42 ms each,
+against 11 ms bare startup), and runs `quick_validate.py` a *second* time for a
+failing skill purely to recover the message the first run discarded to
+`/dev/null`. The two-line capture-once fix is strictly better.
+
+F4-F6 are read amplification in the check scripts (`check_plugins.py` 3× per
+`SKILL.md`, `check_docs.py` 2×, `build_routers.py` re-parsing `skills.json` per
+category) and a linear scan in `check_recall.py`. All are real, none is worth a
+PR: those scripts run in ~30 ms, mostly interpreter startup. Reported as scaling
+and duplication notes — four separate implementations of "parse this frontmatter
+field" now exist while `build_manifest.py` exports a real parser two of the
+scripts already import. Should ride along with unrelated work on those files.
+
+Report-only by catalogue rule. Also recorded five hot paths that are already
+right (`churn.py`'s single `git log` pass and single-buffer `measure()`,
+`lcom.py`'s one-parse-per-file, the manifest being read once everywhere except
+F6) so a later run does not re-open them.
