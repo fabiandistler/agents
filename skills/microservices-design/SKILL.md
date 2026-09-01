@@ -78,6 +78,6 @@ service. Not for deciding whether to use microservices at all
 ## Source
 
 Distilled from Sam Newman, *Building Microservices: Designing Fine-Grained
-Systems*, 2nd ed. (O'Reilly, 2021), chapters 2–6 and 12, via the
-`guideline-distillation` method: generic best practice is omitted; only
-non-obvious forks with a wrong likely-default survive.
+Systems*, 2nd ed. (O'Reilly, 2021), chapters 2–6 and 12: generic best
+practice is omitted; only non-obvious forks with a wrong likely-default
+survive.

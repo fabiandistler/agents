@@ -1,1 +1,0 @@
-prompt-only directory that must be skipped by the aggregator

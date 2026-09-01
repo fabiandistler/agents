@@ -302,7 +302,7 @@ def analyze_r(path: Path, source: str) -> list[ModuleReport]:
     reports: list[ModuleReport] = []
 
     oo_spans: list[tuple[int, int]] = []
-    reports.extend(_r_oo_report(path, src, oo_spans))
+    reports.extend(_r_oo_report(src, oo_spans))
 
     # File mode: top-level `name <- function(...)`, excluding methods that
     # live inside an R6Class / setRefClass block (already covered by OO mode).
@@ -331,9 +331,7 @@ def _r_function_body(source: str, open_paren_idx: int) -> str:
     return source[open_paren_idx:end if end != -1 else len(source)]
 
 
-def _r_oo_report(
-    path: Path, src: str, oo_spans: list[tuple[int, int]]
-) -> list[ModuleReport]:
+def _r_oo_report(src: str, oo_spans: list[tuple[int, int]]) -> list[ModuleReport]:
     """Detect R6Class / setRefClass objects and treat methods+fields as a class.
 
     Records each object's character span in `oo_spans` so file mode can skip

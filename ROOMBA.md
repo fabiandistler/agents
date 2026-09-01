@@ -45,14 +45,14 @@ without a run; ties break by catalogue order.
 |---|-----|----------|----------|
 | 1 | `deps-audit` | 2026-08-25 | 2026-09-01 |
 | 2 | `doc-drift` | 2026-08-27 | 2026-09-10 |
-| 3 | `dead-code` | never | due now |
-| 4 | `error-edges` | never | due now |
-| 5 | `test-flakiness` | never | due now |
-| 6 | `security-footguns` | never | due now |
+| 3 | `dead-code` | 2026-08-27 | 2026-09-10 |
+| 4 | `error-edges` | 2026-08-27 | 2026-09-10 |
+| 5 | `test-flakiness` | 2026-08-27 | 2026-09-26 |
+| 6 | `security-footguns` | 2026-08-27 | 2026-09-10 |
 | 7 | `perf-quickwins` | 2026-08-27 | 2026-09-26 |
 
-**Next job to run: `dead-code` (#3)** — never run, and the lowest-numbered of
-the four jobs still tied at "never".
+**Next job to run: `deps-audit` (#1)** — every job has now run; `deps-audit`
+is the only one past its cooldown (7d from 2026-08-25).
 
 ## Run log
 
@@ -114,6 +114,162 @@ reference `/triage`, `/wayfinder`, `/domain-modeling`, `/grill-with-docs` and
 config surfaces for skills installed from elsewhere, so whether they should
 stay is a scope call for the maintainer, not a drift fix. Noted here as the
 remainder.
+
+### 2026-08-27 — `dead-code`
+
+Four removals, each backed by a reference search across the whole tree
+(`git grep` for the identifier; counted against its definition sites):
+
+1. `eval-suite/recall/check_recall.py` — `score()` built
+   `valid = {e["name"] for e in menu}` and then discarded it via
+   `_ = valid  # (kept for future strict-menu validation)`. The `_ =` binding
+   is exactly what kept ruff's F841 quiet. No other reference to `valid` in
+   the file; removed both lines.
+2. `skills/coupling-cohesion/scripts/lcom.py` — `_r_oo_report(path, src,
+   oo_spans)` never reads `path`. Private helper (leading underscore) with one
+   call site, `analyze_r()` line 305; dropped the parameter at both ends.
+3. `scripts/test_install.sh` — `with_fake_home()` was defined at line 14 and
+   never called. `grep -c '\bwith_fake_home\b'` over the repo returns 1, the
+   definition itself. Every test in the file sets up its own `mktemp -d` HOME
+   inline; the helper has been unused since it was introduced.
+4. `eval-suite/import_vitals.R` — `title_to_pretty()` likewise defined and
+   never called; the importer writes `title: <slug>` straight into task.yaml.
+
+Verification: `ruff check .` clean, `python -m compileall` clean,
+`bash -n scripts/test_install.sh` clean, `scripts/test_install.sh` passes end
+to end (all 38 assertions), `check_recall.py --dry-run` prints the same menus
+as before (20 flat / 11 routed entries), and `lcom.py` produces identical
+output on an R fixture exercising both the R6 class path and the file path.
+
+Nothing behavioural: no branch, no output, and no public entry point changed.
+
+### 2026-08-27 — `error-edges`
+
+Report: [`roomba/reports/2026-08-27-error-edges.md`](roomba/reports/2026-08-27-error-edges.md)
+
+Nine findings across `scripts/`, `install.sh`, `mcp-wiki-server/`,
+`eval-suite/` and the skill scripts, each reproduced against a scratch copy of
+`6181c31`. Two shapes dominate.
+
+*Messages that never reach anyone.* `build_manifest.py`, `build_routers.py` and
+`check_descriptions.py` all raise `ValueError` with sentences written for a
+contributor, and none of their `main()` functions catch it — so the repo's
+most-hit CI failure ("Manifest in sync") prints a six-frame traceback instead.
+`install.sh`'s agent converter is worse: `except Exception: sys.exit(1)`
+discards the reason, the caller prints `WARN failed to convert <path>
+(skipping)` with no detail, and the install still exits 0 with one of the two
+promised subagents missing.
+
+*Failures that change results silently.* `eval-suite/run.sh` sends `setup.R`'s
+stderr to `/dev/null`, then runs the task anyway — a broken setup and a genuine
+model failure are indistinguishable in `results.csv`, which is the one thing
+the harness exists to compare. `churn.py` counts an unreadable file as one
+"gone from the tree". One dangling `*.md` symlink makes every call on a wiki
+topic raise `FileNotFoundError`, table of contents included.
+
+Report-only by catalogue rule; nothing changed. Five of the nine are a handful
+of lines each and need no behavioural decision. Also recorded four boundaries
+that are already handled well (`check_plugins.py`'s JSON reads,
+`utils.load_eval_set`, `churn.run_git`, the wiki server's `page=` traversal
+guard) so a later run does not re-litigate them.
+
+### 2026-08-27 — `test-flakiness`
+
+Both of the repo's test suites reach into the *shared* system temp directory
+and assume it behaves like private scratch space. Two fixes, one per suite.
+
+**`test_eval_set_validation.py::test_rejects_a_missing_file` failed on the
+contents of `/tmp`.** It called
+`load_eval_set(Path(tempfile.gettempdir()) / "definitely-missing-eval-set.json")`
+and asserted the read raises — i.e. it bet that no other process on the machine
+had ever written that exact name. Reproduced on `6181c31` by creating the file
+and running the suite:
+
+    AssertionError: EvalSetFormatError not raised
+    Ran 5 tests in 0.002s
+    FAILED (failures=1)
+
+The path now lives inside the test's own `TemporaryDirectory`, so "missing" is
+a fact the test controls. Re-run under the same condition (the `/tmp` file
+still present): 5 tests, OK.
+
+Same class, same cause: `_write()` called `tempfile.mkdtemp()` per invocation
+and never cleaned up, so every run left four directories in that same shared
+namespace. Moved to one `TemporaryDirectory` per test via `addCleanup`, with a
+counter in the filename so repeated `_write()` calls in one test stay distinct
+(`test_rejects_the_two_level_object_shape` asserts on the exact path, so the
+name has to stay predictable).
+
+**`scripts/test_install.sh` leaked 29 directories per run.** It builds a
+throwaway `$HOME` with `mktemp -d` for nearly every assertion — 30 call sites —
+and deleted none of them. Measured on `6181c31`: `/tmp` went from 57 entries to
+86 across a single run. `TMPDIR` now points at one root the script owns, so all
+30 land inside it, and an `EXIT` trap removes that root — but only on success,
+so a red CI run stays inspectable and says where the tree is.
+
+Verification: 37 skill-creator unit tests pass; `scripts/test_install.sh`
+passes end to end with `/tmp` unchanged at 57 entries before and after;
+`ruff check .` and `bash -n scripts/test_install.sh` clean. No assertion was
+weakened, added, or removed — `test_rejects_a_missing_file` still exercises
+exactly the `OSError` path in `utils.load_eval_set`.
+
+Checked and found clean: nothing in either suite depends on wall-clock time,
+randomness, or the network. `test_aggregate_benchmark.py` reads only committed
+fixtures; the `timeout=1` arguments in `EntryPointValidationTest` are never
+reached, since validation raises before any subprocess starts; every
+`$INSTALL` invocation in `test_install.sh` sets its own `HOME`.
+
+*Merge note (2026-09-01):* the `skill-creator` skill was removed from the repo
+after this run, so the `test_eval_set_validation.py` half of the fix no longer
+has a file to apply to and was dropped when this branch was merged up to
+`main`. The `scripts/test_install.sh` fix is unaffected and stands.
+
+### 2026-08-27 — `security-footguns`
+
+Report: [`roomba/reports/2026-08-27-security-footguns.md`](roomba/reports/2026-08-27-security-footguns.md)
+
+Seven findings. Nothing here handles credentials, so the interesting surface is
+elsewhere: this repo's outputs get *fed to agents and opened in browsers*, and
+two places put content the operator did not write somewhere it is trusted. Both
+were reproduced.
+
+**F1 — the wiki cache is `/tmp/mcp-wiki-cache` and `cache.exists()` is the only
+check.** The path does not depend on `WIKI_GIT_URL`, nothing verifies the
+directory is a clone of it (or a git repo at all), and a failed refresh
+deliberately serves whatever is there. A plain directory planted at that path is
+served as the wiki with the configured URL never contacted — reproduced against
+a nonexistent remote, output `- joins.md — # planted`. On a multi-user host that
+is one `mkdir` in `/tmp` to write an agent's reference material. Without an
+adversary the same shape silently serves a stale wiki forever after the URL
+changes.
+
+**F2 — `generate_viewer.R` splices model output into a `<script>` block.**
+`payload$…$solution` is the verbatim `solution.R` the CLI under test produced;
+JSON escaping covers `"` and `\` but not `<` or `/`, so a solution containing
+`</script>` closes the element early. Reproduced against the real
+`viewer.html.template`: the first `</script>` the browser sees is the one inside
+the payload, `DATA` is never assigned, and the injected element runs when the
+maintainer opens `viewer.html`. The template's DOM code is careful — all
+`textContent`, no `innerHTML` — but that care is defeated at HTML-parse time.
+Fix is three `gsub` calls to `\uXXXX`-escape `< > &`.
+
+Also: F3 the hardcoded `/home/user/agents` paths in `.mcp.json.example` (handed
+over by the 2026-08-25 `deps-audit` run — the same-day `doc-drift` run left it
+alone deliberately, since the fix is the config, not the prose); F4 `meta.json`
+built by string interpolation; F5 no `permissions:` block in CI; F6 `pyyaml>=6`
+unpinned in a workflow that pins ruff on principle; F7 the recall check passing
+its prompt on argv where `coder_cli_invoke` two directories away uses stdin.
+
+Report-only by design — this job never patches. Recorded six boundaries that
+are already sound (the `page=` traversal guard, the `--` guard on `git clone`,
+`install.sh`'s TOML name validation and marker discipline, no secrets in the
+tree, `coder_cli_invoke`'s backend allowlist) so a later run does not
+re-litigate them.
+
+*Method note:* R is not installed here, so F2's serialization step was
+reproduced with an equivalent JSON serializer rather than `jsonlite` itself.
+The claim rests on the RFC 8259 escape set, which `jsonlite` implements and
+offers no option to widen; worth re-confirming with `Rscript` where available.
 
 ### 2026-08-27 — `perf-quickwins`
 
