@@ -1,6 +1,6 @@
 {
   "name": "workflow",
-  "description": "Planning and workflow skills: natural planning, status updates, skill authoring, and guideline distillation.",
+  "description": "Planning and workflow skills: natural planning and repo status updates.",
   "author": {
     "name": "Fabian Distler"
   }

@@ -27,8 +27,7 @@ Do **not** use for:
   component views) use `c4-modeling`; this skill only says where a diagram goes
   in the surrounding document.
 - **Rules files for coding agents** (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`) —
-  those are distilled constraints, not documentation. Use
-  `guideline-distillation`.
+  those are distilled constraints, not documentation, and out of scope here.
 - **The shape of an explanatory passage** — when a section has to explain a
   concept, `problem-first-explanation` governs its structure (problem before
   solution). It composes with this skill rather than replacing it.

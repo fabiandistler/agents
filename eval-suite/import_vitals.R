@@ -24,15 +24,6 @@ message(sprintf("[import_vitals] fetching %s", ARE_URL))
 are <- jsonlite::fromJSON(ARE_URL, simplifyDataFrame = TRUE)
 message(sprintf("[import_vitals] found %d tasks", nrow(are)))
 
-title_to_pretty <- function(slug) {
-  words <- strsplit(slug, "-")[[1]]
-  paste(
-    c(toupper(substr(words[1], 1, 1)), substr(words[1], 2, nchar(words[1])),
-      if (length(words) > 1) c(" ", paste(words[-1], collapse = "-")) else NULL),
-    collapse = ""
-  )
-}
-
 created <- 0L
 skipped <- 0L
 
