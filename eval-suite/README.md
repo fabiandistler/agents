@@ -33,6 +33,15 @@ runs/<ts>/
     opencode.stderr # captured stderr from opencode run
 ```
 
+## Requirements
+
+- **R** with `testthat`, `lintr`, `yaml`, `jsonlite`, `withr`, `digest`, plus
+  whatever the tasks' `tests.R` need (`data.table`, `DBI`, `RSQLite` for the
+  four custom tasks). On Debian/Ubuntu the distro binaries are enough:
+  `apt-get install r-base-core r-cran-{testthat,lintr,yaml,jsonlite,withr,digest,data.table,dbi,rsqlite}`
+- **opencode** on `PATH` (the CLI under test) — not needed in mock mode.
+- **claude** on `PATH` for the LLM judge — not needed with `--no-judge`.
+
 ## Running
 
 ```sh
@@ -113,8 +122,17 @@ In skip cases, `judge.R` still writes a stub `judge.json` with `skipped: true`
 so downstream aggregation and the viewer handle it uniformly.
 
 Override the judge model with `JUDGE_MODEL=claude-...` (default
-`claude-sonnet-4-20250514`). Each `judge.json` records `judge_model` and
-`judge_prompt_sha256` so reruns can detect drift.
+`claude-sonnet-5`). The default has to name a model that is still served —
+a retired id makes every call 404 and the whole judge column silently
+collapses to `judge: —`. `results.md` now prints a **Judge broken** banner
+when that happens, and `judge.R` logs a `[judge] FAILED …` line per call.
+Each `judge.json` records `judge_model` and `judge_prompt_sha256` so reruns
+can detect drift.
+
+Caveat for **target mode**: the judge derives its own criteria per call, so
+the criteria count can differ between the two configs for the same task. The
+`Δ judge passed` column is therefore only comparable for expectations-mode
+tasks, where both configs are graded against the same fixed list.
 
 Cost: ~1 API call per (config, task), so the default 2 × 33 = 66 calls per run.
 Use `--task <id>` to run a subset.
@@ -136,7 +154,7 @@ open runs/<ts>/viewer.html            # macOS
 2. Write `task.yaml` with `id`, `title`, `prompt`, and either:
    - `expectations` — explicit list of pass/fail criteria the LLM judge evaluates, or
    - `target` — a reference solution / grading rubric; the judge derives criteria from it
-3. Optional: `tests.R` — `testthat` expectations against `solution.R` (objective score; tasks without it are judge-only)
+3. Optional: `tests.R` — `testthat` expectations against `solution.R` (objective score; tasks without it are judge-only and show up as `judge-only` in the test column)
 4. Optional: `setup.R` to create input data, `target.R` to ship a fn-under-test
 
 ### Importing tasks from vitals
@@ -157,3 +175,7 @@ If `OPENCODE_MOCK_DIR` is set, the runner copies fixtures from
 `$OPENCODE_MOCK_DIR/<config>/<task>/solution.R` instead of calling opencode.
 The judge is skipped automatically. Useful for verifying `score.R`,
 `aggregate.R`, and `generate_viewer.R` end-to-end without burning tokens.
+
+`fixtures/` only covers the four custom tasks; the 29 vitals tasks have no
+fixture and show up as **no file** in a mock run. That is expected — mock
+mode exercises the harness, not the task bank.
