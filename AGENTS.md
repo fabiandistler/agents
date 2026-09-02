@@ -75,7 +75,7 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [refactoring](skills/refactoring/SKILL.md) | Restructuring existing code safely, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| [refactoring](skills/refactoring/SKILL.md) | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
 
 ### AI & ML (`ai-ml`)
 
@@ -180,6 +180,13 @@ Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. 
 ### Triage labels
 
 The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Global rules block
+
+Two always-on rules (verification before completion, path classification before
+building) live in [`docs/global-rules.md`](docs/global-rules.md) to be pasted
+into each runtime's global rules file. They are not skills and are not
+installed by `install.sh`.
 
 ### Domain docs
 

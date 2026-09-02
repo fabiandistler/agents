@@ -134,6 +134,7 @@ Symlinks that point outside this repo are never touched.
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
 | `mcp-wiki-server/` | Standalone MCP server exposing a wiki / knowledge-base tool to MCP-aware agents. Not used by the plugins |
 | `scripts/` | Repo tooling (manifest generator, consistency checks) |
+| `docs/` | Repo-internal notes: agent conventions (`docs/agents/`) and the [global rules block](docs/global-rules.md) meant for `~/.claude/CLAUDE.md` / global `AGENTS.md` |
 
 ## Skill catalogue
 
@@ -163,7 +164,7 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/refactoring/` | Restructuring existing code safely, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| `skills/refactoring/` | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
 
 ### AI & ML (`ai-ml`)
 
