@@ -2,9 +2,9 @@
 name: refactoring
 category: refactoring
 environments: coding
-description: Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict. Use whenever the user wants to restructure existing code, triage code-review findings, judge whether a refactor is safe to start, build a feature test-first or in red-green-refactor cycles, or plan a migration, cutover, or rollout where what could go wrong matters.
+description: Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict. Use whenever the user wants to restructure existing code, work through review feedback or PR comments, judge whether a refactor is safe to start, build a feature test-first or in red-green cycles, or plan a migration, cutover, or rollout where what could go wrong matters.
 metadata:
-  version: "3.1"
+  version: "3.2"
 ---
 
 # Refactoring & risky changes
@@ -44,6 +44,40 @@ restructure is not an invitation to also fix the bugs you notice on the way.
 
 Fix-worthy things you spot while working belong in that same list, described
 precisely enough to act on later.
+
+## Take review feedback apart before implementing it
+
+Feedback arrives as a list, and a list invites working down it. Two places in
+that list reliably cost something: the start, and the source.
+
+**Clarify unclear items before touching any of them.** When some items in a
+batch are clear and others aren't, the pull is to bank the clear ones now and
+ask about the rest afterwards. Review items are frequently coupled — item 5 is
+often the reason item 2 reads the way it does — so work built on partial
+understanding has to be unpicked, and the unpicking costs more than the wait
+would have. Say which items you understood and which you didn't, and ask before
+starting on any of them.
+
+**A suggestion is a hypothesis about this codebase, not a fact about it.** For
+feedback from someone without full context — an external reviewer, a review
+bot, a drive-by comment — check before implementing: does the current code look
+that way for a reason the reviewer can't see (a compatibility floor, a platform
+version, a decision made upstream)? does the change break something that's
+tested? When the suggestion is to "implement this properly", grep for callers
+first: properly implementing an endpoint nothing calls is the same round-up as
+the section above, arriving with a reviewer's authority attached. Feedback from
+the person who owns the code is a different case — understand it, ask if the
+scope is unclear, then do it.
+
+When a suggestion is wrong, the useful response carries the evidence: the case
+that breaks, the version floor, the grep that found no callers. When you can't
+verify a claim from where you are, say that rather than implementing on the
+reviewer's confidence. And when you pushed back and were wrong, one factual
+sentence closes it — what you checked, what it showed, what you're doing now.
+
+*Forged from [obra/superpowers `receiving-code-review`](https://github.com/obra/superpowers/blob/main/skills/receiving-code-review/SKILL.md)
+(MIT), 2026-09. Revisit 2027-03-01: if no review batch has gone wrong in either
+of these two ways by then, this section is decoration — cut it.*
 
 ## Refactor or change behavior — never in the same step
 
@@ -161,6 +195,7 @@ Recorded so it doesn't get helpfully re-added:
 - **Wall-clock and calendar rules** ("steps under 30 minutes", "changes under 2 weeks"). An agent has no calibration for either, so they resolve to noise.
 - **Outcome checklists** ("complexity below 10", "team more confident", "delivery speed improved"). Not observable from inside the task, so they get answered by assertion rather than evidence.
 - **A router with separate sub-skills.** At this size the indirection cost more than it saved.
+- **The rest of the review-reception playbook.** Implementation order (blocking → simple → complex), testing each fix on its own, and the ban on performative agreement ("You're absolutely right!"). The baseline already sequences a review backlog sensibly and tests as it goes, and the anti-sycophancy rule is general conduct — it belongs in a rules file, not in refactoring guidance.
 - **Co-change / temporal-coupling analysis in the churn script.** Which files keep changing together is a real signal, but it needs a pair pass over the log and a section explaining how to read it — enough weight to stop the script being the small thing it is. Deliberately left out; reconsider only with evidence that the hotspot ranking alone leaves the question unanswered.
 
 Before adding anything back, check it against a no-skill baseline on the same

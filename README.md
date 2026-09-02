@@ -163,7 +163,7 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/refactoring/` | Restructuring existing code safely, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| `skills/refactoring/` | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
 
 ### AI & ML (`ai-ml`)
 
