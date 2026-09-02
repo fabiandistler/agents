@@ -181,13 +181,6 @@ Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. 
 
 The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
-### Global rules block
-
-Two always-on rules (verification before completion, path classification before
-building) live in [`docs/global-rules.md`](docs/global-rules.md) to be pasted
-into each runtime's global rules file. They are not skills and are not
-installed by `install.sh`.
-
 ### Domain docs
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
