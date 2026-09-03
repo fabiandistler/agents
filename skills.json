@@ -32,7 +32,7 @@
     },
     {
       "name": "architecture-pattern-advisor",
-      "summary": "Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion).",
+      "summary": "Choose a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion), not generic project setup.",
       "category": "architecture",
       "path": "skills/architecture-pattern-advisor/SKILL.md",
       "environments": [
@@ -41,7 +41,7 @@
     },
     {
       "name": "c4-modeling",
-      "summary": "Draft a C4 model of a software system with the user and render it as Mermaid diagrams.",
+      "summary": "Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4).",
       "category": "architecture",
       "path": "skills/c4-modeling/SKILL.md",
       "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, VS Code, and most Markdown tools. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
@@ -92,7 +92,7 @@
     },
     {
       "name": "fitness-functions",
-      "summary": "Design and implement architecture fitness functions.",
+      "summary": "Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes.",
       "category": "architecture",
       "path": "skills/fitness-functions/SKILL.md",
       "environments": [
@@ -131,7 +131,7 @@
     },
     {
       "name": "logical-component-design",
-      "summary": "Forward, generative decomposition of a NEW system or feature into named logical components — Richards & Ford's iterative identify-and-refine cycle.",
+      "summary": "Decompose a NEW system or feature into named logical components; to measure an existing decomposition use coupling-cohesion instead.",
       "category": "architecture",
       "path": "skills/logical-component-design/SKILL.md",
       "environments": [
@@ -140,7 +140,7 @@
     },
     {
       "name": "microservices-design",
-      "summary": "Apply distilled microservices design conventions from Newman's *Building Microservices* when designing or reviewing how services interact.",
+      "summary": "Design or review how services interact — boundaries, coupling, communication style, contract versioning, sagas, resiliency patterns.",
       "category": "architecture",
       "path": "skills/microservices-design/SKILL.md",
       "environments": [
@@ -202,7 +202,7 @@
     },
     {
       "name": "sql-schema-design",
-      "summary": "Apply module-encapsulation thinking to SQL schema design and query patterns.",
+      "summary": "Give database consumers a stable interface so physical storage can change without breaking their queries — views as the contract, named CTE pipelines, deployment gates against schema drift.",
       "category": "architecture",
       "path": "skills/sql-schema-design/SKILL.md",
       "environments": [

@@ -2,7 +2,7 @@
 name: microservices-design
 category: architecture
 environments: coding
-description: Apply distilled microservices design conventions from Newman's *Building Microservices* when designing or reviewing how services interact. Covers boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns.
+description: Design or review how services interact — boundaries, coupling, communication style, contract versioning, sagas, resiliency patterns. Distilled conventions from Newman's *Building Microservices*.
 metadata:
   version: "1.0"
 ---

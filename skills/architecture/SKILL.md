@@ -29,14 +29,14 @@ model's trigger surface.
 | Sub-skill | When to use | Read before acting |
 |---|---|---|
 | adr-workflow | Establish and maintain Architecture Decision Records (ADRs) in software repositories. | `members/adr-workflow/SKILL.md` |
-| architecture-pattern-advisor | Use when choosing the architecture of a repository — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). | `members/architecture-pattern-advisor/SKILL.md` |
-| c4-modeling | Draft a C4 model of a software system with the user and render it as Mermaid diagrams. | `members/c4-modeling/SKILL.md` |
+| architecture-pattern-advisor | Choose a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion), not generic project setup. | `members/architecture-pattern-advisor/SKILL.md` |
+| c4-modeling | Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4). | `members/c4-modeling/SKILL.md` |
 | coupling-cohesion | Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov). | `members/coupling-cohesion/SKILL.md` |
 | ddd | Domain-Driven Design end to end — strategic subdomain classification and context mapping, tactical pattern choice, and implementation conventions for aggregates, value objects, and events. | `members/ddd/SKILL.md` |
-| fitness-functions | Design and implement architecture fitness functions. | `members/fitness-functions/SKILL.md` |
-| logical-component-design | Forward, generative decomposition of a NEW system or feature into named logical components — Richards & Ford's iterative identify-and-refine cycle. | `members/logical-component-design/SKILL.md` |
-| microservices-design | Apply distilled microservices design conventions from Newman's *Building Microservices* when designing or reviewing how services interact. | `members/microservices-design/SKILL.md` |
-| sql-schema-design | Apply module-encapsulation thinking to SQL schema design and query patterns. | `members/sql-schema-design/SKILL.md` |
+| fitness-functions | Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes. | `members/fitness-functions/SKILL.md` |
+| logical-component-design | Decompose a NEW system or feature into named logical components; to measure an existing decomposition use coupling-cohesion instead. | `members/logical-component-design/SKILL.md` |
+| microservices-design | Design or review how services interact — boundaries, coupling, communication style, contract versioning, sagas, resiliency patterns. | `members/microservices-design/SKILL.md` |
+| sql-schema-design | Give database consumers a stable interface so physical storage can change without breaking their queries — views as the contract, named CTE pipelines, deployment gates against schema drift. | `members/sql-schema-design/SKILL.md` |
 <!-- END generated:members -->
 
 The table above is generated from `skills.json` by
