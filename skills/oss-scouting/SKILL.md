@@ -221,6 +221,3 @@ Written 2026-09-02. The guardrails come from the 2026 AI-slop debate in open
 source (curl, Ghostty, tldraw; GitHub's PR throttle): unreviewed
 machine-generated contributions cost maintainers more than they give, so this
 skill produces material for the user to verify and submit, never a submission.
-
-Teardown 2027-03-01 — if no contribution from a scouting run has been submitted
-by then, delete the skill.
