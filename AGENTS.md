@@ -141,8 +141,10 @@ machine consumption prefer `skills.json`.
     metadata. Codex custom prompts are deprecated, so under codex they install
     into `~/.codex/skills/` like any skill, gated by an `agents/openai.yaml`
     sidecar (`policy.allow_implicit_invocation: false`) that keeps Codex from
-    auto-triggering them. For Claude, pair `command` with
-    `disable-model-invocation: true` in the same frontmatter (the runtime
+    auto-triggering them. That sidecar is committed per skill, at
+    `skills/<name>/agents/openai.yaml` — `install.sh` links it, it does not
+    generate it, and no CI check notices a missing one. For Claude, pair
+    `command` with `disable-model-invocation: true` in the same frontmatter (the runtime
     realization Claude honors; ignored elsewhere).
   - `compatibility` — runtime / language requirements in plain prose.
   - `environments` — comma-separated list of the environments the skill
