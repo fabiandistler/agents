@@ -29,7 +29,7 @@ job.
 ## Non-negotiable rules
 
 1. **Local only.** No fork, no push, no PR, no issue comment, no reaction, no
-   new issue. A read-only clone into a scratch folder is allowed.
+   new issue. A read-only clone into a throwaway cache folder is allowed.
 2. **Policy before search.** If the project rejects AI-assisted contributions,
    the run ends with a report — without reviewing a single issue.
 3. **Quality over count.** At most 3 candidates. Zero candidates is a valid
@@ -55,10 +55,27 @@ Copy the checklist and work through it:
 
 ### 0 Setup
 
-Without a repo slug, ask — one run, one library. Folder layout:
+Without a repo slug, ask — one run, one library.
+
+Resolve the artifact root first. It defaults to `~/oss-scouting/` and is
+overridden by `OSS_SCOUTING_HOME`. These are documents the user opens, runs, and
+copies into a pull request, so they live somewhere visible and stable across
+runs — not under `~/.local/share`, and never inside a git work tree, where a
+`git add .` would sweep them into an unrelated commit:
+
+```bash
+root="${OSS_SCOUTING_HOME:-$HOME/oss-scouting}"
+mkdir -p "$root"
+if git -C "$root" rev-parse --show-toplevel >/dev/null 2>&1; then
+  echo "refusing: $root is inside a git work tree" >&2; exit 1
+fi
+```
+
+Stop on that refusal and ask the user for a root outside any repository. Folder
+layout under the resolved root:
 
 ```
-oss-scouting/<owner>-<repo>/<YYYY-MM-DD>/
+<root>/<owner>-<repo>/<YYYY-MM-DD>/
   README.md              policy summary, ranking, rejected issues
   01-issue-<nr>/
     repro.<ext>          runnable, minimal, expected vs. actual output
@@ -67,7 +84,7 @@ oss-scouting/<owner>-<repo>/<YYYY-MM-DD>/
     test.<ext>           test case in the project's own test framework
     submit-checklist.md  filled in per project
   02-issue-<nr>/ …
-oss-scouting/LOG.md      every run: date, repo, issue numbers reviewed, outcome
+<root>/LOG.md            every run: date, repo, issue numbers reviewed, outcome
 ```
 
 Read `LOG.md` before reviewing: an issue already checked is only revisited if it
@@ -131,7 +148,11 @@ the criteria to fill the list.
 
 ### 3 Working up each candidate
 
-Read-only clone into scratch (`git clone --depth 50`), current `main`.
+Read-only clone (`git clone --depth 50`), current `main`. The clone is
+regenerable, so it belongs in cache rather than in the artifact tree — use
+`mktemp -d` or `${XDG_CACHE_HOME:-$HOME/.cache}/oss-scouting/<owner>-<repo>/`.
+Keeping the two apart means deleting the clone never risks the analysis, and the
+upstream repo's own tooling never sees the notes.
 
 1. **repro**: minimal, runnable, with version information, expected vs. actual
    output as a comment. Run it. If it doesn't reproduce → drop the candidate and
