@@ -89,6 +89,7 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 | Skill | When to use |
 |---|---|
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
+| [oss-scouting](skills/oss-scouting/SKILL.md) | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
 | [repo-status](skills/repo-status/SKILL.md) | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
 
 ### Communication & writing (`communication`)
@@ -140,8 +141,10 @@ machine consumption prefer `skills.json`.
     metadata. Codex custom prompts are deprecated, so under codex they install
     into `~/.codex/skills/` like any skill, gated by an `agents/openai.yaml`
     sidecar (`policy.allow_implicit_invocation: false`) that keeps Codex from
-    auto-triggering them. For Claude, pair `command` with
-    `disable-model-invocation: true` in the same frontmatter (the runtime
+    auto-triggering them. That sidecar is committed per skill, at
+    `skills/<name>/agents/openai.yaml` — `install.sh` links it, it does not
+    generate it, and no CI check notices a missing one. For Claude, pair
+    `command` with `disable-model-invocation: true` in the same frontmatter (the runtime
     realization Claude honors; ignored elsewhere).
   - `compatibility` — runtime / language requirements in plain prose.
   - `environments` — comma-separated list of the environments the skill

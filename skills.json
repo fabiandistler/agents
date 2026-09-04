@@ -170,6 +170,18 @@
       "version": "1.0"
     },
     {
+      "name": "oss-scouting",
+      "summary": "Scout one third-party open-source repository for open issues that suit a small, clean contribution, and write repro, root-cause analysis, fix diff, test, and a submit checklist to a local folder only.",
+      "category": "workflow",
+      "path": "skills/oss-scouting/SKILL.md",
+      "activation": "command",
+      "compatibility": "Requires git and the GitHub CLI (`gh`, read-only). Running a candidate's reproduction needs that project's own toolchain.",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "problem-first-explanation",
       "summary": "Output-form skill for technical explanations — forces every explanation to start with the concrete problem the concept solves, before the abstract solution or implementation.",
       "category": "communication",
