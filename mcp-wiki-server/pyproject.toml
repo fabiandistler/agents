@@ -3,7 +3,13 @@ name = "mcp-wiki-server"
 version = "0.1.0"
 description = "MCP server exposing a wiki/knowledge base, one tool per topic folder."
 requires-python = ">=3.10"
-dependencies = ["mcp[cli]>=1.2"]
+# Upper bound, not a preference: mcp 2.x renamed FastMCP to MCPServer and moved
+# it to mcp.server.mcpserver, so server.py's `from mcp.server.fastmcp import
+# FastMCP` raises ModuleNotFoundError under 2.x. Nothing in CI installs this
+# package, so the break surfaces only at a user's first `uv run`. Drop the bound
+# when server.py is ported to the v2 API — note that 1.x is maintenance-only
+# (security fixes), so the port is owed, not optional.
+dependencies = ["mcp[cli]>=1.2,<2"]
 
 [project.scripts]
 mcp-wiki-server = "server:mcp.run"

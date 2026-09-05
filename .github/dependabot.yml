@@ -1,0 +1,26 @@
+# Dependabot — the mechanical half of what `deps-audit` was doing by hand.
+#
+# Scope is deliberately `github-actions` only. The other two version declarations
+# in this repo are pins with a reason attached, and a bot that widens them is a
+# bot that reverts a decision:
+#   - ci.yml pins `ruff==0.15.8` so a lint-rule change cannot land implicitly;
+#     the bump rides a deliberate cleanup pass (tracked in issue #102).
+#   - mcp-wiki-server/pyproject.toml caps `mcp[cli]<2` because server.py uses the
+#     v1 FastMCP API. A pip ecosystem entry here would raise that cap and
+#     reintroduce the ModuleNotFoundError it exists to prevent.
+# Add the `pip` ecosystem once server.py is ported to the mcp v2 API.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # One PR per week for all action bumps, not one per action: this repo pins
+    # four actions across two workflows and reviews them as a set.
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci
+    open-pull-requests-limit: 3
