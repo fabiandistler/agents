@@ -136,6 +136,7 @@ Symlinks that point outside this repo are never touched.
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
 | `mcp-wiki-server/` | Standalone MCP server exposing a wiki / knowledge-base tool to MCP-aware agents. Not used by the plugins |
 | `scripts/` | Repo tooling (manifest generator, consistency checks) |
+| `docs/adr/` | Architecture Decision Records for this repo's own structure (skill scope, catalogue layout) |
 
 ## Skill catalogue
 
@@ -165,7 +166,7 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/refactoring/` | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| `skills/refactoring/` | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
 
 ### AI & ML (`ai-ml`)
 
