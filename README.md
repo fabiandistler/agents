@@ -31,7 +31,9 @@ catalogs under `references/`, read on demand — no extra runtime needed.
   marketplace → GitHub → `fabiandistler/agents`, then install individual
   plugins. Their skills show up in chat via `/` or the `+` menu.
 
-Plugin skills are namespaced (`architecture:adr-workflow`). In Claude
+Plugin skills are namespaced (`communication:documentation`). A routed
+category registers only its router, so there it is the router that carries
+the namespace (`architecture:architecture`). In Claude
 Code, use either the plugins **or** the symlink install below — with both
 at once every skill appears twice.
 
@@ -129,7 +131,7 @@ Symlinks that point outside this repo are never touched.
 
 | Directory | Description |
 |---|---|
-| `skills/` | All installable skills (each subdirectory has a `SKILL.md`), grouped below by category |
+| `skills/` | All installable skills — every subdirectory holding a `SKILL.md` is one, grouped below by category |
 | `plugins/` | The same skills packaged as Claude plugins, one plugin per category (architecture adds analysis subagents) |
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
 | `mcp-wiki-server/` | Standalone MCP server exposing a wiki / knowledge-base tool to MCP-aware agents. Not used by the plugins |
