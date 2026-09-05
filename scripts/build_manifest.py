@@ -203,7 +203,14 @@ def build_entry(skill_md: Path) -> dict[str, object]:
             f" (got {activation!r})"
         )
     sentence = first_sentence(description)
-    if len(sentence) > SUMMARY_LIMIT:
+    if activation == "router":
+        # A router's description is the whole trigger surface of its category;
+        # the summary is what the menu A/B in eval-suite/recall shows, so it
+        # carries all of it, untruncated, rather than a first sentence.
+        summary = re.sub(r"\s+", " ", description).strip()
+    else:
+        summary = truncate_summary(sentence)
+    if activation != "router" and len(sentence) > SUMMARY_LIMIT:
         warn(
             f"{skill_md}: description's first sentence is {len(sentence)} chars;"
             f" the skills.json summary is truncated at {SUMMARY_LIMIT}, losing its"
@@ -212,7 +219,7 @@ def build_entry(skill_md: Path) -> dict[str, object]:
         )
     entry: dict[str, object] = {
         "name": name,
-        "summary": truncate_summary(sentence),
+        "summary": summary,
         "category": category,
         "path": str(skill_md.relative_to(REPO_ROOT)),
     }

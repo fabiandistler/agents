@@ -43,6 +43,36 @@ If `claude` is not on `PATH` the check prints `SKIP` and exits 0, so it is safe
 to wire into CI environments without model access; run it locally (or in a
 model-enabled job) before flipping a category.
 
+## Live trigger check (`check_live.py`)
+
+The menu A/B above forces a pick, so it measures *which* skill wins once the
+model has decided to consult one. It cannot see the more common failure: the
+model answers an architecture question from its own knowledge and never opens
+the router at all. `check_live.py` measures that. It starts a real `claude -p`
+session with the repo's plugins loaded, sends one realistic prompt from
+`live_prompts.json`, and reads from the event stream whether the router was
+invoked and which member `SKILL.md` was read.
+
+```sh
+# routed layout, 3 runs per prompt (triggering is stochastic; read rates)
+python3 eval-suite/recall/check_live.py --category architecture
+
+# the same prompts with the members registered flat, for comparison
+python3 eval-suite/recall/check_live.py --category architecture --flat
+
+# pin the model you actually run
+python3 eval-suite/recall/check_live.py --category architecture --model claude-opus-5
+```
+
+Prompts deliberately describe a situation without naming the technique
+("two services share a database table", "keep a record of past decisions")
+and some are in German; `expected` is the member that should handle it,
+`any` when only the router firing matters, or `none` for near-misses that
+must not fire. Every run spends real tokens, so this is a local check before
+touching a router description, not a CI gate. Compare the same model and
+prompt set before and after a change; with 3 reps per prompt, differences of
+one or two runs are noise.
+
 ## Extending
 
 Add prompts to `prompts.json` (`{ "prompt": ..., "expected": <skill name> }`)

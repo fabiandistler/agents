@@ -124,8 +124,9 @@ machine consumption prefer `skills.json`.
     `scripts/build_manifest.py`). Determines the catalogue section, the
     `install.sh --category` subset, and which plugin bundles the skill.
   - `description` — single paragraph; the first sentence becomes the
-    `summary` in `skills.json`. Keep it within the description budget:
-    **≤250 chars** for most skills, **≤400 chars** for router skills and
+    `summary` in `skills.json` (for a router the whole description does, since
+    it is the category's entire trigger surface). Keep it within the description budget:
+    **≤250 chars** for most skills, **≤450 chars** for router skills, **≤400 chars**
     for the small allowlist of high-traffic skills in
     `scripts/check_descriptions.py`. Descriptions
     are always-loaded metadata that competes for a tight context budget
