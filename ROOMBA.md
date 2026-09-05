@@ -106,7 +106,7 @@ Residual question per job (details in the skill under `references/jobs.md`):
 `requirements.txt` (Python) **at the repository root**, where this repository has none of
 them; its tests likewise live at `skills/skill-creator/tests`, not at the root. All three
 pre-stages therefore return empty here today. Corrected by the 2026-09-05 `deps-audit` run:
-`mcp-wiki-server/pyproject.toml` does exist one level down and declares `mcp[cli]>=1.2` — the
+`mcp-wiki-server/pyproject.toml` does exist one level down and declares an `mcp[cli]` bound — the
 gap is the scanner's root-only search, not an absence of package metadata. Until the scanner is adapted (see *Backlog*), the run must treat
 an empty pre-stage as "no tooling coverage", not as "nothing found" — and say so in the
 report rather than inventing findings by hand.
@@ -115,7 +115,7 @@ The catalogue-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | pinned versions in `.github/workflows/ci.yml` (`ruff==0.15.8`, `pyyaml>=6`), action tags (`actions/checkout@v4`, …), and pinned `rev:` values in any pre-commit config |
+| `deps-audit` | pinned versions in `.github/workflows/ci.yml` (`ruff==0.15.8`, `pyyaml>=6`), `mcp-wiki-server/pyproject.toml` (`mcp[cli]>=1.2,<2`), and pinned `rev:` values in any pre-commit config. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the eval harness under `eval-suite/` and `skills/skill-creator/tests` |
 
