@@ -1,0 +1,28 @@
+# roomba-gate — blocks what a tool can decide conclusively.
+# This replaces the former catalogue job `security-footguns`; what is green here needs
+# no agent run. See ROOMBA.md.
+#
+# Trimmed from the roomba asset on purpose: the asset's `python-lint` and `r-lint` jobs
+# were dropped. Linting already runs in ci.yml against a pinned ruff, and this repository
+# has neither a pyproject.toml nor a DESCRIPTION, so both jobs would never fire.
+name: roomba-gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
