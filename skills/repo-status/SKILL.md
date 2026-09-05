@@ -14,7 +14,17 @@ Turn recent development activity into a short, shareable status update — the k
 people read out at a daily standup or paste into a team channel. The value is
 saving the user from reconstructing "what did I actually do yesterday" under time
 pressure, so bias toward producing a usable draft quickly rather than
-interrogating them for details.
+interrogating them for details. Draft first; ask afterwards.
+
+## When to use
+
+This skill covers the daily, team-facing update: a short window of activity, a
+fixed three-part shape, and no clarifying round before the first draft.
+
+For a periodic or event-driven update aimed outside the working group — a weekly
+or monthly status to leadership, a launch announcement, a risk escalation, or the
+same progress retold for partners or customers — use the `stakeholder-update`
+skill instead, which settles audience and update type before drafting.
 
 ## Get the raw material
 

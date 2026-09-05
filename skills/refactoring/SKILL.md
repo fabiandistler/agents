@@ -2,202 +2,69 @@
 name: refactoring
 category: refactoring
 environments: coding
-description: Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict. Use whenever the user wants to restructure existing code, work through review feedback or PR comments, judge whether a refactor is safe to start, build a feature test-first or in red-green cycles, or plan a migration, cutover, or rollout where what could go wrong matters.
+description: Finding where refactoring is worth starting in a codebase nobody knows well — ranks files by git churn (hotspots) and says how to read the ranking. Use when the user asks which code to refactor first or where to begin cleaning up a legacy repo.
 metadata:
-  version: "3.2"
+  version: "4.0"
 ---
 
-# Refactoring & risky changes
+# Refactoring targets
 
-This skill is deliberately short, and the shortness is the design.
+One job: answer "where should we start?" with evidence instead of a guess.
 
-Measured against a no-skill baseline on the same tasks, the model already picks
-the right Fowler technique, decomposes functions by abstraction level, works in
-vertical red-green cycles, catches language-specific smells unprompted, and
-triages a review backlog sensibly. Restating any of that spends context to buy
-nothing, and a long skill actively crowds out attention that the hard parts need.
+## When to use
 
-What follows is the residue: the few places where default behavior measurably
-drifts, and where the drift costs something real. Each section says why, because
-a reason survives situations a rule doesn't anticipate.
+- The user asks which files or modules are worth refactoring first, where the
+  hotspots are, or where to begin cleaning up a repo nobody in the conversation
+  knows well.
+- Not for: how to perform a particular refactoring (technique names and
+  mechanics need no help), whether one module or dependency is healthy (that is
+  `coupling-cohesion`), staging a risky migration, or test-first development.
 
-These notes are additive. They correct a handful of specific tendencies — they
-are not a method to follow instead of your own. Everything you would already do
-on this task, keep doing; if a note below seems to be pulling you away from an
-instinct that was serving the user, trust the instinct.
+## Rank by churn, then read
 
-## Build what was asked, and nothing more
-
-This is the largest measured effect, and it runs against a genuinely helpful
-instinct. Left alone, the natural pull is to round a specification up. A
-discount engine grows a voucher catalogue, a custom exception hierarchy, an
-audit trail of applied rules. Every single addition is defensible on its own —
-and the sum is a maintenance surface the user never agreed to own, in code they
-now have to review line by line to find the part they actually asked for.
-
-Implement the stated requirements and stop there. When a plausible extension
-comes to mind, don't build it: collect it under a short **"deliberately not
-built"** list at the end of the response. Nothing is lost — the user can pull
-any item back in one line — but the decision stays with the person who carries
-the maintenance cost. This applies just as much to refactoring: a request to
-restructure is not an invitation to also fix the bugs you notice on the way.
-
-Fix-worthy things you spot while working belong in that same list, described
-precisely enough to act on later.
-
-## Take review feedback apart before implementing it
-
-Feedback arrives as a list, and a list invites working down it. Two places in
-that list reliably cost something: the start, and the source.
-
-**Clarify unclear items before touching any of them.** When some items in a
-batch are clear and others aren't, the pull is to bank the clear ones now and
-ask about the rest afterwards. Review items are frequently coupled — item 5 is
-often the reason item 2 reads the way it does — so work built on partial
-understanding has to be unpicked, and the unpicking costs more than the wait
-would have. Say which items you understood and which you didn't, and ask before
-starting on any of them.
-
-**A suggestion is a hypothesis about this codebase, not a fact about it.** For
-feedback from someone without full context — an external reviewer, a review
-bot, a drive-by comment — check before implementing: does the current code look
-that way for a reason the reviewer can't see (a compatibility floor, a platform
-version, a decision made upstream)? does the change break something that's
-tested? When the suggestion is to "implement this properly", grep for callers
-first: properly implementing an endpoint nothing calls is the same round-up as
-the section above, arriving with a reviewer's authority attached. Feedback from
-the person who owns the code is a different case — understand it, ask if the
-scope is unclear, then do it.
-
-When a suggestion is wrong, the useful response carries the evidence: the case
-that breaks, the version floor, the grep that found no callers. When you can't
-verify a claim from where you are, say that rather than implementing on the
-reviewer's confidence. And when you pushed back and were wrong, one factual
-sentence closes it — what you checked, what it showed, what you're doing now.
-
-*Forged from [obra/superpowers `receiving-code-review`](https://github.com/obra/superpowers/blob/main/skills/receiving-code-review/SKILL.md)
-(MIT), 2026-09. Revisit 2027-03-01: if no review batch has gone wrong in either
-of these two ways by then, this section is decoration — cut it.*
-
-## Refactor or change behavior — never in the same step
-
-Refactoring means external behavior stays identical, which is what makes a
-green test suite meaningful evidence. Mix a behavior change into the same diff
-and that evidence evaporates: a red test no longer distinguishes "the
-restructuring broke something" from "the new behavior isn't finished yet," and
-nobody reviewing the diff can tell which lines were supposed to be safe.
-
-Finish one, commit, then start the other.
-
-## Put the checkpoint before the step, not after
-
-The second measured effect. When a change is risky enough to plan in stages,
-the instinct is to snapshot the starting state once and then work forward. That
-single global snapshot means every failure rolls back everything, which is the
-outcome the staging was supposed to prevent.
-
-Before each step, name three things explicitly:
-
-- **Checkpoint** — the known-good state this step can return to, captured *now*, before the risk is taken. Captured afterwards it isn't a checkpoint, it's a post-mortem.
-- **Validation signal** — the concrete observation that says this step worked. "Looks fine" is not a signal; a parity diff against the old path is.
-- **Rollback action** — the specific thing to run to get back. If it hasn't been thought through, it won't happen at 3am.
-
-If all three can't be named for a proposed step, the step is still too big.
-
-Let unfamiliarity shrink the steps. When nobody involved has done this kind of
-change before, the reflex is to reach for a proven, conservative playbook — but
-"proven" was established somewhere else, on a system that differed in ways
-nobody has mapped yet. Unfamiliar territory calls for smaller steps, tighter
-validation, and a deliberately exploratory first move that exists to produce
-information, not to make progress. Say so out loud when it applies: a team's
-lack of prior experience with a migration is a reason to restructure the plan,
-not a caveat to note and move past.
-
-## Ask what happens when it breaks in production
-
-A well-structured migration plan has a way of crowding out this question — the
-decomposition looks so orderly that the operational failure mode reads as
-already handled. It isn't. A plan can be perfectly staged and still leave
-nobody knowing who gets paged when the nightly job dies halfway.
-
-When production systems, scheduled jobs, or downstream consumers are in scope,
-ask directly: what happens if this fails at 4am, who finds out, what runs
-stale in the meantime, and how does the backlog get reprocessed afterwards.
-Ask it even when — especially when — the rest of the plan looks tidy.
-
-## Characterize before changing untested code
-
-Tests are the instrument that says a refactor preserved behavior. Refactoring
-code that has no tests means restructuring without that instrument and calling
-the result safe because nothing visibly broke.
-
-When coverage is thin in the area being changed, write characterization tests
-first — tests that pin down what the code *currently* does, bugs included,
-without judging whether it's right. Say this plainly rather than proceeding
-with a caveat: "this needs tests around it first" is a real answer to "can you
-refactor this," and it's usually the honest one.
-
-## Feel the interface before implementing behind it
-
-Writing the test first puts you in the caller's seat while changing the
-interface is still free. The value is in that ordering, not in the ritual —
-which is why a test written after the implementation, against an interface
-that's already set, tends to confirm the design rather than question it.
-
-When the public interface isn't obvious from the request, ask about it before
-writing the first test, not after the third. Friction in writing the test is a
-finding about the design, not an inconvenience to push past. If the request is
-ambiguous enough that guessing would shape the API, name the ambiguity and the
-assumption you're proceeding with, so the user can correct it cheaply.
-
-Deliberate about the interface does not mean deliberate about the
-implementation. Hardcoding a return value to get the first test green is a
-legitimate move, not a shortcut to feel bad about: it separates "does this path
-work at all" from "is the logic right," and lets the second test be the thing
-that forces generalization. Reaching for the full implementation on the first
-green skips that separation and gives up the design feedback the ordering was
-meant to buy.
-
-## When nobody knows where to start
-
-For "where should we refactor first?" in a codebase nobody in the conversation
-knows well, the bundled script ranks files by git churn instead of by guess:
+The bundled script ranks files by their git history, the one source of
+evidence every repo already has:
 
 ```
 python3 skills/refactoring/scripts/churn.py [path] [--since '12 months ago'] [--json]
 ```
 
-It reports, per file: commits in the window, distinct authors, current size,
-recency, and one composite score (change frequency × size — the classic hotspot
-heuristic). Its own docstring explains each column.
+Per file it reports commits in the window, distinct authors, current size,
+recency, and one composite score (change frequency × size, Tornhill's hotspot
+heuristic). The docstring explains each column and its limits; read it before
+interpreting a number.
 
-Read the output as a reading list, not a work queue. Churn on its own is not a
-defect: config files, route tables, and well-tested integration points churn
-because the system is alive. The candidate is a file that changes often *and*
-is hard to change safely, and only opening it tells you which. Skip the script
-entirely when the repo is younger than the window, when a bulk reformat sits
-inside it, or when the user already named the target — in all three the ranking
-is noise.
+Treat the output as a reading list, not a work queue. Churn on its own is not
+a defect: config files, route tables, and well-tested integration points churn
+because the system is alive. A candidate is a file that changes often *and* is
+hard to change safely, and only opening it shows which. For each top hit, open
+it and say concretely what makes it expensive to change, or that nothing does,
+before proposing any work. Pair the history signal with a structural one where
+it matters: `coupling-cohesion` measures how tangled a module is, and a file
+that scores high on both is the strongest candidate.
 
-## Long-tail technique lookup
+## When the ranking lies
 
-[references/CATALOG.md](references/CATALOG.md) indexes all 62 Fowler techniques
-by name with their inverses. Reach for it only for the unfamiliar tail —
-looking up Extract Function or Guard Clauses there is pure overhead.
+Skip the script, or discount its output, in these cases:
 
-## What this skill deliberately omits
+- **Repo younger than the window.** Everything looks hot because everything is new.
+- **Bulk reformat or license sweep inside the window.** One commit touching every file flattens the ranking; narrow `--since` to exclude it.
+- **Shallow clone.** History is cut at the clone depth; the script warns when it detects one.
+- **The user already named the target.** Ranking is then noise; go read the target.
 
-Recorded so it doesn't get helpfully re-added:
+## Two disciplines once a target is chosen
 
-- **Fowler mechanics for the common techniques.** Both arms of the ablation applied them identically; the step-by-step was decoration.
-- **Smell-to-technique lookup tables and priority matrices.** Non-discriminating across every test case.
-- **Language-specific smell checklists.** The baseline found all of them unprompted, and a fixed list ages badly while general attentiveness doesn't.
-- **Wall-clock and calendar rules** ("steps under 30 minutes", "changes under 2 weeks"). An agent has no calibration for either, so they resolve to noise.
-- **Outcome checklists** ("complexity below 10", "team more confident", "delivery speed improved"). Not observable from inside the task, so they get answered by assertion rather than evidence.
-- **A router with separate sub-skills.** At this size the indirection cost more than it saved.
-- **The rest of the review-reception playbook.** Implementation order (blocking → simple → complex), testing each fix on its own, and the ban on performative agreement ("You're absolutely right!"). The baseline already sequences a review backlog sensibly and tests as it goes, and the anti-sycophancy rule is general conduct — it belongs in a rules file, not in refactoring guidance.
-- **Co-change / temporal-coupling analysis in the churn script.** Which files keep changing together is a real signal, but it needs a pair pass over the log and a section explaining how to read it — enough weight to stop the script being the small thing it is. Deliberately left out; reconsider only with evidence that the hotspot ranking alone leaves the question unanswered.
+Reasoned, not measured: these are kept because the failure mode is discipline
+under pressure, not missing knowledge.
 
-Before adding anything back, check it against a no-skill baseline on the same
-prompt. If both arms produce it, it belongs here as a note like this one, not
-as instructions.
+- **Refactor or change behavior, never in the same step.** A green suite is
+  evidence only while external behavior is meant to stay identical. Mix a fix
+  into the restructuring and a red test no longer says which one broke.
+  Finish one, commit, then start the other.
+- **Characterize before changing untested code.** Tests are the instrument that
+  says a refactor preserved behavior. Where coverage is thin, first write tests
+  that pin down what the code *currently* does, bugs included. "This needs
+  tests around it first" is a complete answer to "can you refactor this."
+
+Scope history and what was deliberately cut from this skill:
+`docs/adr/0001-refactoring-skill-scope.md`.

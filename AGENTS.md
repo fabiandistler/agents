@@ -75,7 +75,7 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [refactoring](skills/refactoring/SKILL.md) | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| [refactoring](skills/refactoring/SKILL.md) | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
 
 ### AI & ML (`ai-ml`)
 
@@ -102,7 +102,7 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 | [documentation](skills/documentation/SKILL.md) | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
 | [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing technical explanations that lead with the concrete problem before the abstract solution. |
-| [stakeholder-update](skills/stakeholder-update/SKILL.md) | Generating a stakeholder update tailored to audience and cadence — weekly/monthly status, launch announcement, risk escalation, exec/engineering/customer versions. |
+| [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 
 ### Personal & knowledge (`personal`)
 

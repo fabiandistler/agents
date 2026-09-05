@@ -193,13 +193,13 @@
     },
     {
       "name": "refactoring",
-      "summary": "Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict.",
+      "summary": "Finding where refactoring is worth starting in a codebase nobody knows well — ranks files by git churn (hotspots) and says how to read the ranking.",
       "category": "refactoring",
       "path": "skills/refactoring/SKILL.md",
       "environments": [
         "coding"
       ],
-      "version": "3.2"
+      "version": "4.0"
     },
     {
       "name": "repo-status",
@@ -224,10 +224,9 @@
     },
     {
       "name": "stakeholder-update",
-      "summary": "Generate a stakeholder update tailored to audience and cadence — weekly/monthly leadership status, launch announcement, risk escalation, or exec/engineering/customer versions of the same progress.",
+      "summary": "Writing a status update for readers outside the immediate working group — leadership, cross-functional partners, or customers — where the audience and the update type decide the shape.",
       "category": "communication",
       "path": "skills/stakeholder-update/SKILL.md",
-      "activation": "command",
       "environments": [
         "coding",
         "chat"

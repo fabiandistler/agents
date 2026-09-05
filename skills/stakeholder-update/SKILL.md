@@ -1,16 +1,25 @@
 ---
 name: stakeholder-update
 category: communication
-activation: command
-disable-model-invocation: true
 environments: coding, chat
-description: Generate a stakeholder update tailored to audience and cadence — weekly/monthly leadership status, launch announcement, risk escalation, or exec/engineering/customer versions of the same progress.
-argument-hint: "<update type and audience>"
+description: Writing a status update for readers outside the immediate working group — leadership, cross-functional partners, or customers — where the audience and the update type decide the shape.
 ---
 
 # Stakeholder Update
 
 Generate a stakeholder update tailored to the audience and cadence.
+
+## When to use
+
+This skill covers periodic and event-driven updates written *for an audience
+outside your immediate working group* — a weekly or monthly status to
+leadership, a launch announcement, a risk escalation, or the same progress
+retold for engineering, partners, or customers. It starts by settling the
+update type and audience, because both change the shape of the output.
+
+For the daily team-facing version — yesterday / today / blockers, drafted
+immediately from recent activity without a clarifying round — use the
+`repo-status` skill instead.
 
 ## Workflow
 
@@ -31,32 +40,53 @@ Ask who the update is for:
 - **Customers / external**: Benefits-focused, clear timelines, no internal jargon
 - **Board**: Metrics-driven, strategic, risk-focused, very concise
 
-### 3. Pull Context from Connected Tools
+### 3. Gather the evidence
 
-If **project tracker** is connected:
-- Pull status of roadmap items and milestones
-- Identify completed items since last update
-- Surface items that are at risk or blocked
-- Pull sprint or iteration progress
+Two things decide how well this step goes.
 
-If **chat** is connected:
-- Search for relevant team discussions and decisions
-- Find blockers or issues raised in channels
-- Identify key decisions made asynchronously
+**Take stock before you ask.** What is reachable differs sharply by where this
+runs, and no environment has all of it. A coding environment usually gives you
+the repository, its history, and the pipeline logs, but no email and no team
+chat. A chat or assistant environment usually gives you email, chat, and
+documents, but no repository. Work out what you can actually read here, use it,
+and only then ask for the rest. Asking for something you could have looked up
+wastes the user's time; asking for something that cannot exist in this
+environment just confuses them.
 
-If **meeting transcription** is connected:
-- Pull recent meeting notes and discussion summaries
-- Find decisions and action items from relevant meetings
+Note that source control is not always a "connector". In a coding environment
+the repository is simply present — read its history directly rather than
+checking whether some integration is configured.
 
-If **knowledge base** is connected:
-- Search for recent meeting notes
-- Find decision documents or design reviews
+**Evidence sets the altitude, not the wording.** Commits, pull requests, and
+pipeline runs establish what actually happened. They are input, never output.
+Translate them into outcomes before they reach the update: "search results now
+come back in under a second" rather than "merged 14 pull requests".
 
-If no tools are connected, ask the user to provide:
-- What was accomplished since the last update
-- Current blockers or risks
-- Key decisions made or needed
-- What is coming next
+Sources worth pulling, by kind:
+
+- **Source control — history and merged pull requests.** The most reliable
+  record of what shipped in the period. Work from merge and pull request titles
+  rather than individual commits, and check for reverts: something shipped and
+  then rolled back belongs under risks, not under progress.
+- **CI / CD runs.** What reached which environment, and when. A release date is
+  a fact stakeholders can plan around. A pipeline red for a week, or a long gap
+  since the last successful deployment, is a risk with a date attached — worth
+  far more than "we had some build trouble".
+- **Issue / project tracker.** Roadmap items and milestones, what closed since
+  the last update, what is at risk or blocked, sprint or iteration progress.
+  Carry ticket references through so the reader can follow up.
+- **Chat and email.** Usually the only record of decisions, commitments, and
+  open asks. Source control can tell you what changed but never why something
+  was descoped, what was promised to another team, or who is waiting on whom.
+  Look for decisions reached, commitments made, and threads still unanswered.
+- **Meeting transcripts and knowledge base.** Recent notes, decision documents,
+  design reviews — the reasoning behind what the other sources record as facts.
+
+**Then name the gap.** Say which part of the update is thin because a source was
+unreachable, and ask for exactly that rather than for everything: "I can see
+what shipped and when it deployed, but nothing about how the pilot team reacted
+— do you have that?" Never close a gap with plausible-sounding detail. An
+invented metric gets copied into someone else's slides and outlives the update.
 
 ### 4. Generate the Update
 
@@ -76,8 +106,13 @@ Structure the update for the target audience using the templates and frameworks 
 
 After generating the update:
 - Ask if the user wants to adjust tone, detail level, or emphasis
-- Offer to format for the delivery channel (email, chat post, doc, slides)
-- If **chat** is connected, offer to draft the message for sending
+- Offer to format for the delivery channel (email, chat post, doc, slides).
+  The channel changes the shape: an email needs a subject line carrying the
+  headline and a greeting; a chat post needs to survive being read on a phone
+  with no scrolling; a doc can afford the full structure.
+- Where you can reach the delivery channel yourself, offer to draft the message
+  in place rather than handing back text to copy. Where you cannot, hand back
+  something ready to paste — no placeholders left to fill in.
 
 ## Update Templates by Audience
 
@@ -230,67 +265,6 @@ Feedback:
 - Being vague: "There might be some delays" — specify what, how long, and why.
 - Presenting risks without mitigations. Every risk should come with a plan.
 - Waiting too long. A risk communicated early is a planning input. A risk communicated late is a fire drill.
-
-## Meeting Facilitation
-
-### Stand-up / Daily Sync
-**Purpose**: Surface blockers, coordinate work, maintain momentum.
-**Format**: Each person shares:
-- What they accomplished since last sync
-- What they are working on next
-- What is blocking them
-
-**Facilitation tips**:
-- Keep it to 15 minutes. If discussions emerge, take them offline.
-- Focus on blockers — this is the highest-value part of standup
-- Track blockers and follow up on resolution
-- Cancel standup if there is nothing to sync on. Respect people's time.
-
-### Sprint / Iteration Planning
-**Purpose**: Commit to work for the next sprint. Align on priorities and scope.
-**Format**:
-1. Review: what shipped last sprint, what carried over, what was cut
-2. Priorities: what are the most important things to accomplish this sprint
-3. Capacity: how much can the team take on (account for PTO, on-call, meetings)
-4. Commitment: select items from the backlog that fit capacity and priorities
-5. Dependencies: flag any cross-team or external dependencies
-
-**Facilitation tips**:
-- Come with a proposed priority order. Do not ask the team to prioritize from scratch.
-- Push back on overcommitment. It is better to commit to less and deliver reliably.
-- Ensure every item has a clear owner and clear acceptance criteria.
-- Flag items that are underscoped or have hidden complexity.
-
-### Retrospective
-**Purpose**: Reflect on what went well, what did not, and what to change.
-**Format**:
-1. Set the stage: remind the team of the goal and create psychological safety
-2. Gather data: what went well, what did not go well, what was confusing
-3. Generate insights: identify patterns and root causes
-4. Decide actions: pick 1-3 specific improvements to try next sprint
-5. Close: thank people for honest feedback
-
-**Facilitation tips**:
-- Create psychological safety. People must feel safe to be honest.
-- Focus on systems and processes, not individuals.
-- Limit to 1-3 action items. More than that and nothing changes.
-- Follow up on previous retro action items. If you never follow up, people stop engaging.
-- Vary the retro format occasionally to prevent staleness.
-
-### Stakeholder Review / Demo
-**Purpose**: Show progress, gather feedback, build alignment.
-**Format**:
-1. Context: remind stakeholders of the goal and what they saw last time
-2. Demo: show what was built. Use real product, not slides.
-3. Metrics: share any early data or feedback
-4. Feedback: structured time for questions and input
-5. Next steps: what is coming next and when the next review will be
-
-**Facilitation tips**:
-- Demo the real product whenever possible. Slides are not demos.
-- Frame feedback collection: "What feedback do you have on X?" is better than "Any thoughts?"
-- Capture feedback visibly and commit to addressing it (or explaining why not)
-- Set expectations about what kind of feedback is actionable at this stage
 
 ## Output Format
 

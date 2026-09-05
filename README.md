@@ -136,6 +136,7 @@ Symlinks that point outside this repo are never touched.
 | `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
 | `mcp-wiki-server/` | Standalone MCP server exposing a wiki / knowledge-base tool to MCP-aware agents. Not used by the plugins |
 | `scripts/` | Repo tooling (manifest generator, consistency checks) |
+| `docs/adr/` | Architecture Decision Records for this repo's own structure (skill scope, catalogue layout) |
 
 ## Skill catalogue
 
@@ -165,7 +166,7 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/refactoring/` | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| `skills/refactoring/` | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
 
 ### AI & ML (`ai-ml`)
 
@@ -190,7 +191,7 @@ sub-skill is still listed individually below.
 | `skills/documentation/` | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | `skills/html-artifacts/` | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
 | `skills/problem-first-explanation/` | Producing technical explanations that lead with the concrete problem before the abstract solution. |
-| `skills/stakeholder-update/` | Generating a stakeholder update tailored to audience and cadence — weekly/monthly status, launch announcement, risk escalation, exec/engineering/customer versions. |
+| `skills/stakeholder-update/` | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 
 ### Personal & knowledge (`personal`)
 
