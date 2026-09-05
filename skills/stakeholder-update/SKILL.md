@@ -40,32 +40,53 @@ Ask who the update is for:
 - **Customers / external**: Benefits-focused, clear timelines, no internal jargon
 - **Board**: Metrics-driven, strategic, risk-focused, very concise
 
-### 3. Pull Context from Connected Tools
+### 3. Gather the evidence
 
-If **project tracker** is connected:
-- Pull status of roadmap items and milestones
-- Identify completed items since last update
-- Surface items that are at risk or blocked
-- Pull sprint or iteration progress
+Two things decide how well this step goes.
 
-If **chat** is connected:
-- Search for relevant team discussions and decisions
-- Find blockers or issues raised in channels
-- Identify key decisions made asynchronously
+**Take stock before you ask.** What is reachable differs sharply by where this
+runs, and no environment has all of it. A coding environment usually gives you
+the repository, its history, and the pipeline logs, but no email and no team
+chat. A chat or assistant environment usually gives you email, chat, and
+documents, but no repository. Work out what you can actually read here, use it,
+and only then ask for the rest. Asking for something you could have looked up
+wastes the user's time; asking for something that cannot exist in this
+environment just confuses them.
 
-If **meeting transcription** is connected:
-- Pull recent meeting notes and discussion summaries
-- Find decisions and action items from relevant meetings
+Note that source control is not always a "connector". In a coding environment
+the repository is simply present — read its history directly rather than
+checking whether some integration is configured.
 
-If **knowledge base** is connected:
-- Search for recent meeting notes
-- Find decision documents or design reviews
+**Evidence sets the altitude, not the wording.** Commits, pull requests, and
+pipeline runs establish what actually happened. They are input, never output.
+Translate them into outcomes before they reach the update: "search results now
+come back in under a second" rather than "merged 14 pull requests".
 
-If no tools are connected, ask the user to provide:
-- What was accomplished since the last update
-- Current blockers or risks
-- Key decisions made or needed
-- What is coming next
+Sources worth pulling, by kind:
+
+- **Source control — history and merged pull requests.** The most reliable
+  record of what shipped in the period. Work from merge and pull request titles
+  rather than individual commits, and check for reverts: something shipped and
+  then rolled back belongs under risks, not under progress.
+- **CI / CD runs.** What reached which environment, and when. A release date is
+  a fact stakeholders can plan around. A pipeline red for a week, or a long gap
+  since the last successful deployment, is a risk with a date attached — worth
+  far more than "we had some build trouble".
+- **Issue / project tracker.** Roadmap items and milestones, what closed since
+  the last update, what is at risk or blocked, sprint or iteration progress.
+  Carry ticket references through so the reader can follow up.
+- **Chat and email.** Usually the only record of decisions, commitments, and
+  open asks. Source control can tell you what changed but never why something
+  was descoped, what was promised to another team, or who is waiting on whom.
+  Look for decisions reached, commitments made, and threads still unanswered.
+- **Meeting transcripts and knowledge base.** Recent notes, decision documents,
+  design reviews — the reasoning behind what the other sources record as facts.
+
+**Then name the gap.** Say which part of the update is thin because a source was
+unreachable, and ask for exactly that rather than for everything: "I can see
+what shipped and when it deployed, but nothing about how the pilot team reacted
+— do you have that?" Never close a gap with plausible-sounding detail. An
+invented metric gets copied into someone else's slides and outlives the update.
 
 ### 4. Generate the Update
 
@@ -85,8 +106,13 @@ Structure the update for the target audience using the templates and frameworks 
 
 After generating the update:
 - Ask if the user wants to adjust tone, detail level, or emphasis
-- Offer to format for the delivery channel (email, chat post, doc, slides)
-- If **chat** is connected, offer to draft the message for sending
+- Offer to format for the delivery channel (email, chat post, doc, slides).
+  The channel changes the shape: an email needs a subject line carrying the
+  headline and a greeting; a chat post needs to survive being read on a phone
+  with no scrolling; a doc can afford the full structure.
+- Where you can reach the delivery channel yourself, offer to draft the message
+  in place rather than handing back text to copy. Where you cannot, hand back
+  something ready to paste — no placeholders left to fill in.
 
 ## Update Templates by Audience
 
