@@ -60,7 +60,7 @@ jobs:
         # -S warning: gate on real problems; skip advisory info/style notes
         # (eval-suite/run.sh intentionally word-splits flag lists and passes
         # single-quoted R code, both of which are info-level).
-        run: shellcheck -S warning install.sh scripts/test_install.sh eval-suite/run.sh
+        run: shellcheck -S warning install.sh scripts/test_install.sh scripts/roomba-scan.sh eval-suite/run.sh
 
       - name: install.sh smoke test
         run: bash scripts/test_install.sh
