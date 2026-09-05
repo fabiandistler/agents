@@ -79,6 +79,8 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 ### AI & ML (`ai-ml`)
 
+Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
+
 | Skill | When to use |
 |---|---|
 | [llm-application-engineering](skills/llm-application-engineering/SKILL.md) | Diagnosing LLM output failures, ordering LLM app architecture builds, defining production monitoring metrics, or applying craft-level conventions for prompting, evaluation/LLM-judges, guardrails, finetuning, and training data. |
@@ -123,8 +125,9 @@ machine consumption prefer `skills.json`.
     `install.sh --category` subset, and which plugin bundles the skill.
   - `description` — single paragraph; the first sentence becomes the
     `summary` in `skills.json`. Keep it within the description budget:
-    **≤250 chars** for most skills, **≤400 chars** for the small allowlist
-    of high-traffic skills in `scripts/check_descriptions.py`. Descriptions
+    **≤250 chars** for most skills, **≤400 chars** for router skills and
+    for the small allowlist of high-traffic skills in
+    `scripts/check_descriptions.py`. Descriptions
     are always-loaded metadata that competes for a tight context budget
     (Codex CLI truncates the skill list past ~2% of context), so move
     trigger lists and feature enumerations into the SKILL.md **body** (a

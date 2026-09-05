@@ -12,9 +12,9 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-05 (`deps-audit`) |
-| Last job | `deps-audit` — report only, 7 findings, no code changed |
-| Next due job | `doc-drift` (score ∞, still never run → catalogue order) |
+| Last run | 2026-09-05 (`doc-drift`) |
+| Last job | `doc-drift` — 7 findings, 6 fixed in docs, 1 report-only |
+| Next due job | `dead-exports` (score ∞, still never run → catalogue order) |
 | Baseline status | green, 2026-09-05 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
@@ -81,7 +81,7 @@ Red or missing baseline → report-only jobs, no code changes.
 | # | Job | Pre-stage | Output | Cooldown | Last run |
 |---|---|---|---|---|---|
 | 1 | `deps-audit` | yes | report | 7d | 2026-09-05 |
-| 2 | `doc-drift` | no | PR | 14d | - |
+| 2 | `doc-drift` | no | PR | 14d | 2026-09-05 |
 | 3 | `dead-exports` | yes | PR | 14d | - |
 | 4 | `error-edges` | no | report | 14d | - |
 | 5 | `test-flakiness` | yes | PR | 30d | - |
@@ -133,6 +133,10 @@ The catalogue-relevant analogues in this repository are:
   `lintr`, `testthat`, `withr`, `yaml` — no `renv.lock`, no floors, and absent from the
   "what `deps-audit` means here" table above. Recorded as a gap by the 2026-09-05 run rather
   than audited. Decide whether they belong in `deps-audit` before the next run of that job.
+- **Four of the five triage labels in `docs/agents/triage-labels.md` do not exist** in
+  `fabiandistler/agents` (`gh label list`: only `wontfix` is there). Recorded by the
+  2026-09-05 `doc-drift` run rather than fixed: creating them changes the tracker, and
+  the alternative — rewording the doc — is a different decision. Pick a direction.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
 - **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
@@ -145,6 +149,7 @@ The catalogue-relevant analogues in this repository are:
 |---|---|---|---|
 | 2026-09-05 | *(bootstrap)* | catalogue + scanner + CI gate | roomba/init-2026-09-05 |
 | 2026-09-05 | `deps-audit` | report, 7 findings, 0 changes | roomba/deps-audit-2026-09-05 |
+| 2026-09-05 | `doc-drift` | 7 findings, 6 doc fixes (12+/7-) | roomba/doc-drift-2026-09-05 |
 
 ## Teardown condition
 
