@@ -3,7 +3,7 @@ name: architecture
 category: architecture
 activation: router
 environments: coding
-description: Any software architecture or design question — ADRs, DDD, C4 diagrams, coupling/cohesion analysis, microservices, component design, fitness functions, SQL schema design. Routes to the right sub-skill.
+description: Use for any question about how software should be structured or whether its structure is sound; routes to a sub-skill. Covers organizing a new or existing codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and how services talk, domain modeling (DDD), system diagrams (C4), recording decisions (ADRs), coupling/cohesion review, SQL schema design, architecture checks in CI.
 ---
 
 # Architecture & design
@@ -15,9 +15,12 @@ one. Do not answer an architecture or design question from this file alone.
 ## How to use
 
 1. Match the request to a row in the table below.
-2. **Read that sub-skill's `SKILL.md` (the path in the last column) before
-   acting.** It carries the real workflow, references, and scripts — this router
-   only points the way.
+2. **Read that sub-skill's `SKILL.md` before acting.** Open the file at the
+   path in the last column (relative to this router's directory) with your
+   file-reading tool. The sub-skills are *not* registered skills of their own:
+   invoking one by name (for example `architecture:ddd`) fails with "unknown
+   skill" and wastes a turn. Read the file instead; it carries the real
+   workflow, references, and scripts — this router only points the way.
 3. If two rows seem to apply, read both; if none fit, use your general knowledge
    and say the catalogue had no dedicated sub-skill.
 

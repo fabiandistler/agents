@@ -31,6 +31,10 @@ DEFAULT_BUDGET = 250
 ALLOWLIST_BUDGET = 400
 # High-traffic skills allowed the wider budget. Keep this list short.
 ALLOWLIST = frozenset({"architecture-pattern-advisor", "refactoring"})
+# A router's description replaces every member description in the listing (nine
+# for architecture), so it may spend a little more of the shared budget on the
+# situations users actually describe instead of bare technique names.
+ROUTER_BUDGET = 450
 
 # Total description size across auto-triggered skills must stay under the Codex
 # ~2% cap (~5,400 tokens at ~270k context); ~10,000 chars ≈ ~2,500 tokens.
@@ -41,7 +45,9 @@ def budget_for(name: str, activation: str) -> int:
     # Router descriptions are the sole trigger surface for a whole category and
     # are deliberately broad, so they get the wider budget. They do not count
     # toward the auto aggregate (see main): they replace, not add to, it.
-    if activation == "router" or name in ALLOWLIST:
+    if activation == "router":
+        return ROUTER_BUDGET
+    if name in ALLOWLIST:
         return ALLOWLIST_BUDGET
     return DEFAULT_BUDGET
 

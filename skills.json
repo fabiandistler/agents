@@ -22,7 +22,7 @@
     },
     {
       "name": "architecture",
-      "summary": "Any software architecture or design question — ADRs, DDD, C4 diagrams, coupling/cohesion analysis, microservices, component design, fitness functions, SQL schema design.",
+      "summary": "Use for any question about how software should be structured or whether its structure is sound; routes to a sub-skill.",
       "category": "architecture",
       "path": "skills/architecture/SKILL.md",
       "activation": "router",
