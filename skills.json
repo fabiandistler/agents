@@ -193,13 +193,13 @@
     },
     {
       "name": "refactoring",
-      "summary": "Improving existing code safely, building features test-first, and staging changes whose blast radius is hard to predict.",
+      "summary": "Finding where refactoring is worth starting in a codebase nobody knows well — ranks files by git churn (hotspots) and says how to read the ranking.",
       "category": "refactoring",
       "path": "skills/refactoring/SKILL.md",
       "environments": [
         "coding"
       ],
-      "version": "3.2"
+      "version": "4.0"
     },
     {
       "name": "repo-status",

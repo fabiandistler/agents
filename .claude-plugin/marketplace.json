@@ -15,7 +15,7 @@
     {
       "name": "refactoring",
       "source": "./plugins/refactoring",
-      "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes."
+      "description": "Refactoring and code-quality skills: finding where to start refactoring via git-churn hotspots, and keeping restructuring separate from behavior change."
     },
     {
       "name": "ai-ml",
