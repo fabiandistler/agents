@@ -12,10 +12,10 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-05 (bootstrap only — no job executed) |
-| Last job | — |
-| Next due job | `deps-audit` (no job has ever run → catalogue order) |
-| Baseline status | green, 2026-09-05 (all 11 checks, see *Baseline* below) |
+| Last run | 2026-09-05 (`deps-audit`) |
+| Last job | `deps-audit` — report only, 7 findings, no code changed |
+| Next due job | `doc-drift` (score ∞, still never run → catalogue order) |
+| Baseline status | green, 2026-09-05 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
 ## Rules
@@ -80,7 +80,7 @@ Red or missing baseline → report-only jobs, no code changes.
 
 | # | Job | Pre-stage | Output | Cooldown | Last run |
 |---|---|---|---|---|---|
-| 1 | `deps-audit` | yes | report | 7d | - |
+| 1 | `deps-audit` | yes | report | 7d | 2026-09-05 |
 | 2 | `doc-drift` | no | PR | 14d | - |
 | 3 | `dead-exports` | yes | PR | 14d | - |
 | 4 | `error-edges` | no | report | 14d | - |
@@ -103,9 +103,11 @@ Residual question per job (details in the skill under `references/jobs.md`):
 ## Repository-specific notes on the pre-stages
 
 `scripts/roomba-scan.sh` keys off `DESCRIPTION` (R) and `pyproject.toml` /
-`requirements.txt` (Python). This repository has none of them, and its tests live at
-`skills/skill-creator/tests`, not at the repository root. All three pre-stages therefore
-return empty here today. Until the scanner is adapted (see *Backlog*), the run must treat
+`requirements.txt` (Python) **at the repository root**, where this repository has none of
+them; its tests likewise live at `skills/skill-creator/tests`, not at the root. All three
+pre-stages therefore return empty here today. Corrected by the 2026-09-05 `deps-audit` run:
+`mcp-wiki-server/pyproject.toml` does exist one level down and declares `mcp[cli]>=1.2` — the
+gap is the scanner's root-only search, not an absence of package metadata. Until the scanner is adapted (see *Backlog*), the run must treat
 an empty pre-stage as "no tooling coverage", not as "nothing found" — and say so in the
 report rather than inventing findings by hand.
 
@@ -124,6 +126,13 @@ The catalogue-relevant analogues in this repository are:
   unrouted skills), and to `test-flakiness` (discover test directories below
   `skills/*/tests` and `eval-suite/`, not just repo-root `tests/`). Deferred out of the
   bootstrap PR: it is a change to the scanner, not catalogue setup.
+  Sharpened by the 2026-09-05 `deps-audit` run: the `deps-audit` pre-stage must also search
+  below the root — `mcp-wiki-server/pyproject.toml` was missed, and the dependency it declares
+  turned out to be the run's second-most-severe finding.
+- **`eval-suite/*.R` dependencies are outside the catalogue's scope.** `digest`, `jsonlite`,
+  `lintr`, `testthat`, `withr`, `yaml` — no `renv.lock`, no floors, and absent from the
+  "what `deps-audit` means here" table above. Recorded as a gap by the 2026-09-05 run rather
+  than audited. Decide whether they belong in `deps-audit` before the next run of that job.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
 - **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
@@ -135,6 +144,7 @@ The catalogue-relevant analogues in this repository are:
 | Date | Job | Output | PR |
 |---|---|---|---|
 | 2026-09-05 | *(bootstrap)* | catalogue + scanner + CI gate | roomba/init-2026-09-05 |
+| 2026-09-05 | `deps-audit` | report, 7 findings, 0 changes | roomba/deps-audit-2026-09-05 |
 
 ## Teardown condition
 
