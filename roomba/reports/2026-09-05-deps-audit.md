@@ -44,10 +44,10 @@ from today**.
 
 What is *not* documented: the changelog states what the `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION`
 opt-out does until removal, but says nothing about how a `using: node20` action behaves after
-removal. Mitigating evidence — CI is green today (runs `33961622411`, `33961622392`, 2026-09-05)
-and its logs contain no Node 20 deprecation warning, so the runner is already executing these
-three actions under Node 24. The break risk is therefore *unknown rather than certain*. It is
-still the only finding in this report with a dated deadline.
+removal. Mitigating evidence — both workflows are green today (runs `33961622411`, `33961622392`,
+2026-09-05, and again on this report's own PR), i.e. the runner is already executing all three
+actions past the 2026-06-16 default flip without an opt-out flag set. The break risk is therefore
+*unknown rather than certain*. It is still the only finding in this report with a dated deadline.
 
 Breaking changes across the intervening majors, against this repo's actual usage:
 
@@ -143,15 +143,19 @@ the ubuntu-26.04 image (public preview, the eventual successor) ships **0.11.0**
 [runner-images README](https://github.com/actions/runner-images) and the two image readmes
 (`Ubuntu2404-Readme.md`, `Ubuntu2604-Readme.md`).
 
-Tested both ends of that span against the four scripts CI lints:
+Both ends of that span come out clean on the four scripts CI lints. The 0.9.0 end needs no
+local reproduction — CI itself is the evidence: every green `checks` run, including this
+report's own PR, executes `shellcheck -S warning` on `ubuntu-latest`, which *is* 0.9.0. The
+0.11.0 end was run locally:
 
 ```
-$ shellcheck 0.9.0  -S warning install.sh scripts/test_install.sh \
-      scripts/roomba-scan.sh eval-suite/run.sh   → rc=0
-$ shellcheck 0.11.0 -S warning …                 → rc=0
+$ uvx --from shellcheck-py shellcheck --version          → 0.11.0
+$ uvx --from shellcheck-py shellcheck -S warning \
+      install.sh scripts/test_install.sh \
+      scripts/roomba-scan.sh eval-suite/run.sh ; echo $?  → 0
 ```
 
-So an image bump introduces no new warning-level findings today. (At info level both report
+So an image bump to ubuntu-26.04 introduces no new warning-level findings today. (At info level both report
 9× SC2086 and 3× SC2016 — already documented as intentional in the `ci.yml` comment, and
 below the `-S warning` gate.) **Recommendation: leave.** Pinning would add a maintenance
 obligation to buy a risk that measures as zero.
