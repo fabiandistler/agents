@@ -3,7 +3,7 @@ name: architecture
 category: architecture
 activation: router
 environments: coding
-description: Use for any question about how software should be structured or whether its structure is sound; routes to a sub-skill. Covers organizing a new or existing codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and how services talk, domain modeling (DDD), system diagrams (C4), recording decisions (ADRs), coupling/cohesion review, SQL schema design, architecture checks in CI.
+description: "Use for any question about how software should be structured or whether its structure is sound: organizing a new or existing codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and how services talk, domain modeling (DDD), system diagrams (C4), recording decisions (ADRs), coupling/cohesion review, SQL schema design, architecture checks in CI. Routes to a sub-skill."
 ---
 
 # Architecture & design

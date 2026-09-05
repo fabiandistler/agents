@@ -12,7 +12,7 @@
     },
     {
       "name": "ai-ml",
-      "summary": "Building AI/ML systems — engineering an LLM or foundation-model application (prompts, tool calling, evals) or running a machine-learning project from framing to deployment.",
+      "summary": "Building AI/ML systems — engineering an LLM or foundation-model application (prompts, tool calling, evals) or running a machine-learning project from framing to deployment. Routes to the right sub-skill.",
       "category": "ai-ml",
       "path": "skills/ai-ml/SKILL.md",
       "activation": "router",
@@ -22,7 +22,7 @@
     },
     {
       "name": "architecture",
-      "summary": "Use for any question about how software should be structured or whether its structure is sound; routes to a sub-skill.",
+      "summary": "Use for any question about how software should be structured or whether its structure is sound: organizing a new or existing codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and how services talk, domain modeling (DDD), system diagrams (C4), recording decisions (ADRs), coupling/cohesion review, SQL schema design, architecture checks in CI. Routes to a sub-skill.",
       "category": "architecture",
       "path": "skills/architecture/SKILL.md",
       "activation": "router",
