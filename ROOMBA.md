@@ -12,10 +12,10 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-05 (`doc-drift`) |
-| Last job | `doc-drift` — 7 findings, 6 fixed in docs, 1 report-only |
-| Next due job | `dead-exports` (score ∞, still never run → catalogue order) |
-| Baseline status | green, 2026-09-05 (all 10 commands in *Baseline* below) |
+| Last run | 2026-09-06 (`dead-exports`) |
+| Last job | `dead-exports` — 3 findings, 1 catalogue fix, 2 report-only |
+| Next due job | see *Jobs* table — `score = (today - last run) / cooldown`, highest wins |
+| Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
 ## Rules
@@ -82,7 +82,7 @@ Red or missing baseline → report-only jobs, no code changes.
 |---|---|---|---|---|---|
 | 1 | `deps-audit` | yes | report | 7d | 2026-09-05 |
 | 2 | `doc-drift` | no | PR | 14d | 2026-09-05 |
-| 3 | `dead-exports` | yes | PR | 14d | - |
+| 3 | `dead-exports` | yes | PR | 14d | 2026-09-06 |
 | 4 | `error-edges` | no | report | 14d | - |
 | 5 | `test-flakiness` | yes | PR | 30d | - |
 | 6 | `perf-quickwins` | no | report | 30d | - |
@@ -104,7 +104,7 @@ Residual question per job (details in the skill under `references/jobs.md`):
 
 `scripts/roomba-scan.sh` keys off `DESCRIPTION` (R) and `pyproject.toml` /
 `requirements.txt` (Python) **at the repository root**, where this repository has none of
-them; its tests likewise live at `skills/skill-creator/tests`, not at the root. All three
+them; its tests likewise live under `eval-suite/`, not at the root. All three
 pre-stages therefore return empty here today. Corrected by the 2026-09-05 `deps-audit` run:
 `mcp-wiki-server/pyproject.toml` does exist one level down and declares an `mcp[cli]` bound — the
 gap is the scanner's root-only search, not an absence of package metadata. Until the scanner is adapted (see *Backlog*), the run must treat
@@ -117,7 +117,7 @@ The catalogue-relevant analogues in this repository are:
 |---|---|
 | `deps-audit` | pinned versions in `.github/workflows/ci.yml` (`ruff==0.15.8`, `pyyaml>=6`), `mcp-wiki-server/pyproject.toml` (`mcp[cli]>=1.2,<2`), and pinned `rev:` values in any pre-commit config. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
-| `test-flakiness` | the eval harness under `eval-suite/` and `skills/skill-creator/tests` |
+| `test-flakiness` | the eval harness under `eval-suite/` |
 
 ## Backlog
 
@@ -137,6 +137,12 @@ The catalogue-relevant analogues in this repository are:
   `fabiandistler/agents` (`gh label list`: only `wontfix` is there). Recorded by the
   2026-09-05 `doc-drift` run rather than fixed: creating them changes the tracker, and
   the alternative — rewording the doc — is a different decision. Pick a direction.
+- **Decide whether `dead-exports` survives the 2026-12-01 review.** The 2026-09-06 run
+  found every tracked skill reachable, and CI (`build_routers --check`, `check_docs.py`,
+  `check_plugins.py`) already fails on an unrouted tracked skill — a CI-gate question under
+  *What does NOT belong in this catalogue*. The only thing the gate cannot see is an
+  untracked leftover under `skills/`, which is what the run did find. Narrow the job to
+  that, or drop it.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
 - **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
@@ -150,6 +156,7 @@ The catalogue-relevant analogues in this repository are:
 | 2026-09-05 | *(bootstrap)* | catalogue + scanner + CI gate | roomba/init-2026-09-05 |
 | 2026-09-05 | `deps-audit` | report, 7 findings, 0 changes | roomba/deps-audit-2026-09-05 |
 | 2026-09-05 | `doc-drift` | 7 findings, 6 doc fixes (12+/7-) | roomba/doc-drift-2026-09-05 |
+| 2026-09-06 | `dead-exports` | 3 findings, 1 catalogue fix | roomba/dead-exports-2026-09-06 |
 
 ## Teardown condition
 
