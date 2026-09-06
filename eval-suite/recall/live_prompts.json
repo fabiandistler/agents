@@ -1,65 +1,119 @@
 {
-  "description": "Live trigger probes for check_live.py: realistic requests (some German, none naming the technique) labelled with the member that should handle each, 'any' when only the router firing matters, or 'none' for near-misses that must not fire. Keep expected names in sync with skills.json.",
+  "description": "Live trigger probes for check_live.py: realistic requests (some German, none naming the technique) labelled with the category whose --category run selects them and the member that should handle each, 'any' when only the router firing matters, or 'none' for near-misses that must not fire. Keep category and expected names in sync with skills.json.",
   "prompts": [
     {
       "id": "adr",
+      "category": "architecture",
       "expected": "adr-workflow",
       "prompt": "We keep flip-flopping on decisions like which message broker to use. How do teams usually keep a record of that so we stop re-arguing the same things?"
     },
     {
       "id": "pattern-de",
+      "category": "architecture",
       "expected": "architecture-pattern-advisor",
       "prompt": "Ich starte ein neues FastAPI-Projekt. Wie soll ich den Code strukturieren, damit es später nicht zum Big Ball of Mud wird?"
     },
     {
       "id": "c4-de",
+      "category": "architecture",
       "expected": "c4-modeling",
       "prompt": "Zeichne mir eine Übersicht, wie unsere Services, die Datenbank und die externen APIs zusammenhängen. Am liebsten als Mermaid."
     },
     {
       "id": "coupling-de",
+      "category": "architecture",
       "expected": "coupling-cohesion",
       "prompt": "Das Repo fühlt sich verfilzt an, überall importiert jeder jeden. Kannst du analysieren, welche Module am schlimmsten dran sind?"
     },
     {
       "id": "ddd",
+      "category": "architecture",
       "expected": "ddd",
       "prompt": "Our order and inventory logic is all tangled together in one giant Order class. How should I model this properly?"
     },
     {
       "id": "fitness",
+      "category": "architecture",
       "expected": "fitness-functions",
       "prompt": "How can I make CI fail if someone adds an import from the domain layer into the infrastructure layer?"
     },
     {
       "id": "components-de",
+      "category": "architecture",
       "expected": "logical-component-design",
       "prompt": "Wir bauen ein neues Buchungssystem. Hilf mir zu überlegen, welche Komponenten das haben soll, bevor wir Code schreiben."
     },
     {
       "id": "microservices",
+      "category": "architecture",
       "expected": "microservices-design",
       "prompt": "Our checkout and inventory services share a database table. Is that a problem, and what should we do instead?"
     },
     {
       "id": "sql-de",
+      "category": "architecture",
       "expected": "sql-schema-design",
       "prompt": "Ich soll das Datenbankschema für unser Reporting entwerfen. Die Analysten fragen direkt die Tabellen ab, was mich nervös macht."
     },
     {
       "id": "generic",
+      "category": "architecture",
       "expected": "any",
       "prompt": "Is our architecture okay? Have a look at the repo and tell me what you would change."
     },
     {
       "id": "neg-bug",
+      "category": "architecture",
       "expected": "none",
       "prompt": "Fix the failing test in test_utils.py, it is an off-by-one in the pagination helper."
     },
     {
       "id": "neg-readme",
+      "category": "architecture",
       "expected": "none",
       "prompt": "Write a README for this CLI tool with install steps and a usage example."
+    },
+    {
+      "id": "llm-wrong",
+      "category": "ai-ml",
+      "expected": "llm-application-engineering",
+      "prompt": "Our support assistant keeps making up order numbers that were never in the system. Someone on the team wants to train it on our own tickets — is that where we should start?"
+    },
+    {
+      "id": "llm-better-de",
+      "category": "ai-ml",
+      "expected": "llm-application-engineering",
+      "prompt": "Wir haben unseren Assistenten umgebaut und es fühlt sich besser an, aber niemand kann belegen, dass er wirklich besser antwortet. Wie stellen wir das fest, bevor wir es auf alle Kunden loslassen?"
+    },
+    {
+      "id": "ml-framing",
+      "category": "ai-ml",
+      "expected": "ml-project-lifecycle",
+      "prompt": "Management wants us to predict which customers will cancel next month. Where do we even start, and how would we know afterwards whether the thing is any good?"
+    },
+    {
+      "id": "ml-deploy-de",
+      "category": "ai-ml",
+      "expected": "ml-project-lifecycle",
+      "prompt": "Im Notebook sagt unser Modell die Lieferzeiten ganz gut voraus, aber jetzt soll es in die Produktion. Worauf müssen wir achten, damit uns das nicht um die Ohren fliegt?"
+    },
+    {
+      "id": "generic-ai",
+      "category": "ai-ml",
+      "expected": "any",
+      "prompt": "The team wants to add something AI-powered to the product this quarter. Can you help me think through what we should build and how to approach it?"
+    },
+    {
+      "id": "neg-retry",
+      "category": "ai-ml",
+      "expected": "none",
+      "prompt": "Our nightly job that calls the model provider's API dies whenever it hits a rate limit. Add retries with exponential backoff."
+    },
+    {
+      "id": "neg-plot-de",
+      "category": "ai-ml",
+      "expected": "none",
+      "prompt": "Wie plotte ich in Python ein Balkendiagramm mit dem Umsatz pro Region?"
     }
   ]
 }
