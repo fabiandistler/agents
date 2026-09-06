@@ -14,7 +14,7 @@ job IDs, cooldowns and the scoring rule are unchanged.
 |---|---|
 | Last run | 2026-09-06 (`perf-quickwins`) |
 | Last job | `perf-quickwins` — 2 findings, 1 candidate measured and rejected |
-| Next due job | `deps-audit` (cooldown 7d, due 2026-09-12) |
+| Next due job | see *Jobs* table — `score = (today - last run) / cooldown`, highest wins |
 | Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
