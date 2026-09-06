@@ -12,10 +12,10 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-05 (`doc-drift`) |
-| Last job | `doc-drift` — 7 findings, 6 fixed in docs, 1 report-only |
-| Next due job | `dead-exports` (score ∞, still never run → catalogue order) |
-| Baseline status | green, 2026-09-05 (all 10 commands in *Baseline* below) |
+| Last run | 2026-09-06 (`test-flakiness`) |
+| Last job | `test-flakiness` — 4 findings, 1 fixed, 3 report-only |
+| Next due job | `perf-quickwins` (score ∞, still never run → catalogue order) |
+| Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
 ## Rules
@@ -84,7 +84,7 @@ Red or missing baseline → report-only jobs, no code changes.
 | 2 | `doc-drift` | no | PR | 14d | 2026-09-05 |
 | 3 | `dead-exports` | yes | PR | 14d | - |
 | 4 | `error-edges` | no | report | 14d | - |
-| 5 | `test-flakiness` | yes | PR | 30d | - |
+| 5 | `test-flakiness` | yes | PR | 30d | 2026-09-06 |
 | 6 | `perf-quickwins` | no | report | 30d | - |
 
 Residual question per job (details in the skill under `references/jobs.md`):
@@ -137,6 +137,13 @@ The catalogue-relevant analogues in this repository are:
   `fabiandistler/agents` (`gh label list`: only `wontfix` is there). Recorded by the
   2026-09-05 `doc-drift` run rather than fixed: creating them changes the tracker, and
   the alternative — rewording the doc — is a different decision. Pick a direction.
+- **`import_vitals.R:8` claims 31 ARE tasks; there are 29.** Counted from the source of
+  truth by the 2026-09-06 `test-flakiness` run. A wrong number in a comment is drift, not
+  nondeterminism, so it was routed to `doc-drift` (job 2) rather than fixed there.
+- **Recall scores are single samples.** `eval-suite/recall/check_recall.py` asks the model
+  once per prompt and reports a bare score; the oracle exposes no seed. Repeating and
+  reporting the spread changes what the harness computes, so it is out of scope for a
+  roomba PR — pair it with the `check_live.py` fix under issue #95.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
 - **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
@@ -150,6 +157,7 @@ The catalogue-relevant analogues in this repository are:
 | 2026-09-05 | *(bootstrap)* | catalogue + scanner + CI gate | roomba/init-2026-09-05 |
 | 2026-09-05 | `deps-audit` | report, 7 findings, 0 changes | roomba/deps-audit-2026-09-05 |
 | 2026-09-05 | `doc-drift` | 7 findings, 6 doc fixes (12+/7-) | roomba/doc-drift-2026-09-05 |
+| 2026-09-06 | `test-flakiness` | 4 findings, 1 fix (pinned ARE ref) | roomba/test-flakiness-2026-09-06 |
 
 ## Teardown condition
 
