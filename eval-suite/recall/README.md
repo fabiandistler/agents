@@ -79,8 +79,9 @@ Prompts deliberately describe a situation without naming the technique
 ("two services share a database table", "keep a record of past decisions")
 and some are in German; `category` decides which `--category` run selects a
 prompt, and `expected` is the member that should handle it, `any` when only
-the router firing matters, or `none` for near-misses that must not fire. Every run spends real tokens, so this is a local check before
-touching a router description, not a CI gate. Compare the same model and
+the router firing matters, or `none` for near-misses that must not fire.
+Every run spends real tokens, so this is a local check before touching a
+router description, not a CI gate. Compare the same model and
 prompt set before and after a change; with 3 reps per prompt, differences of
 one or two runs are noise.
 
