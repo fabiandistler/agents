@@ -35,6 +35,9 @@ jobs:
       - name: Plugin marketplace in sync
         run: python scripts/check_plugins.py
 
+      - name: Instruction fragments valid
+        run: python scripts/check_instructions.py
+
       - name: Skill frontmatter valid
         # compileall proves the validator parses; only running it proves its
         # allowlist still matches the frontmatter this repo actually ships.

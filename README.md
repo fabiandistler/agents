@@ -52,6 +52,37 @@ Symlink the skills into your agent's conventional skill directory:
 Symlinks pick up local edits immediately, which makes this the better
 setup while developing skills in this repo.
 
+### Shared agent instructions
+
+Skills are capabilities an agent loads on demand; the rules that should
+apply to *every* session are something else. Those live in `instructions/`
+as single-topic Markdown fragments, ordered by their numeric filename
+prefix:
+
+```sh
+./install.sh --target=all --instructions             # sync the rule files
+./install.sh --target=all --instructions --dry-run   # preview
+./install.sh --target=all --instructions --uninstall # strip the block
+```
+
+Each fragment is authored once and composed into a marker-delimited managed
+block in the agent's global instruction file — `~/.claude/CLAUDE.md` for
+Claude Code, `~/.codex/AGENTS.md` for Codex CLI. The filenames differ
+because that is what each agent reads; the content is one AGENTS.md-style
+document either way. A fragment may limit itself to some agents with a
+`targets:` frontmatter field, exactly as a skill does.
+
+Anything outside the markers is left alone, so hand-written notes and
+`@`-imports survive install, reinstall and uninstall. Unbalanced markers
+(from a hand edit) make the installer skip the file rather than guess.
+
+opencode gets no file of its own on purpose: its instruction loader already
+reads `~/.claude/CLAUDE.md` unless `disableClaudeCodePrompt` is set, so a
+second copy would load every rule twice per session.
+
+The flag is opt-in — plain `./install.sh --target=...` only touches skills,
+exactly as before.
+
 For Codex CLI the installer covers the full plugins, not just the
 skills. `--target=codex` additionally:
 

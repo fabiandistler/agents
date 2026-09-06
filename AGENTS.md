@@ -17,6 +17,13 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `~/.codex/agents/` and disables routed members via a marker-delimited
   block in `~/.codex/config.toml` (both removed by `--uninstall`). See
   `./install.sh --help`.
+- `instructions/` holds the agent-instruction fragments: single-topic
+  Markdown files, ordered by their numeric filename prefix, that
+  `install.sh --instructions` composes into a marker-delimited managed block
+  in each agent's global instruction file (`~/.claude/CLAUDE.md`,
+  `~/.codex/AGENTS.md`). A rule is authored once here instead of being copied
+  by hand into every agent's config. Content outside the markers is never
+  touched.
 - `plugins/` packages the same skills as Claude plugins, one plugin per
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
