@@ -12,8 +12,8 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-06 (`test-flakiness`) |
-| Last job | `test-flakiness` — 4 findings, 1 fixed, 3 report-only |
+| Last run | 2026-09-06 (`perf-quickwins`) |
+| Last job | `perf-quickwins` — 2 findings, 1 candidate measured and rejected |
 | Next due job | see *Jobs* table — `score = (today - last run) / cooldown`, highest wins |
 | Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
@@ -85,7 +85,7 @@ Red or missing baseline → report-only jobs, no code changes.
 | 3 | `dead-exports` | yes | PR | 14d | 2026-09-06 |
 | 4 | `error-edges` | no | report | 14d | 2026-09-06 |
 | 5 | `test-flakiness` | yes | PR | 30d | 2026-09-06 |
-| 6 | `perf-quickwins` | no | report | 30d | - |
+| 6 | `perf-quickwins` | no | report | 30d | 2026-09-06 |
 
 Residual question per job (details in the skill under `references/jobs.md`):
 
@@ -154,6 +154,12 @@ The catalogue-relevant analogues in this repository are:
   once per prompt and reports a bare score; the oracle exposes no seed. Repeating and
   reporting the spread changes what the harness computes, so it is out of scope for a
   roomba PR — pair it with the `check_live.py` fix under issue #95.
+- **`lcom.py` analyses git-ignored directories.** Measured by the 2026-09-06
+  `perf-quickwins` run: `lcom.py --json .` takes 4.5 s and emits 607 KB / 1921 module
+  reports, of which 1271 come from a `.venv` and 517 from a `.worktrees` checkout; a scoped
+  run takes 115 ms and emits 8. Pruning changes which modules appear in the output, so it
+  is a behaviour change and out of scope for a roomba PR. It degrades the
+  `cohesion-analyst` subagent's input, so it is worth doing deliberately.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
 - **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
@@ -170,6 +176,7 @@ The catalogue-relevant analogues in this repository are:
 | 2026-09-06 | `dead-exports` | 3 findings, 1 catalogue fix | roomba/dead-exports-2026-09-06 |
 | 2026-09-06 | `error-edges` | report, 3 findings, 0 changes | roomba/error-edges-2026-09-06 |
 | 2026-09-06 | `test-flakiness` | 4 findings, 1 fix (pinned ARE ref) | roomba/test-flakiness-2026-09-06 |
+| 2026-09-06 | `perf-quickwins` | report, 2 findings, 0 changes | roomba/perf-quickwins-2026-09-06 |
 
 ## Teardown condition
 
