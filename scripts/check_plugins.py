@@ -17,6 +17,11 @@ Checked invariants:
     excludes `claude` are left out — the plugins are the Claude distribution.
   - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
     `name:` (matching the filename stem) and `description:`.
+
+Each skill's category, activation and targets come from `skills.json` via
+`catalogue.py`, not from crawling `skills/`, so a stale manifest makes this
+check answer from stale metadata. Run `python3 scripts/build_manifest.py`
+first; CI gates it with `build_manifest.py --check` before this check runs.
 """
 
 from __future__ import annotations
@@ -26,48 +31,11 @@ import re
 import sys
 from pathlib import Path
 
+from catalogue import load_catalogue, routed_categories
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILLS_DIR = REPO_ROOT / "skills"
 PLUGINS_DIR = REPO_ROOT / "plugins"
 MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
-
-CATEGORY_FIELD = re.compile(r"^category:\s*(\S+)\s*$", re.M)
-ACTIVATION_FIELD = re.compile(r"^activation:\s*(\S+)\s*$", re.M)
-TARGETS_FIELD = re.compile(r"^targets:\s*(.+)$", re.M)
-
-
-def skill_categories() -> dict[str, str]:
-    categories: dict[str, str] = {}
-    for child in sorted(SKILLS_DIR.iterdir()):
-        skill_md = child / "SKILL.md"
-        if child.is_dir() and not child.name.startswith(".") and skill_md.is_file():
-            m = CATEGORY_FIELD.search(skill_md.read_text(encoding="utf-8"))
-            categories[child.name] = m.group(1) if m else ""
-    return categories
-
-
-def skill_activations() -> dict[str, str]:
-    activations: dict[str, str] = {}
-    for child in sorted(SKILLS_DIR.iterdir()):
-        skill_md = child / "SKILL.md"
-        if child.is_dir() and not child.name.startswith(".") and skill_md.is_file():
-            m = ACTIVATION_FIELD.search(skill_md.read_text(encoding="utf-8"))
-            activations[child.name] = m.group(1) if m else "auto"
-    return activations
-
-
-def claude_skills() -> set[str]:
-    """Skills the Claude distribution ships — i.e. `targets:` allows claude."""
-    allowed: set[str] = set()
-    for child in sorted(SKILLS_DIR.iterdir()):
-        skill_md = child / "SKILL.md"
-        if not (child.is_dir() and not child.name.startswith(".") and skill_md.is_file()):
-            continue
-        m = TARGETS_FIELD.search(skill_md.read_text(encoding="utf-8"))
-        targets = [t.strip() for t in m.group(1).split(",")] if m else []
-        if not targets or "claude" in targets:
-            allowed.add(child.name)
-    return allowed
 
 
 def check_marketplace(errors: list[str]) -> list[str]:
@@ -153,17 +121,9 @@ def check_agents(plugin: str, errors: list[str]) -> None:
 
 def main() -> int:
     errors: list[str] = []
-    categories = skill_categories()
-    activations = skill_activations()
-    # A category is routed when it ships a skill with activation: router (named
-    # after the category). Its auto skills are nested under the router's
-    # members/ dir rather than symlinked flat into the plugin, so only the
-    # router itself (plus any user-invoked command skills) registers at top
-    # level. build_routers.py --check validates the nested members/ symlinks.
-    routed = {
-        cat for name, cat in categories.items() if activations.get(name) == "router"
-    }
-    for_claude = claude_skills()
+    catalogue = load_catalogue()
+    categories = {entry.name: entry.category for entry in catalogue}
+    routed = routed_categories(catalogue)
     plugins = check_marketplace(errors)
 
     if PLUGINS_DIR.is_dir():
@@ -171,32 +131,23 @@ def main() -> int:
             if child.is_dir() and child.name not in plugins:
                 errors.append(f"plugins/{child.name}/ exists but is not in marketplace.json")
 
-    for name, category in sorted(categories.items()):
-        if not category:
-            errors.append(f"skills/{name}: SKILL.md has no 'category' frontmatter")
-
     for plugin in plugins:
         check_agents(plugin, errors)
         bundled = plugin_skills(plugin, errors)
+        members = [entry for entry in catalogue if entry.category == plugin]
         if plugin in routed:
             # Only the router and any command skills register at top level;
             # auto members ride nested under the router.
-            expected = {
-                s
-                for s, c in categories.items()
-                if c == plugin and activations.get(s) in ("router", "command")
-            }
-        else:
-            expected = {s for s, c in categories.items() if c == plugin}
+            members = [e for e in members if e.activation in ("router", "command")]
         # Plugins are the Claude distribution, so a skill that opts out of the
         # claude target ships in neither.
-        expected &= for_claude
+        expected = {e.name for e in members if e.in_target("claude")}
         for s in sorted(expected - bundled):
             errors.append(f"{plugin}: skills/{s} has category: {plugin} but no symlink in plugins/{plugin}/skills/")
         for s in sorted(bundled - expected):
             errors.append(f"{plugin}: bundles {s}, but its SKILL.md says category: {categories.get(s, '?')}")
 
-    uncovered = {c for c in categories.values() if c} - set(plugins)
+    uncovered = set(categories.values()) - set(plugins)
     for c in sorted(uncovered):
         errors.append(f"category '{c}' has skills but no plugin in marketplace.json")
 
@@ -210,11 +161,11 @@ def main() -> int:
         )
         return 1
 
-    # `categories` covers every skill including routers, so this count is
+    # `catalogue` covers every skill including routers, so this count is
     # deliberately higher than check_docs.py's, which excludes them.
     print(
         f"plugin marketplace in sync ({len(plugins)} plugins, "
-        f"{len(categories)} skills incl. routers)"
+        f"{len(catalogue)} skills incl. routers)"
     )
     return 0
 
