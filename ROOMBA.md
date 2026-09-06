@@ -14,7 +14,7 @@ job IDs, cooldowns and the scoring rule are unchanged.
 |---|---|
 | Last run | 2026-09-06 (`test-flakiness`) |
 | Last job | `test-flakiness` — 4 findings, 1 fixed, 3 report-only |
-| Next due job | `perf-quickwins` (score ∞, still never run → catalogue order) |
+| Next due job | see *Jobs* table — `score = (today - last run) / cooldown`, highest wins |
 | Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
