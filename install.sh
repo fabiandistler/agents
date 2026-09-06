@@ -792,7 +792,9 @@ install_instructions() {
   local fragments count=0 file
   fragments="$(list_instruction_fragments "$target")"
   while IFS= read -r file; do
-    [[ -n "$file" ]] && count=$((count + 1))
+    if [[ -n "$file" ]]; then
+      count=$((count + 1))
+    fi
   done <<< "$fragments"
   if (( count == 0 )); then
     printf '  WARN      no instruction fragments match target %s (skipping %s)\n' \
