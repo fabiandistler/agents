@@ -19,6 +19,7 @@ dependency runs one way only. Stdlib-only.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,14 +31,16 @@ MANIFEST_PATH = REPO_ROOT / "skills.json"
 class SkillEntry:
     """One skill as the catalogue describes it.
 
-    `environments` is None when the skill declares none, which means every
-    environment — the manifest omits the key rather than spelling out the list.
+    `environments` and `targets` are None when the skill declares none, which
+    means every environment and every target — the manifest omits the key
+    rather than spelling out the list.
     """
 
     name: str
     category: str
     activation: str
     environments: tuple[str, ...] | None
+    targets: tuple[str, ...] | None
 
     @property
     def is_router(self) -> bool:
@@ -47,6 +50,10 @@ class SkillEntry:
     def in_environment(self, environment: str) -> bool:
         """Whether the skill is available in `environment` (all, if undeclared)."""
         return self.environments is None or environment in self.environments
+
+    def in_target(self, target: str) -> bool:
+        """Whether the skill ships for `target` (all of them, if undeclared)."""
+        return self.targets is None or target in self.targets
 
 
 def load_catalogue(manifest_path: Path = MANIFEST_PATH) -> list[SkillEntry]:
@@ -59,12 +66,26 @@ def load_catalogue(manifest_path: Path = MANIFEST_PATH) -> list[SkillEntry]:
     entries = []
     for entry in manifest["skills"]:
         environments = entry.get("environments")
+        targets = entry.get("targets")
         entries.append(
             SkillEntry(
                 name=entry["name"],
                 category=entry["category"],
                 activation=entry.get("activation", "auto"),
                 environments=tuple(environments) if environments is not None else None,
+                targets=tuple(targets) if targets is not None else None,
             )
         )
     return entries
+
+
+def routed_categories(catalogue: Iterable[SkillEntry]) -> set[str]:
+    """Categories reached through a router rather than skill by skill.
+
+    A category is routed when it ships a skill with `activation: router` (named
+    after the category). Its auto skills are nested under the router's
+    `members/` dir rather than registered at top level, so only the router
+    itself — plus any user-invoked command skills — is installed flat.
+    `build_routers.py --check` validates the nested `members/` symlinks.
+    """
+    return {entry.category for entry in catalogue if entry.is_router}
