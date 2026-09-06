@@ -12,8 +12,8 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-06 (`error-edges`) |
-| Last job | `error-edges` — 3 findings, report-only by design |
+| Last run | 2026-09-06 (`test-flakiness`) |
+| Last job | `test-flakiness` — 4 findings, 1 fixed, 3 report-only |
 | Next due job | see *Jobs* table — `score = (today - last run) / cooldown`, highest wins |
 | Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
@@ -84,7 +84,7 @@ Red or missing baseline → report-only jobs, no code changes.
 | 2 | `doc-drift` | no | PR | 14d | 2026-09-05 |
 | 3 | `dead-exports` | yes | PR | 14d | 2026-09-06 |
 | 4 | `error-edges` | no | report | 14d | 2026-09-06 |
-| 5 | `test-flakiness` | yes | PR | 30d | - |
+| 5 | `test-flakiness` | yes | PR | 30d | 2026-09-06 |
 | 6 | `perf-quickwins` | no | report | 30d | - |
 
 Residual question per job (details in the skill under `references/jobs.md`):
@@ -147,6 +147,13 @@ The catalogue-relevant analogues in this repository are:
   harness reports a nonzero `claude` exit as a routing miss. A fix changes behaviour, so it
   is out of scope for a roomba PR — it belongs to issue #95, whose cause 3 is the same
   failure mode. Fix it before any eval-coverage work relies on those numbers.
+- **`import_vitals.R:8` claims 31 ARE tasks; there are 29.** Counted from the source of
+  truth by the 2026-09-06 `test-flakiness` run. A wrong number in a comment is drift, not
+  nondeterminism, so it was routed to `doc-drift` (job 2) rather than fixed there.
+- **Recall scores are single samples.** `eval-suite/recall/check_recall.py` asks the model
+  once per prompt and reports a bare score; the oracle exposes no seed. Repeating and
+  reporting the spread changes what the harness computes, so it is out of scope for a
+  roomba PR — pair it with the `check_live.py` fix under issue #95.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
 - **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
@@ -162,6 +169,7 @@ The catalogue-relevant analogues in this repository are:
 | 2026-09-05 | `doc-drift` | 7 findings, 6 doc fixes (12+/7-) | roomba/doc-drift-2026-09-05 |
 | 2026-09-06 | `dead-exports` | 3 findings, 1 catalogue fix | roomba/dead-exports-2026-09-06 |
 | 2026-09-06 | `error-edges` | report, 3 findings, 0 changes | roomba/error-edges-2026-09-06 |
+| 2026-09-06 | `test-flakiness` | 4 findings, 1 fix (pinned ARE ref) | roomba/test-flakiness-2026-09-06 |
 
 ## Teardown condition
 
