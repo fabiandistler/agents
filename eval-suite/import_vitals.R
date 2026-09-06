@@ -10,7 +10,7 @@
 
 suppressPackageStartupMessages(library(jsonlite))
 
-ARE_URL <- "https://raw.githubusercontent.com/tidyverse/vitals/main/data-raw/are.json"
+ARE_URL <- "https://raw.githubusercontent.com/tidyverse/vitals/58609f04a3c36f336c552f8cc578ac38b1e88592/data-raw/are.json"
 
 script_arg <- grep("--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 root <- if (length(script_arg) >= 1L) {
