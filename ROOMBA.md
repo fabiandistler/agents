@@ -12,10 +12,10 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-05 (`doc-drift`) |
-| Last job | `doc-drift` — 7 findings, 6 fixed in docs, 1 report-only |
-| Next due job | `dead-exports` (score ∞, still never run → catalogue order) |
-| Baseline status | green, 2026-09-05 (all 10 commands in *Baseline* below) |
+| Last run | 2026-09-06 (`perf-quickwins`) |
+| Last job | `perf-quickwins` — 2 findings, 1 candidate measured and rejected |
+| Next due job | `deps-audit` (cooldown 7d, due 2026-09-12) |
+| Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
 ## Rules
@@ -85,7 +85,7 @@ Red or missing baseline → report-only jobs, no code changes.
 | 3 | `dead-exports` | yes | PR | 14d | - |
 | 4 | `error-edges` | no | report | 14d | - |
 | 5 | `test-flakiness` | yes | PR | 30d | - |
-| 6 | `perf-quickwins` | no | report | 30d | - |
+| 6 | `perf-quickwins` | no | report | 30d | 2026-09-06 |
 
 Residual question per job (details in the skill under `references/jobs.md`):
 
@@ -137,6 +137,12 @@ The catalogue-relevant analogues in this repository are:
   `fabiandistler/agents` (`gh label list`: only `wontfix` is there). Recorded by the
   2026-09-05 `doc-drift` run rather than fixed: creating them changes the tracker, and
   the alternative — rewording the doc — is a different decision. Pick a direction.
+- **`lcom.py` analyses git-ignored directories.** Measured by the 2026-09-06
+  `perf-quickwins` run: `lcom.py --json .` takes 4.5 s and emits 607 KB / 1921 module
+  reports, of which 1271 come from a `.venv` and 517 from a `.worktrees` checkout; a scoped
+  run takes 115 ms and emits 8. Pruning changes which modules appear in the output, so it
+  is a behaviour change and out of scope for a roomba PR. It degrades the
+  `cohesion-analyst` subagent's input, so it is worth doing deliberately.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
 - **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
@@ -150,6 +156,7 @@ The catalogue-relevant analogues in this repository are:
 | 2026-09-05 | *(bootstrap)* | catalogue + scanner + CI gate | roomba/init-2026-09-05 |
 | 2026-09-05 | `deps-audit` | report, 7 findings, 0 changes | roomba/deps-audit-2026-09-05 |
 | 2026-09-05 | `doc-drift` | 7 findings, 6 doc fixes (12+/7-) | roomba/doc-drift-2026-09-05 |
+| 2026-09-06 | `perf-quickwins` | report, 2 findings, 0 changes | roomba/perf-quickwins-2026-09-06 |
 
 ## Teardown condition
 
