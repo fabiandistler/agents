@@ -82,8 +82,8 @@ Red or missing baseline → report-only jobs, no code changes.
 |---|---|---|---|---|---|
 | 1 | `deps-audit` | yes | report | 7d | 2026-09-05 |
 | 2 | `doc-drift` | no | PR | 14d | 2026-09-05 |
-| 3 | `dead-exports` | yes | PR | 14d | - |
-| 4 | `error-edges` | no | report | 14d | - |
+| 3 | `dead-exports` | yes | PR | 14d | 2026-09-06 |
+| 4 | `error-edges` | no | report | 14d | 2026-09-06 |
 | 5 | `test-flakiness` | yes | PR | 30d | 2026-09-06 |
 | 6 | `perf-quickwins` | no | report | 30d | - |
 
@@ -104,7 +104,7 @@ Residual question per job (details in the skill under `references/jobs.md`):
 
 `scripts/roomba-scan.sh` keys off `DESCRIPTION` (R) and `pyproject.toml` /
 `requirements.txt` (Python) **at the repository root**, where this repository has none of
-them; its tests likewise live at `skills/skill-creator/tests`, not at the root. All three
+them; its tests likewise live under `eval-suite/`, not at the root. All three
 pre-stages therefore return empty here today. Corrected by the 2026-09-05 `deps-audit` run:
 `mcp-wiki-server/pyproject.toml` does exist one level down and declares an `mcp[cli]` bound — the
 gap is the scanner's root-only search, not an absence of package metadata. Until the scanner is adapted (see *Backlog*), the run must treat
@@ -117,7 +117,7 @@ The catalogue-relevant analogues in this repository are:
 |---|---|
 | `deps-audit` | pinned versions in `.github/workflows/ci.yml` (`ruff==0.15.8`, `pyyaml>=6`), `mcp-wiki-server/pyproject.toml` (`mcp[cli]>=1.2,<2`), and pinned `rev:` values in any pre-commit config. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
-| `test-flakiness` | the eval harness under `eval-suite/` and `skills/skill-creator/tests` |
+| `test-flakiness` | the eval harness under `eval-suite/` |
 
 ## Backlog
 
@@ -137,6 +137,16 @@ The catalogue-relevant analogues in this repository are:
   `fabiandistler/agents` (`gh label list`: only `wontfix` is there). Recorded by the
   2026-09-05 `doc-drift` run rather than fixed: creating them changes the tracker, and
   the alternative — rewording the doc — is a different decision. Pick a direction.
+- **Decide whether `dead-exports` survives the 2026-12-01 review.** The 2026-09-06 run
+  found every tracked skill reachable, and CI (`build_routers --check`, `check_docs.py`,
+  `check_plugins.py`) already fails on an unrouted tracked skill — a CI-gate question under
+  *What does NOT belong in this catalogue*. The only thing the gate cannot see is an
+  untracked leftover under `skills/`, which is what the run did find. Narrow the job to
+  that, or drop it.
+- **`check_live.py` silent-CLI-failure fix**, from the 2026-09-06 `error-edges` run: the
+  harness reports a nonzero `claude` exit as a routing miss. A fix changes behaviour, so it
+  is out of scope for a roomba PR — it belongs to issue #95, whose cause 3 is the same
+  failure mode. Fix it before any eval-coverage work relies on those numbers.
 - **`import_vitals.R:8` claims 31 ARE tasks; there are 29.** Counted from the source of
   truth by the 2026-09-06 `test-flakiness` run. A wrong number in a comment is drift, not
   nondeterminism, so it was routed to `doc-drift` (job 2) rather than fixed there.
@@ -157,6 +167,8 @@ The catalogue-relevant analogues in this repository are:
 | 2026-09-05 | *(bootstrap)* | catalogue + scanner + CI gate | roomba/init-2026-09-05 |
 | 2026-09-05 | `deps-audit` | report, 7 findings, 0 changes | roomba/deps-audit-2026-09-05 |
 | 2026-09-05 | `doc-drift` | 7 findings, 6 doc fixes (12+/7-) | roomba/doc-drift-2026-09-05 |
+| 2026-09-06 | `dead-exports` | 3 findings, 1 catalogue fix | roomba/dead-exports-2026-09-06 |
+| 2026-09-06 | `error-edges` | report, 3 findings, 0 changes | roomba/error-edges-2026-09-06 |
 | 2026-09-06 | `test-flakiness` | 4 findings, 1 fix (pinned ARE ref) | roomba/test-flakiness-2026-09-06 |
 
 ## Teardown condition
