@@ -39,7 +39,7 @@ MCP tool.
 
 The motivating examples that made the cost look larger are gone. The request
 named `zettelkasten-value-hierarchy` and `worry-management` as dead weight in
-coding sessions; both were removed in `ffe7cdc`. `personal` is one skill today,
+coding sessions; both are gone (`ffe7cdc` and `f68327d`). `personal` is one skill today,
 not a category-sized tax.
 
 What is left is the trade the request itself flagged as its sharpest risk:
