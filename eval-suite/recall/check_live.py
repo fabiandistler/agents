@@ -28,7 +28,9 @@ the triggering actually happens.
 
 `--flat` swaps the category's router for a throwaway plugin that registers
 every member individually — the pre-router layout — so the two can be
-compared on the same prompts and model.
+compared on the same prompts and model. `--promote NAME` builds the layout
+between the two: the router keeps every member except NAME, which gets its own
+top-level entry.
 
 Needs the `claude` CLI on PATH; prints SKIP and exits 0 without it. Every run
 costs real tokens (roughly 30-60 s and a few cents each). Stdlib-only.
@@ -80,18 +82,76 @@ def router_of(skills: list[dict], category: str) -> str | None:
     return None
 
 
+def plugin_manifest(category: str) -> dict:
+    """The category's real plugin.json, which a throwaway layout must not lose.
+
+    The description is part of what a session loads, and for some categories it
+    is a long list of the very nouns the prompts use. Replacing it with a
+    placeholder changes the trigger surface under test, so a rebuilt layout
+    reuses it verbatim and varies only the skills underneath.
+    """
+    real = PLUGINS_DIR / category / ".claude-plugin" / "plugin.json"
+    if real.is_file():
+        return json.loads(real.read_text(encoding="utf-8"))
+    return {"name": category, "description": f"{category} skills (live check)"}
+
+
 def make_flat_plugin(category: str, members: list[str], tmp: Path) -> Path:
     """A throwaway plugin that registers every member of the category flat."""
     plugin = tmp / f"{category}-flat"
     (plugin / ".claude-plugin").mkdir(parents=True)
     (plugin / ".claude-plugin" / "plugin.json").write_text(
-        json.dumps({"name": category, "description": f"{category} members, flat (live check)"}),
+        json.dumps(plugin_manifest(category)),
         encoding="utf-8",
     )
     skills_dir = plugin / "skills"
     skills_dir.mkdir()
     for m in members:
         (skills_dir / m).symlink_to(REPO_ROOT / "skills" / m, target_is_directory=True)
+    return plugin
+
+
+def drop_member_row(text: str, promoted: str) -> str:
+    """The router's generated member table without the promoted member's row."""
+    kept = [ln for ln in text.splitlines() if not ln.startswith(f"| {promoted} ")]
+    return "\n".join(kept) + "\n"
+
+
+def make_promoted_plugin(
+    category: str, members: list[str], promoted: str, router: str, tmp: Path
+) -> Path:
+    """A throwaway plugin: the router plus one member registered at top level.
+
+    The default layout routes every member and `--flat` drops the router
+    entirely; neither measures the layout #108 actually proposes, where one
+    member earns its own trigger entry and the router keeps the rest. Here the
+    router's `members/` symlinks and its generated table both lose the promoted
+    row, so the only way to that member is its own top-level entry.
+
+    Subagents are carried over unchanged. A member reached through a subagent
+    that names its `members/<name>/` path would need that path updated in a real
+    promotion; no such agent exists for the members promoted so far.
+    """
+    plugin = tmp / f"{category}-promote-{promoted}"
+    (plugin / ".claude-plugin").mkdir(parents=True)
+    (plugin / ".claude-plugin" / "plugin.json").write_text(
+        json.dumps(plugin_manifest(category)),
+        encoding="utf-8",
+    )
+    skills_dir = plugin / "skills"
+    router_dir = skills_dir / router
+    (router_dir / "members").mkdir(parents=True)
+    for m in members:
+        if m != promoted:
+            (router_dir / "members" / m).symlink_to(
+                REPO_ROOT / "skills" / m, target_is_directory=True
+            )
+    source = (REPO_ROOT / "skills" / router / "SKILL.md").read_text(encoding="utf-8")
+    (router_dir / "SKILL.md").write_text(drop_member_row(source, promoted), encoding="utf-8")
+    (skills_dir / promoted).symlink_to(REPO_ROOT / "skills" / promoted, target_is_directory=True)
+    agents_src = PLUGINS_DIR / category / "agents"
+    if agents_src.is_dir():
+        (plugin / "agents").symlink_to(agents_src, target_is_directory=True)
     return plugin
 
 
@@ -171,6 +231,29 @@ def run_prompt(prompt: str, plugin_dirs: list[Path], workdir: Path, model: str |
     return result.stdout.splitlines()
 
 
+def unusable(lines: list[str]) -> bool:
+    """Did this session fail to produce a usable transcript?
+
+    A session that never answered carries no evidence about triggering, but the
+    event stream for it looks exactly like a session where the model answered
+    from its own knowledge: no skill event either way. Counting the two together
+    silently depresses every rate at once, which is what a rate-limited or
+    erroring batch does. The caller reports these separately instead.
+    """
+    saw_assistant = False
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        kind = event.get("type")
+        if kind == "assistant":
+            saw_assistant = True
+        elif kind == "result" and event.get("subtype") not in ("success", "error_max_turns"):
+            return True
+    return not saw_assistant
+
+
 def observe(
     lines: list[str], router: str | None, members: list[str], agents: dict[str, str]
 ) -> tuple[bool, str | None, str | None]:
@@ -223,6 +306,11 @@ def main() -> int:
     parser.add_argument(
         "--flat", action="store_true", help="register the members flat instead of the router"
     )
+    parser.add_argument(
+        "--promote",
+        metavar="NAME",
+        help="keep the router but register NAME at top level (the hybrid layout)",
+    )
     parser.add_argument("--reps", type=int, default=3, help="runs per prompt (default 3)")
     parser.add_argument("--workers", type=int, default=4, help="parallel claude sessions")
     parser.add_argument("--model", default=None, help="model id (default: the CLI's default)")
@@ -237,6 +325,12 @@ def main() -> int:
         return 2
     if router is None and not args.flat:
         sys.stderr.write(f"category {args.category!r} has no router; use --flat\n")
+        return 2
+    if args.promote and args.flat:
+        sys.stderr.write("--promote and --flat are different layouts; pass only one\n")
+        return 2
+    if args.promote and args.promote not in members:
+        sys.stderr.write(f"{args.promote!r} is not a member of category {args.category!r}\n")
         return 2
 
     prompts = json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))["prompts"]
@@ -265,6 +359,12 @@ def main() -> int:
             layout = "flat"
             router = None
             agents = {}
+        elif args.promote:
+            plugin_dirs = [p for p in plugin_dirs if p.name != args.category]
+            plugin_dirs.append(
+                make_promoted_plugin(args.category, members, args.promote, router, tmp)
+            )
+            layout = f"router + {args.promote} promoted"
         workdir = make_workdir(tmp)
         jobs = [(p, r) for p in prompts for r in range(args.reps)]
         print(
@@ -275,6 +375,7 @@ def main() -> int:
         results: dict[str, list[tuple[bool, str | None, str | None]]] = {
             p["id"]: [] for p in prompts
         }
+        broken: Counter[str] = Counter()
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
             futures = {
                 pool.submit(run_prompt, p["prompt"], plugin_dirs, workdir, args.model): p
@@ -282,7 +383,11 @@ def main() -> int:
             }
             for fut in concurrent.futures.as_completed(futures):
                 p = futures[fut]
-                results[p["id"]].append(observe(fut.result(), router, members, agents))
+                lines = fut.result()
+                if unusable(lines):
+                    broken[p["id"]] += 1
+                    continue
+                results[p["id"]].append(observe(lines, router, members, agents))
 
     print(f"\n{'prompt':16} {'expected':30} {'fired':7} {'member reached':34} via")
     fired_pos = ok_pos = n_pos = fired_neg = n_neg = 0
@@ -308,6 +413,14 @@ def main() -> int:
         )
     print(f"\npositives: fired {fired_pos}/{n_pos}, expected member reached {ok_pos}/{n_pos}")
     print(f"paths taken (non-negatives): {dict(paths)}")
+    if broken:
+        total = sum(broken.values())
+        print(
+            f"unusable sessions: {total} (excluded from the rates above): {dict(broken)}\n"
+            "  A run that errored or never answered is not evidence about triggering.\n"
+            "  Several at once means the batch was degraded; compare layouts only\n"
+            "  across batches with none."
+        )
     if n_neg:
         print(f"negatives: fired {fired_neg}/{n_neg} (should be 0)")
     return 0

@@ -68,6 +68,9 @@ python3 eval-suite/recall/check_live.py --category architecture
 # the same prompts with the members registered flat, for comparison
 python3 eval-suite/recall/check_live.py --category architecture --flat
 
+# keep the router but give one member its own top-level entry (the hybrid)
+python3 eval-suite/recall/check_live.py --category architecture --promote c4-modeling
+
 # pin the model you actually run
 python3 eval-suite/recall/check_live.py --category architecture --model claude-opus-5
 
@@ -84,6 +87,30 @@ Every run spends real tokens, so this is a local check before touching a
 router description, not a CI gate. Compare the same model and
 prompt set before and after a change; with 3 reps per prompt, differences of
 one or two runs are noise.
+
+## Reading the numbers
+
+Two things the headline rate does not say.
+
+**`any` probes are not in it.** The `positives: fired X/N` line counts only
+probes whose `expected` names a concrete member, so an `expected: "any"` probe
+contributes to `paths taken` and to nothing else. For `architecture` that
+excludes `generic` ("Is our architecture okay?"), the one prompt a router wins
+and a flat layout loses, so a router-versus-flat total read off that line omits
+the router's main argument. Read the per-prompt rows for that comparison.
+
+**Flat numbers predate a fix.** Until the rebuilt layouts started reusing the
+category's real `plugin.json`, they wrote a placeholder description in its
+place, so any `--flat` rate recorded before that change was measured without
+the plugin-level description. Do not pool those with rates taken after it.
+
+**Batches vary as a whole.** Runs of one invocation share a moment, and a
+degraded moment moves every prompt at once. Two `--promote` batches of the same
+layout, minutes apart, gave 0/5, 3/5, 3/5 and then 1/5, 0/5, 0/5 across the same
+three prompts — a swing no per-prompt effect explains. `unusable sessions`
+catches the runs that errored outright, but a throttled batch that still answers
+looks normal. Treat a layout comparison across separate invocations as weak
+evidence, and re-run a surprising result before believing it.
 
 ## Extending
 
