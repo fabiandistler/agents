@@ -171,6 +171,24 @@ def run_prompt(prompt: str, plugin_dirs: list[Path], workdir: Path, model: str |
     return result.stdout.splitlines()
 
 
+def answered(lines: list[str]) -> bool:
+    """Did the session produce any assistant turn at all?
+
+    A session that dies (bad model id, auth failure, throttling) writes nothing,
+    and an empty transcript observes exactly like a run where the model simply
+    never routed. Counting the two apart keeps a failed run out of the non-fire
+    column.
+    """
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") == "assistant":
+            return True
+    return False
+
+
 def observe(
     lines: list[str], router: str | None, members: list[str], agents: dict[str, str]
 ) -> tuple[bool, str | None, str | None]:
@@ -239,6 +257,7 @@ def main() -> int:
         sys.stderr.write(f"category {args.category!r} has no router; use --flat\n")
         return 2
 
+    empty = 0
     prompts = json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))["prompts"]
     prompts = [
         p
@@ -282,7 +301,10 @@ def main() -> int:
             }
             for fut in concurrent.futures.as_completed(futures):
                 p = futures[fut]
-                results[p["id"]].append(observe(fut.result(), router, members, agents))
+                lines = fut.result()
+                if not answered(lines):
+                    empty += 1
+                results[p["id"]].append(observe(lines, router, members, agents))
 
     print(f"\n{'prompt':16} {'expected':30} {'fired':7} {'member reached':34} via")
     fired_pos = ok_pos = n_pos = fired_neg = n_neg = 0
@@ -310,6 +332,7 @@ def main() -> int:
     print(f"paths taken (non-negatives): {dict(paths)}")
     if n_neg:
         print(f"negatives: fired {fired_neg}/{n_neg} (should be 0)")
+    print(f"empty transcripts: {empty}/{len(jobs)} (a dead session reads as a non-fire)")
     return 0
 
 
