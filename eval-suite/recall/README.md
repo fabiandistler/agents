@@ -99,6 +99,11 @@ excludes `generic` ("Is our architecture okay?"), the one prompt a router wins
 and a flat layout loses, so a router-versus-flat total read off that line omits
 the router's main argument. Read the per-prompt rows for that comparison.
 
+**Flat numbers predate a fix.** Until the rebuilt layouts started reusing the
+category's real `plugin.json`, they wrote a placeholder description in its
+place, so any `--flat` rate recorded before that change was measured without
+the plugin-level description. Do not pool those with rates taken after it.
+
 **Batches vary as a whole.** Runs of one invocation share a moment, and a
 degraded moment moves every prompt at once. Two `--promote` batches of the same
 layout, minutes apart, gave 0/5, 3/5, 3/5 and then 1/5, 0/5, 0/5 across the same
