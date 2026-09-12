@@ -33,10 +33,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 - Reference material stays inside the skill that owns it, under
   `skills/<skill>/references/`. SKILL.md names the pages it has; an agent
   opens one only when it needs it. There is no lookup service in front of
-  them — plain progressive disclosure is the whole mechanism.
-- `mcp-wiki-server/` is a small standalone MCP server exposing a wiki /
-  knowledge-base tool to any MCP-aware agent. Nothing else in this repo
-  depends on it.
+   them — plain progressive disclosure is the whole mechanism.
 
 ## Skill catalogue
 

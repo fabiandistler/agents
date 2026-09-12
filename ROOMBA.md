@@ -58,7 +58,7 @@ python scripts/check_docs.py
 python scripts/check_plugins.py
 for d in skills/*/; do [ -f "$d/SKILL.md" ] && python3 scripts/quick_validate.py "$d"; done
 uvx ruff@latest check .
-python -m compileall -q scripts skills mcp-wiki-server
+python -m compileall -q scripts skills
 uvx --from shellcheck-py shellcheck -S warning \
   install.sh scripts/test_install.sh scripts/roomba-scan.sh
 bash scripts/test_install.sh

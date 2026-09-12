@@ -36,8 +36,8 @@ Do not stop at the first failure; collect all output.
 3. `python3 scripts/check_docs.py` — README/AGENTS catalogue tables.
 4. `python3 scripts/check_plugins.py` — marketplace, plugin symlinks,
    agent frontmatter.
-5. `ruff check .` and `python3 -m compileall -q scripts skills
-   mcp-wiki-server` — Python lint/compile.
+5. `ruff check .` and `python3 -m compileall -q scripts skills`
+   — Python lint/compile.
 6. `shellcheck -S warning install.sh scripts/test_install.sh
    scripts/roomba-scan.sh` — skip with a note if shellcheck (or ruff) is not
    installed; never install tools yourself.
