@@ -5,9 +5,7 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: '^eval-suite/tasks/'
       - id: end-of-file-fixer
-        exclude: '^eval-suite/tasks/'
       - id: check-yaml
       - id: detect-private-key
       - id: check-toml

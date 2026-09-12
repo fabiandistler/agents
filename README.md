@@ -164,7 +164,6 @@ still listed here.
 | `instructions/` | Always-on rule fragments, composed into the agent's global instruction file by `--instructions` |
 | `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents) |
 | `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
-| `eval-suite/` | A/B harness for measuring the effect of skills / MCP / AGENTS.md on agent output |
 | `mcp-wiki-server/` | Standalone MCP server exposing a wiki tool. Not used by the plugins |
 | `roomba/` | Reports from the scheduled maintenance rotation described in [`ROOMBA.md`](ROOMBA.md) |
 | `docs/adr/` | Architecture Decision Records for this repo's own structure |
@@ -185,16 +184,14 @@ python3 scripts/check_plugins.py            # plugin symlinks and marketplace en
 python3 scripts/check_instructions.py       # instruction fragments valid
 ruff check .
 prek run --all-files                        # whitespace, YAML/TOML and ruff hooks
-shellcheck -S warning install.sh scripts/*.sh eval-suite/run.sh
+shellcheck -S warning install.sh scripts/*.sh
 bash scripts/test_install.sh                # install.sh smoke test in a temp HOME
 ```
 
 The hooks in `.pre-commit-config.yaml` are run by
 [prek](https://github.com/j178/prek) (`uv tool install prek`). Run `prek
-install` once and they fire on every commit; CI runs them too, so a skipped
-hook fails the build rather than landing on `main`. `eval-suite/tasks/` is
-exempt from the whitespace hooks — those `prompt:` blocks reproduce real user
-prompts byte for byte.
+ install` once and they fire on every commit; CI runs them too, so a skipped
+ hook fails the build rather than landing on `main`.
 
 `build_manifest.py --check` runs first for a reason: the catalogue and plugin
 checks read `skills.json`, so a stale manifest makes them answer from stale

@@ -34,8 +34,6 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `skills/<skill>/references/`. SKILL.md names the pages it has; an agent
   opens one only when it needs it. There is no lookup service in front of
   them — plain progressive disclosure is the whole mechanism.
-- `eval-suite/` is an A/B harness for measuring whether a skill
-  improves an agent's output. It is not a skill itself.
 - `mcp-wiki-server/` is a small standalone MCP server exposing a wiki /
   knowledge-base tool to any MCP-aware agent. Nothing else in this repo
   depends on it.
@@ -166,7 +164,8 @@ machine consumption prefer `skills.json`.
     `scripts/check_descriptions.py` keeps it out of the Codex-facing budgets
     and gives it Claude's combined cap instead. A router's `skills.json`
     summary appends it the same way Claude does, so the recall menu in
-    `eval-suite/recall` shows what the client shows.
+    `eval-suite/recall` ([fabiandistler/eval-suite](https://github.com/fabiandistler/eval-suite))
+    shows what the client shows.
   - `compatibility` — runtime / language requirements in plain prose.
   - `environments` — comma-separated list of the environments the skill
     belongs to: `coding`, `chat`, or both (e.g. `environments: coding, chat`).
