@@ -17,6 +17,13 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `~/.codex/agents/` and disables routed members via a marker-delimited
   block in `~/.codex/config.toml` (both removed by `--uninstall`). See
   `./install.sh --help`.
+- `instructions/` holds the agent-instruction fragments: single-topic
+  Markdown files, ordered by their numeric filename prefix, that
+  `install.sh --instructions` composes into a marker-delimited managed block
+  in each agent's global instruction file (`~/.claude/CLAUDE.md`,
+  `~/.codex/AGENTS.md`). A rule is authored once here instead of being copied
+  by hand into every agent's config. Content outside the markers is never
+  touched.
 - `plugins/` packages the same skills as Claude plugins, one plugin per
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
@@ -75,9 +82,11 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [refactoring](skills/refactoring/SKILL.md) | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| [refactoring](skills/refactoring/SKILL.md) | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
 
 ### AI & ML (`ai-ml`)
+
+Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
@@ -89,6 +98,7 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 | Skill | When to use |
 |---|---|
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
+| [oss-scouting](skills/oss-scouting/SKILL.md) | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
 | [repo-status](skills/repo-status/SKILL.md) | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
 
 ### Communication & writing (`communication`)
@@ -99,7 +109,7 @@ Registered through the [`architecture`](skills/architecture/SKILL.md) router.
 | [documentation](skills/documentation/SKILL.md) | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
 | [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing technical explanations that lead with the concrete problem before the abstract solution. |
-| [stakeholder-update](skills/stakeholder-update/SKILL.md) | Generating a stakeholder update tailored to audience and cadence — weekly/monthly status, launch announcement, risk escalation, exec/engineering/customer versions. |
+| [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 
 ### Personal & knowledge (`personal`)
 
@@ -121,9 +131,11 @@ machine consumption prefer `skills.json`.
     `scripts/build_manifest.py`). Determines the catalogue section, the
     `install.sh --category` subset, and which plugin bundles the skill.
   - `description` — single paragraph; the first sentence becomes the
-    `summary` in `skills.json`. Keep it within the description budget:
-    **≤250 chars** for most skills, **≤400 chars** for the small allowlist
-    of high-traffic skills in `scripts/check_descriptions.py`. Descriptions
+    `summary` in `skills.json` (for a router the whole description does, since
+    it is the category's entire trigger surface). Keep it within the description budget:
+    **≤250 chars** for most skills, **≤450 chars** for router skills, **≤400 chars**
+    for the small allowlist of high-traffic skills in
+    `scripts/check_descriptions.py`. Descriptions
     are always-loaded metadata that competes for a tight context budget
     (Codex CLI truncates the skill list past ~2% of context), so move
     trigger lists and feature enumerations into the SKILL.md **body** (a
@@ -140,9 +152,21 @@ machine consumption prefer `skills.json`.
     metadata. Codex custom prompts are deprecated, so under codex they install
     into `~/.codex/skills/` like any skill, gated by an `agents/openai.yaml`
     sidecar (`policy.allow_implicit_invocation: false`) that keeps Codex from
-    auto-triggering them. For Claude, pair `command` with
-    `disable-model-invocation: true` in the same frontmatter (the runtime
+    auto-triggering them. That sidecar is committed per skill, at
+    `skills/<name>/agents/openai.yaml` — `install.sh` links it, it does not
+    generate it, and no CI check notices a missing one. For Claude, pair
+    `command` with `disable-model-invocation: true` in the same frontmatter (the runtime
     realization Claude honors; ignored elsewhere).
+  - `when_to_use` — trigger phrases for a **router**, as a single paragraph.
+    Claude Code appends it to the description in its skill listing (joined
+    with `" - "`, the two capped at 1,536 chars together), so it holds the
+    situations users actually type without spending the router's ≤450-char
+    description budget on them. Codex ignores the key entirely (verified with
+    `codex debug prompt-input`), which is why
+    `scripts/check_descriptions.py` keeps it out of the Codex-facing budgets
+    and gives it Claude's combined cap instead. A router's `skills.json`
+    summary appends it the same way Claude does, so the recall menu in
+    `eval-suite/recall` shows what the client shows.
   - `compatibility` — runtime / language requirements in plain prose.
   - `environments` — comma-separated list of the environments the skill
     belongs to: `coding`, `chat`, or both (e.g. `environments: coding, chat`).
@@ -162,6 +186,14 @@ machine consumption prefer `skills.json`.
 - After editing any `SKILL.md` frontmatter, regenerate the manifest:
   `python3 scripts/build_manifest.py`. Verify it is in sync before
   committing with `python3 scripts/build_manifest.py --check`.
+- The catalogue and plugin checks below read `skills.json`, not the
+  `SKILL.md` files, so a stale manifest makes them answer from stale
+  metadata — regenerate it before running them locally, and that is why
+  `build_manifest.py --check` is the first CI gate. Two readers stay
+  independent on purpose: `scripts/quick_validate.py` parses frontmatter
+  itself, so it validates the source rather than the generator's output,
+  and `install.sh` reads it in bash, so skill linking never depends on
+  `python3`.
 - After adding, renaming, or removing a skill, update both catalogue
   tables by hand — `README.md` and `AGENTS.md` (`## Skill catalogue`) —
   keeping their text identical and each skill under the section matching

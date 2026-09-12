@@ -1,6 +1,6 @@
 {
   "name": "refactoring",
-  "description": "Refactoring and code-quality skills: a unified refactoring skill (decision checklist plus Fowler's technique catalog), the stepdown rule, test-driven development, and managing risky changes.",
+  "description": "Refactoring and code-quality skills: finding where to start refactoring via git-churn hotspots, and keeping restructuring separate from behavior change.",
   "author": {
     "name": "Fabian Distler"
   }

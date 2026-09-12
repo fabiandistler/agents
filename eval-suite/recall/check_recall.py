@@ -50,9 +50,7 @@ def load_manifest() -> list[dict]:
 
 def routed_categories(skills: list[dict]) -> dict[str, str]:
     """category -> router skill name, for every activation: router skill."""
-    return {
-        s["category"]: s["name"] for s in skills if s.get("activation") == "router"
-    }
+    return {s["category"]: s["name"] for s in skills if s.get("activation") == "router"}
 
 
 def category_of(skills: list[dict], name: str) -> str | None:
@@ -106,6 +104,7 @@ def ask_model(model: str, menu: list[dict], prompt: str) -> str:
         capture_output=True,
         text=True,
         timeout=120,
+        check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "claude CLI failed")
@@ -145,7 +144,9 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="print menus, no model calls")
     parser.add_argument("--tolerance", type=int, default=0, help="allowed recall drop (count)")
     parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--category", help="only score prompts whose expected skill is in this category")
+    parser.add_argument(
+        "--category", help="only score prompts whose expected skill is in this category"
+    )
     args = parser.parse_args()
 
     skills = load_manifest()
@@ -186,7 +187,9 @@ def main() -> int:
             "Do not flip these categories to routers, or broaden the router description.\n"
         )
         return 1
-    print(f"\nPASS: routed recall within tolerance (drop {max(regression, 0)} <= {args.tolerance}).")
+    print(
+        f"\nPASS: routed recall within tolerance (drop {max(regression, 0)} <= {args.tolerance})."
+    )
     return 0
 
 

@@ -43,6 +43,75 @@ If `claude` is not on `PATH` the check prints `SKIP` and exits 0, so it is safe
 to wire into CI environments without model access; run it locally (or in a
 model-enabled job) before flipping a category.
 
+## Live trigger check (`check_live.py`)
+
+The menu A/B above forces a pick, so it measures *which* skill wins once the
+model has decided to consult one. It cannot see the more common failure: the
+model answers an architecture question from its own knowledge and never opens
+the router at all. `check_live.py` measures that. It starts a real `claude -p`
+session with the repo's plugins loaded in a throwaway git repository, sends one
+realistic prompt from `live_prompts.json`, and reads from the event stream
+whether the router was invoked and how the member was reached.
+
+Three surfaces lead to a member and the report tells them apart in the `via`
+column: `router` (the router fired and handed off), `read` (the model opened
+the member's `SKILL.md` without the router), and `subagent` (a plugin subagent
+that works from that member was launched, so the router never opened at all —
+what `architecture:coupling-analyst` does for `coupling-cohesion`). `fired`
+stays a count of the router alone, so a member reached without it is visible
+rather than absorbed.
+
+```sh
+# routed layout, 3 runs per prompt (triggering is stochastic; read rates)
+python3 eval-suite/recall/check_live.py --category architecture
+
+# the same prompts with the members registered flat, for comparison
+python3 eval-suite/recall/check_live.py --category architecture --flat
+
+# keep the router but give one member its own top-level entry (the hybrid)
+python3 eval-suite/recall/check_live.py --category architecture --promote c4-modeling
+
+# pin the model you actually run
+python3 eval-suite/recall/check_live.py --category architecture --model claude-opus-5
+
+# the other routed category
+python3 eval-suite/recall/check_live.py --category ai-ml
+```
+
+Prompts deliberately describe a situation without naming the technique
+("two services share a database table", "keep a record of past decisions")
+and some are in German; `category` decides which `--category` run selects a
+prompt, and `expected` is the member that should handle it, `any` when only
+the router firing matters, or `none` for near-misses that must not fire.
+Every run spends real tokens, so this is a local check before touching a
+router description, not a CI gate. Compare the same model and
+prompt set before and after a change; with 3 reps per prompt, differences of
+one or two runs are noise.
+
+## Reading the numbers
+
+Two things the headline rate does not say.
+
+**`any` probes are not in it.** The `positives: fired X/N` line counts only
+probes whose `expected` names a concrete member, so an `expected: "any"` probe
+contributes to `paths taken` and to nothing else. For `architecture` that
+excludes `generic` ("Is our architecture okay?"), the one prompt a router wins
+and a flat layout loses, so a router-versus-flat total read off that line omits
+the router's main argument. Read the per-prompt rows for that comparison.
+
+**Flat numbers predate a fix.** Until the rebuilt layouts started reusing the
+category's real `plugin.json`, they wrote a placeholder description in its
+place, so any `--flat` rate recorded before that change was measured without
+the plugin-level description. Do not pool those with rates taken after it.
+
+**Batches vary as a whole.** Runs of one invocation share a moment, and a
+degraded moment moves every prompt at once. Two `--promote` batches of the same
+layout, minutes apart, gave 0/5, 3/5, 3/5 and then 1/5, 0/5, 0/5 across the same
+three prompts — a swing no per-prompt effect explains. `unusable sessions`
+catches the runs that errored outright, but a throttled batch that still answers
+looks normal. Treat a layout comparison across separate invocations as weak
+evidence, and re-run a surprising result before believing it.
+
 ## Extending
 
 Add prompts to `prompts.json` (`{ "prompt": ..., "expected": <skill name> }`)

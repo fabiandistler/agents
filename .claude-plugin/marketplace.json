@@ -10,12 +10,12 @@
     {
       "name": "architecture",
       "source": "./plugins/architecture",
-      "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), logical component design, fitness functions, SQL schema design, and coupling/cohesion analysis (cohesion + LCOM, codebase coupling metrics, and Khononov balanced-coupling). Includes read-only coupling/cohesion analyst subagents."
+      "description": "Software architecture and design skills: ADRs, architecture pattern advice, Domain-Driven Design (strategy and coding conventions), C4 model drafting and diagram rendering, microservices design conventions, logical component design, fitness functions, SQL schema design, and coupling/cohesion analysis (cohesion + LCOM, codebase coupling metrics, and Khononov balanced-coupling). Includes read-only coupling/cohesion analyst subagents."
     },
     {
       "name": "refactoring",
       "source": "./plugins/refactoring",
-      "description": "Refactoring and code-quality skills: refactoring decision checklist, Fowler's refactoring catalog, the stepdown rule, test-driven development, and managing risky changes."
+      "description": "Refactoring and code-quality skills: finding where to start refactoring via git-churn hotspots, and keeping restructuring separate from behavior change."
     },
     {
       "name": "ai-ml",
@@ -25,12 +25,12 @@
     {
       "name": "workflow",
       "source": "./plugins/workflow",
-      "description": "Planning and workflow skills: natural planning and repo status updates."
+      "description": "Planning and workflow skills: natural planning, repo status updates, and open-source contribution scouting."
     },
     {
       "name": "communication",
       "source": "./plugins/communication",
-      "description": "Communication skills: stakeholder updates, communication analysis, problem-first technical explanations, and self-contained HTML artifacts."
+      "description": "Communication skills: stakeholder updates, communication analysis, problem-first technical explanations, technical documentation for a named reader, and self-contained HTML artifacts."
     },
     {
       "name": "personal",

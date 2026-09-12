@@ -2,7 +2,7 @@
 name: fitness-functions
 category: architecture
 environments: coding
-description: Design and implement architecture fitness functions. These are automated, CI-wired checks that govern architecture characteristics (modularity, layering, coupling, security, resilience) and keep the architecture from eroding.
+description: Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes. These are architecture fitness functions; covers designing and implementing them.
 ---
 
 # Fitness Functions

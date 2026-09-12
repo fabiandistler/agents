@@ -53,7 +53,9 @@ clone.
 ### MCP Inspector (for testing)
 
 ```bash
-uv run --with "mcp[cli]" mcp dev server.py
+# The <2 bound matches pyproject.toml — server.py uses the v1 FastMCP API,
+# which mcp 2.x renamed. Without it, --with resolves to 2.x and the import fails.
+uv run --with "mcp[cli]<2" mcp dev server.py
 ```
 
 Open the printed URL → confirm `wiki_sql`, `wiki_python`, `wiki_git` appear and

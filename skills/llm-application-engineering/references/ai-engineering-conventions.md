@@ -75,6 +75,20 @@ _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
 - **Give the judge the policy text itself as its rubric, not a separately worded
   one** — that keeps spec → test → score traceable and makes the judge rationale
   usable as evidence. (ASSERT)
+- **A judge score without a gold reference is a screening signal, not an
+  acceptance criterion.** Judge–human agreement degrades as task difficulty
+  rises and settles at 77–82% on hard agent tasks when no reference answer is
+  supplied; a larger judge model does not close the gap. Acceptance needs either
+  a reference answer in the test case or a human sample on the hardest slice.
+  (AgentJudgeBench)
+  - ❌ promoting a judge-scored aggregate to a release gate   ← likely-default
+- **Prove construct validity at item level before a benchmark or test set becomes
+  an acceptance criterion — or before publishing one.** Score individual items,
+  not just the aggregate: a set can discriminate on general reasoning while
+  claiming to measure the target capability (BBQ, a bias benchmark, correlates
+  more strongly with reasoning than with safety). The same item-level analysis
+  identifies the ~10% of items that carry the discrimination, which is what makes
+  a set cheap to run repeatedly. (BenchMIRT)
 
 ## Adaptation
 
@@ -102,6 +116,14 @@ _Extends SKILL.md Part B step 5._
   (Ch. 6)
 - **Treat deadlines as a task constraint:** a correct agent output delivered too
   late is a failure. (Ch. 6)
+- **Expose a corpus to an agent as a query interface — never as one tool per
+  document, never as whole documents in the response.** Both the tool list and
+  the payload are context cost, paid on every turn. A search or query tool over
+  the corpus (SQL over a trace store, search over a knowledge directory) keeps
+  both flat as the corpus grows; one tool per document grows the tool list
+  linearly. Measured: ~97% fewer input tokens from tool search over large tool
+  collections, ~17× cheaper than passing whole traces.
+  - ❌ one MCP tool per knowledge file   ← likely-default
 
 ## Serving & architecture
 

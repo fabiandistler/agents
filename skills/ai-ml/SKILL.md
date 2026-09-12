@@ -15,9 +15,12 @@ Do not answer an AI or ML engineering question from this file alone.
 ## How to use
 
 1. Match the request to a row in the table below.
-2. **Read that sub-skill's `SKILL.md` (the path in the last column) before
-   acting.** It carries the real workflow, references, and scripts — this router
-   only points the way.
+2. **Read that sub-skill's `SKILL.md` before acting.** Open the file at the
+   path in the last column (relative to this router's directory) with your
+   file-reading tool. The sub-skills are *not* registered skills of their own:
+   invoking one by name (for example `ai-ml:ml-project-lifecycle`) fails with
+   "unknown skill" and wastes a turn. Read the file instead; it carries the real
+   workflow, references, and scripts — this router only points the way.
 3. If two rows seem to apply, read both; if none fit, use your general knowledge
    and say the catalogue had no dedicated sub-skill.
 

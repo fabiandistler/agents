@@ -8,17 +8,14 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Install ruff
-        # Pinned: ruff 0.16.0 shipped stricter defaults (EXE001, FURB167, I001,
-        # …) that flag pre-existing first-party files unrelated to any given PR.
-        # Bump deliberately alongside a lint-cleanup pass, not implicitly per run.
-        run: pip install ruff==0.15.8
+        run: pip install ruff
 
       - name: Manifest in sync
         run: python scripts/build_manifest.py --check
@@ -34,6 +31,9 @@ jobs:
 
       - name: Plugin marketplace in sync
         run: python scripts/check_plugins.py
+
+      - name: Instruction fragments valid
+        run: python scripts/check_instructions.py
 
       - name: Skill frontmatter valid
         # compileall proves the validator parses; only running it proves its
@@ -53,6 +53,11 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
+      - name: Hooks in sync (prek)
+        run: |
+          pip install prek
+          prek run --all-files --show-diff-on-failure
+
       - name: Python compiles
         run: python -m compileall -q scripts skills mcp-wiki-server
 
@@ -60,7 +65,7 @@ jobs:
         # -S warning: gate on real problems; skip advisory info/style notes
         # (eval-suite/run.sh intentionally word-splits flag lists and passes
         # single-quoted R code, both of which are info-level).
-        run: shellcheck -S warning install.sh scripts/test_install.sh eval-suite/run.sh
+        run: shellcheck -S warning install.sh scripts/test_install.sh scripts/roomba-scan.sh eval-suite/run.sh
 
       - name: install.sh smoke test
         run: bash scripts/test_install.sh

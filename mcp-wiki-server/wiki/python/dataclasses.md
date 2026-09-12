@@ -7,6 +7,7 @@ class attributes — eliminating boilerplate for plain data objects.
 ```python
 from dataclasses import dataclass
 
+
 @dataclass
 class Point:
     x: float
@@ -28,6 +29,7 @@ Use `field(default_factory=...)`:
 
 ```python
 from dataclasses import dataclass, field
+
 
 @dataclass
 class Bag:

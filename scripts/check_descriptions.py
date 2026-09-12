@@ -30,18 +30,37 @@ from build_manifest import (
 DEFAULT_BUDGET = 250
 ALLOWLIST_BUDGET = 400
 # High-traffic skills allowed the wider budget. Keep this list short.
-ALLOWLIST = frozenset({"architecture-pattern-advisor", "refactoring"})
+ALLOWLIST = frozenset({"architecture-pattern-advisor"})
+# A router's description replaces every member description in the listing (nine
+# for architecture), so it may spend a little more of the shared budget on the
+# situations users actually describe instead of bare technique names.
+ROUTER_BUDGET = 450
 
 # Total description size across auto-triggered skills must stay under the Codex
 # ~2% cap (~5,400 tokens at ~270k context); ~10,000 chars ≈ ~2,500 tokens.
 AUTO_TOTAL_BUDGET = 10_000
+
+# `when_to_use` is deliberately kept out of every budget above, and gets its own
+# cap instead. The two clients treat it differently: Claude Code appends it to
+# the description in its skill listing, while Codex ignores the key outright
+# (verified against `codex debug prompt-input`, which renders byte-identically
+# with and without it). Since the budgets above exist to protect Codex's ~2%
+# listing cap, a field Codex never loads cannot spend that budget — charging it
+# there would shrink the description for no gain on either client. What it does
+# spend is Claude's own limit on the two fields combined, so that is what is
+# enforced here: 1,536 characters of description + when_to_use, per the skills
+# reference. Claude joins the two with " - ", counted below.
+CLAUDE_COMBINED_BUDGET = 1_536
+CLAUDE_JOINER = " - "
 
 
 def budget_for(name: str, activation: str) -> int:
     # Router descriptions are the sole trigger surface for a whole category and
     # are deliberately broad, so they get the wider budget. They do not count
     # toward the auto aggregate (see main): they replace, not add to, it.
-    if activation == "router" or name in ALLOWLIST:
+    if activation == "router":
+        return ROUTER_BUDGET
+    if name in ALLOWLIST:
         return ALLOWLIST_BUDGET
     return DEFAULT_BUDGET
 
@@ -69,6 +88,16 @@ def main() -> int:
         if activation == "auto":
             auto_total += length
 
+        when_to_use = fm.get("when_to_use")
+        if isinstance(when_to_use, str) and when_to_use:
+            combined = length + len(CLAUDE_JOINER) + len(when_to_use)
+            if combined > CLAUDE_COMBINED_BUDGET:
+                errors.append(
+                    f"{name}: description + when_to_use is {combined} chars"
+                    f" (budget {CLAUDE_COMBINED_BUDGET}); Claude Code drops the"
+                    " overflow from its skill listing."
+                )
+
     if auto_total > AUTO_TOTAL_BUDGET:
         errors.append(
             f"aggregate auto-skill description size is {auto_total} chars"
@@ -82,9 +111,7 @@ def main() -> int:
             sys.stderr.write(f"  - {e}\n")
         return 1
 
-    print(
-        f"descriptions within budget (auto total {auto_total}/{AUTO_TOTAL_BUDGET} chars)"
-    )
+    print(f"descriptions within budget (auto total {auto_total}/{AUTO_TOTAL_BUDGET} chars)")
     return 0
 
 

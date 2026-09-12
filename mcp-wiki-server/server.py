@@ -13,13 +13,14 @@ Configuration via environment variables:
     WIKI_CACHE_DIR  Where to clone WIKI_GIT_URL (default: tempdir)
 """
 
-from mcp.server.fastmcp import FastMCP
-from pathlib import Path
 import os
 import re
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
+
+from mcp.server.fastmcp import FastMCP
 
 MAX_PAGE_CHARS = 8000
 MAX_QUERY_HITS = 20
@@ -38,6 +39,7 @@ def resolve_wiki_root() -> Path:
             refresh = subprocess.run(
                 ["git", "-C", str(cache), "pull", "--ff-only", "--quiet"],
                 capture_output=True,
+                check=False,
             )
             if refresh.returncode != 0:
                 detail = refresh.stderr.decode("utf-8", errors="replace").strip()
@@ -73,7 +75,9 @@ def render(topic: Path, query: str | None, page: str | None) -> str:
         ql = query.lower()
         hits: list[str] = []
         for f in files:
-            for i, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
+            for i, line in enumerate(
+                f.read_text(encoding="utf-8", errors="replace").splitlines(), start=1
+            ):
                 if ql in line.lower():
                     rel = f.relative_to(topic)
                     hits.append(f"**{rel}:{i}** — {line.strip()}")
@@ -86,7 +90,11 @@ def render(topic: Path, query: str | None, page: str | None) -> str:
     lines = [f"# {topic.name} pages", ""]
     for f in files:
         first = next(
-            (ln for ln in f.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()),
+            (
+                ln
+                for ln in f.read_text(encoding="utf-8", errors="replace").splitlines()
+                if ln.strip()
+            ),
             "",
         )
         lines.append(f"- `{f.relative_to(topic)}` — {first[:100]}")

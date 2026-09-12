@@ -59,8 +59,7 @@ def routed_categories() -> dict[str, Path]:
         category = fm.get("category")
         if name != category:
             raise ValueError(
-                f"{skill_md}: a router's name ({name!r}) must equal its category"
-                f" ({category!r})"
+                f"{skill_md}: a router's name ({name!r}) must equal its category ({category!r})"
             )
         routers[str(category)] = skill_md
     return routers
@@ -114,9 +113,7 @@ def expected_symlinks(members: list[dict[str, object]]) -> dict[str, str]:
     return {str(m["name"]): f"../../{m['name']}" for m in members}
 
 
-def sync_symlinks(
-    members_dir: Path, members: list[dict[str, object]], *, check: bool
-) -> list[str]:
+def sync_symlinks(members_dir: Path, members: list[dict[str, object]], *, check: bool) -> list[str]:
     """Create (or in check mode verify) the members/<name> symlinks. Returns drift."""
     expected = expected_symlinks(members)
     errors: list[str] = []
@@ -140,9 +137,7 @@ def sync_symlinks(
                 )
         for name in existing:
             if name not in expected:
-                errors.append(
-                    f"{members_dir.relative_to(REPO_ROOT)}/{name}: stale member symlink"
-                )
+                errors.append(f"{members_dir.relative_to(REPO_ROOT)}/{name}: stale member symlink")
         return errors
 
     members_dir.mkdir(parents=True, exist_ok=True)
@@ -179,9 +174,7 @@ def process(category: str, skill_md: Path, *, check: bool) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--check", action="store_true", help="exit 1 if any router is out of date"
-    )
+    parser.add_argument("--check", action="store_true", help="exit 1 if any router is out of date")
     args = parser.parse_args()
 
     routers = routed_categories()

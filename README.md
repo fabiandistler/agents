@@ -1,149 +1,109 @@
 # Agents
 
-Personal agent skills and custom utilities for AI-assisted software
-engineering. Designed to be agent-agnostic: works with Claude Code,
-Codex CLI, opencode, Continue, Aider, and any agent that can read
-Markdown.
+Skills for AI coding agents — architecture review, refactoring, LLM
+application engineering, planning, and technical writing — written once as
+plain Markdown and installed into Claude Code, Codex CLI, or opencode from
+one place.
 
-See [`AGENTS.md`](AGENTS.md) for the agent-facing entry point and
-[`skills.json`](skills.json) for a machine-readable manifest.
+A skill is a Markdown file an agent loads when it recognizes the situation it
+describes; the bulk of each one stays in `references/` pages that load only
+when they are needed. There is no runtime, no server, and nothing to install
+at agent start beyond a symlink or a plugin entry.
 
-## Install
+What this is **not**: a general-purpose skill marketplace. The catalogue is
+personal and opinionated, and skills are prose an agent reads — none of them
+execute code on their own.
 
-### As Claude plugins (Claude Code, claude.ai, Claude Desktop, Cowork)
+## Quick start
 
-This repo doubles as a Claude plugin marketplace: every skill category is
-packaged as one plugin (see `plugins/` and
-[`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)), so
-you can install exactly the domains you want. Beyond skills, the
-`architecture` plugin ships two read-only analysis subagents
-(`coupling-analyst`, `cohesion-analyst`). Skills carry their own reference
-catalogs under `references/`, read on demand — no extra runtime needed.
+Two supported paths. Both take under five minutes; pick one — running both in
+Claude Code makes every skill appear twice.
 
-- **Claude Code**:
+**Claude plugins** (Claude Code, claude.ai, Claude Desktop, Cowork) — install
+whole categories, no clone needed. In Claude Code:
 
-  ```
-  /plugin marketplace add fabiandistler/agents
-  /plugin install architecture@fabiandistler-agents
-  ```
-
-- **claude.ai / Claude Desktop / Cowork**: Settings → Plugins → Add
-  marketplace → GitHub → `fabiandistler/agents`, then install individual
-  plugins. Their skills show up in chat via `/` or the `+` menu.
-
-Plugin skills are namespaced (`architecture:adr-workflow`). In Claude
-Code, use either the plugins **or** the symlink install below — with both
-at once every skill appears twice.
-
-### As symlinks (Codex CLI, opencode, or local development)
-
-Symlink the skills into your agent's conventional skill directory:
-
-```sh
-./install.sh --target=claude    # ~/.claude/skills/
-./install.sh --target=codex     # ~/.codex/skills/
-./install.sh --target=opencode  # ~/.config/opencode/skills/
-./install.sh --target=all
-./install.sh --uninstall --target=all
+```
+/plugin marketplace add fabiandistler/agents
+/plugin install architecture@fabiandistler-agents
 ```
 
-Symlinks pick up local edits immediately, which makes this the better
-setup while developing skills in this repo.
+Elsewhere: Settings → Plugins → Add marketplace → GitHub →
+`fabiandistler/agents`, then install individual plugins.
 
-For Codex CLI the installer covers the full plugins, not just the
-skills. `--target=codex` additionally:
+**Symlinks** (Codex CLI, opencode, or local development on this repo).
+Requires `bash` and `git`; `python3` only for the Codex extras:
 
-- converts each selected plugin's subagents (`coupling-analyst`,
-  `cohesion-analyst`) into [Codex custom
-  agents](https://developers.openai.com/codex/subagents) under
-  `~/.codex/agents/<name>.toml`. The generated files carry a marker
-  comment; files you created yourself are never overwritten, and
-  `--uninstall` only removes marker-carrying files. Model and sandbox
-  are inherited from your Codex session (the Claude-specific `model:`
-  and `tools:` fields have no Codex equivalent).
-- disables every nested router member by name in `~/.codex/config.toml`,
-  via a marker-delimited `[[skills.config]]` block (`enabled = false`).
-  Codex discovers skills recursively and follows symlinks, so without this
-  each `members/<name>/SKILL.md` would register as its own skill and the
-  router's progressive disclosure would be lost. `--uninstall` removes the
-  block.
-- installs the user-invoked command skills (`activation: command`) as
-  regular skills under `~/.codex/skills/` rather than as Codex custom
-  prompts (which are deprecated). Each carries an `agents/openai.yaml`
-  sidecar with `policy.allow_implicit_invocation: false`, so Codex only
-  runs them on an explicit `$skill-name`, never on its own. The installer
-  also removes any leftover `~/.codex/prompts/<name>.md` symlinks a
-  previous version created.
+```console
+$ git clone https://github.com/fabiandistler/agents.git ~/src/agents
+$ cd ~/src/agents
+$ ./install.sh --target=claude
+claude: /home/you/.claude/skills
+  linked    /home/you/.claude/skills/architecture -> /home/you/src/agents/skills/architecture
+  linked    /home/you/.claude/skills/documentation -> /home/you/src/agents/skills/documentation
+  linked    /home/you/.claude/skills/refactoring -> /home/you/src/agents/skills/refactoring
+  ...
+  linked    /home/you/.claude/commands/repo-status.md -> /home/you/src/agents/skills/repo-status/SKILL.md
+```
 
-Earlier versions also registered a knowledge-base MCP server per plugin.
-Those are gone — the skills' `references/` pages are read directly instead.
-Both install and `--uninstall` strip whatever an older version left in
-`~/.codex/config.toml` and remove its `~/.codex/agents-mcp-runtime` venv.
-Any `[mcp_servers.*]` entries you added yourself are untouched.
+Start your agent and ask it something the catalogue covers — *"is this
+service's structure sound?"* — and it loads `architecture`, which routes to
+the sub-skill for the question. Re-running the installer prints `ok` for links
+that already exist; `--uninstall` removes exactly the links it created.
 
-Restart Codex to pick up the new agents.
+Symlinks pick up local edits immediately, which makes this the better setup
+while developing skills here. `--target=codex` does more than link skills —
+see [`docs/install.md`](docs/install.md).
 
-### Selecting skills by category
+## Configuration
 
-Every skill carries a `category` field in its `SKILL.md` frontmatter —
-one of `architecture`, `refactoring`, `ai-ml`,
-`workflow`, `communication`, `personal` (the same grouping as the
-plugins and the catalogue below). `--category` installs only the chosen
-domains:
+`install.sh` flags. `./install.sh --help` is the source of truth; per-agent
+behaviour is in [`docs/install.md`](docs/install.md).
+
+| Flag | Default | Effect |
+|---|---|---|
+| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into |
+| `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` |
+| `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app |
+| `--instructions` | off | Also compose `instructions/` into the agent's global instruction file |
+| `--dry-run` | off | Print every action, change nothing |
+| `--uninstall` | off | Remove only the links and managed blocks this installer created |
 
 ```sh
 ./install.sh --target=claude --category=architecture
-./install.sh --target=codex  --category=refactoring,workflow
+./install.sh --target=codex  --env=coding
+./install.sh --target=all    --instructions --dry-run
 ```
 
-### Selecting skills by environment
+## Usage
 
-Each skill is tagged with an `environments` field in its `SKILL.md`
-frontmatter — `coding`, `chat`, or both. Use `--env` to install only one
-group, so a chat app like Claude Desktop gets your chat skills while a
-coding agent gets the coding ones:
+**Skills fire on their description.** Most skills are model-triggered: the
+agent reads the one-paragraph `description` in every `SKILL.md` and loads the
+body when a request matches. You do not name them.
 
-```sh
-./install.sh --target=claude --env=coding   # only coding skills
-./install.sh --target=claude --env=chat      # only chat skills
-./install.sh --target=claude --env=all       # everything (default)
-```
+**Two categories go through a router.** `architecture` and `ai-ml` register a
+single broad entry point that routes to the right sub-skill, so the category
+costs one trigger entry instead of one per sub-skill. Members live under the
+router's
+`members/` directory and load only when routed to.
 
-`--env` defaults to `all`, so omitting it installs every skill as before.
-A skill without an `environments` field belongs to every environment.
+**Some skills are invoked explicitly.** Skills marked `activation: command`
+are user-invoked only and install as commands — `/oss-scouting`,
+`/repo-status` in Claude Code.
 
-### Skills that skip an agent
+**Shared rules are separate from skills.** Skills are capabilities loaded on
+demand; rules that apply to *every* session live in `instructions/` as
+single-topic fragments, composed into `~/.claude/CLAUDE.md` or
+`~/.codex/AGENTS.md` by `./install.sh --instructions`. Content outside the
+managed markers is never touched.
 
-A skill can opt out of individual agents with a `targets` frontmatter field
-(a comma-separated subset of `claude`, `codex`, `opencode`; absent means all
-of them). `install.sh` never links it for an excluded agent, and removes a
-link it created there before. Use it when a runtime already ships an
-equivalent of its own. A skill that excludes `claude` also gets no plugin
-symlink, since `plugins/` is the Claude distribution of these skills.
-
-The installer also prunes leftovers: a dangling symlink pointing at a skill
-this repo no longer ships is removed on the next install or uninstall.
-Symlinks that point outside this repo are never touched.
-
-## Contents
-
-| Directory | Description |
-|---|---|
-| `skills/` | All installable skills (each subdirectory has a `SKILL.md`), grouped below by category |
-| `plugins/` | The same skills packaged as Claude plugins, one plugin per category (architecture adds analysis subagents) |
-| `eval-suite/` | A/B harness for measuring the effect of skills/MCP/AGENTS.md on agent code generation |
-| `mcp-wiki-server/` | Standalone MCP server exposing a wiki / knowledge-base tool to MCP-aware agents. Not used by the plugins |
-| `scripts/` | Repo tooling (manifest generator, consistency checks) |
+**Reading without installing:** [`skills.json`](skills.json) is the
+machine-readable manifest, and [`AGENTS.md`](AGENTS.md) is the agent-facing
+entry point with links to every `SKILL.md`.
 
 ## Skill catalogue
 
-Some categories ship a **router** skill (`activation: router`, named after the
-category) as their single registered entry point: a broad-description skill
-whose body routes to the specific sub-skill to read before acting. The
-sub-skills nest under the router's `members/` directory and load only when
-routed to, so the category adds one trigger entry instead of many. The router
-body is generated from `skills.json` by `scripts/build_routers.py`. Every
-sub-skill is still listed individually below.
+Categories marked with a router register only that router; every sub-skill is
+still listed here.
 
 ### Architecture & design (`architecture`)
 
@@ -163,7 +123,7 @@ sub-skill is still listed individually below.
 
 | Skill | When to use |
 |---|---|
-| `skills/refactoring/` | Restructuring existing code safely, working through review feedback, building features test-first, and staging risky changes — migrations, cutovers, rollouts — whose blast radius is hard to predict. |
+| `skills/refactoring/` | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
 
 ### AI & ML (`ai-ml`)
 
@@ -177,6 +137,7 @@ sub-skill is still listed individually below.
 | Skill | When to use |
 |---|---|
 | `skills/natural-planning/` | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
+| `skills/oss-scouting/` | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
 | `skills/repo-status/` | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
 
 ### Communication & writing (`communication`)
@@ -187,10 +148,54 @@ sub-skill is still listed individually below.
 | `skills/documentation/` | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | `skills/html-artifacts/` | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
 | `skills/problem-first-explanation/` | Producing technical explanations that lead with the concrete problem before the abstract solution. |
-| `skills/stakeholder-update/` | Generating a stakeholder update tailored to audience and cadence — weekly/monthly status, launch announcement, risk escalation, exec/engineering/customer versions. |
+| `skills/stakeholder-update/` | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 
 ### Personal & knowledge (`personal`)
 
 | Skill | When to use |
 |---|---|
 | `skills/hypertrophy-training/` | Experienced trainee: set volume, RIR/effort, auto-regulation, diagnosing a stalled lift, training under elevated injury risk, or returning after an injury (educational). |
+
+## Repository layout
+
+| Directory | Description |
+|---|---|
+| `skills/` | All installable skills — every subdirectory holding a `SKILL.md` is one |
+| `instructions/` | Always-on rule fragments, composed into the agent's global instruction file by `--instructions` |
+| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents) |
+| `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
+| `eval-suite/` | A/B harness for measuring the effect of skills / MCP / AGENTS.md on agent output |
+| `mcp-wiki-server/` | Standalone MCP server exposing a wiki tool. Not used by the plugins |
+| `roomba/` | Reports from the scheduled maintenance rotation described in [`ROOMBA.md`](ROOMBA.md) |
+| `docs/adr/` | Architecture Decision Records for this repo's own structure |
+
+## Contributing
+
+Skill-authoring conventions — frontmatter fields, description budgets, the
+manifest and catalogue that must stay in sync — are in
+[`AGENTS.md`](AGENTS.md). Before opening a PR, run what CI runs
+(`.github/workflows/ci.yml`):
+
+```sh
+python3 scripts/build_manifest.py --check   # skills.json matches the SKILL.md files
+python3 scripts/build_routers.py --check    # router bodies match the manifest
+python3 scripts/check_descriptions.py       # description budget
+python3 scripts/check_docs.py               # catalogue tables in README + AGENTS agree
+python3 scripts/check_plugins.py            # plugin symlinks and marketplace entries
+python3 scripts/check_instructions.py       # instruction fragments valid
+ruff check .
+prek run --all-files                        # whitespace, YAML/TOML and ruff hooks
+shellcheck -S warning install.sh scripts/*.sh eval-suite/run.sh
+bash scripts/test_install.sh                # install.sh smoke test in a temp HOME
+```
+
+The hooks in `.pre-commit-config.yaml` are run by
+[prek](https://github.com/j178/prek) (`uv tool install prek`). Run `prek
+install` once and they fire on every commit; CI runs them too, so a skipped
+hook fails the build rather than landing on `main`. `eval-suite/tasks/` is
+exempt from the whitespace hooks — those `prompt:` blocks reproduce real user
+prompts byte for byte.
+
+`build_manifest.py --check` runs first for a reason: the catalogue and plugin
+checks read `skills.json`, so a stale manifest makes them answer from stale
+metadata.

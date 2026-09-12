@@ -134,8 +134,13 @@ def analyze_python(path: Path, source: str) -> list[ModuleReport]:
         sys.stderr.write(f"warning: skipping {path}: {exc}\n")
         return []
 
-    reports = [r for node in tree.body if isinstance(node, ast.ClassDef)
-               for r in [_python_class(node)] if r]
+    reports = [
+        r
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        for r in [_python_class(node)]
+        if r
+    ]
 
     file_report = _python_file(path, tree)
     if file_report:
@@ -183,8 +188,7 @@ def _self_attrs(func: ast.AST) -> set[str]:
 
 
 def _python_file(path: Path, tree: ast.Module) -> ModuleReport | None:
-    funcs = [n for n in tree.body
-             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    funcs = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     if len(funcs) < 2:
         return None
 
@@ -257,8 +261,8 @@ def _slice_body(source: str, open_idx: int) -> str:
         elif ch == "}":
             depth -= 1
             if depth == 0:
-                return source[open_idx + 1:i]
-    return source[open_idx + 1:]
+                return source[open_idx + 1 : i]
+    return source[open_idx + 1 :]
 
 
 def _build_file_report(
@@ -287,12 +291,8 @@ def _build_file_report(
     )
 
 
-_R_FUNC = re.compile(
-    r"(?P<name>[A-Za-z.][\w.]*)\s*(?:<-|=)\s*function\s*\(", re.MULTILINE
-)
-_R_TOP_ASSIGN = re.compile(
-    r"^(?P<name>[A-Za-z.][\w.]*)\s*(?:<-|=)\s*(?!function\b)", re.MULTILINE
-)
+_R_FUNC = re.compile(r"(?P<name>[A-Za-z.][\w.]*)\s*(?:<-|=)\s*function\s*\(", re.MULTILINE)
+_R_TOP_ASSIGN = re.compile(r"^(?P<name>[A-Za-z.][\w.]*)\s*(?:<-|=)\s*(?!function\b)", re.MULTILINE)
 _R_TOKEN = re.compile(r"[A-Za-z.][\w.]*")
 _R6_FIELD = re.compile(r"(?:self|private)\$([A-Za-z.][\w.]*)")
 
@@ -328,7 +328,7 @@ def _r_function_body(source: str, open_paren_idx: int) -> str:
     if brace != -1 and (nl == -1 or brace < nl + 200):
         return _slice_body(source, brace)
     end = source.find("\n", open_paren_idx)
-    return source[open_paren_idx:end if end != -1 else len(source)]
+    return source[open_paren_idx : end if end != -1 else len(source)]
 
 
 def _r_oo_report(src: str, oo_spans: list[tuple[int, int]]) -> list[ModuleReport]:
@@ -344,20 +344,23 @@ def _r_oo_report(src: str, oo_spans: list[tuple[int, int]]) -> list[ModuleReport
             block = _slice_body_parens(src, open_paren)
             oo_spans.append((open_paren, open_paren + len(block)))
             methods = {
-                fm.group("name"): set(_R6_FIELD.findall(
-                    _r_function_body(block, block.index("(", fm.end() - 1))))
+                fm.group("name"): set(
+                    _R6_FIELD.findall(_r_function_body(block, block.index("(", fm.end() - 1)))
+                )
                 for fm in _R_FUNC.finditer(block)
             }
             class_name = _r_class_name(block) or kw
             if len(methods) >= 2:
-                reports.append(ModuleReport(
-                    name=class_name,
-                    kind="class",
-                    node_label="method",
-                    edge_label="field",
-                    nodes=list(methods),
-                    touches=methods,
-                ))
+                reports.append(
+                    ModuleReport(
+                        name=class_name,
+                        kind="class",
+                        node_label="method",
+                        edge_label="field",
+                        nodes=list(methods),
+                        touches=methods,
+                    )
+                )
     return reports
 
 
@@ -375,8 +378,8 @@ def _slice_body_parens(source: str, open_idx: int) -> str:
         elif source[i] == ")":
             depth -= 1
             if depth == 0:
-                return source[open_idx + 1:i]
-    return source[open_idx + 1:]
+                return source[open_idx + 1 : i]
+    return source[open_idx + 1 :]
 
 
 _BASH_FUNC = re.compile(

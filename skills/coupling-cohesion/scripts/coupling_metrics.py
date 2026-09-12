@@ -109,11 +109,11 @@ def compute(
         afferent[dst].add(src)
 
     rows: list[dict] = []
-    for name in components:
+    for name, component in components.items():
         ce = len(efferent[name])
         ca = len(afferent[name])
         instability = ce / (ce + ca) if (ce + ca) > 0 else 0.0
-        abstract = abstractness(components[name])
+        abstract = abstractness(component)
         distance = abs(abstract + instability - 1) if abstract is not None else None
         rows.append(
             {
@@ -155,8 +155,7 @@ def render_table(rows: list[dict]) -> str:
         a = "—" if r["A"] is None else f"{r['A']:.2f}"
         d = "—" if r["D"] is None else f"{r['D']:.2f}"
         lines.append(
-            f"| {r['name']} | {r['Ca']} | {r['Ce']} | "
-            f"{r['I']:.2f} | {a} | {d} | {r['zone']} |"
+            f"| {r['name']} | {r['Ca']} | {r['Ce']} | {r['I']:.2f} | {a} | {d} | {r['zone']} |"
         )
     return "\n".join(lines)
 

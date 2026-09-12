@@ -634,4 +634,62 @@ HOME="$HOME_STALE" "$INSTALL" --target=claude --category=communication >/dev/nul
 [[ -L "$STALE_SKILLS/documentation" ]] || fail "prune removed a valid skill link"
 pass "install prunes dangling links to skills the repo dropped"
 
+# 39. --instructions composes instructions/ into each agent's global file,
+#     inside the managed markers only. Without the flag nothing is written.
+HOME_INS="$(mktemp -d)"
+mkdir -p "$HOME_INS/.claude" "$HOME_INS/.codex"
+printf 'my own notes\n\n@RTK.md\n' >"$HOME_INS/.claude/CLAUDE.md"
+cp "$HOME_INS/.claude/CLAUDE.md" "$HOME_INS/claude-before.md"
+HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication >/dev/null
+diff -q "$HOME_INS/claude-before.md" "$HOME_INS/.claude/CLAUDE.md" >/dev/null \
+  || fail "instructions written without --instructions"
+pass "instructions are not touched without --instructions"
+
+# 40. With the flag the block lands, hand-written content survives, and a
+#     second run is a no-op (idempotent).
+HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions >/dev/null
+CLAUDE_MD="$HOME_INS/.claude/CLAUDE.md"
+grep -q '^my own notes$' "$CLAUDE_MD" || fail "hand-written line lost"
+grep -q '^@RTK.md$' "$CLAUDE_MD" || fail "@-import lost"
+grep -q 'agents instructions (managed by install.sh' "$CLAUDE_MD" || fail "begin marker missing"
+grep -q '<!-- <<< agents instructions <<< -->' "$CLAUDE_MD" || fail "end marker missing"
+grep -q 'Use uv for Python package development' "$CLAUDE_MD" || fail "fragment body missing"
+cp "$CLAUDE_MD" "$HOME_INS/claude-once.md"
+HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions >/dev/null
+diff -q "$HOME_INS/claude-once.md" "$CLAUDE_MD" >/dev/null \
+  || fail "second --instructions run changed the file"
+pass "instructions block installs once and is idempotent"
+
+# 41. --uninstall strips only our block, restoring the file byte for byte.
+HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null
+diff -q "$HOME_INS/claude-before.md" "$CLAUDE_MD" >/dev/null \
+  || fail "uninstall did not restore the original instruction file"
+pass "instructions uninstall removes only the managed block"
+
+# 42. codex gets its own file created from nothing; opencode deliberately gets
+#     none (it already reads ~/.claude/CLAUDE.md).
+HOME_INS2="$(mktemp -d)"
+HOME="$HOME_INS2" "$INSTALL" --target=all --category=communication --instructions >/dev/null
+[[ -f "$HOME_INS2/.codex/AGENTS.md" ]] || fail "codex AGENTS.md was not created"
+grep -q 'Use uv for Python package development' "$HOME_INS2/.codex/AGENTS.md" \
+  || fail "codex AGENTS.md has no fragment body"
+[[ ! -e "$HOME_INS2/.config/opencode/AGENTS.md" ]] \
+  || fail "opencode instruction file written (would duplicate ~/.claude/CLAUDE.md)"
+pass "instructions create codex's file and skip opencode on purpose"
+
+# 43. Unbalanced markers (a hand edit) leave the file completely alone, and
+#     --dry-run never writes.
+HOME_INS3="$(mktemp -d)"
+mkdir -p "$HOME_INS3/.claude"
+printf 'notes\n\n<!-- >>> agents instructions (managed by install.sh, do not edit) >>> -->\nstray\n' \
+  >"$HOME_INS3/.claude/CLAUDE.md"
+cp "$HOME_INS3/.claude/CLAUDE.md" "$HOME_INS3/unbalanced-before.md"
+HOME="$HOME_INS3" "$INSTALL" --target=claude --category=communication --instructions >/dev/null 2>&1
+diff -q "$HOME_INS3/unbalanced-before.md" "$HOME_INS3/.claude/CLAUDE.md" >/dev/null \
+  || fail "unbalanced markers did not protect the file"
+HOME_INS4="$(mktemp -d)"
+HOME="$HOME_INS4" "$INSTALL" --target=codex --category=communication --instructions --dry-run >/dev/null
+[[ ! -e "$HOME_INS4/.codex/AGENTS.md" ]] || fail "dry-run wrote an instruction file"
+pass "unbalanced markers and dry-run never write instruction files"
+
 echo "all install.sh tests passed"

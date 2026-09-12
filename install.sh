@@ -12,6 +12,7 @@
 #   ./install.sh --target=claude --env=chat   # only chat skills
 #   ./install.sh --target=codex  --env=coding # only coding skills
 #   ./install.sh --target=claude --category=architecture,refactoring
+#   ./install.sh --target=all --instructions   # also sync the rule files
 #
 # --env=coding|chat|all (default all) selects which skills to (un)install,
 # based on each skill's `environments:` frontmatter field. A skill with no
@@ -59,6 +60,17 @@
 #   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
 #     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
 #
+# --instructions (off by default) additionally composes the Markdown
+# fragments in instructions/ into each agent's global instruction file
+# (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md), as one marker-delimited managed
+# block. Fragments are ordered by their numeric filename prefix and may limit
+# themselves to some agents with a `targets:` frontmatter field, as skills do.
+# Anything outside the markers is left untouched, so hand-written notes and
+# @-imports survive; --uninstall strips the block and nothing else. opencode
+# gets no file of its own on purpose: it already reads ~/.claude/CLAUDE.md
+# unless disableClaudeCodePrompt is set, so a second copy would load every
+# rule twice.
+#
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
 #   - Symlink pointing elsewhere:      skip with a warning, never overwrite.
@@ -83,6 +95,7 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 DRY_RUN=0
 UNINSTALL=0
+INSTRUCTIONS=0
 TARGET=""
 ENV="all"
 CATEGORY="all"
@@ -101,6 +114,7 @@ for arg in "$@"; do
     --env=*)      ENV="${arg#--env=}" ;;
     --category=*) CATEGORY="${arg#--category=}" ;;
     --dry-run)    DRY_RUN=1 ;;
+    --instructions) INSTRUCTIONS=1 ;;
     --uninstall)  UNINSTALL=1 ;;
     -h|--help)    usage; exit 0 ;;
     *)            echo "unknown arg: $arg" >&2; usage >&2; exit 2 ;;
@@ -632,6 +646,211 @@ uninstall_codex_agents() {
   done < <(agent_categories)
 }
 
+# --- Agent instruction files ------------------------------------------------
+#
+# instructions/*.md are single-topic rule fragments composed into one managed
+# block inside each agent's global instruction file, so a rule is authored once
+# instead of being copied by hand into every agent's config (which is how
+# ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md drifted apart in the first place).
+# Ordering is the numeric filename prefix: glob order is already deterministic,
+# so this needs no sort. Only --instructions turns any of this on.
+#
+# The block is marker-delimited like the Codex config blocks above, so whatever
+# the user keeps outside it — an @-import, a machine-specific note — survives
+# install, reinstall and uninstall untouched.
+#
+# opencode has no destination on purpose. Its instruction loader reads
+# <config>/AGENTS.md *and* ~/.claude/CLAUDE.md unless disableClaudeCodePrompt
+# is set, so giving it its own copy would load every rule twice per session.
+# Note the filenames differ per agent (CLAUDE.md vs AGENTS.md): the content is
+# one AGENTS.md-style document, written to whatever each agent actually reads.
+
+instructions_dir() { printf '%s/instructions' "$REPO_ROOT"; }
+
+# Global instruction file for a target, or empty when the target deliberately
+# has none (see above). Unknown targets are an error.
+instruction_file_for() {
+  case "$1" in
+    claude)   printf '%s/.claude/CLAUDE.md' "$HOME" ;;
+    codex)    printf '%s/.codex/AGENTS.md'  "$HOME" ;;
+    opencode) ;;
+    *) echo "unknown target: $1" >&2; return 1 ;;
+  esac
+}
+
+# Read a frontmatter field from a fragment. Prints the raw value, empty when
+# the field is absent (same shape as skill_targets above).
+instruction_field() {
+  local file="$1" field="$2" line
+  line="$(grep -m1 "^$field:" "$file" 2>/dev/null || true)"
+  printf '%s' "${line#"$field":}"
+}
+
+# True if a fragment belongs in the given target's document. A fragment with no
+# `targets:` field, or with `all`, belongs everywhere.
+fragment_matches_target() {
+  local file="$1" want="$2" targets t
+  targets="$(instruction_field "$file" targets)"
+  [[ -z "${targets//[[:space:]]/}" ]] && return 0
+  local IFS=','
+  for t in $targets; do
+    t="${t//[[:space:]]/}"
+    [[ "$t" == "all" || "$t" == "$want" ]] && return 0
+  done
+  return 1
+}
+
+# Fragment paths for a target, in filename order.
+list_instruction_fragments() {
+  local want="$1" file
+  for file in "$(instructions_dir)"/*.md; do
+    [[ -f "$file" ]] || continue
+    fragment_matches_target "$file" "$want" || continue
+    printf '%s\n' "$file"
+  done
+}
+
+# Print a fragment without its YAML frontmatter, with leading and trailing
+# blank lines trimmed so the composed block has predictable spacing.
+fragment_body() {
+  awk '
+    NR == 1 && $0 == "---" { fm = 1; next }
+    fm && $0 == "---" { fm = 0; next }
+    fm { next }
+    $0 == "" { if (printed) pending++; next }
+    { while (pending) { print ""; pending-- } print; printed = 1 }
+  ' "$1"
+}
+
+# Compose the fragment paths read on stdin into one document, one blank line
+# between fragments.
+render_instructions() {
+  local file first=1
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    (( first )) || printf '\n'
+    first=0
+    fragment_body "$file"
+  done
+}
+
+instructions_begin_marker() {
+  printf '<!-- >>> agents instructions (managed by install.sh, do not edit) >>> -->'
+}
+
+instructions_end_marker() {
+  printf '<!-- <<< agents instructions <<< -->'
+}
+
+# True if stdin's marker lines are absent or form a properly nested begin/end
+# pair (see mcp_markers_balanced for the rationale).
+instructions_markers_balanced() {
+  awk -v b="$(instructions_begin_marker)" -v e="$(instructions_end_marker)" '
+    $0 == b { if (open) bad = 1; open = 1; next }
+    $0 == e { if (!open) bad = 1; open = 0; next }
+    END { exit (bad || open) ? 1 : 0 }
+  '
+}
+
+# Filter stdin, dropping the instructions block (inclusive) and normalising
+# surrounding blank lines (see strip_mcp_block).
+strip_instructions_block() {
+  awk -v b="$(instructions_begin_marker)" -v e="$(instructions_end_marker)" '
+    $0 == b { skip = 1; pending = 0; next }
+    $0 == e { skip = 0; next }
+    skip { next }
+    $0 == "" { if (pending && printed) print ""; pending = 1; next }
+    { if (pending && printed) print ""; pending = 0; print; printed = 1 }
+  '
+}
+
+# Replace a text file with the given content, atomically (see
+# write_codex_config; instruction files are Markdown, not TOML, and are
+# created from nothing when the agent has no global file yet).
+write_text_file() {
+  local path="$1" content="$2"
+  local tmp="$path.tmp.$$"
+  if [[ -n "$content" ]]; then
+    printf '%s\n' "$content" > "$tmp"
+  else
+    : > "$tmp"
+  fi
+  mv "$tmp" "$path"
+}
+
+# Compose the fragments for a target and write them into its instruction file
+# as the managed block, replacing whatever the block held before. Content
+# outside the markers is preserved; unbalanced markers leave the file alone.
+install_instructions() {
+  local target="$1" dest
+  dest="$(instruction_file_for "$target")" || return 1
+  if [[ -z "$dest" ]]; then
+    printf '  note      instructions: %s reads them from %s/.claude/CLAUDE.md (nothing to write)\n' \
+      "$target" "$HOME"
+    return 0
+  fi
+  local fragments count=0 file
+  fragments="$(list_instruction_fragments "$target")"
+  while IFS= read -r file; do
+    if [[ -n "$file" ]]; then
+      count=$((count + 1))
+    fi
+  done <<< "$fragments"
+  if (( count == 0 )); then
+    printf '  WARN      no instruction fragments match target %s (skipping %s)\n' \
+      "$target" "$dest" >&2
+    return 0
+  fi
+  local body; body="$(render_instructions <<< "$fragments")"
+  local before="" after block
+  [[ -f "$dest" ]] && before="$(cat "$dest")"
+  if ! instructions_markers_balanced <<< "$before"; then
+    printf '  WARN      unbalanced instruction marker lines in %s (leaving it untouched)\n' \
+      "$dest" >&2
+    return 0
+  fi
+  after="$(strip_instructions_block <<< "$before")"
+  block="$(instructions_begin_marker)"$'\n'"$body"$'\n'"$(instructions_end_marker)"
+  if [[ -n "$after" ]]; then
+    after="$after"$'\n\n'"$block"
+  else
+    after="$block"
+  fi
+  if [[ "$after" == "$before" ]]; then
+    printf '  ok        %s (%s instruction fragments)\n' "$dest" "$count"
+    return 0
+  fi
+  if (( DRY_RUN )); then
+    printf '[dry-run] write %s instruction fragments into %s\n' "$count" "$dest"
+    return 0
+  fi
+  ensure_parent "${dest%/*}"
+  write_text_file "$dest" "$after"
+  printf '  updated   %s (%s instruction fragments)\n' "$dest" "$count"
+}
+
+# Strip our instructions block from a target's file, leaving the rest.
+remove_instructions() {
+  local target="$1" dest
+  dest="$(instruction_file_for "$target")" || return 1
+  [[ -n "$dest" && -f "$dest" ]] || return 0
+  local before after
+  before="$(cat "$dest")"
+  if ! instructions_markers_balanced <<< "$before"; then
+    printf '  WARN      unbalanced instruction marker lines in %s (leaving it untouched)\n' \
+      "$dest" >&2
+    return 0
+  fi
+  after="$(strip_instructions_block <<< "$before")"
+  [[ "$after" != "$before" ]] || return 0
+  if (( DRY_RUN )); then
+    printf '[dry-run] remove instructions block from %s\n' "$dest"
+    return 0
+  fi
+  write_text_file "$dest" "$after"
+  printf '  removed   instructions block from %s\n' "$dest"
+}
+
 run() {
   if (( DRY_RUN )); then
     printf '[dry-run] %s\n' "$*"
@@ -815,6 +1034,13 @@ main() {
     fi
     if [[ "$target" == "opencode" ]]; then
       cleanup_opencode_legacy "$skills"
+    fi
+    if (( INSTRUCTIONS )); then
+      if (( UNINSTALL )); then
+        remove_instructions "$target"
+      else
+        install_instructions "$target"
+      fi
     fi
   done < <(resolve_targets)
 }
