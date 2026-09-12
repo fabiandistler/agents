@@ -220,9 +220,10 @@ def build_entry(skill_md: Path) -> dict[str, object]:
         )
     if activation == "router":
         # A router's description is the whole trigger surface of its category;
-        # the summary is what the menu A/B in eval-suite/recall shows, so it
-        # carries all of it, untruncated, rather than a first sentence. When the
-        # router also declares `when_to_use`, that is appended the way Claude
+        # the summary is what the menu A/B in eval-suite/recall
+        # ([fabiandistler/eval-suite](https://github.com/fabiandistler/eval-suite))
+        # shows, so it carries all of it, untruncated, rather than a first
+        # sentence. When the router also declares `when_to_use`, that is appended the way Claude
         # Code appends it to the listing (" - "), so the menu shows the model
         # exactly the text the client would. Codex ignores the field, so this
         # only ever adds what one of the two clients really displays.

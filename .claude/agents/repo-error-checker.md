@@ -39,7 +39,7 @@ Do not stop at the first failure; collect all output.
 5. `ruff check .` and `python3 -m compileall -q scripts skills
    mcp-wiki-server` — Python lint/compile.
 6. `shellcheck -S warning install.sh scripts/test_install.sh
-   eval-suite/run.sh` — skip with a note if shellcheck (or ruff) is not
+   scripts/roomba-scan.sh` — skip with a note if shellcheck (or ruff) is not
    installed; never install tools yourself.
 
 ## Step 3 — official Agent Skills format audit

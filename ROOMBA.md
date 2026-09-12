@@ -60,7 +60,7 @@ for d in skills/*/; do [ -f "$d/SKILL.md" ] && python3 scripts/quick_validate.py
 uvx ruff@latest check .
 python -m compileall -q scripts skills mcp-wiki-server
 uvx --from shellcheck-py shellcheck -S warning \
-  install.sh scripts/test_install.sh scripts/roomba-scan.sh eval-suite/run.sh
+  install.sh scripts/test_install.sh scripts/roomba-scan.sh
 bash scripts/test_install.sh
 ```
 
