@@ -2,12 +2,7 @@
 #
 # Scope is deliberately `github-actions` only. ci.yml's two `pip install` lines
 # (`ruff`, `pyyaml>=6`) are inline workflow steps rather than a manifest, so the
-# pip ecosystem could not see them even if it were enabled. The one declaration it
-# would reach is a pin with a reason attached, and a bot that widens it is a bot
-# that reverts a decision: mcp-wiki-server/pyproject.toml caps `mcp[cli]<2` because
-# server.py uses the v1 FastMCP API. A pip ecosystem entry here would raise that
-# cap and reintroduce the ModuleNotFoundError it exists to prevent.
-# Add the `pip` ecosystem once server.py is ported to the mcp v2 API.
+# pip ecosystem could not see them even if it were enabled.
 version: 2
 updates:
   - package-ecosystem: github-actions

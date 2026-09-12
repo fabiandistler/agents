@@ -164,7 +164,6 @@ still listed here.
 | `instructions/` | Always-on rule fragments, composed into the agent's global instruction file by `--instructions` |
 | `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents) |
 | `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
-| `mcp-wiki-server/` | Standalone MCP server exposing a wiki tool. Not used by the plugins |
 | `roomba/` | Reports from the scheduled maintenance rotation described in [`ROOMBA.md`](ROOMBA.md) |
 | `docs/adr/` | Architecture Decision Records for this repo's own structure |
 

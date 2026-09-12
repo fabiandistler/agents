@@ -59,7 +59,7 @@ jobs:
           prek run --all-files --show-diff-on-failure
 
       - name: Python compiles
-        run: python -m compileall -q scripts skills mcp-wiki-server
+        run: python -m compileall -q scripts skills
 
       - name: Shell lint (shellcheck)
         # -S warning: gate on real problems; skip advisory info/style notes.
