@@ -40,7 +40,10 @@ if (length(args) < 1L) {
 run_dir <- normalizePath(args[[1]], mustWork = TRUE)
 skip_mode <- "--skip" %in% args[-1L]
 
-JUDGE_MODEL <- Sys.getenv("JUDGE_MODEL", unset = "claude-sonnet-4-20250514")
+# Keep this pointed at a model that is actually still served: a retired id
+# makes every judge call 404 and the run degrades to "judge: —" rows that
+# look like a skipped judge rather than a broken one.
+JUDGE_MODEL <- Sys.getenv("JUDGE_MODEL", unset = "claude-sonnet-5")
 
 script_arg <- grep("--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 root <- if (length(script_arg) >= 1L) {
@@ -278,6 +281,8 @@ write_judge <- function(out_path, payload) {
 configs <- list.dirs(run_dir, recursive = FALSE, full.names = FALSE)
 configs <- configs[configs != ""]
 
+n_failed <- 0L
+
 for (config in configs) {
   cdir <- file.path(run_dir, config)
   tasks <- list.dirs(cdir, recursive = FALSE, full.names = FALSE)
@@ -329,6 +334,9 @@ for (config in configs) {
     res <- call_judge(prompt, JUDGE_MODEL)
 
     if (!res$ok) {
+      n_failed <- n_failed + 1L
+      message(sprintf("[judge] FAILED %s / %s: %s", config, task,
+                      substr(res$error, 1L, 300L)))
       write_judge(
         judge_path,
         list(
@@ -365,4 +373,11 @@ for (config in configs) {
   }
 }
 
+if (n_failed > 0L) {
+  # Do not abort: the solutions are already on disk and the report is still
+  # worth having. Just make the breakage impossible to miss — a silent
+  # degrade to "judge: —" reads like an intentional skip.
+  message(sprintf("[judge] %d judge call(s) FAILED (model: %s)",
+                  n_failed, JUDGE_MODEL))
+}
 message(sprintf("[judge] done -> %s/<config>/<task>/judge.json", run_dir))

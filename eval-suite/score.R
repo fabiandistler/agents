@@ -23,9 +23,15 @@ root <- if (length(script_arg) >= 1L) {
 }
 
 score_one <- function(config, task, sol_path, tests_path, work_setup_files) {
+  # tests_path may be NA: tasks without a tests.R are judge-only. They still
+  # get a row (lint + parse + a slot for judge.json), otherwise aggregate.R
+  # never sees them and a run made only of such tasks aborts with
+  # "no results found".
+  has_tests <- !is.na(tests_path) && file.exists(tests_path)
   out <- list(
     config = config, task = task,
     has_solution = file.exists(sol_path),
+    judge_only = !has_tests,
     parses = NA, n_lint = NA_integer_, n_lines = NA_integer_,
     tests_total = NA_integer_, tests_pass = NA_integer_,
     tests_fail = NA_integer_, tests_error = NA_integer_,
@@ -41,6 +47,8 @@ score_one <- function(config, task, sol_path, tests_path, work_setup_files) {
     length(lintr::lint(sol_path)),
     error = function(e) NA_integer_
   )
+
+  if (!has_tests) return(out)
 
   # Run tests in an isolated tempdir so we can drop solution.R + setup files
   # alongside tests.R as if it was the workdir.
@@ -93,10 +101,7 @@ for (config in configs) {
     sol  <- file.path(cdir, task, "solution.R")
     tdir <- file.path(root, "tasks", task)
     tests <- file.path(tdir, "tests.R")
-    if (!file.exists(tests)) {
-      warning(sprintf("no tests.R for task '%s' — skipping", task))
-      next
-    }
+    if (!file.exists(tests)) tests <- NA_character_
     setup_files <- list.files(tdir, full.names = TRUE,
                               pattern = "^(target\\.R)$")
     rows[[length(rows) + 1L]] <-

@@ -33,6 +33,7 @@ results$judge_total    <- NA_integer_
 results$judge_pass_rate <- NA_real_
 results$judge_skipped  <- NA
 results$judge_model    <- NA_character_
+results$judge_reason   <- NA_character_
 
 for (i in seq_len(nrow(results))) {
   jp <- file.path(run_dir, results$config[i], results$task[i], "judge.json")
@@ -42,6 +43,7 @@ for (i in seq_len(nrow(results))) {
   if (is.null(j)) next
   results$judge_skipped[i] <- isTRUE(j$skipped)
   results$judge_model[i]   <- j$judge_model %||% NA_character_
+  results$judge_reason[i]  <- j$reason %||% NA_character_
   if (isTRUE(j$skipped)) next
   s <- j$summary
   if (!is.null(s)) {
@@ -61,6 +63,18 @@ tasks   <- sort(unique(results$task))
 
 md <- c(sprintf("# Eval results — %s\n", basename(run_dir)))
 
+# A judge that 404s degrades every row to "judge: —", which is
+# indistinguishable from a deliberate --no-judge run. Call it out.
+failed <- results[!is.na(results$judge_reason) &
+                    grepl("^judge call failed", results$judge_reason), ]
+if (nrow(failed) > 0L) {
+  md <- c(md, sprintf(
+    "> **Judge broken:** %d of %d judge calls failed (model: %s).\n> First error: `%s`\n",
+    nrow(failed), nrow(results),
+    failed$judge_model[1] %||% "?",
+    gsub("[`\n]", " ", substr(failed$judge_reason[1], 1L, 200L))))
+}
+
 # per-task per-config: tests + lint + judge
 md <- c(md, "## Per-task results\n")
 hdr <- c("task", configs)
@@ -77,8 +91,13 @@ for (t in tasks) {
     } else {
       sprintf("judge: %d/%d", r$judge_pass, r$judge_total)
     }
-    sprintf("%d/%d tests · %d lint · %s",
-            r$tests_pass, r$tests_total, r$n_lint, judge_cell)
+    # Judge-only tasks (no tests.R) carry no test counts — show lint + judge.
+    tests_cell <- if (is.na(r$tests_total)) {
+      "judge-only"
+    } else {
+      sprintf("%d/%d tests", r$tests_pass, r$tests_total)
+    }
+    sprintf("%s · %d lint · %s", tests_cell, r$n_lint, judge_cell)
   }, character(1))
   md <- c(md, paste0("| ", t, " | ", paste(cells, collapse = " | "), " |"))
 }
@@ -117,10 +136,10 @@ if (length(configs) == 2L) {
   md <- c(md, "| task | Δ passed tests | Δ lint warnings | Δ judge passed |")
   md <- c(md, "|---|---|---|---|")
   for (i in seq_len(nrow(m))) {
-    dj <- m$delta_judge[i]
-    md <- c(md, sprintf("| %s | %+d | %+d | %s |",
-      m$task[i], m$delta_passed[i], m$delta_lint[i],
-      if (is.na(dj)) "—" else sprintf("%+d", dj)))
+    fmt <- function(x) if (is.na(x)) "—" else sprintf("%+d", x)
+    md <- c(md, sprintf("| %s | %s | %s | %s |",
+      m$task[i], fmt(m$delta_passed[i]), fmt(m$delta_lint[i]),
+      fmt(m$delta_judge[i])))
   }
 }
 
