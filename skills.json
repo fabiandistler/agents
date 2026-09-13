@@ -242,7 +242,7 @@
     },
     {
       "name": "tldr",
-      "summary": "Compress something long into the few facts the reader needs to decide or act, plus what was cut — the last message and the work behind it by default, or a named file, PR, document, or thread.",
+      "summary": "Hand back the cliffs of something too long to read now — the few facts needed to decide or act, plus what was cut.",
       "category": "communication",
       "path": "skills/tldr/SKILL.md",
       "activation": "command",
