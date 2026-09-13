@@ -71,9 +71,12 @@ Three things stay load-bearing however long the source is:
   different sentences; write the true one. Mark inference as inference:
   "(inferred — the doc never says)".
 
-Reuse the words the source and the user already use — a repo's `CONTEXT.md`
-ubiquitous language where there is one. A cleaner label of your own invention
-makes the reader translate.
+Prose follows the conversation, terms follow the source. The cliffs are written
+in the language the chat is in — an English PR summarised into a German thread
+comes back German. What stays in the source's own words are the terms
+themselves: identifiers, error strings, and a repo's `CONTEXT.md` ubiquitous
+language. Translating those, or inventing a cleaner label, makes the reader
+translate back.
 
 ## When it is a different ask
 
