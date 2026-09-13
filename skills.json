@@ -239,6 +239,18 @@
         "coding",
         "chat"
       ]
+    },
+    {
+      "name": "tldr",
+      "summary": "Compress something long into the few facts the reader needs to decide or act, plus what was cut — the last message and the work behind it by default, or a named file, PR, document, or thread.",
+      "category": "communication",
+      "path": "skills/tldr/SKILL.md",
+      "activation": "command",
+      "environments": [
+        "coding",
+        "chat"
+      ],
+      "version": "1.0"
     }
   ]
 }
