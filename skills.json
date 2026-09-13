@@ -239,6 +239,18 @@
         "coding",
         "chat"
       ]
+    },
+    {
+      "name": "tldr",
+      "summary": "Hand back the cliffs of something too long to read now — the few facts needed to decide or act, plus what was cut.",
+      "category": "communication",
+      "path": "skills/tldr/SKILL.md",
+      "activation": "command",
+      "environments": [
+        "coding",
+        "chat"
+      ],
+      "version": "1.0"
     }
   ]
 }
