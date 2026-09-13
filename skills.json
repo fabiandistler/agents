@@ -191,6 +191,15 @@
       ]
     },
     {
+      "name": "pypet-snippets",
+      "summary": "Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
+      "category": "workflow",
+      "path": "skills/pypet-snippets/SKILL.md",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "refactoring",
       "summary": "Finding where refactoring is worth starting in a codebase nobody knows well — ranks files by git churn (hotspots) and says how to read the ranking.",
       "category": "refactoring",
