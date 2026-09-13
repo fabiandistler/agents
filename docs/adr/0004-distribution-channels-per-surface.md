@@ -26,14 +26,12 @@ What was never decided is which surface is served by which channel.
 | Surface | Skills came from | Refresh | Instruction block |
 | --- | --- | --- | --- |
 | `claude` | marketplace plugin; `~/.claude/skills/` held no link from this repo | automatic | `install.sh` managed block, present |
-| `codex` | `install.sh` symlinks (13) **and** the `architecture` plugin from a local path | manual | absent — `~/.codex/AGENTS.md` carried no markers |
+| `codex` | `install.sh` symlinks (13) **and** the `architecture` plugin from a local path | manual | `install.sh` managed block, present |
 | `opencode` | `install.sh` symlinks (10) | manual | none by design; it reads `~/.claude/CLAUDE.md` |
 
-Two defects were visible in that table before any decision was taken. Codex ran
+One defect was visible in that table before any decision was taken: Codex ran
 both channels at once, so `architecture` registered twice — the same fault
 [#159](https://github.com/fabiandistler/agents/issues/159) reports for Claude.
-And the Codex instruction block had never been installed, so Codex sessions ran
-without any of the nine `instructions/` fragments.
 
 ### What was measured, not assumed
 
@@ -146,8 +144,17 @@ user timer per machine, not by more manifest.
 - The Codex marketplace source must move from a local path to the GitHub URL,
   and the `~/.codex/skills/` symlinks must be removed in the same change, or
   the existing double registration persists.
-- `~/.codex/AGENTS.md` needs the instruction block installed. It has never had
-  one.
+- `README.md` and `docs/install.md` describe skill linking as the installer's
+  main job — the README's symlink quick start and flag table, and the "What gets
+  linked where" and Codex sections of `docs/install.md`. Until the
+  implementation lands they contradict this ADR, and a reader of either gets the
+  opposite answer about what `install.sh` does. They are part of the change, not
+  follow-up.
+- **`--target=claude --instructions` stays mandatory for `opencode` to have any
+  rules.** opencode gets no instruction file of its own on purpose: its loader
+  reads `~/.claude/CLAUDE.md` unless `disableClaudeCodePrompt` is set. So
+  `--target=claude` becomes a no-op for skills while remaining the only way
+  opencode receives the instruction block. Do not "simplify" that target away.
 - "Live" is not uniform. A push to `main` reaches Claude within a session and
   reaches Codex and opencode only after the timer fires. A bad push is visible
   on Claude first.
