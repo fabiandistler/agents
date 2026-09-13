@@ -74,3 +74,16 @@ memory best-effort — skip silently when the host exposes none.
   and warns on shell operators.
 - Pass the snippet command as one quoted argument so pipes and redirects
   survive intact.
+
+## Placeholder pitfalls
+
+pypet also honours the legacy single-brace `{name}` syntax, so every brace
+the target program needs for itself — fzf's `{q}`, `awk '{print $1}'` — is
+detected as a phantom required parameter. A command containing at least one
+real `{{name}}` placeholder is exempt: detection stops at the new syntax and
+never falls back. So either add a genuine `{{param=default}}` to the command,
+or keep single braces out of it.
+
+Snippets run through a shell, so pipes, `$(...)` and quoting survive — but
+the command is stored verbatim. Check it with `pypet list` after creating it;
+backslash-heavy paths deserve a second look.
