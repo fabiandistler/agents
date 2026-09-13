@@ -62,9 +62,14 @@ Not prescriptive — the maintainers know the constraints better.
 
 ## Related
 
-- The routing measurement for `implement` / `tdd`, filed separately. This issue
-  is the upstream cause of the pattern that report measures; that one is about
-  the instruction not routing, this one is about the artifact not carrying.
+- **#479** and **#367** report that `/implement` skips `/tdd`. #479's diagnosis
+  names the same root cause from the other end: "nothing in the skill ever agrees
+  any seams, so the trigger for TDD never fires by construction." This issue is
+  about why the agreement is missing even when it *was* made — `to-spec` makes it,
+  and the ticket does not carry it. Fixing `implement`'s wording alone would still
+  leave it with no seams to work from when the input is a ticket.
+- **#924** (`/to-tickets` can leave PRD requirements orphaned) — adjacent: the same
+  step losing information from its input, a different field.
 - **#1060** (acceptance locks and hard gates across the planning-to-implementation
   flow) — same theme of preconditions stated but not enforced.
 
