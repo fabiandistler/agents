@@ -201,6 +201,33 @@ machine consumption prefer `skills.json`.
   `../../../skills/<skill-name>`. CI enforces this with
   `python3 scripts/check_plugins.py`.
 
+## Scripts an agent runs
+
+Applies to any executable an agent invokes: `scripts/` in a skill or
+plugin, hook commands, CI helpers.
+
+- Never read from an interactive prompt. Agents run non-interactive
+  shells; a TTY prompt hangs the session until timeout. Take every input
+  as a flag, env var, or stdin. On a missing required input, exit
+  non-zero naming the flag and its allowed values.
+- `--help` is the agent's only interface documentation — one usage line,
+  the flags, two examples. It is also context cost: keep it under ~25
+  lines.
+- Data to stdout, diagnostics to stderr. Prefer JSON/TSV over
+  whitespace-aligned columns.
+- Distinct exit code per failure class, documented in `--help`, so the
+  caller can branch without parsing prose.
+- Idempotent by default: agents retry. "Create if not exists", never
+  "fail on duplicate".
+- Bound the output. Harness output is truncated past roughly 10–30k
+  characters, silently. Default to a summary; offer `--output FILE` and
+  `--offset` for the rest.
+- Python with third-party deps: PEP 723 inline block + `uv run
+  script.py`. No sibling requirements.txt, no install step. `uv add
+  --script` to edit, `uv lock --script` when the run must reproduce.
+- A one-off command in SKILL.md (`uvx`, `npx`) is version-pinned, or it
+  is not a convention.
+
 ## Agent skills
 
 ### Issue tracker
