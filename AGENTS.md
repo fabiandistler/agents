@@ -204,7 +204,10 @@ machine consumption prefer `skills.json`.
 ## Scripts an agent runs
 
 Applies to any executable an agent invokes: `scripts/` in a skill or
-plugin, hook commands, CI helpers.
+plugin, hook commands, CI helpers. The four rules that hold outside this
+repo too — non-interactive input, `--help`, exit codes, bounded output —
+are also carried globally by `instructions/85-agent-scripts.md`; edit
+both when they change.
 
 - Never read from an interactive prompt. Agents run non-interactive
   shells; a TTY prompt hangs the session until timeout. Take every input
