@@ -44,6 +44,12 @@ _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
 - **Write the evaluation guideline before building** — including out-of-scope
   inputs and the required refusal behavior. "Correct" ≠ "good"; define good per
   application. (Ch. 4)
+- **Record refusals as their own outcome class, by category — never let the
+  retry path absorb them.** A refusal is a result, not a transient error; a
+  harness that retries until the output parses silently deletes the safety
+  signal and inflates the pass rate. Keep refusal separate from pass, fail and
+  API error in every report. (featherbench)
+  - ❌ retrying until the response parses   ← likely-default
 - **Evaluate each pipeline component independently AND end-to-end, per-turn AND
   per-task.** Otherwise failures can't be localized.
   - ❌ scoring only the final output   ← likely-default
