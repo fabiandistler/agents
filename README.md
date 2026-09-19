@@ -2,13 +2,13 @@
 
 Skills for AI coding agents — architecture review, refactoring, LLM
 application engineering, planning, and technical writing — written once as
-plain Markdown and installed into Claude Code, Codex CLI, or opencode from
+plain Markdown and delivered to Claude Code, Codex CLI, and opencode from
 one place.
 
 A skill is a Markdown file an agent loads when it recognizes the situation it
 describes; the bulk of each one stays in `references/` pages that load only
 when they are needed. There is no runtime, no server, and nothing to install
-at agent start beyond a symlink or a plugin entry.
+at agent start beyond a plugin entry or a path in a config file.
 
 What this is **not**: a general-purpose skill marketplace. The catalogue is
 personal and opinionated, and skills are prose an agent reads — none of them
@@ -16,11 +16,18 @@ execute code on their own.
 
 ## Quick start
 
-Two supported paths. Both take under five minutes; pick one — running both in
-Claude Code makes every skill appear twice.
+Each agent gets the skills through exactly one channel, chosen for how it
+refreshes ([ADR-0004](docs/adr/0004-distribution-channels-per-surface.md)).
+Running two channels on one agent makes every skill appear twice.
 
-**Claude plugins** (Claude Code, claude.ai, Claude Desktop, Cowork) — install
-whole categories, no clone needed. In Claude Code:
+| Surface | Skills come from | Refresh |
+|---|---|---|
+| Claude Code | marketplace plugin | automatic |
+| Codex CLI | marketplace plugin, git source | `codex plugin marketplace upgrade` |
+| opencode | skill path pointing at a clone | `git pull` |
+
+**Claude Code** (also claude.ai, Claude Desktop, Cowork) — install whole
+categories, no clone needed:
 
 ```
 /plugin marketplace add fabiandistler/agents
@@ -30,48 +37,58 @@ whole categories, no clone needed. In Claude Code:
 Elsewhere: Settings → Plugins → Add marketplace → GitHub →
 `fabiandistler/agents`, then install individual plugins.
 
-**Symlinks** (Codex CLI, opencode, or local development on this repo).
-Requires `bash` and `git`; `python3` only for the Codex extras:
+**Codex CLI** reads the same marketplace from its git URL:
 
-```console
-$ git clone https://github.com/fabiandistler/agents.git ~/src/agents
-$ cd ~/src/agents
-$ ./install.sh --target=claude
-claude: /home/you/.claude/skills
-  linked    /home/you/.claude/skills/architecture -> /home/you/src/agents/skills/architecture
-  linked    /home/you/.claude/skills/documentation -> /home/you/src/agents/skills/documentation
-  linked    /home/you/.claude/skills/refactoring -> /home/you/src/agents/skills/refactoring
-  ...
-  linked    /home/you/.claude/commands/repo-status.md -> /home/you/src/agents/skills/repo-status/SKILL.md
+```sh
+codex plugin marketplace add https://github.com/fabiandistler/agents.git
 ```
+
+**opencode** points a skill path at a clone (`git clone
+https://github.com/fabiandistler/agents.git ~/src/agents`, then
+`~/src/agents/skills` in its config — the key differs by version, see
+[`docs/install.md`](docs/install.md)).
 
 Start your agent and ask it something the catalogue covers — *"is this
 service's structure sound?"* — and it loads `architecture`, which routes to
-the sub-skill for the question. Re-running the installer prints `ok` for links
-that already exist; `--uninstall` removes exactly the links it created.
-
-Symlinks pick up local edits immediately, which makes this the better setup
-while developing skills here. `--target=codex` does more than link skills —
-see [`docs/install.md`](docs/install.md).
+the sub-skill for the question.
 
 ## Configuration
 
-`install.sh` flags. `./install.sh --help` is the source of truth; per-agent
-behaviour is in [`docs/install.md`](docs/install.md).
+Skills are only half of it. `install.sh`, run from a clone, writes what no
+plugin format can carry: the shared rules into each agent's global
+instruction file, and for Codex the config block that keeps router members
+hidden plus the two subagents. It links no skills. Requires `bash`;
+`python3` only for the Codex subagents.
+
+```console
+$ ./install.sh --target=all
+claude:
+  updated   /home/you/.claude/CLAUDE.md (9 instruction fragments)
+codex:
+  agent     cohesion-analyst -> /home/you/.codex/agents/cohesion-analyst.toml
+  agent     coupling-analyst -> /home/you/.codex/agents/coupling-analyst.toml
+  skills    11 routed members disabled in /home/you/.codex/config.toml
+  updated   /home/you/.codex/AGENTS.md (9 instruction fragments)
+opencode:
+  note      instructions: opencode reads them from /home/you/.claude/CLAUDE.md (nothing to write)
+```
+
+Re-running prints `ok` for what is already in place; `--uninstall` strips
+exactly what it wrote. Both also remove the skill symlinks an earlier version
+of the installer created, so upgrading a machine is one run.
+`./install.sh --help` is the source of truth; per-agent behaviour is in
+[`docs/install.md`](docs/install.md).
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into |
-| `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` |
-| `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app |
-| `--instructions` | off | Also compose `instructions/` into the agent's global instruction file |
+| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's instruction file and config to write |
+| `--category=<name>[,<name>...]` | all | Which plugins' Codex extras to write (`architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal`); codex targets only |
 | `--dry-run` | off | Print every action, change nothing |
-| `--uninstall` | off | Remove only the links and managed blocks this installer created |
+| `--uninstall` | off | Remove only the managed blocks and files this installer created |
 
 ```sh
-./install.sh --target=claude --category=architecture
-./install.sh --target=codex  --env=coding
-./install.sh --target=all    --instructions --dry-run
+./install.sh --target=all --dry-run
+./install.sh --target=codex --category=architecture,ai-ml
 ```
 
 ## Usage
@@ -87,14 +104,14 @@ router's
 `members/` directory and load only when routed to.
 
 **Some skills are invoked explicitly.** Skills marked `activation: command`
-are user-invoked only and install as commands — `/oss-scouting`,
-`/repo-status` in Claude Code.
+are user-invoked only — `/workflow:oss-scouting`, `/workflow:repo-status` in
+Claude Code, `$repo-status` in Codex.
 
 **Shared rules are separate from skills.** Skills are capabilities loaded on
 demand; rules that apply to *every* session live in `instructions/` as
 single-topic fragments, composed into `~/.claude/CLAUDE.md` or
-`~/.codex/AGENTS.md` by `./install.sh --instructions`. Content outside the
-managed markers is never touched.
+`~/.codex/AGENTS.md` by `./install.sh`. Content outside the managed markers
+is never touched.
 
 **Reading without installing:** [`skills.json`](skills.json) is the
 machine-readable manifest, and [`AGENTS.md`](AGENTS.md) is the agent-facing
@@ -164,8 +181,8 @@ still listed here.
 | Directory | Description |
 |---|---|
 | `skills/` | All installable skills — every subdirectory holding a `SKILL.md` is one |
-| `instructions/` | Always-on rule fragments, composed into the agent's global instruction file by `--instructions` |
-| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents) |
+| `instructions/` | Always-on rule fragments, composed into the agent's global instruction file by `install.sh` |
+| `plugins/` | The same skills packaged as plugins, one per category, served to Claude and Codex through the marketplace (architecture adds two read-only analysis subagents) |
 | `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
 | `roomba/` | Reports from the scheduled maintenance rotation described in [`ROOMBA.md`](ROOMBA.md) |
 | `docs/adr/` | Architecture Decision Records for this repo's own structure |
