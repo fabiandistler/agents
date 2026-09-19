@@ -232,11 +232,3 @@ not a tag.
   and git-cliff when the repo uses them, the check set, tag conventions and
   PEP 440, and the PyPI-only material (trusted publishing, attestations).
 - `scripts/release_state.py --help` — the state report used above.
-
-## Provenance
-
-Written 2026-09-19 against usethis 3.2.2, devtools 2.5.2, uv 0.12.17,
-release-please 17.11, Keep a Changelog 2.0.0. The two-mode split (prepare,
-then tag on request) is what most existing release skills converge on:
-the agent prepares, a human merges, the tag is a separate confirmed step and
-publishing is CI's. The version model is recorded in `docs/adr/0005`.
