@@ -210,6 +210,18 @@
       "version": "4.0"
     },
     {
+      "name": "release-pr",
+      "summary": "Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written.",
+      "category": "workflow",
+      "path": "skills/release-pr/SKILL.md",
+      "activation": "command",
+      "compatibility": "Requires git and the GitHub CLI (`gh`). R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only Python 3.11+.",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "repo-status",
       "summary": "Generate a standup / status update from recent development activity — yesterday/today/blockers, turning rough notes or connected-tool activity into a shareable update.",
       "category": "workflow",
