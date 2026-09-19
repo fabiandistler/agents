@@ -1,6 +1,6 @@
 {
   "name": "workflow",
-  "description": "Planning and workflow skills: natural planning, repo status updates, and open-source contribution scouting.",
+  "description": "Planning and workflow skills: natural planning, repo status updates, release PRs for R and Python packages, and open-source contribution scouting.",
   "author": {
     "name": "Fabian Distler"
   }
