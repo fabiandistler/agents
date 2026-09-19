@@ -50,6 +50,13 @@ _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
   signal and inflates the pass rate. Keep refusal separate from pass, fail and
   API error in every report. (featherbench)
   - ❌ retrying until the response parses   ← likely-default
+- **When an LLM sits in the decision path of a rating or classification (grade,
+  level, category), measure repeat stability: run the same input N ≥ 5 times
+  and report the agreement rate alongside accuracy.** Below the agreed
+  threshold the product shows a range or an explicit uncertainty flag — never a
+  single value. Identical input with differing output is a defect class of its
+  own, not noise. (Albada, Ch. 3)
+  - ❌ one run per input, accuracy as the only column   ← likely-default
 - **Evaluate each pipeline component independently AND end-to-end, per-turn AND
   per-task.** Otherwise failures can't be localized.
   - ❌ scoring only the final output   ← likely-default
@@ -120,6 +127,12 @@ _Extends SKILL.md Part B step 5._
 - **If a tool stays error-prone after prompting, examples, and finetuning,
   replace the tool with a simpler interface** — don't keep patching the agent.
   (Ch. 6)
+- **A failed tool or API call is its own outcome class in user-facing agents:
+  surface the failure, name what is missing, offer one next step** (retry,
+  rephrase, human). Never answer from parametric knowledge as if the tool had
+  returned — a silent fallback is worse than a visible failure. Log every such
+  failure with tool name and input. (Albada, Ch. 3)
+  - ❌ falling back to a model-only answer when the tool errors   ← likely-default
 - **Treat deadlines as a task constraint:** a correct agent output delivered too
   late is a failure. (Ch. 6)
 - **Expose a corpus to an agent as a query interface — never as one tool per
