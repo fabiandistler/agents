@@ -399,6 +399,8 @@ def main() -> None:
         suggested = version
     if has_prerelease(language, version):
         problems.append(f"{version} is a pre-release; a final release drops the suffix")
+        which = "stable"
+        suggested = ".".join(str(x) for x in (list(base) + [0, 0, 0])[:3])
 
     report = {
         "language": language,
