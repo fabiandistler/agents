@@ -39,6 +39,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import tomllib
+except ImportError:  # Python < 3.11: regex fallback below
+    tomllib = None
+
 DEV_R = 9000
 MAX_MENTIONS = 20
 CONVENTIONAL = re.compile(r"^(?P<type>[a-z]+)(?:\([^)]*\))?(?P<bang>!)?:\s")
@@ -99,19 +104,18 @@ def read_pyproject(repo: Path) -> dict | None:
         return None
     text = path.read_text(encoding="utf-8", errors="replace")
     project = None
-    try:
-        import tomllib
-
-        project = tomllib.loads(text).get("project")
-    except Exception:  # pragma: no cover - fallback for odd TOML or old Python
-        project = None
+    if tomllib is not None:
+        try:
+            project = tomllib.loads(text).get("project")
+        except tomllib.TOMLDecodeError:
+            project = None
     if project is None:
-        block = re.search(r"^\[project\]\n(.*?)(?=^\[|\Z)", text, re.S | re.M)
+        block = re.search(r"^\[project\]\n(.*?)(?=^\[|\Z)", text, re.DOTALL | re.MULTILINE)
         if not block:
             return None
-        name = re.search(r'^name\s*=\s*"([^"]+)"', block.group(1), re.M)
-        version = re.search(r'^version\s*=\s*"([^"]+)"', block.group(1), re.M)
-        dynamic = re.search(r"^dynamic\s*=\s*\[[^\]]*\bversion\b", block.group(1), re.M)
+        name = re.search(r'^name\s*=\s*"([^"]+)"', block.group(1), re.MULTILINE)
+        version = re.search(r'^version\s*=\s*"([^"]+)"', block.group(1), re.MULTILINE)
+        dynamic = re.search(r"^dynamic\s*=\s*\[[^\]]*\bversion\b", block.group(1), re.MULTILINE)
         project = {
             "name": name.group(1) if name else None,
             "version": version.group(1) if version else None,
@@ -196,7 +200,7 @@ def read_changelog(repo: Path, language: str, package: str) -> dict | None:
     version = None
     development = False
     if language == "r":
-        m = re.match(re.escape(package) + r"\s+(.+)$", text, re.I)
+        m = re.match(re.escape(package) + r"\s+(.+)$", text, re.IGNORECASE)
         rest = m.group(1) if m else text
         if "development version" in rest:
             development = True
@@ -285,6 +289,7 @@ def version_mentions(repo: Path, version: str | None, skip: set[str]) -> list[di
         ["git", "-C", str(repo), "grep", "-n", "-F", "-e", version, "--", "."],
         capture_output=True,
         text=True,
+        check=False,
     ).stdout
     hits = []
     for line in out.splitlines():
