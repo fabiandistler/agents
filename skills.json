@@ -182,7 +182,7 @@
     },
     {
       "name": "problem-first-explanation",
-      "summary": "Output-form skill for technical explanations — forces every explanation to start with the concrete problem the concept solves, before the abstract solution or implementation.",
+      "summary": "Output-form skill for explaining anything that solves a problem — a tool, method, concept, rule, or proposal — by leading with the concrete problem before the solution.",
       "category": "communication",
       "path": "skills/problem-first-explanation/SKILL.md",
       "environments": [

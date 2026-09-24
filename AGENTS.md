@@ -105,7 +105,7 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 | [communication-analysis](skills/communication-analysis/SKILL.md) | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | [documentation](skills/documentation/SKILL.md) | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
-| [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing technical explanations that lead with the concrete problem before the abstract solution. |
+| [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing explanations — technical or not — that lead with the concrete problem before the solution. |
 | [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 | [tldr](skills/tldr/SKILL.md) | Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread. |
 
