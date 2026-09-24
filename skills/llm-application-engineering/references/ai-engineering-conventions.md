@@ -102,6 +102,13 @@ _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
   more strongly with reasoning than with safety). The same item-level analysis
   identifies the ~10% of items that carry the discrimination, which is what makes
   a set cheap to run repeatedly. (BenchMIRT)
+- **Where users can override a model result, offer guided alternatives before
+  free-form editing, persist the correction, and log it as a labelled example.
+  Report correction rate per output field as a quality metric with a ceiling.
+  If correcting costs more than doing the task by hand, the feature has
+  failed — corrections never compensate for low base quality.** (Apple HIG,
+  Corrections)
+  - ❌ treating user edits as noise instead of labels   ← likely-default
 
 ## Adaptation
 
@@ -164,6 +171,34 @@ _Extends SKILL.md Part B (the five-step build order)._
   quantization, replica parallelism, tensor parallelism, and attention/KV-cache
   optimization; add prompt caching for long shared prefixes and multi-turn.
   (Ch. 9)
+
+## Result surface
+
+_How a model result is shown to the person who acts on it. Source: Apple HIG
+"Machine Learning" (rev. 2026-06-08), consumer-app guidance re-cut for
+expert/B2B tools; forge 2026-09-24._
+
+- **Show a confidence value only after its correlation with result quality is
+  verified across several thresholds and re-checked per model version.
+  Unverified → do not show it at all.** (Apple HIG, Confidence)
+  - ❌ surfacing the model's score because the API returns one   ← likely-default
+- **Set a floor below which no result is offered — stricter for proactive
+  features (unbidden suggestions). Above the floor, bands drive presentation:
+  low → ask for confirmation or show a range; high → show directly.** Pairs
+  with the repeat-stability rule in `## Evaluation`: that one measures, this
+  one decides what the user sees. (Apple HIG, Confidence)
+  - ❌ one presentation for every confidence level   ← likely-default
+- **Percentages and statistical jargon only where the domain is statistical
+  (compensation ranges, intervals, forecasts). For ratings and categories,
+  rank or use semantic bands ("high / low chance") and phrase confidence as
+  the action it implies.** (Apple HIG, Confidence)
+  - ❌ "97 % match" on a grade or level   ← likely-default
+- **An attribution names the input facts the result rests on, in domain
+  terms — one per option when several are shown; factual, never emotional
+  ("because the role carries budget responsibility X", not "match 0.91",
+  not "because you love …"). Neither so specific it reads as surveillance nor
+  so general it says nothing.** (Apple HIG, Attribution)
+  - ❌ a raw score as the only explanation   ← likely-default
 
 ## Guardrails & security
 

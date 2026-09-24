@@ -18,8 +18,9 @@ cheaper one has been ruled out.
 
 For the craft-level rules underneath these three decisions — prompt engineering
 and prompt management, evaluation-harness and LLM-judge configuration,
-guardrails and security gating, finetuning mechanics, and training-data
-preparation — open
+guardrails and security gating, how a model result is surfaced to the person
+acting on it (confidence, attribution, corrections), finetuning mechanics, and
+training-data preparation — open
 [`references/ai-engineering-conventions.md`](references/ai-engineering-conventions.md).
 It is a dense, falsifiable conventions sheet meant to be consulted when the
 question is *how to implement* one of these steps well, not *which* step to take
