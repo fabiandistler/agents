@@ -4,11 +4,11 @@ category: workflow
 activation: command
 disable-model-invocation: true
 environments: coding
-compatibility: Requires git and the GitHub CLI (`gh`). R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only Python 3.11+.
+compatibility: Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only Python 3.11+.
 argument-hint: "[major | minor | patch | X.Y.Z | tag]"
-description: Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written. After merge, tag and publish the GitHub release.
+description: Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written. After merge, tag and publish the release.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Release PR
@@ -16,7 +16,8 @@ metadata:
 One run = one package, one version. The default mode makes the current branch's
 pull request *the* release of that version: version set, changelog finalized,
 checks run, PR body written. The `tag` mode runs on `main` after that PR merged
-and turns the merge commit into a tag and a GitHub release. Publishing to CRAN
+and turns the merge commit into a tag and a release — a GitHub or GitLab
+release, or on Azure Repos an annotated tag carrying the notes. Publishing to CRAN
 or PyPI is never this skill's job; the reference pages say where it belongs.
 
 ## When to use
@@ -93,7 +94,8 @@ The script detects the language (`DESCRIPTION` → R, `pyproject.toml` →
 Python), reports the declared version, the top changelog heading and whether it
 has entries, the last version tag, a bump suggestion from the commits since
 that tag (and, for R, exports removed from `NAMESPACE`), places outside the
-changelog that mention the current version, and a `state`:
+changelog that mention the current version, the `forge` hosting the remote
+(`github`, `azure`, `gitlab`, `unknown`, `none`), and a `state`:
 
 | State | Meaning in this mode |
 |---|---|
@@ -105,6 +107,9 @@ changelog that mention the current version, and a `state`:
 
 `mismatch` and `open-heading` exit non-zero with the reason in `problems`.
 Read the language page now: `references/r.md` or `references/python.md`.
+Unless `forge` is `github`, also read `references/forges.md`: the PR,
+CI, and release commands below are GitHub's, and that page has the
+equivalents.
 
 ### 1 Derive the bump
 
@@ -173,7 +178,9 @@ feature commits, as `Increment version number to X.Y.Z` (usethis's own
 message; used for Python too so both languages read the same in `git log`).
 
 Push after confirmation. If the branch already has a PR, edit its body;
-otherwise open one, titled `<package> X.Y.Z`. The body, in this order:
+otherwise open one, titled `<package> X.Y.Z`, with the forge's CLI
+(`references/forges.md`). Write the body to `/tmp/pr-body.md` first. The
+body, in this order:
 
 ```markdown
 ## Release <package> X.Y.Z
@@ -194,9 +201,9 @@ NEWS carries a "New features" section.
 
 ### After merge
 Run the `tag` step on `main`: tags `vX.Y.Z` at the merge commit and
-publishes the GitHub release from the section above.
+publishes the release from the section above.
 
-Closes #<n>
+Closes #<n>   (Azure Repos: link work items instead, see forges.md)
 ```
 
 Then stop. Merging is the user's decision.
@@ -207,13 +214,17 @@ Runs on the default branch after the release PR merged.
 
 - [ ] 0 `git switch main && git pull --ff-only`; working tree clean
 - [ ] 1 `release_state.py` reports `consistent`; note `version` and `tag_prefix`
-- [ ] 2 CI on `HEAD` is green (`gh run list --commit $(git rev-parse HEAD)`);
-      a red or pending head is not tagged
+- [ ] 2 CI on `HEAD` is green (`gh run list --commit $(git rev-parse HEAD)`,
+      other forges in `references/forges.md`); a red, pending, or missing
+      run is not tagged without the user's say-so
 - [ ] 3 `release_state.py --section X.Y.Z > /tmp/notes.md`; the file is not empty
 - [ ] 4 Show tag name, commit, and the notes; confirm
 - [ ] 5 `git tag -a vX.Y.Z -m "<package> X.Y.Z" && git push origin vX.Y.Z`
 - [ ] 6 `gh release create vX.Y.Z --verify-tag --title "<package> X.Y.Z" --notes-file /tmp/notes.md`
-      (`--prerelease` for a Python `a`/`b`/`rc` version)
+      (`--prerelease` for a Python `a`/`b`/`rc` version). GitLab: `glab
+      release create`. Azure Repos and unknown hosts have no release
+      object, so steps 5–6 become one annotated tag carrying the notes
+      (`references/forges.md`)
 - [ ] 7 Report the release URL and what happens next per the language page
       (r-universe rebuild, a tag-triggered PyPI workflow, or nothing)
 
@@ -231,4 +242,7 @@ not a tag.
 - `references/python.md` — `uv version` semantics, Keep a Changelog, towncrier
   and git-cliff when the repo uses them, the check set, tag conventions and
   PEP 440, and the PyPI-only material (trusted publishing, attestations).
+- `references/forges.md` — PR, CI-status, and release commands for Azure
+  Repos (`az repos`, `az pipelines`, the 4,000-character description cap,
+  work-item links), GitLab (`glab`), and the git-only fallback.
 - `scripts/release_state.py --help` — the state report used above.

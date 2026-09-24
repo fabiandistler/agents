@@ -74,8 +74,9 @@ form runs once before the push.
 
 ## Tag and GitHub release
 
-Either form. The `gh` form is what the `tag` procedure in `SKILL.md` uses;
-the usethis form does the same from inside R:
+On another forge, use `forges.md`. `use_github_release()` works only on
+GitHub. On GitHub, either form works. The `tag` procedure in `SKILL.md`
+uses the `gh` form, and the usethis form does the same from inside R:
 
 ```bash
 Rscript -e 'usethis::use_github_release(publish = TRUE)'
@@ -106,7 +107,7 @@ package not yet on CRAN. `devtools::release()` is deprecated in favour of it
   arrive by email in 15–30 minutes. `check_mac_release()` / `check_mac_devel()`
   for macOS.
 - `rhub::rhub_check()` — rhub 2.x runs on GitHub Actions in the package's own
-  repo after `rhub::rhub_setup()`; the old `check_for_cran()` /
+  repo (so GitHub only; elsewhere list it under "Not verified here") after `rhub::rhub_setup()`; the old `check_for_cran()` /
   `devtools::check_rhub()` are defunct.
 - `revdepcheck::revdep_check(num_workers = 4)` — not on CRAN, install with
   `pak::pak("r-lib/revdepcheck")`; skip for a patch release. Paste

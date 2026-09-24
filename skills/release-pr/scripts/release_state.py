@@ -5,7 +5,8 @@ Answers the questions a release needs answered before anything is edited:
 which version the package declares, which version the top changelog heading
 names and whether it has entries, which tag was released last, what the
 commits since that tag suggest as the next bump, and where else the current
-version string appears in tracked files.
+version string appears in tracked files, and which forge hosts the remote
+(github, gitlab, azure, or unknown) so the caller picks the right CLI.
 
 The package is detected from `DESCRIPTION` (R, changelog `NEWS.md`) or
 `pyproject.toml` with a `[project]` table (Python, changelog `CHANGELOG.md`).
@@ -303,6 +304,31 @@ def version_mentions(repo: Path, version: str | None, skip: set[str]) -> list[di
     return hits
 
 
+def forge(repo: Path, remote: str) -> str:
+    """Classify the remote's host; never echo the URL (it may carry a token)."""
+    url = (
+        subprocess.run(
+            ["git", "-C", str(repo), "remote", "get-url", remote],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        .stdout.strip()
+        .lower()
+    )
+    if not url:
+        return "none"
+    if "github" in url:
+        return "github"
+    if "gitlab" in url:
+        return "gitlab"
+    # dev.azure.com, legacy *.visualstudio.com, and on-prem Azure DevOps Server
+    # (any host, but HTTPS paths always contain /_git/).
+    if re.search(r"dev\.azure\.com|visualstudio\.com|/_git/", url):
+        return "azure"
+    return "unknown"
+
+
 # --- main --------------------------------------------------------------------
 
 
@@ -323,6 +349,7 @@ def main() -> None:
     parser.add_argument(
         "--section", metavar="VERSION", help="print that changelog section as Markdown and exit"
     )
+    parser.add_argument("--remote", default="origin", help="remote whose host sets `forge`")
     parser.add_argument("--output", metavar="FILE", help="write the JSON here instead of stdout")
     args = parser.parse_args()
 
@@ -408,6 +435,7 @@ def main() -> None:
         "version": version,
         "version_source": "changelog heading (dynamic version)" if dynamic else pkg["source"],
         "state": state,
+        "forge": forge(repo, args.remote),
         "changelog": changelog,
         "last_tag": tag,
         "last_tag_version": tag_version,

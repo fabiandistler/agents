@@ -215,11 +215,11 @@
       "category": "workflow",
       "path": "skills/release-pr/SKILL.md",
       "activation": "command",
-      "compatibility": "Requires git and the GitHub CLI (`gh`). R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only Python 3.11+.",
+      "compatibility": "Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only Python 3.11+.",
       "environments": [
         "coding"
       ],
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "name": "repo-status",
