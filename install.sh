@@ -1,35 +1,93 @@
 #!/usr/bin/env bash
-# Write this repo's agent configuration into the conventional locations for
-# popular coding agents. Skills are never linked: each agent receives them
-# through its own channel (Claude and Codex via the plugin marketplace,
-# opencode via a skill path in its config; see docs/install.md). What the
-# installer writes is exactly what no plugin format can carry:
-#   - the managed instruction block composed from instructions/*.md, into
-#     ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (opencode reads the former);
-#   - for codex, the [[skills.config]] block in ~/.codex/config.toml that hides
-#     routed member skills, and the subagent TOMLs in ~/.codex/agents/.
-# Idempotent; reversible via --uninstall.
+# Symlink the skills in this repo into the conventional install paths
+# for popular coding agents. Idempotent; reversible via --uninstall.
 #
 # Usage:
-#   ./install.sh --target=claude              # ~/.claude/CLAUDE.md
-#   ./install.sh --target=codex               # ~/.codex/AGENTS.md, config.toml, agents/
-#   ./install.sh --target=opencode            # legacy cleanup only (see below)
+#   ./install.sh --target=claude              # ~/.claude/skills/<skill>
+#   ./install.sh --target=codex               # ~/.codex/skills/<skill>
+#   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
 #   ./install.sh --target=all --dry-run       # show what would happen
-#   ./install.sh --target=all --uninstall     # strip everything this script wrote
-#   ./install.sh --target=codex --category=architecture,ai-ml
+#   ./install.sh --target=all --uninstall     # remove symlinks owned by us
+#   ./install.sh --target=claude --env=chat   # only chat skills
+#   ./install.sh --target=codex  --env=coding # only coding skills
+#   ./install.sh --target=claude --category=architecture,refactoring
+#   ./install.sh --target=all --instructions   # also sync the rule files
 #
-# --category=<name>[,<name>...] (default all) selects which plugins' codex
-# extras are written: their subagents and their routed-member suppression. It
-# has no subject on the other targets, so it is rejected unless --target
-# includes codex.
+# --env=coding|chat|all (default all) selects which skills to (un)install,
+# based on each skill's `environments:` frontmatter field. A skill with no
+# such field belongs to every environment.
 #
-# Migration: earlier versions symlinked skills into every agent's skill and
-# command directory. Both install and --uninstall remove those links (any
-# symlink under those directories that points into this clone's skills/);
-# symlinks pointing elsewhere are never touched.
+# --category=<name>[,<name>...] (default all) further narrows the selection
+# to skills whose `category:` frontmatter field matches one of the given
+# categories. Combinable with --env.
 #
-# Exit codes: 0 ok, 2 bad arguments.
+# A skill may also restrict itself to some agents with a `targets:` frontmatter
+# field (comma-separated subset of claude, codex, opencode; absent means all).
+# A skill that excludes a target is never linked there, and an existing link we
+# own is removed on the next install. Use it when a runtime already ships an
+# equivalent of its own.
+#
+# Skills with `activation: command` in their frontmatter are user-invoked,
+# not model-triggered. For claude and opencode they are linked into the
+# target's command directory (~/.claude/commands, ~/.config/opencode/command)
+# as <name>.md instead of the skills directory, keeping them out of the
+# auto-trigger metadata. Codex custom prompts (~/.codex/prompts) are
+# deprecated, so under codex these skills install into the skills directory
+# like any other; their agents/openai.yaml sidecar
+# (policy.allow_implicit_invocation: false) keeps Codex from auto-triggering
+# them, so they stay explicit-only. --uninstall reverses this, and codex
+# installs also remove any leftover ~/.codex/prompts symlinks we created.
+#
+# A category may ship a router skill (`activation: router`, named after the
+# category). Its auto skills are nested under the router's members/ dir, so
+# only the router is linked at top level; the members load lazily when the
+# router routes to them, keeping the category to a single trigger entry. The
+# nested members are never linked flat; a flat link left by a pre-router
+# install is removed, on both the install and the uninstall path.
+# Claude registers only top-level skills, so the members stay hidden there.
+# Codex, however, discovers skills recursively and follows symlinks
+# (openai/codex#22275), so it would register each nested members/<name>/SKILL.md
+# as its own skill. To preserve the router's progressive disclosure under codex,
+# install additionally disables every nested member by name in
+# ~/.codex/config.toml via a managed [[skills.config]] block (enabled = false),
+# which drops them from the model's skill list; --uninstall removes the block.
+#
+# The codex target additionally installs the full plugins, not just the
+# skills. Requires python3 (skipped with a warning otherwise); --uninstall
+# reverses it. --env only filters skills; the plugin extras follow
+# --category:
+#   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
+#     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
+#
+# --instructions (off by default) additionally composes the Markdown
+# fragments in instructions/ into each agent's global instruction file
+# (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md), as one marker-delimited managed
+# block. Fragments are ordered by their numeric filename prefix and may limit
+# themselves to some agents with a `targets:` frontmatter field, as skills do.
+# Anything outside the markers is left untouched, so hand-written notes and
+# @-imports survive; --uninstall strips the block and nothing else. opencode
+# gets no file of its own on purpose: it already reads ~/.claude/CLAUDE.md
+# unless disableClaudeCodePrompt is set, so a second copy would load every
+# rule twice.
+#
+# Conservative behaviour:
+#   - Existing correct symlink:        skip (idempotent).
+#   - Symlink pointing elsewhere:      skip with a warning, never overwrite.
+#   - Regular file or non-empty dir:   skip with a warning, never overwrite.
+#   - Uninstall only removes a symlink whose target is a path inside this
+#     repo, so foreign files at that location are never touched.
+#   - Both install and uninstall prune dangling symlinks left over from
+#     skills this repo no longer ships, again only when the (now missing)
+#     target was inside this repo.
+#   - Earlier versions registered knowledge-base MCP servers in
+#     ~/.codex/config.toml. They are gone; install and uninstall both strip
+#     any leftover managed block and its runtime venv. Only our own marker
+#     block is touched — a foreign [mcp_servers.<name>] table survives, and
+#     hand-edited unbalanced markers leave the whole file alone.
+#   - Generated agent files carry a marker comment; a file at the same path
+#     without the marker is never overwritten, and uninstall only removes
+#     marker-carrying files.
 
 set -euo pipefail
 
@@ -37,7 +95,9 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 DRY_RUN=0
 UNINSTALL=0
+INSTRUCTIONS=0
 TARGET=""
+ENV="all"
 CATEGORY="all"
 
 # Must match the category list in scripts/build_manifest.py.
@@ -51,29 +111,25 @@ usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
 for arg in "$@"; do
   case "$arg" in
     --target=*)   TARGET="${arg#--target=}" ;;
+    --env=*)      ENV="${arg#--env=}" ;;
     --category=*) CATEGORY="${arg#--category=}" ;;
     --dry-run)    DRY_RUN=1 ;;
+    --instructions) INSTRUCTIONS=1 ;;
     --uninstall)  UNINSTALL=1 ;;
     -h|--help)    usage; exit 0 ;;
-    --instructions)
-      echo "--instructions was removed: composing instructions/ is now what install.sh does by default" >&2
-      exit 2 ;;
-    --env=*)
-      echo "--env was removed: install.sh no longer links skills, so there is nothing to filter" >&2
-      exit 2 ;;
     *)            echo "unknown arg: $arg" >&2; usage >&2; exit 2 ;;
   esac
 done
 
-case "$TARGET" in
-  claude|codex|opencode|all) ;;
-  "")
-    echo "missing --target=claude|codex|opencode|all" >&2
-    usage >&2
-    exit 2 ;;
-  *)
-    echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
-    exit 2 ;;
+if [[ -z "$TARGET" ]]; then
+  echo "missing --target=claude|codex|opencode|all" >&2
+  usage >&2
+  exit 2
+fi
+
+case "$ENV" in
+  all|coding|chat) ;;
+  *) echo "invalid --env=$ENV (expected coding|chat|all)" >&2; usage >&2; exit 2 ;;
 esac
 
 if [[ "$CATEGORY" != "all" ]]; then
@@ -87,11 +143,26 @@ if [[ "$CATEGORY" != "all" ]]; then
       exit 2
     fi
   done
-  if [[ "$TARGET" != "codex" && "$TARGET" != "all" ]]; then
-    echo "--category selects the codex extras only; it does nothing for --target=$TARGET" >&2
-    exit 2
-  fi
 fi
+
+target_dir_for() {
+  case "$1" in
+    claude)   printf '%s/.claude/skills\n'        "$HOME" ;;
+    codex)    printf '%s/.codex/skills\n'         "$HOME" ;;
+    opencode) printf '%s/.config/opencode/skills\n' "$HOME" ;;
+    *) echo "unknown target: $1" >&2; return 1 ;;
+  esac
+}
+
+# Where each target discovers user-invoked commands. `activation: command`
+# skills go here (as <name>.md) instead of the skills directory.
+target_command_dir_for() {
+  case "$1" in
+    claude)   printf '%s/.claude/commands\n'         "$HOME" ;;
+    opencode) printf '%s/.config/opencode/command\n' "$HOME" ;;
+    *) echo "unknown target: $1" >&2; return 1 ;;
+  esac
+}
 
 resolve_targets() {
   if [[ "$TARGET" == "all" ]]; then
@@ -101,39 +172,50 @@ resolve_targets() {
   fi
 }
 
-run() {
-  if (( DRY_RUN )); then
-    printf '[dry-run] %s\n' "$*"
-  else
-    "$@"
-  fi
+# Read the comma-separated `environments:` frontmatter value of a SKILL.md.
+# Prints the raw value (may be empty if the field is absent).
+skill_environments() {
+  local skill_md="$1" line
+  line="$(grep -m1 '^environments:' "$skill_md" 2>/dev/null || true)"
+  printf '%s' "${line#environments:}"
 }
 
-ensure_parent() {
-  local dir="$1"
-  if [[ ! -d "$dir" ]]; then
-    run mkdir -p "$dir"
-  fi
+# True if a skill belongs to the requested environment. A skill with no
+# `environments:` field belongs to every environment.
+skill_matches_env() {
+  local skill_md="$1" want="$2" envs
+  [[ "$want" == "all" ]] && return 0
+  envs="$(skill_environments "$skill_md")"
+  [[ -z "${envs//[[:space:]]/}" ]] && return 0
+  local IFS=','
+  for e in $envs; do
+    e="${e//[[:space:]]/}"
+    [[ "$e" == "$want" ]] && return 0
+  done
+  return 1
 }
 
-# Replace a text file with the given content, atomically. A plain `> "$path"`
-# truncates before writing, so an interrupt in between leaves a file we do not
-# own in pieces; a temp file plus mv either lands whole or not at all.
-write_text_file() {
-  local path="$1" content="$2"
-  local tmp="$path.tmp.$$"
-  if [[ -n "$content" ]]; then
-    printf '%s\n' "$content" > "$tmp"
-  else
-    : > "$tmp"
-  fi
-  mv "$tmp" "$path"
+# Read the comma-separated `targets:` frontmatter value of a SKILL.md.
+# Prints the raw value (may be empty if the field is absent).
+skill_targets() {
+  local skill_md="$1" line
+  line="$(grep -m1 '^targets:' "$skill_md" 2>/dev/null || true)"
+  printf '%s' "${line#targets:}"
 }
 
-# --- Skill frontmatter readers ----------------------------------------------
-#
-# Only what the codex extras still need: which skills are routed members of a
-# selected category. Read in bash so nothing here depends on python3.
+# True if a skill should be installed for the given target. A skill with no
+# `targets:` field belongs to every target.
+skill_matches_target() {
+  local skill_md="$1" want="$2" targets
+  targets="$(skill_targets "$skill_md")"
+  [[ -z "${targets//[[:space:]]/}" ]] && return 0
+  local IFS=','
+  for t in $targets; do
+    t="${t//[[:space:]]/}"
+    [[ "$t" == "$want" ]] && return 0
+  done
+  return 1
+}
 
 # Read the `activation:` frontmatter value of a SKILL.md. Prints `command`
 # for user-invoked skills, `router` for a per-category router skill, `auto`
@@ -160,7 +242,7 @@ skill_category() {
 
 # Space-padded list of categories that ship a router skill (activation:
 # router). A routed category's auto skills are nested under the router's
-# members/ dir and load lazily when the router routes to them.
+# members/ dir, so install.sh links only the router and skips the members.
 routed_categories() {
   local out=" "
   for d in "$REPO_ROOT"/skills/*/; do
@@ -175,66 +257,24 @@ routed_categories() {
 # True if a skill's `category:` frontmatter matches the requested filter.
 # `all` matches everything; a skill without the field only matches `all`.
 skill_matches_category() {
-  local skill_md="$1" want="$2" cat
+  local skill_md="$1" want="$2" line cat
   [[ "$want" == "all" ]] && return 0
-  cat="$(skill_category "$skill_md")"
+  line="$(grep -m1 '^category:' "$skill_md" 2>/dev/null || true)"
+  cat="${line#category:}"
+  cat="${cat//[[:space:]]/}"
   [[ -n "$cat" ]] || return 1
   [[ ",${want// /}," == *",$cat,"* ]]
 }
 
-# Names of the auto skills nested under a router of a selected category, one
-# per line. Codex registers them anyway (see the override section), so these
-# are the ones to disable by name.
-codex_routed_members() {
-  local routed d name
-  routed="$(routed_categories)"
+list_skills() {
+  # A directory under skills/ is a skill iff it contains SKILL.md.
   for d in "$REPO_ROOT"/skills/*/; do
+    local name; name="$(basename "$d")"
     [[ -f "$d/SKILL.md" ]] || continue
-    name="$(basename "$d")"
+    skill_matches_env "$d/SKILL.md" "$ENV" || continue
     skill_matches_category "$d/SKILL.md" "$CATEGORY" || continue
-    [[ "$(skill_activation "$d/SKILL.md")" == "auto" ]] || continue
-    [[ "$routed" == *" $(skill_category "$d/SKILL.md") "* ]] || continue
     printf '%s\n' "$name"
   done
-}
-
-# --- Legacy skill symlink migration -----------------------------------------
-#
-# Earlier versions of this script symlinked skills (and, for command skills,
-# their SKILL.md) into each agent's skill and command directories. Skills now
-# reach every agent through a channel of its own, and a symlink left behind
-# registers each skill a second time. So both install and uninstall remove
-# every symlink under those directories that points into this clone's skills/,
-# whether it still resolves or not. A symlink pointing anywhere else — another
-# clone, a foreign skill — is never touched, and neither is a real directory.
-
-legacy_skill_dirs_for() {
-  case "$1" in
-    claude)
-      printf '%s/.claude/skills\n%s/.claude/commands\n' "$HOME" "$HOME" ;;
-    codex)
-      # ~/.codex/prompts held command skills before Codex deprecated prompts.
-      printf '%s/.codex/skills\n%s/.codex/prompts\n' "$HOME" "$HOME" ;;
-    opencode)
-      # ~/.config/opencode/agent was a mistaken early location for skills.
-      printf '%s/.config/opencode/skills\n%s/.config/opencode/command\n%s/.config/opencode/agent\n' \
-        "$HOME" "$HOME" "$HOME" ;;
-    *) echo "unknown target: $1" >&2; return 1 ;;
-  esac
-}
-
-remove_legacy_skill_links() {
-  local target="$1" dir entry link_target
-  while IFS= read -r dir; do
-    [[ -n "$dir" && -d "$dir" ]] || continue
-    for entry in "$dir"/*; do
-      [[ -L "$entry" ]] || continue
-      link_target="$(readlink "$entry")"
-      [[ "$link_target" == "$REPO_ROOT/skills/"* ]] || continue
-      run rm "$entry"
-      printf '  removed   %s (skills are no longer symlinked)\n' "$entry"
-    done
-  done < <(legacy_skill_dirs_for "$target")
 }
 
 # --- Legacy Codex MCP cleanup ----------------------------------------------
@@ -248,9 +288,20 @@ remove_legacy_skill_links() {
 
 codex_config_path() { printf '%s/.codex/config.toml' "$HOME"; }
 
-# Replace ~/.codex/config.toml with the given content, atomically (see
-# write_text_file).
-write_codex_config() { write_text_file "$1" "$2"; }
+# Replace ~/.codex/config.toml with the given content, atomically. A plain
+# `> "$config"` truncates before writing, so an interrupt in between leaves a
+# file we do not own in pieces; a temp file plus mv either lands whole or not
+# at all. install_codex_member_overrides already writes this way.
+write_codex_config() {
+  local config="$1" content="$2"
+  local tmp="$config.tmp.$$"
+  if [[ -n "$content" ]]; then
+    printf '%s\n' "$content" > "$tmp"
+  else
+    : > "$tmp"
+  fi
+  mv "$tmp" "$config"
+}
 
 # Categories that ever shipped an .mcp.json. Hardcoded, because the files this
 # list was once derived from no longer exist.
@@ -335,12 +386,11 @@ remove_legacy_codex_mcp() {
 # symlinks (openai/codex#22275), so the sub-skills nested under a router's
 # members/ dir get registered as independent skills — defeating the router's
 # progressive disclosure. (Claude registers only top-level skills, so it is
-# unaffected.) The marketplace plugin carries the same nested members, so this
-# applies whichever way the skills arrive. To keep the members hidden under
-# codex, disable each nested member by name in ~/.codex/config.toml via a
-# [[skills.config]] entry (enabled = false), which drops it from the model's
-# skill list. The block is marker-delimited so install and uninstall stay
-# idempotent and never touch config we do not own.
+# unaffected.) To keep the members hidden under codex, disable each nested
+# member by name in ~/.codex/config.toml via a [[skills.config]] entry
+# (enabled = false), which drops it from the model's skill list. The block is
+# marker-delimited so install and uninstall stay idempotent and never touch
+# config we do not own.
 
 skill_override_begin_marker() {
   printf '# >>> agents routed-member skill overrides (managed by install.sh, do not edit) >>>'
@@ -453,12 +503,11 @@ install_codex_member_overrides() {
 # --- Codex custom agent registration ----------------------------------------
 #
 # Claude loads plugins/<category>/agents/*.md natively; Codex CLI discovers
-# custom agents as TOML files under ~/.codex/agents/ instead, and its plugin
-# format has no subagent component, so the marketplace never delivers them.
-# Each agent's frontmatter name/description and Markdown body (its system
-# prompt) are converted to a generated <name>.toml carrying a marker comment,
-# so install and uninstall never touch files we did not generate. The `tools:`
-# and `model:` frontmatter fields have no Codex equivalent and are dropped
+# custom agents as TOML files under ~/.codex/agents/ instead. Each agent's
+# frontmatter name/description and Markdown body (its system prompt) are
+# converted to a generated <name>.toml carrying a marker comment, so install
+# and uninstall never touch files we did not generate. The `tools:` and
+# `model:` frontmatter fields have no Codex equivalent and are dropped
 # (model and sandbox are inherited from the parent session).
 
 codex_agents_dir() { printf '%s/.codex/agents' "$HOME"; }
@@ -604,8 +653,7 @@ uninstall_codex_agents() {
 # instead of being copied by hand into every agent's config (which is how
 # ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md drifted apart in the first place).
 # Ordering is the numeric filename prefix: glob order is already deterministic,
-# so this needs no sort. No plugin format delivers standing instructions, which
-# is why this stays an installer job — and the installer's default one.
+# so this needs no sort. Only --instructions turns any of this on.
 #
 # The block is marker-delimited like the Codex config blocks above, so whatever
 # the user keeps outside it — an @-import, a machine-specific note — survives
@@ -631,7 +679,7 @@ instruction_file_for() {
 }
 
 # Read a frontmatter field from a fragment. Prints the raw value, empty when
-# the field is absent.
+# the field is absent (same shape as skill_targets above).
 instruction_field() {
   local file="$1" field="$2" line
   line="$(grep -m1 "^$field:" "$file" 2>/dev/null || true)"
@@ -716,6 +764,20 @@ strip_instructions_block() {
   '
 }
 
+# Replace a text file with the given content, atomically (see
+# write_codex_config; instruction files are Markdown, not TOML, and are
+# created from nothing when the agent has no global file yet).
+write_text_file() {
+  local path="$1" content="$2"
+  local tmp="$path.tmp.$$"
+  if [[ -n "$content" ]]; then
+    printf '%s\n' "$content" > "$tmp"
+  else
+    : > "$tmp"
+  fi
+  mv "$tmp" "$path"
+}
+
 # Compose the fragments for a target and write them into its instruction file
 # as the managed block, replacing whatever the block held before. Content
 # outside the markers is preserved; unbalanced markers leave the file alone.
@@ -789,31 +851,196 @@ remove_instructions() {
   printf '  removed   instructions block from %s\n' "$dest"
 }
 
+run() {
+  if (( DRY_RUN )); then
+    printf '[dry-run] %s\n' "$*"
+  else
+    "$@"
+  fi
+}
+
+ensure_parent() {
+  local dir="$1"
+  if [[ ! -d "$dir" ]]; then
+    run mkdir -p "$dir"
+  fi
+}
+
+link_one() {
+  local src="$1" dest="$2"
+  if [[ -L "$dest" ]]; then
+    local current; current="$(readlink "$dest")"
+    if [[ "$current" == "$src" ]]; then
+      printf '  ok        %s -> %s\n' "$dest" "$src"
+      return 0
+    fi
+    printf '  WARN      %s already symlinked to %s (skipping)\n' "$dest" "$current" >&2
+    return 0
+  fi
+  if [[ -e "$dest" ]]; then
+    printf '  WARN      %s exists and is not a symlink (skipping)\n' "$dest" >&2
+    return 0
+  fi
+  run ln -s "$src" "$dest"
+  printf '  linked    %s -> %s\n' "$dest" "$src"
+}
+
+unlink_one() {
+  local src="$1" dest="$2"
+  if [[ ! -L "$dest" ]]; then
+    if [[ -e "$dest" ]]; then
+      printf '  WARN      %s exists but is not a symlink (skipping)\n' "$dest" >&2
+    fi
+    return 0
+  fi
+  local current; current="$(readlink "$dest")"
+  if [[ "$current" != "$src" ]]; then
+    printf '  WARN      %s points to %s (not ours, skipping)\n' "$dest" "$current" >&2
+    return 0
+  fi
+  run rm "$dest"
+  printf '  removed   %s\n' "$dest"
+}
+
+# Remove dangling symlinks a previous install left behind for skills that no
+# longer exist in this repo (e.g. a skill that was renamed or deleted, or a
+# router that was dismantled): --uninstall only walks the skills the repo
+# currently ships, so those links would linger forever. Only broken symlinks
+# whose target lies inside this repo's skills/ directory are removed; foreign
+# links and anything that still resolves are left untouched.
+prune_stale_skill_links() {
+  local dir="$1" entry target
+  [[ -d "$dir" ]] || return 0
+  for entry in "$dir"/*; do
+    [[ -L "$entry" ]] || continue
+    [[ -e "$entry" ]] && continue
+    target="$(readlink "$entry")"
+    [[ "$target" == "$REPO_ROOT/skills/"* ]] || continue
+    run rm "$entry"
+    printf '  removed   %s (skill no longer in repo)\n' "$entry"
+  done
+}
+
+# Earlier versions linked skills into OpenCode's agent directory
+# (~/.config/opencode/agent), where the skill loader never looks. Remove any
+# of our leftover symlinks from there — on install (migration) and uninstall
+# alike. Symlinks not pointing into this repo are left untouched.
+cleanup_opencode_legacy() {
+  local skills="$1"
+  local legacy_dir="$HOME/.config/opencode/agent"
+  [[ -d "$legacy_dir" ]] || return 0
+  while IFS= read -r skill; do
+    [[ -z "$skill" ]] && continue
+    local src="$REPO_ROOT/skills/$skill"
+    local dest="$legacy_dir/$skill"
+    [[ -L "$dest" ]] || continue
+    [[ "$(readlink "$dest")" == "$src" ]] || continue
+    run rm "$dest"
+    printf '  removed   %s (legacy opencode location)\n' "$dest"
+  done <<< "$skills"
+}
+
+cleanup_codex_prompts_legacy() {
+  local skills="$1"
+  local legacy_dir="$HOME/.codex/prompts"
+  [[ -d "$legacy_dir" ]] || return 0
+  while IFS= read -r skill; do
+    [[ -z "$skill" ]] && continue
+    local src="$REPO_ROOT/skills/$skill/SKILL.md"
+    local dest="$legacy_dir/$skill.md"
+    [[ -L "$dest" ]] || continue
+    [[ "$(readlink "$dest")" == "$src" ]] || continue
+    run rm "$dest"
+    printf '  removed   %s (deprecated codex prompt)\n' "$dest"
+  done <<< "$skills"
+}
+
 main() {
+  local skills; skills="$(list_skills)"
+  if [[ -z "$skills" ]]; then
+    echo "no skills found under $REPO_ROOT (env=$ENV, category=$CATEGORY)" >&2
+    exit 1
+  fi
+  local routed; routed="$(routed_categories)"
+  [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
   [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    printf '%s:\n' "$target"
-    # Runs on both paths: an upgrade must drop the links a version that still
-    # symlinked skills left behind, or every skill registers twice.
-    remove_legacy_skill_links "$target"
+    local dest_dir cmd_dir="" cmd_dir_ready=0 codex_disabled_members=""
+    dest_dir="$(target_dir_for "$target")"
+    [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
+    printf '%s: %s\n' "$target" "$dest_dir"
+    if (( UNINSTALL == 0 )); then
+      ensure_parent "$dest_dir"
+    fi
+    while IFS= read -r skill; do
+      local src dest activation category
+      activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
+      category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
+      if [[ "$activation" == "command" && "$target" != "codex" ]]; then
+        # User-invoked: link the single SKILL.md into the command directory.
+        src="$REPO_ROOT/skills/$skill/SKILL.md"
+        dest="$cmd_dir/$skill.md"
+        if (( UNINSTALL == 0 )) && (( cmd_dir_ready == 0 )); then
+          ensure_parent "$cmd_dir"
+          cmd_dir_ready=1
+        fi
+      elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
+        # Auto member of a routed category: it is nested under the router's
+        # members/ dir and loads lazily when routed to, so it is never linked
+        # at top level. Command skills bypass routing (handled above for
+        # non-codex; linked as skills for codex), so they are not skipped here.
+        # Codex discovers the nested member recursively anyway, so record it to
+        # disable by name in ~/.codex/config.toml further down.
+        [[ "$target" == "codex" ]] && codex_disabled_members+="$skill"$'\n'
+        # Migration: before this category was routed, the member was linked
+        # flat here. That link still resolves, so prune_stale_skill_links (which
+        # only removes broken ones) leaves it, and the member keeps registering
+        # at top level — exactly what routing exists to prevent. Remove it on
+        # both paths. unlink_one only touches a symlink pointing at our own
+        # path, so foreign entries and real directories are left alone.
+        unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
+        continue
+      else
+        # A normal auto skill, or the router itself (linked as a whole dir so
+        # its nested members/ come along).
+        src="$REPO_ROOT/skills/$skill"
+        dest="$dest_dir/$skill"
+      fi
+      # A skill whose `targets:` field excludes this agent is never linked
+      # here; unlinking instead keeps the tree self-healing when the field is
+      # added to a skill that was already installed.
+      if (( UNINSTALL )) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
+        unlink_one "$src" "$dest"
+      else
+        link_one "$src" "$dest"
+      fi
+    done <<< "$skills"
+    prune_stale_skill_links "$dest_dir"
+    [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
     if [[ "$target" == "codex" ]]; then
-      # Likewise for the managed block a version that still registered the
-      # knowledge-base MCP servers wrote.
+      cleanup_codex_prompts_legacy "$skills"
+      # Runs on both paths: an upgrade must drop a managed block left by a
+      # version that still registered the knowledge-base MCP servers.
       remove_legacy_codex_mcp
       if (( UNINSTALL )); then
         uninstall_codex_agents
         remove_codex_member_overrides
       else
         install_codex_agents
-        codex_routed_members | install_codex_member_overrides
+        printf '%s' "$codex_disabled_members" | install_codex_member_overrides
       fi
     fi
-    if (( UNINSTALL )); then
-      remove_instructions "$target"
-    else
-      install_instructions "$target"
+    if [[ "$target" == "opencode" ]]; then
+      cleanup_opencode_legacy "$skills"
+    fi
+    if (( INSTRUCTIONS )); then
+      if (( UNINSTALL )); then
+        remove_instructions "$target"
+      else
+        install_instructions "$target"
+      fi
     fi
   done < <(resolve_targets)
 }
