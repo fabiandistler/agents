@@ -9,7 +9,8 @@ script turns that question into two structural numbers you can act on:
     that DO. A high value means the parts mostly don't touch the same data --
     a lack of cohesion. 0 means well connected.
 
-  * Connected components: how many independent clusters the nodes fall into.
+  * Clusters (connected components): how many independent groups the nodes
+    fall into.
     This is the actionable number -- it is the count of modules this one could
     cleanly split into. 1 = cohesive; 2+ = a grab-bag.
 
@@ -89,8 +90,8 @@ class ModuleReport:
         return max(p - q, 0)
 
     @property
-    def components(self) -> int:
-        """Number of connected components in the node/element graph."""
+    def clusters(self) -> int:
+        """Number of clusters (connected components) in the node/element graph."""
         if not self.nodes:
             return 0
         parent = {n: n for n in self.nodes}
@@ -112,9 +113,9 @@ class ModuleReport:
     def interpretation(self) -> str:
         if self.node_count < 2:
             return "only one " + self.node_label + " -- cohesion is trivially fine"
-        comp = self.components
+        comp = self.clusters
         if comp <= 1:
-            return "well connected (1 component) -- cohesive"
+            return "well connected (1 cluster) -- cohesive"
         plural = "classes" if self.kind == "class" else "files"
         return (
             f"{comp} disjoint clusters -- this {self.kind} could split into "
@@ -462,7 +463,7 @@ def render_text(path: Path, reports: list[ModuleReport]) -> str:
     for r in reports:
         lines.append(
             f"  {r.kind} {r.name}: {r.node_count} {r.node_label}s, "
-            f"LCOM={r.lcom}, components={r.components}"
+            f"LCOM={r.lcom}, clusters={r.clusters}"
         )
         lines.append(f"      -> {r.interpretation()}")
     return "\n".join(lines)
@@ -475,15 +476,16 @@ def report_to_dict(path: Path, r: ModuleReport) -> dict:
         "kind": r.kind,
         "nodes": r.node_count,
         "lcom": r.lcom,
-        "components": r.components,
+        "clusters": r.clusters,
         "interpretation": r.interpretation(),
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Estimate module cohesion via LCOM (CK v1) and connected "
-        "components. Python is precise (ast); R and Bash are heuristic. "
+        description="Estimate module cohesion via LCOM (CK v1) and clusters "
+        "(connected components). Python is precise (ast); R and Bash are "
+        "heuristic. "
         "Numbers are diagnostic signals, not verdicts.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

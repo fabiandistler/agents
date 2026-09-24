@@ -67,7 +67,7 @@ actually holds. Best to worst:
 
 | Type | The parts are bound by… |
 |------|-------------------------|
-| **Functional** *(best)* | Everything essential to one job; nothing extra. |
+| **Functional cohesion** *(best)* | Everything essential to one job; nothing extra. |
 | **Sequential** | One part's output is the next part's input. |
 | **Communicational** | They operate on the same information / build one output. |
 | **Procedural** | They must run in a particular order. |
@@ -106,11 +106,11 @@ For anything with the structure of methods-and-fields or functions-and-shared-
 state, get the structural signal from the bundled script:
 
 ```
-python3 skills/coupling-cohesion/scripts/lcom.py <path...> [--lang auto|python|r|bash]
+python3 scripts/lcom.py <path...> [--lang auto|python|r|bash]
 ```
 
 It reports, per class and per file:
-- **components** — how many disconnected clusters the parts fall into. **This is
+- **clusters** — how many disconnected groups the parts fall into. **This is
   the actionable number:** 1 means well connected (like the book's Class X);
   2+ means the module could split into that many (Class Y / Z).
 - **LCOM** — the Chidamber & Kemerer score (`|P| − |Q|`); higher means more
@@ -122,7 +122,7 @@ modules or where it doesn't fit, and rely on steps 2–3.
 
 ### 5. Apply the trade-off questions before recommending a split
 
-A multi-component result is an *invitation* to split, not an order. Run the
+A multi-cluster result is an *invitation* to split, not an order. Run the
 three questions from the source's Customer/Order Maintenance example
 ([reference](references/cohesion-taxonomy.md#worked-example-when-to-split-a-module)):
 
@@ -149,7 +149,7 @@ Lead with the verdict, then the evidence, then the recommendation:
 
 ```
 Cohesion: <type> (<one-line why>)
-Structure: LCOM=<n>, components=<n> — <what that means here>
+Structure: LCOM=<n>, clusters=<n> — <what that means here>
 Recommendation: <split / merge / leave> — <concrete next step>
 ```
 
@@ -342,9 +342,12 @@ four levels in the reference (strongest to weakest):
 | Level | The downstream depends on… |
 |---|---|
 | **Intrusive** | private implementation details — internals, another component's database, undocumented behavior |
-| **Functional** | the same business rules — duplicated or interleaved logic that must change in lockstep |
+| **Functional coupling** | the same business rules — duplicated or interleaved logic that must change in lockstep |
 | **Model** | the upstream's model of the domain — its entities and concepts, but not its logic |
 | **Contract** | an integration-specific contract that hides implementation, logic, and model |
+
+Functional *coupling* is not Mode A's functional *cohesion*: here it is the
+second-strongest level, a leak when it crosses distance, not the best grade.
 
 Recognition cues per level, and how the classic module-coupling and
 connascence scales map onto them, are in the reference.
