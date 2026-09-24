@@ -4,8 +4,8 @@
 Run from repo root:
     python3 scripts/check_instructions.py    # exit 1 on any invalid fragment
 
-install.sh composes these fragments into the managed block in each agent's
-global instruction file. Composition is plain concatenation in
+install.sh --instructions composes these fragments into the managed block in
+each agent's global instruction file. Composition is plain concatenation in
 filename order, so most mistakes never surface as a broken render — a typo in
 `targets:` silently drops a rule from an agent instead of failing loudly, and
 two fragments sharing a numeric prefix reorder on any filesystem whose glob

@@ -11,31 +11,25 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 - `skills.json` (repo root) is the machine-readable manifest of all
   skills. Read it once to discover what is available without crawling the
   tree.
-- Skills reach each agent through one channel each, never through
-  `install.sh` (`docs/adr/0004-distribution-channels-per-surface.md`):
-  Claude Code and Codex CLI install the plugin marketplace, opencode points
-  a skill path at a clone. `docs/install.md` has the per-surface commands.
-- `install.sh` (repo root) writes what no plugin format carries: the
-  instruction block into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`, and
-  for Codex CLI the plugins' subagents as custom agents in `~/.codex/agents/`
-  plus a marker-delimited block in `~/.codex/config.toml` that disables the
-  routed members. `--uninstall` reverses all of it; both paths also remove
-  the skill symlinks earlier versions created. See `./install.sh --help`.
+- `install.sh` (repo root) symlinks the skills into the conventional
+  install paths for Claude Code, Codex CLI, and opencode. For Codex CLI
+  it also converts the plugins' subagents to Codex custom agents in
+  `~/.codex/agents/` and disables routed members via a marker-delimited
+  block in `~/.codex/config.toml` (both removed by `--uninstall`). See
+  `./install.sh --help`.
 - `instructions/` holds the agent-instruction fragments: single-topic
   Markdown files, ordered by their numeric filename prefix, that
-  `install.sh` composes into a marker-delimited managed block in each
-  agent's global instruction file (`~/.claude/CLAUDE.md`,
+  `install.sh --instructions` composes into a marker-delimited managed block
+  in each agent's global instruction file (`~/.claude/CLAUDE.md`,
   `~/.codex/AGENTS.md`). A rule is authored once here instead of being copied
   by hand into every agent's config. Content outside the markers is never
   touched.
-- `plugins/` packages the same skills as plugins, one plugin per category
-  (each bundles its skills via symlinks into `skills/`).
-  `.claude-plugin/marketplace.json` makes the repo installable as a plugin
-  marketplace in Claude Code, claude.ai, Claude Desktop, Cowork, and Codex
-  CLI (which reads the same manifest from a git source). The `architecture`
-  plugin additionally ships two read-only analysis subagents
-  (`coupling-analyst`, `cohesion-analyst`); Codex plugins cannot carry
-  subagents, which is why `install.sh` generates them there.
+- `plugins/` packages the same skills as Claude plugins, one plugin per
+  category (each bundles its skills via symlinks into `skills/`).
+  `.claude-plugin/marketplace.json` makes the repo installable as a
+  plugin marketplace in Claude Code, claude.ai, Claude Desktop, and
+  Cowork. The `architecture` plugin additionally ships two read-only
+  analysis subagents (`coupling-analyst`, `cohesion-analyst`).
 - Reference material stays inside the skill that owns it, under
   `skills/<skill>/references/`. SKILL.md names the pages it has; an agent
   opens one only when it needs it. There is no lookup service in front of
@@ -132,9 +126,8 @@ machine consumption prefer `skills.json`.
   - `name` — must match the directory name.
   - `category` — one of `architecture`, `refactoring`,
     `ai-ml`, `workflow`, `communication`, `personal` (the fixed list in
-    `scripts/build_manifest.py`). Determines the catalogue section, which
-    plugin bundles the skill, and the `install.sh --category` subset of
-    Codex extras.
+    `scripts/build_manifest.py`). Determines the catalogue section, the
+    `install.sh --category` subset, and which plugin bundles the skill.
   - `description` — single paragraph; the first sentence becomes the
     `summary` in `skills.json` (for a router the whole description does, since
     it is the category's entire trigger surface). Keep it within the description budget:
@@ -150,15 +143,18 @@ machine consumption prefer `skills.json`.
 - Optional frontmatter fields:
   - `activation` — `auto` (default) or `command`. `auto` skills are
     model-triggered and their description counts toward the auto-trigger
-    budget. `command` skills are user-invoked only. They ship in the plugin
-    like any skill, so each runtime needs its own opt-out from
-    auto-triggering: for Claude, pair `command` with
-    `disable-model-invocation: true` in the same frontmatter (the runtime
-    realization Claude honors; ignored elsewhere); for Codex, commit an
-    `agents/openai.yaml` sidecar at `skills/<name>/agents/openai.yaml` with
-    `policy.allow_implicit_invocation: false` — no CI check notices a
-    missing one. opencode has no equivalent and registers them as ordinary
-    skills.
+    budget. `command` skills are user-invoked only: for Claude and opencode
+    `install.sh` routes them to the target's command directory
+    (`~/.claude/commands`, `~/.config/opencode/command`) as `<name>.md`
+    instead of the skills directory, keeping them out of the auto-trigger
+    metadata. Codex custom prompts are deprecated, so under codex they install
+    into `~/.codex/skills/` like any skill, gated by an `agents/openai.yaml`
+    sidecar (`policy.allow_implicit_invocation: false`) that keeps Codex from
+    auto-triggering them. That sidecar is committed per skill, at
+    `skills/<name>/agents/openai.yaml` — `install.sh` links it, it does not
+    generate it, and no CI check notices a missing one. For Claude, pair
+    `command` with `disable-model-invocation: true` in the same frontmatter (the runtime
+    realization Claude honors; ignored elsewhere).
   - `when_to_use` — trigger phrases for a **router**, as a single paragraph.
     Claude Code appends it to the description in its skill listing (joined
     with `" - "`, the two capped at 1,536 chars together), so it holds the
@@ -173,16 +169,15 @@ machine consumption prefer `skills.json`.
   - `compatibility` — runtime / language requirements in plain prose.
   - `environments` — comma-separated list of the environments the skill
     belongs to: `coding`, `chat`, or both (e.g. `environments: coding, chat`).
-    Catalogue metadata, carried into `skills.json`; nothing installs by it
-    any more (the `install.sh --env` filter went with skill linking). A
-    skill without the field belongs to every environment.
+    `install.sh --env=coding|chat` uses this to install only the matching
+    subset. A skill without the field belongs to every environment.
   - `targets` — comma-separated subset of `claude`, `codex`, `opencode`
-    (e.g. `targets: codex, opencode`). A skill without the field ships
-    everywhere. Its only consumer today is `scripts/check_plugins.py`: a
-    skill that excludes `claude` gets no plugin symlink — and since the
-    marketplace serves Codex too, it then reaches neither. No shipped skill
-    uses the field; it stays for the case where a runtime ships an
-    equivalent of its own.
+    (e.g. `targets: codex, opencode`). `install.sh` never links the skill for
+    an agent the field leaves out, and removes a link it had created there
+    before. Use it when a runtime already ships an equivalent of its own. A
+    skill without the field is installed for every target. Because `plugins/` is
+    the Claude distribution, a skill that excludes `claude` also gets no
+    plugin symlink (`scripts/check_plugins.py` knows this).
   - `metadata.version` — semver-ish string.
 - The body is plain Markdown. Avoid agent-specific vocabulary
   (slash-commands, "the Skill tool", proprietary tool names). Prefer
@@ -196,8 +191,8 @@ machine consumption prefer `skills.json`.
   `build_manifest.py --check` is the first CI gate. Two readers stay
   independent on purpose: `scripts/quick_validate.py` parses frontmatter
   itself, so it validates the source rather than the generator's output,
-  and `install.sh` reads it in bash, so the Codex member block never
-  depends on `python3`.
+  and `install.sh` reads it in bash, so skill linking never depends on
+  `python3`.
 - After adding, renaming, or removing a skill, update both catalogue
   tables by hand — `README.md` and `AGENTS.md` (`## Skill catalogue`) —
   keeping their text identical and each skill under the section matching
