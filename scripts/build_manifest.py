@@ -33,17 +33,18 @@ CATEGORIES = (
 )
 
 # How a skill is surfaced. `auto` (default): model-triggered; its description
-# participates in the auto-trigger budget. `command`: user-invoked only;
-# install.sh routes it to each target's command/prompt directory instead of
-# the skills directory, keeping it out of the auto-trigger metadata. `router`:
-# a per-category entry skill (named after its category) that is the only
-# member of the category registered at top level; its `members/` subdir nests
-# the category's auto skills, which load lazily when the router routes to them.
+# participates in the auto-trigger budget. `command`: user-invoked only; each
+# runtime's own opt-out (`disable-model-invocation` for Claude, the
+# agents/openai.yaml sidecar for Codex) keeps it out of auto-triggering.
+# `router`: a per-category entry skill (named after its category) that is the
+# only member of the category registered at top level; its `members/` subdir
+# nests the category's auto skills, which load lazily when the router routes
+# to them.
 ACTIVATIONS = ("auto", "command", "router")
 
-# Which agents a skill is installed for. Absent (the default) means all of
-# them; `targets: codex, opencode` keeps install.sh from linking the skill
-# under claude — e.g. when the Claude runtime ships its own version.
+# Which agents a skill ships for. Absent (the default) means all of them;
+# `targets: codex, opencode` keeps check_plugins.py from expecting the skill
+# in a plugin — e.g. when the Claude runtime ships its own version.
 TARGETS = ("claude", "codex", "opencode")
 
 

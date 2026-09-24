@@ -17,7 +17,8 @@ import yaml
 
 # Frontmatter keys accepted in a SKILL.md: the Agent Skills format, the
 # client-specific fields Claude Code honors, and the repo-specific catalogue
-# fields consumed by build_manifest.py, install.sh and check_plugins.py.
+# fields consumed by build_manifest.py, check_plugins.py and install.sh
+# (which reads `activation` and `category` for the Codex member block).
 #
 # These vocabularies mirror CATEGORIES / ACTIVATIONS / TARGETS in
 # scripts/build_manifest.py. They are restated rather than imported so this

@@ -16,9 +16,11 @@ exists whether or not that installer does.
 ## Distribution channel
 
 The mechanism carrying skills from this repo to an install surface. Two exist:
-the **marketplace channel** (the runtime fetches and refreshes a plugin itself)
-and the **symlink channel** (`install.sh` links a local clone into the
-runtime's skill directory).
+the **marketplace channel** (the runtime fetches a plugin from the repo's
+marketplace manifest; `claude`, `codex`) and the **skill-path channel** (the
+runtime's config names a local clone as a skill directory; `opencode`). The
+former **symlink channel** (`install.sh` linking a clone into the runtime's
+skill directory) is retired by ADR-0004; `install.sh` now removes those links.
 
 A surface is served by exactly one channel at a time. Two channels on one
 surface register every skill twice.
