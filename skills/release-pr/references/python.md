@@ -106,7 +106,8 @@ Tag `vX.Y.Z` — the default of release-please (`include-v-in-tag`),
 python-semantic-release, and uv's reference workflow (glob
 `v[0-9]+.[0-9]+.[0-9]+`); match the repo's existing prefix, which
 `release_state.py` reports as `tag_prefix`. A pre-release version (`a`,
-`b`, `rc`) gets `gh release create --prerelease`.
+`b`, `rc`) gets `gh release create --prerelease`. On another forge, see
+`forges.md`.
 
 ## PyPI (only when the project publishes, or the user says PyPI)
 
