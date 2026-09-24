@@ -185,9 +185,9 @@ as squares):
 - **Class Z** — **mixed**: most methods are connected, but one field/method
   combination stands apart and could be refactored into its own class.
 
-The bundled `scripts/lcom.py` reports exactly this picture: a **connected
-components** count is the number of "Class Y" style clusters a module breaks
-into (1 = like Class X; 2+ = a Class-Y/Z split candidate), alongside the
+The bundled `scripts/lcom.py` reports exactly this picture: a **clusters**
+count (connected components of the method/field graph) is the number of
+"Class Y" style groups a module breaks into (1 = like Class X; 2+ = a Class-Y/Z split candidate), alongside the
 Chidamber & Kemerer LCOM score.
 
 ## What LCOM cannot tell you
@@ -205,7 +205,7 @@ important than how**: two methods can share no field yet clearly belong to the
 same concept, and two methods can share a field yet have no business being in
 the same module. So:
 
-- A **high** LCOM / multi-component result is a prompt to look closer, not a
+- A **high** LCOM / multi-cluster result is a prompt to look closer, not a
   verdict. Ask whether the clusters represent genuinely separate concepts.
 - A **low** LCOM does not prove a module is well designed — a class can share
   state everywhere and still mix unrelated responsibilities.

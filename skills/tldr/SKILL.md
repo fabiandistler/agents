@@ -52,6 +52,35 @@ picked in one clause. Answer rather than ask.
 
 The shape is the length budget; there is no word count to hit.
 
+The same PR review, as a telegram and as cliffs:
+
+Telegram:
+
+```markdown
+Auth → gateway. Cache unchanged. New secret. LGTM w/ nit.
+```
+
+Cliffs:
+
+```markdown
+**Bottom line.** Mergeable once the deploy secret exists and the rate-limiting dispute is settled.
+
+- Auth checks move from each service into the API gateway; services now trust
+  the `X-User-Id` header.
+- Deploy fails without the new `GATEWAY_JWT_KEY` secret in every environment.
+- One reviewer wants rate limiting in this PR, the author wants a follow-up —
+  unresolved.
+
+**Your move.** Create `GATEWAY_JWT_KEY` in staging and prod, then decide the
+rate-limiting question.
+
+**Left out:** the caching refactor (no behavior change) and three naming nits.
+```
+
+The telegram only parses for someone who already read the PR; the cliffs
+carry the premises (*what* moved, *why* deploy fails) and keep the
+disagreement as two positions.
+
 ## Load-bearing
 
 A fact is **load-bearing** when removing it changes what the user does next.
