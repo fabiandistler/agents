@@ -52,6 +52,29 @@ Use whatever subset is actually connected; don't block on tools that aren't
 there. Stay tool-agnostic in how you describe this to the user — talk about
 "your source control" or "your tracker", not a specific product.
 
+### Reporting window
+
+Default to the last working day's start → now. The user can override it
+("since Wednesday", "last week") — use their window instead. Put the actual
+window in the header so the reader knows what "Yesterday" covers. On Monday
+the default starts Friday 00:00, not Sunday — otherwise the update shows an
+empty weekend.
+
+### In a repository
+
+When working inside a git checkout, prefer these commands over recall.
+Resolve the author with `gh api user --jq .login` or the user's stated
+email — never `git config user.email`, which resolves to the agent rather
+than the human in agent sessions.
+
+- Commits: `git log --all --no-merges --since=<window> --author=<id>`
+- PRs authored: `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
+- PRs reviewed: `gh search prs --reviewed-by=@me --updated=">=<date>" --json number,title,state,repository`
+- CI status: `gh run list --limit 5`
+
+If `gh` is missing or unauthenticated, fall back to git-only (the `git log`
+command above) and structure what the user tells you for PRs and CI.
+
 **Or structure what the user tells you.** If nothing is connected, or the user
 just narrates ("worked on the auth migration, reviewed a couple PRs, stuck on the
 API rate limiting"), take those notes and organize them into the format below.
@@ -66,7 +89,7 @@ yesterday's progress, today's plan, what's in the way — so it's instantly
 familiar to whoever reads it:
 
 ```markdown
-## Repo Status — [Date]
+## Repo Status — [<start date> → <end date>]
 
 ### Yesterday
 - [What got done, with a ticket/PR reference where there is one]
