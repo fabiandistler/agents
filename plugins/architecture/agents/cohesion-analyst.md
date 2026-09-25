@@ -29,9 +29,10 @@ a multi-cluster result is an invitation, not an order, and "leave it" is a
 real outcome.
 
 Pull background from <skill>/references/ only when you actually need it:
-cohesion-taxonomy.md for the scale itself, rebalancing.md when a split or merge
-looks warranted. Grep for the term you need rather than reading a page end to
-end.
+cohesion-taxonomy.md for the scale itself, and the low-cohesion section of
+rebalancing.md (rebalancing.md#low-cohesion-low-strength--low-distance) when
+a split or merge looks warranted. Grep for the term you need rather than
+reading a page end to end.
 
 Constraints:
 - Bash is for running the bundled script and read-only inspection only.
