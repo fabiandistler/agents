@@ -61,13 +61,19 @@ _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
   per-task.** Otherwise failures can't be localized.
   - ❌ scoring only the final output   ← likely-default
   (Ch. 4)
-- **Give AI judges classification labels or a discrete 1–5 scale, never a
-  continuous score** — wider or continuous ranges degrade judges. Include a
-  worked example with justification for each score point. (Ch. 3)
+- **Give each failure mode its own binary pass/fail judge, never a
+  continuous score** — wider or continuous ranges degrade judges. Use a
+  discrete scale only with an explicit reason. Require a critique before the
+  verdict and include a worked example with justification per verdict. (Ch. 3)
   - ❌ "rate from 0 to 100" / 0.0–1.0   ← likely-default
-- **Pin judge configuration: temperature 0, plus a versioned judge prompt,
-  model, and eval set.** Judge scores are not comparable across tools or judge
-  models. (Ch. 3, 4)
+- **Pin judge configuration: model snapshot, versioned judge prompt, and
+  reasoning effort — not temperature.** Reasoning/thinking modes fix
+  temperature and recent models deprecate it; temperature 0 applies to
+  non-reasoning models only. Judge scores are not comparable across tools or
+  judge models. Measure repeat stability per the N ≥ 5 rule above. (Ch. 3, 4)
+- **Calibrate each judge against ~100 human-labelled traces split
+  train/dev/test; report TPR/TNR and gate CI only above the agreed
+  threshold.** (Hamel)
 - **Maintain sliced eval sets** — production distribution, known-failure set,
   out-of-scope set, user-typo set. Aggregate-only comparison risks Simpson's
   paradox. (Ch. 4)
@@ -94,7 +100,7 @@ _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
   supplied; a larger judge model does not close the gap. Acceptance needs either
   a reference answer in the test case or a human sample on the hardest slice.
   (AgentJudgeBench)
-  - ❌ promoting a judge-scored aggregate to a release gate   ← likely-default
+  - ❌ promoting an uncalibrated judge-scored aggregate to a release gate   ← likely-default
 - **Prove construct validity at item level before a benchmark or test set becomes
   an acceptance criterion — or before publishing one.** Score individual items,
   not just the aggregate: a set can discriminate on general reasoning while
@@ -169,8 +175,7 @@ _Extends SKILL.md Part B (the five-step build order)._
   coupled failure points. (Ch. 10)
 - **Self-hosting only:** the usual highest-leverage optimizations are
   quantization, replica parallelism, tensor parallelism, and attention/KV-cache
-  optimization; add prompt caching for long shared prefixes and multi-turn.
-  (Ch. 9)
+  optimization. (Ch. 9)
 
 ## Result surface
 
