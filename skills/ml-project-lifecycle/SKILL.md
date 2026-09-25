@@ -13,7 +13,7 @@ A machine learning project fails or succeeds long before anyone tunes a hyperpar
 
 ## When to use
 
-Whenever someone is scoping an ML project, picking a model architecture, deciding how to handle missing data, evaluating whether a model is good enough to ship, designing a feature-engineering pipeline, or planning how to deploy and retrain a model in production. Bundles a business-objectives-first checklist, a five-baseline deployment gate, a missing-values (MCAR/MAR/MNAR) taxonomy, a data-type-to-model decision table, and a staged rollout checklist.
+Whenever someone is scoping an ML project, picking a model architecture, deciding how to handle missing data, evaluating whether a model is good enough to ship, designing a feature-engineering pipeline, or planning how to deploy and retrain a model in production. Bundles a business-objectives-first checklist, a five-baseline deployment gate, a missing-values default for prediction versus inference, a data-type-to-model decision table, and a staged rollout checklist.
 
 ## Part A — Framing: get the problem right before touching a model
 
@@ -48,17 +48,16 @@ A model's absolute metric score is meaningless without a baseline. Effective ML 
 
 This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. The bar: clearly beat the random, simple-heuristic, and zero-rule baselines, and beat the existing production solution if one exists. The human baseline is a reference ceiling rather than a pass/fail gate — measure the gap to expert performance and judge whether it is acceptable for the use case.
 
-### Missing-values taxonomy
+### Missing values: prediction default first, mechanism only for inference
 
-Not all missing values are the same, and misclassifying which kind you have introduces systematic bias. Diagnose the mechanism before choosing how to handle it:
+For prediction, do not diagnose the missingness mechanism first — MAR and MNAR cannot be distinguished from observed data alone. The default, whatever the mechanism:
 
-| Type | Mechanism | Example | Handling |
-|------|-----------|---------|----------|
-| **MNAR** — Missing Not At Random | Missing *because of* the value itself | High incomes are withheld | Do not simply drop. Missingness is signal — create an explicit `*_missing` indicator feature |
-| **MAR** — Missing At Random | Missing because of another *observed* variable | One gender group declines to give age | Impute, stratified by the correlated feature |
-| **MCAR** — Missing Completely At Random | No pattern | A survey field is randomly skipped | Row deletion is acceptable if affected rows are <0.1% |
+- Prefer a model with native NaN handling (`HistGradientBoostingClassifier`/`Regressor`, XGBoost, LightGBM, CatBoost) where the stack allows it; or
+- Simple imputation plus a missingness indicator, fit inside CV (see the ordering constraint in Part C): `SimpleImputer(add_indicator=True)` in sklearn, or `step_indicate_na()` plus a `step_impute_*()` step in tidymodels recipes.
 
-Do not default to "drop the row" as a house style — for MNAR data in particular, dropping discards the exact signal that makes the value informative.
+Do not default to "drop the row" as a house style — dropping discards the exact signal that makes the missingness informative. Never use the target/outcome when imputing predictors for a prediction task — it leaks the label into the features.
+
+Keep the MCAR/MAR/MNAR taxonomy only for inference and effect estimation, where unbiased estimates (not predictive accuracy) are the goal — there use multiple imputation (MICE) and pool the estimates across imputations.
 
 ## Part B — Model selection
 
@@ -103,14 +102,72 @@ A workable default workflow: start with a simple model (e.g. XGBoost) as the rea
 
 ### Feature-engineering pipeline, in order
 
-1. **Missing values** — deletion vs. imputation, decided by the MCAR/MAR/MNAR taxonomy above.
+1. **Missing values** — native NaN handling or simple imputation plus a missingness indicator, per the prediction default above.
 2. **Scaling** — normalization (0–1) or standardization (mean 0, std 1).
 3. **Discretization** — continuous to categorical; optional, and often does not help.
 4. **Encoding categoricals** — see the hashing trick below for categories that are not fixed in advance.
 5. **Feature crossing** — model non-linear relationships between features explicitly.
 6. **Positional embeddings** — for sequence-based data.
 
-**Ordering constraint that matters most: split the data first, then scale.** Fitting a scaler (or any statistic) on the full dataset before splitting leaks test-set information into training and inflates validation performance in a way that will not hold in production.
+**Ordering constraint that matters most: every fitted step — impute, scale, encode, select, tune — is fit on training folds only, inside CV.** Fitting any statistic on the full dataset before splitting leaks test-set information into training and inflates validation performance in a way that will not hold in production.
+
+Leakage checklist — pass all six before trusting a validation score:
+
+1. Temporal split — no future information in training; use a time-based split for time-ordered data.
+2. Group split — no shared entity across folds (same user, patient, device); split by group.
+3. Target-proxy audit — no feature computed from the outcome or only available after it.
+4. Duplicate check — no duplicate or near-duplicate rows straddling train and validation.
+5. Preprocessing inside CV — every fitted preprocessing step lives inside the cross-validation loop.
+6. Test set touched once — the held-out test set is evaluated a single time, never used for tuning.
+
+```python
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import GroupKFold, TimeSeriesSplit, cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+preprocess = ColumnTransformer(
+    [
+        (
+            "num",
+            Pipeline(
+                [
+                    ("impute", SimpleImputer(strategy="median", add_indicator=True)),
+                    ("scale", StandardScaler()),
+                ]
+            ),
+            numeric_features,
+        ),
+        (
+            "cat",
+            Pipeline(
+                [
+                    ("impute", SimpleImputer(strategy="most_frequent")),
+                    ("encode", OneHotEncoder(handle_unknown="ignore")),
+                ]
+            ),
+            categorical_features,
+        ),
+    ]
+)
+pipe = Pipeline([("preprocess", preprocess), ("model", model)])
+scores = cross_val_score(pipe, X, y, cv=GroupKFold(n_splits=5), groups=groups)
+scores = cross_val_score(pipe, X, y, cv=TimeSeriesSplit(n_splits=5))
+```
+
+```r
+library(tidymodels)
+
+rec <- recipe(label ~ ., data = train) %>%
+  step_indicate_na(all_predictors()) %>%
+  step_impute_median(all_numeric_predictors()) %>%
+  step_impute_mode(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors())
+wf <- workflow() %>% add_recipe(rec) %>% add_model(spec)
+group_vfold_cv(train, group = entity_id, v = 5)
+sliding_period(train, index = timestamp, period = "month", lookback = 12, assess_stop = 1)
+```
 
 **Handling categories that appear only in production** (a new brand on a marketplace, a new user account): a hash function maps every category — seen or unseen — into a fixed index space (e.g. 2^18 = 262,144 slots) that is defined ahead of time. New categories are automatically encoded validly; occasional hash collisions between two categories are an acceptable trade-off for never crashing on an unseen value. (`sklearn.feature_extraction.FeatureHasher`, TensorFlow `tf.keras.layers.Hashing`, or Vowpal Wabbit's hashing trick.)
 
@@ -138,9 +195,9 @@ Retrain on any of these signals, not on a schedule alone:
 
 - Optimizing a technical metric (accuracy, F1) that was never tied back to a business metric — this is the single most common way "successful" ML projects fail to matter.
 - Comparing a new model only to its own past runs, never to all five baseline types — a model can look good in isolation and still lose to a domain heuristic.
-- Treating every missing-value column the same way (blanket drop or blanket impute) instead of diagnosing MCAR vs. MAR vs. MNAR first — this silently introduces bias, especially for MNAR data where the missingness itself carries information.
+- Treating every missing-value column the same way (blanket drop or blanket impute) instead of using native NaN handling or imputation plus a missingness indicator — this silently discards signal, especially where the missingness itself carries information.
 - Reaching for deep learning on structured/tabular data by default, when a gradient-boosted tree model is usually both simpler and stronger there.
-- Scaling or normalizing before splitting into train/validation/test — a data-leakage bug that inflates offline metrics and does not survive contact with production.
+- Fitting any preprocessing step (imputation, scaling, encoding, selection, tuning) outside cross-validation — a data-leakage bug that inflates offline metrics and does not survive contact with production.
 - Hard-coding a fixed category vocabulary for categorical features, so the first unseen category in production crashes or silently mis-encodes.
 - Skipping a deployment stage (e.g. shadow or canary) to ship faster, which removes the exact safety net staged deployment is designed to provide.
 - Treating retraining as purely calendar-based and missing distribution-shift or business-event triggers that matter more than the clock.
