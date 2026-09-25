@@ -64,7 +64,9 @@ void AllPackages() {
 predefined governance rules. Layer governance (Example 6-4):
 
 ```java
-layeredArchitecture()
+@ArchTest
+static final ArchRule layers = layeredArchitecture()
+    .consideringAllDependencies()
     .layer("Controller").definedBy("..controller..")
     .layer("Service").definedBy("..service..")
     .layer("Persistence").definedBy("..persistence..")
@@ -72,6 +74,8 @@ layeredArchitecture()
     .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
     .whereLayer("Persistence").mayOnlyBeAccessedByLayers("Service");
 ```
+
+Outside the JUnit5 runner the same rule runs as `layers.check(classes)`.
 
 ArchUnit also covers cycles (`slices().should().beFreeOfCycles()`), naming
 conventions, annotation rules, and anti-gaming checks such as requiring every
@@ -121,33 +125,45 @@ inside Jest/Vitest.
 
 ## Python
 
-**import-linter** — contracts over the import graph, enforced by a CLI:
+**import-linter** — contracts over the import graph, enforced by a CLI.
+pyproject.toml:
 
-```ini
-# setup.cfg / pyproject.toml
-[importlinter]
-root_package = myapp
+```toml
+[tool.importlinter]
+root_package = "myapp"
 
-[importlinter:contract:layers]
-name = Layered architecture
-type = layers
-layers =
-    myapp.api
-    myapp.services
-    myapp.persistence
+[[tool.importlinter.contracts]]
+name = "Layered architecture"
+type = "layers"
+layers = [
+    "myapp.api",
+    "myapp.services",
+    "myapp.persistence",
+]
 
-[importlinter:contract:independence]
-name = Feature modules stay independent
-type = independence
-modules =
-    myapp.billing
-    myapp.inventory
+[[tool.importlinter.contracts]]
+name = "Feature modules stay independent"
+type = "independence"
+modules = [
+    "myapp.billing",
+    "myapp.inventory",
+]
+
+[[tool.importlinter.contracts]]
+name = "No sibling cycles"
+type = "acyclic_siblings"
+ancestors = ["myapp"]
 ```
 
-The `layers` contract enforces top-may-use-lower-only; `independence` and
-`forbidden` contracts cover cycles and banned dependencies. **pytest-archon**
+The same contracts in `.importlinter` or `setup.cfg` use `[importlinter]`
+and `[importlinter:contract:...]` INI sections.
+
+The `layers` contract enforces top-may-use-lower-only; `independence` forbids
+imports in any direction between the listed modules; `acyclic_siblings`
+forbids dependency cycles between siblings; `forbidden` covers banned
+dependencies. **pytest-archon**
 expresses the same rules as pytest tests
-(`archrule("no db in ui").match("myapp.ui*").should_not_import("myapp.persistence*")`)
+(`archrule("no db in ui").match("myapp.ui*").should_not_import("myapp.persistence*").check("myapp")`)
 when the team prefers rules living in the test suite. **pydeps --show-cycles**
 works as a quick cycle gate.
 
@@ -158,6 +174,8 @@ by a CLI:
 
 ```yaml
 # .go-arch-lint.yml
+version: 3
+workdir: internal
 components:
   handler:    { in: internal/handler }
   service:    { in: internal/service }
@@ -167,7 +185,7 @@ deps:
   service:    { mayDependOn: [repository] }
 ```
 
-`golangci-lint` with `gochecknoglobals`/`depguard` covers banned imports;
+`golangci-lint` with `depguard` covers banned imports;
 `go list -deps` piped into a small script is a zero-dependency cycle/boundary
 check when adding tooling is not an option.
 
