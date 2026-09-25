@@ -488,6 +488,7 @@ def main(argv: list[str] | None = None) -> int:
         "heuristic. "
         "Numbers are diagnostic signals, not verdicts.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Exit codes: 0 = analysed ok; 3 = no analyzable source files found.",
     )
     parser.add_argument("paths", nargs="+", type=Path, help="files or directories")
     parser.add_argument(
@@ -508,12 +509,16 @@ def main(argv: list[str] | None = None) -> int:
         for f, resolved in iter_source_files(p, lang):
             collected.append((f, analyze_path(f, resolved)))
 
+    if not collected:
+        print("No analyzable source files found.", file=sys.stderr)
+        if args.json:
+            print(json.dumps([], indent=2))
+        return 3
+
     if args.json:
         payload = [report_to_dict(f, r) for f, reports in collected for r in reports]
         print(json.dumps(payload, indent=2))
     else:
-        if not collected:
-            print("No analyzable source files found.")
         for f, reports in collected:
             print(render_text(f, reports))
     return 0
