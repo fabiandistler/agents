@@ -29,35 +29,54 @@ call its CLI — never modify its package and never hand-edit its store.
    creating one.
 2. **Propose and wait**: show the command, a one-line description,
    lowercase comma-separated tags, and parameters with defaults where the
-   command varies (ports, paths, image names). Do nothing until the person
+   command varies (ports, paths, image names). Redact literal tokens,
+   passwords or keys into a `{{param}}` with no default or an `$ENV_VAR`
+   and call this out in the proposal. Do nothing until the person
    confirms — this holds for edits too.
 3. **Mutate on yes only**:
    `pypet new "<command>" -d "<description>" -t "<tag1,tag2>" -p "name=default:description,..." -a <alias>`
    The `-d`, `-t`, `-p` and `-a` flags are all optional. Use `{{name}}` for
    required and `{{name=default}}` for optional placeholders in the command.
-4. **Offer next steps**: a shell alias (`pypet alias add <id> <name>`, then
+4. **Offer next steps**: a shell alias (`pypet alias list` first to rule
+   out a name conflict, then `pypet alias add <id> <name>`, then
    `source ~/.config/pypet/aliases.sh` to activate) for frequent use, or
-   `pypet exec <id>` to run it.
+   show `pypet exec <id> -p -P k=v` for the person to run themselves —
+   never execute on their behalf.
 
 ## CLI reference
 
 - `pypet list` — table of all snippets (ID, command, description, tags,
-  parameters).
-- `pypet search "<query>"` — same table filtered by keyword.
+  parameters). Never prompts.
+- `pypet search "<query>"` — same table filtered by keyword. Never prompts.
 - `pypet new "<command>" [-d desc] [-t tags] [-p params] [-a alias]` —
-  create; prints the new ID.
+  create; prints the new ID. Never prompts.
 - `pypet edit <id> [--command ...] [--description ...] [--tags ...] [--params ...]` —
-  update only after a confirmed proposal, same as creation.
-- `pypet exec [id] [-e] [-P name=value ...]` — run with confirmation; `-e`
-  edits first, `-P` fills a parameter without prompting.
-- `pypet copy [id] [-P ...]` — copy the resolved command to the clipboard
-  instead of running it.
+  update only after a confirmed proposal, same as creation. Never prompts,
+  except `edit -f`, which opens `$EDITOR` — never use it.
+- `pypet exec <id> [-p] [-c] [-e] [-P name=value ...]` — always pass
+  `<id>`; without one it opens a picker. Always confirms before running
+  (prints `Aborted!` and exits 0 with stdin closed); `-p` only prints the
+  resolved command, `-c` copies it instead of running, `-e` edits first
+  (never use it), `-P` fills a parameter without prompting.
+- `pypet copy <id> [-P ...]` — always pass `<id>`; without one it opens a
+  picker. Copies the resolved command to the clipboard instead of running
+  it; never prompts besides the picker.
+- `pypet delete <id>` — always pass `<id>`; without one it opens a picker.
 - `pypet alias add <id> <name>` / `list` / `show <id>` / `remove <id>` /
   `update` / `setup` — shell shortcuts; parameterized snippets become shell
-  functions.
+  functions. `add` prompts on an alias conflict — check `pypet alias list`
+  first.
 
 Do NOT use `save-last` / `save-clipboard` (unreliable: history-file lag,
 clipboard flakiness), `sync`, or `gen` — outside this skill's loop.
+
+### Non-interactive use
+
+Always pass `<id>` — `exec`, `copy` and `delete` open a picker without
+one. Resolve with `pypet exec <id> -p -P k=v`, passing `-P` for every
+parameter, and hand the printed command to the person to run themselves.
+Never use `exec -e` (edits first) or `edit -f` (opens `$EDITOR`). Before
+`pypet alias add <id> <name>`, check `pypet alias list` for conflicts.
 
 ## Proposal sources
 
@@ -68,6 +87,9 @@ memory best-effort — skip silently when the host exposes none.
 
 ## Safety
 
+- Never store literal tokens, passwords or keys — replace them with a
+  `{{param}}` with no default or an `$ENV_VAR` (see step 2). Snippets are
+  plaintext TOML that can be pushed to Git with `pypet sync`.
 - Never hand-edit `~/.config/pypet/snippets.toml`; always go through
   `pypet new` / `pypet edit`.
 - Never execute a command automatically; `pypet exec` asks before running
