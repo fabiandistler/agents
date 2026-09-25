@@ -70,7 +70,7 @@ Sanity-check the result: Python — package imports, a minimal `pyproject.toml`;
 Every architecture decision trades some qualities for others — there is no dominant option once real constraints apply. Use this five-step method whenever step 3's candidates are close or the choice is contentious, before writing the ADR.
 
 1. **Define the context.** Business requirements, technical constraints, stakeholder needs, and the timeline/budget envelope — the same inputs gathered in step 2 (Diagnose).
-2. **Generate at least three alternatives**, including a genuine "do nothing" / status-quo option. Don't stop at the first two options that come to mind; include an extreme or hybrid option if one realistically applies.
+2. **List the real alternatives (two is fine).** For an existing repo, always include the status quo. Add an extreme or hybrid option only if it is realistic.
 3. **Weight the relevant -ilities.** Pick the 3–7 characteristics that actually matter for this decision (performance, maintainability, cost, scalability, time-to-market, etc. — see the diagnostic questions in [references/decision-drivers.md](references/decision-drivers.md)) and assign each a weight; not all qualities matter equally for a given project.
 4. **Analyze trade-offs short-term vs. long-term.** For each alternative, separate immediate effects (time-to-market, initial cost) from long-run effects (maintainability, technical debt, lock-in), and note which assumptions the analysis depends on.
 5. **Document the decision with a review date.** Record the chosen alternative, the rejected ones and why, the accepted downsides, and *when* to re-evaluate — conditions change, and a decision that was right last year may not be right today.

@@ -61,8 +61,8 @@ diagram sends; don't skip it.
 Rel(from, to, label, [techn])       // solid arrow
 BiRel(from, to, label, [techn])     // avoid: double-headed hides initiator
 Rel_U / Rel_D / Rel_L / Rel_R(...)  // same, with a layout direction hint
-Rel_Back(from, to, label, [techn])  // dashed "response/return" arrow
-RelIndex(index, from, to, label, [techn])  // C4Dynamic: numbered step
+Rel_Back(from, to, label, [techn])  // reverse-drawn arrow (prefer Rel)
+RelIndex(index, from, to, label, [techn])  // C4Dynamic only: index ignored, steps number in statement order
 ```
 
 Always pass a purpose label, and a technology argument where it matters:
@@ -111,8 +111,9 @@ C4Container
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
 
-For a Dynamic diagram, use `C4Dynamic` with `RelIndex(1, ...)`,
-`RelIndex(2, ...)` to number one use case's steps — one scenario per diagram.
+For a Dynamic diagram, use `C4Dynamic` with `RelIndex(...)` steps written
+in sequence — Mermaid ignores the index and numbers steps in statement
+order; one scenario per diagram.
 
 ## Known limitations and workarounds
 
@@ -141,6 +142,9 @@ legend). Use the conventional C4 palette so it still reads as C4:
 | Data store | same fill as its level, cylinder shape `[( )]` | |
 
 ```mermaid
+---
+title: Container diagram — Web Shop
+---
 flowchart TB
     accTitle: Container diagram — Web Shop
 
@@ -158,6 +162,13 @@ flowchart TB
     spa -- "Calls [JSON/HTTPS]" --> api
     api -- "Reads/writes [SQL]" --> db
     api -- "Charges cards [HTTPS]" --> payments
+
+    subgraph legend [Key]
+        direction LR
+        personKey["Person"]:::person
+        containerKey["Container"]:::container
+        externalKey["External"]:::external
+    end
 
     classDef person fill:#08427b,color:#fff,stroke:#052e56
     classDef container fill:#1168bd,color:#fff,stroke:#0b4884
