@@ -242,10 +242,9 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
     merged: dict[str, FileChurn] = {}
     for path, entry in files.items():
         target = resolve(path)
-        if target == path:
-            merged.setdefault(path, entry)
+        dest = merged.setdefault(target, entry if target == path else FileChurn(target))
+        if dest is entry:
             continue
-        dest = merged.setdefault(target, FileChurn(target))
         dest.commits += entry.commits
         dest.authors |= entry.authors
         if entry.last_commit is not None and (
