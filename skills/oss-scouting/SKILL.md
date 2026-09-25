@@ -92,17 +92,20 @@ has changed since.
 
 ### 1 Policy gate
 
-Read: `CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE*`,
+Read: `CONTRIBUTING.md`, `AI_POLICY.md`, `AGENTS.md`, `.github/PULL_REQUEST_TEMPLATE*`,
 `.github/ISSUE_TEMPLATE*`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, and doc pages
-on "contributing" / "development". Additionally search the repo and the docs
+on "contributing" / "development". Follow links from CONTRIBUTING to the project's docs site
+for policies hosted off-repo (for example llvm.org, devguide.python.org, docs.kernel.org).
+Additionally search the repo and the docs
 for `AI`, `LLM`, `generative`, `Copilot`, `ChatGPT`, `Claude`,
-`machine-generated`, `disclosure`.
+`machine-generated`, `disclosure`, `Assisted-by`, `vouch`, `provenance`.
 
 Summarize in README.md as a table:
 
 | Rule | Finding | Source |
 |---|---|---|
 | AI-assisted contributions | allowed / allowed with disclosure / rejected / no explicit policy | file/URL |
+| Who may open PRs | open / issue-approved-only / vouched-only / collaborators-only / closed | file/URL |
 | Disclosure wording | quote, if required | |
 | DCO / CLA | sign-off needed? CLA bot? | |
 | Tests | framework, mandatory?, how to invoke | |
@@ -113,6 +116,10 @@ Summarize in README.md as a table:
 
 **Stop** on "rejected": README with this table, LOG entry, message to the user.
 Done. No workaround suggestions.
+
+**Stop** on PR access: every value except "open" stops the run or needs user confirmation
+before reviewing any issue. Check live access by trying the repo's contribution settings,
+or by looking for auto-close bots and pinned notices.
 
 ### 2 Issue review
 
