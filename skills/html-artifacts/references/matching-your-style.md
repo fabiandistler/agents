@@ -27,16 +27,17 @@ Use this baseline if the user hasn't specified anything and there's no codebase 
 
 ```css
 :root {
+  color-scheme: light dark;
   /* Neutral, calm, works in light and dark */
   --bg:        #fafaf7;
   --surface:   #ffffff;
-  --ink:       #1a1a1f;
-  --ink-soft:  #555560;
+  --ink:       #1a1a1f;   /* 16.6:1 on bg, 17.3:1 on surface */
+  --ink-soft:  #555560;   /* 7.0:1 on bg, 7.4:1 on surface */
   --rule:      #e7e5df;
-  --accent:    #8b5cf6;     /* one accent only */
-  --warn:      #d97706;
-  --danger:    #b91c1c;
-  --ok:        #15803d;
+  --accent:    #1d4ed8;   /* one accent only, blue — 6.4:1 on bg, 6.7:1 on surface */
+  --warn:      #b45309;   /* 4.8:1 on bg, 5.0:1 on surface */
+  --danger:    #b91c1c;   /* 6.2:1 on bg, 6.5:1 on surface */
+  --ok:        #15803d;   /* 4.8:1 on bg, 5.0:1 on surface */
 
   --serif: Charter, "Iowan Old Style", "Source Serif 4",
            ui-serif, Georgia, serif;
@@ -48,9 +49,13 @@ Use this baseline if the user hasn't specified anything and there's no codebase 
   :root {
     --bg:       #0e0e12;
     --surface:  #16161c;
-    --ink:      #f1f1f4;
-    --ink-soft: #a8a8b3;
+    --ink:      #f1f1f4;  /* 17.1:1 on bg, 16.0:1 on surface */
+    --ink-soft: #a8a8b3;  /* 8.2:1 on bg, 7.6:1 on surface */
     --rule:     #2a2a32;
+    --accent:   #93c5fd;  /* 10.7:1 on bg, 10.0:1 on surface */
+    --warn:     #fbbf24;  /* 11.5:1 on bg, 10.8:1 on surface */
+    --danger:   #f87171;  /* 7.0:1 on bg, 6.5:1 on surface */
+    --ok:       #4ade80;  /* 11.1:1 on bg, 10.3:1 on surface */
   }
 }
 
