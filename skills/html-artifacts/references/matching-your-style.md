@@ -23,21 +23,20 @@ This is one-time work that pays off across every future artifact. Suggest it the
 
 ## When there's no existing system: the safe default
 
-Use this baseline if the user hasn't specified anything and there's no codebase to read:
+Use this baseline if the user hasn't specified anything and there's no codebase to read. The palette is neutral and calm, works in light and dark; use one accent only:
 
 ```css
 :root {
   color-scheme: light dark;
-  /* Neutral, calm, works in light and dark */
   --bg:        #fafaf7;
   --surface:   #ffffff;
-  --ink:       #1a1a1f;   /* 16.6:1 on bg, 17.3:1 on surface */
-  --ink-soft:  #555560;   /* 7.0:1 on bg, 7.4:1 on surface */
+  --ink:       #1a1a1f;
+  --ink-soft:  #555560;
   --rule:      #e7e5df;
-  --accent:    #1d4ed8;   /* one accent only, blue — 6.4:1 on bg, 6.7:1 on surface */
-  --warn:      #b45309;   /* 4.8:1 on bg, 5.0:1 on surface */
-  --danger:    #b91c1c;   /* 6.2:1 on bg, 6.5:1 on surface */
-  --ok:        #15803d;   /* 4.8:1 on bg, 5.0:1 on surface */
+  --accent:    #1d4ed8;
+  --warn:      #b45309;
+  --danger:    #b91c1c;
+  --ok:        #15803d;
 
   --serif: Charter, "Iowan Old Style", "Source Serif 4",
            ui-serif, Georgia, serif;
@@ -49,13 +48,13 @@ Use this baseline if the user hasn't specified anything and there's no codebase 
   :root {
     --bg:       #0e0e12;
     --surface:  #16161c;
-    --ink:      #f1f1f4;  /* 17.1:1 on bg, 16.0:1 on surface */
-    --ink-soft: #a8a8b3;  /* 8.2:1 on bg, 7.6:1 on surface */
+    --ink:      #f1f1f4;
+    --ink-soft: #a8a8b3;
     --rule:     #2a2a32;
-    --accent:   #93c5fd;  /* 10.7:1 on bg, 10.0:1 on surface */
-    --warn:     #fbbf24;  /* 11.5:1 on bg, 10.8:1 on surface */
-    --danger:   #f87171;  /* 7.0:1 on bg, 6.5:1 on surface */
-    --ok:       #4ade80;  /* 11.1:1 on bg, 10.3:1 on surface */
+    --accent:   #93c5fd;
+    --warn:     #fbbf24;
+    --danger:   #f87171;
+    --ok:       #4ade80;
   }
 }
 
@@ -71,6 +70,17 @@ table { border-collapse: collapse; width: 100%; }
 th, td { padding: .5rem .75rem; border-bottom: 1px solid var(--rule);
          text-align: left; vertical-align: top; }
 ```
+
+Contrast evidence: every text token meets WCAG AA (≥4.5:1) on bg and surface in both modes.
+
+| Token | Light on bg | Light on surface | Dark on bg | Dark on surface |
+| --- | --- | --- | --- | --- |
+| ink | 16.6:1 | 17.3:1 | 17.1:1 | 16.0:1 |
+| ink-soft | 7.0:1 | 7.4:1 | 8.2:1 | 7.6:1 |
+| accent | 6.4:1 | 6.7:1 | 10.7:1 | 10.0:1 |
+| warn | 4.8:1 | 5.0:1 | 11.5:1 | 10.8:1 |
+| danger | 6.2:1 | 6.5:1 | 7.0:1 | 6.5:1 |
+| ok | 4.8:1 | 5.0:1 | 11.1:1 | 10.3:1 |
 
 That's enough to make a document that looks deliberate. Add complexity only when the artifact actually needs it — sliders, color swatches, charts, etc.
 
