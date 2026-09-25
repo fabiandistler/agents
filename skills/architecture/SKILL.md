@@ -3,8 +3,8 @@ name: architecture
 category: architecture
 activation: router
 environments: coding
-description: "Use for any question about how software should be structured or whether its structure is sound: organizing a new or existing codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and how services talk, domain modeling (DDD), system diagrams (C4), recording decisions (ADRs), coupling/cohesion review, SQL schema design, architecture checks in CI. Routes to a sub-skill."
-when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain, design the schema for a new feature."
+description: "Use for any question about how software should be structured or whether its structure is sound: organizing a codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and communication, domain modeling (DDD), system diagrams (C4), decision records (ADRs), coupling/cohesion review, SQL schemas as stable consumer interfaces (views, drift gates), architecture checks in CI. Routes to a sub-skill."
+when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain, keep reports/apps from breaking when tables change."
 ---
 
 # Architecture & design
@@ -23,7 +23,8 @@ one. Do not answer an architecture or design question from this file alone.
    skill" and wastes a turn. Read the file instead; it carries the real
    workflow, references, and scripts — this router only points the way.
 3. If two rows seem to apply, read both; if none fit, use your general knowledge
-   and say the catalogue had no dedicated sub-skill.
+   and say the catalogue had no dedicated sub-skill. Plain table/index design
+   has no member — answer directly and say so.
 
 The sub-skills are nested under this router's `members/` directory, so they load
 only when routed to (progressive disclosure) rather than each competing for the
