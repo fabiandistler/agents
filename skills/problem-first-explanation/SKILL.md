@@ -13,7 +13,7 @@ The test for whether it applies: does the thing being explained exist *because o
 
 ## When to invoke
 
-- Writing or editing a README, package description, design rationale, or ADR motivation; adding a docstring or roxygen2 `@description` block.
+- Writing or editing a README, package description, design rationale, or ADR motivation.
 - Explaining a concept, method, tool, or rule from any field — "explain X", "what is X", "why do we use X", "what is X for".
 - Preparing a lesson, tutorial, talk, workshop, or onboarding material.
 - Writing a proposal, request, or justification — the change being proposed is the solution; the reader needs the problem it removes.
@@ -21,9 +21,11 @@ The test for whether it applies: does the thing being explained exist *because o
 
 Do **not** invoke for:
 
-- Pure reference material (parameter tables, spec sheets, glossaries) and how-to guides whose title already names the problem.
+- Pure reference material (parameter tables, spec sheets, glossaries, API docstrings and roxygen blocks) and how-to guides whose title already names the problem.
 - Content that does not answer a problem — a narrative, a news summary, a description of what happened.
 - Answers where the reader is living the problem right now ("my build fails with…", "the wheel nut won't come loose"). Name the problem in one sentence and go straight to the solution; re-staging a pain the reader already feels is padding.
+
+API docstrings and roxygen blocks stay reference-first: at most a one-clause why in `@details` or the long description when the reader cannot infer it.
 
 ## The three-step structure
 
