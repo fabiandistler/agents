@@ -136,9 +136,10 @@ sheet; these are the agent/MCP-specific additions._
 - **Never log user messages, prompts, or PII in plaintext observability data;**
   scrub/redact at span export, and isolate monitoring backends with RBAC.
   (Ch. 10, 12)
-- **MCP does not mandate authentication/authorization — wrap MCP endpoints in
-  your own network policy or proxy layer with authn, RBAC, and audit logs.**
-  (Ch. 4)
+- **For remote (HTTP) MCP servers implement the spec's OAuth 2.1 authorization
+  (PKCE, protected-resource metadata); stdio servers read credentials from the
+  environment. Add RBAC, audit logs, and network policy on top — authorization
+  alone does not scope tool permissions.** (Ch. 4)
 - **Sandbox agent execution and isolate third-party tool dependencies**
   (containers/venvs); rate-limit all agent-facing endpoints; use parameterized
   statements for any DB access. (Ch. 4, 12)
