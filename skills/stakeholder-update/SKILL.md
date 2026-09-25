@@ -121,7 +121,7 @@ Executives want: strategic context, progress against goals, risks that need thei
 
 **Format**:
 ```
-Status: [Green / Yellow / Red]
+Status: [Green / Yellow / Red] (was [previous color]): [one-line reason]
 
 TL;DR: [One sentence — the most important thing to know]
 
@@ -143,8 +143,8 @@ Next milestones:
 **Tips for executive updates**:
 - Lead with the conclusion, not the journey. Executives want "we shipped X and it moved Y metric" not "we had 14 standups and resolved 23 tickets."
 - Keep it under 200 words. If they want more, they will ask.
-- Status color should reflect YOUR genuine assessment, not what you think they want to hear. Yellow is not a failure — it is good risk management.
-- Only include risks you want help with. Do not list risks you are already handling unless they need to know.
+- Derive the status color from evidence against the committed baseline — milestone slip, red pipeline, reverts, blocked items — not from optimism. State a one-line reason and what changed since the last update, and ask the user to confirm the color before sending. Green without supporting evidence is watermelon reporting.
+- List all known material risks, including ones you are already handling. Mark each with owner and mitigation.
 - Asks must be specific: "Decision on X by Friday" not "support needed."
 
 ### Engineering Team Update
@@ -215,11 +215,13 @@ Feedback:
 - No internal jargon. No ticket numbers. No technical implementation details.
 - Frame everything in terms of what the customer can now DO, not what you built.
 - Be honest about timelines but do not overcommit. "Later this quarter" is better than a date you might miss.
-- Only mention known issues if they are customer-impacting and you have a resolution plan.
+- Mention customer-impacting issues with status and next-update date even without a fix.
 
 ## Status Reporting Framework
 
 ### Green / Yellow / Red Status
+
+Derive the color from evidence against the committed baseline: milestone slip, red pipeline, reverts, blocked items. State a one-line reason and what changed since the last update, and confirm the color with the user before sending. A green status alongside red evidence is watermelon reporting.
 
 **Green** (On Track):
 - Progressing as planned
