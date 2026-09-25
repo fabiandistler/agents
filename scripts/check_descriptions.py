@@ -31,7 +31,7 @@ DEFAULT_BUDGET = 250
 ALLOWLIST_BUDGET = 400
 # High-traffic skills allowed the wider budget. Keep this list short.
 ALLOWLIST = frozenset({"architecture-pattern-advisor"})
-# A router's description replaces every member description in the listing (nine
+# A router's description replaces every member description in the listing (eight
 # for architecture), so it may spend a little more of the shared budget on the
 # situations users actually describe instead of bare technique names.
 ROUTER_BUDGET = 450

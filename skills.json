@@ -22,7 +22,7 @@
     },
     {
       "name": "architecture",
-      "summary": "Use for any question about how software should be structured or whether its structure is sound: organizing a new or existing codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and how services talk, domain modeling (DDD), system diagrams (C4), recording decisions (ADRs), coupling/cohesion review, SQL schema design, architecture checks in CI. Routes to a sub-skill. - Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain, design the schema for a new feature.",
+      "summary": "Use for any question about how software should be structured or whether its structure is sound: organizing a new or existing codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and how services talk, domain modeling (DDD), system diagrams (C4), recording decisions (ADRs), coupling/cohesion review, architecture checks in CI. Routes to a sub-skill. - Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain.",
       "category": "architecture",
       "path": "skills/architecture/SKILL.md",
       "activation": "router",
@@ -231,16 +231,6 @@
         "coding",
         "chat"
       ]
-    },
-    {
-      "name": "sql-schema-design",
-      "summary": "Give database consumers a stable interface so physical storage can change without breaking their queries — views as the contract, named CTE pipelines, deployment gates against schema drift.",
-      "category": "architecture",
-      "path": "skills/sql-schema-design/SKILL.md",
-      "environments": [
-        "coding"
-      ],
-      "version": "1.0"
     },
     {
       "name": "stakeholder-update",
