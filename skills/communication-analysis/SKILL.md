@@ -61,7 +61,7 @@ was factually right.
 
 ## Congruence and incongruence
 
-**Incongruence** is when verbal and nonverbal (or written and contextual)
+Congruence is Carl Rogers's term for alignment between what is said and how it is said, one of his core conditions alongside empathy and unconditional positive regard. **Incongruence** is when verbal and nonverbal (or written and contextual)
 signals contradict each other — e.g., "I'm fine" said with a visibly upset
 expression, or a message whose words are calm but whose punctuation, timing,
 or channel signal urgency or distress. Incongruent messages put the receiver
@@ -77,8 +77,9 @@ When reviewing a message or transcript, check for incongruence:
    something in how you said it suggests otherwise — what's actually going
    on?"
 3. When drafting or rewriting a message, prefer **authentic self-revelation
-   without over-exposure** over incongruent statements. The guiding rule:
-   *everything I say is true, but not everything true has to be said.* Instead
+    without over-exposure** over incongruent statements, following Ruth C. Cohn's
+    TZI helper rule to be authentic and selective. The guiding rule:
+    *everything I say is true, but not everything true has to be said.* Instead
    of "I'm fine" (while visibly not fine), a congruent alternative is "I'm not
    doing great, but I don't want to get into it right now" — honest, and it
    still lets the sender keep a boundary around what they disclose.
@@ -90,8 +91,10 @@ is not.
 
 ## Optimizing the factual level
 
-Two guiding rules and four quality dimensions from Schulz von Thun apply
-specifically to keeping the factual content of a conversation effective.
+Two guiding rules and four quality dimensions apply
+specifically to keeping the factual content of a conversation effective: the relevance filter
+from Schulz von Thun, the disturbance postulate from Ruth C. Cohn's TZI, and the four
+Hamburg comprehensibility makers from Langer, Schulz von Thun, and Tausch.
 
 ### "Does this belong here?" — the relevance filter
 
@@ -104,15 +107,11 @@ drafting one.
 
 ### "Disturbances take precedence"
 
-Unresolved friction, confusion, or emotional disturbance in a conversation
-should be addressed immediately rather than parked until the end. Recommended
-sequence:
-
-1. Notice the disturbance.
-2. Pause the main thread.
-3. Address the disturbance directly.
-4. Resolve it.
-5. Return to the original topic.
+This is Ruth C. Cohn's TZI postulate "Störungen haben Vorrang" — disturbances take precedence in the
+sense that they take it whether invited or not, not as a procedure to follow. Unresolved friction,
+confusion, or emotional disturbance in a conversation should be addressed rather than parked until
+the end, but whether to interrupt the main thread now or to note the disturbance and return to it
+is a judgment call for the situation.
 
 Waiting until the end to raise accumulated objections tends to produce a pile
 of unresolved friction and a more emotionally loaded conversation; addressing
@@ -126,17 +125,15 @@ conversation degrades.
 Use these four dimensions together — not in isolation — when reviewing or
 drafting a message for clarity:
 
-| Dimension | What it means | Failure mode if overdone |
-|-----------|----------------|---------------------------|
-| **Simplicity** | State complex things in an understandable way; avoid unnecessary complexity. | Over-simplifying can strip out information the receiver actually needs. |
-| **Structure** | Logically ordered, clearly sequenced information with visible relationships between parts. | Over-structuring can feel bureaucratic or slow. |
-| **Brevity / conciseness** | Get to the point without unnecessary digression, while keeping the relevant information complete. | Excessive brevity can undercut clarity by cutting needed context. |
-| **Stimulance** | Keep it engaging enough to hold the receiver's attention. | Excessive stimulance (jokes, dramatization) can distract from the substance. |
+| Dimension | What it means | Optimum |
+|-----------|----------------|---------|
+| **Simplicity** | State complex things in an understandable way; avoid unnecessary complexity. | More is better, optimum at the maximum. |
+| **Structure** | Logically ordered, clearly sequenced information with visible relationships between parts. | More is better, optimum at the maximum. |
+| **Brevity / conciseness** | Get to the point without unnecessary digression, while keeping the relevant information complete. | Middle optimum: too short and too long both harm understanding. |
+| **Stimulance** | Keep it engaging enough to hold the receiver's attention. | Least important; sparing use only, extra stimulance can harm when it costs brevity or covers weak structure. |
 
-When reviewing a message against these four, look for the specific failure
-mode of each — the fix for one dimension can quietly break another (e.g.
-tightening for brevity can remove structure). Judge the balance, not each
-dimension in isolation.
+Simplicity and structure carry the most weight. When reviewing a message against these four, judge the balance with that weighting in mind — the fix for one dimension can quietly break another (e.g.
+tightening for brevity can remove structure).
 
 ## The appeal level: hidden appeals and mirroring
 
@@ -169,11 +166,12 @@ carry an unstated request. Use it as an offered clarification, not an
 accusation — the tone should invite correction, not assert that manipulation
 occurred.
 
-## Active listening (three dimensions)
+## Active listening
 
-Active listening, as developed by Carl Rogers in client-centered therapy, goes
-beyond passively hearing words. It requires three dimensions active at the
-same time:
+Active listening was named by Carl Rogers and Richard Farson: listening that brings about change
+because the speaker feels fully understood and accepted. Rogers's core conditions for that effect
+are empathy, genuineness (congruence), and unconditional positive regard. In practice it calls for
+three things at once:
 
 1. **Full attention** — deliberately setting aside mental background
    processes (to-do lists, pre-formed replies, other distractions), similar in
@@ -241,8 +239,8 @@ feedback, rewriting a message, or analyzing a conversation transcript.
 3. **Check relevance and disturbances.** Does every part of the message
    belong, and was any visible friction addressed when it appeared or left to
    fester?
-4. **Check the four comprehensibility makers.** Simplicity, structure,
-   brevity, stimulance — as a balance, not a checklist to max out individually.
+4. **Check the four comprehensibility makers.** Simplicity and structure: more is better.
+   Brevity: middle optimum. Stimulance: least important, extra can harm.
 5. **Look for a hidden appeal.** If the message seems to want something
    without asking, offer a mirrored reflection with an open question rather
    than reacting to (or ignoring) the surface content.
@@ -256,9 +254,9 @@ feedback, rewriting a message, or analyzing a conversation transcript.
 ## Boundaries and congruent communication
 
 Congruent, honest communication is closely tied to how clearly people draw
-and respect boundaries with each other. This closing section draws on
-boundary-setting material that generalizes across relationship types
-(partnership, family, work, friendship).
+and respect boundaries with each other. This closing section generalizes
+boundary-setting ideas from Jesper Juul's family work on parent-child
+relationships to partnership, work, and friendship.
 
 - **The freedom principle.** Personal freedom ends where it endangers someone
   else's freedom. This is a general boundary principle across all relationship
@@ -315,5 +313,8 @@ rather than a wall against it.
 ## Source
 
 Based on Friedemann Schulz von Thun, *Miteinander Reden Band 1: Störungen und
-Klärungen* (1981); Carl Rogers's client-centered active-listening approach;
-and boundary-setting material summarizing "Grenzen Nähe Respekt."
+Klärungen* (1981); Ruth C. Cohn's Themenzentrierte Interaktion for the disturbance postulate
+and selective authenticity; Carl Rogers and Richard Farson on active listening and Rogers's core
+conditions (empathy, genuineness, unconditional positive regard); Langer, Schulz von Thun, and
+Tausch for the Hamburg comprehensibility makers; and Jesper Juul, *Grenzen Nähe Respekt*,
+generalized here beyond its parent-child focus.
