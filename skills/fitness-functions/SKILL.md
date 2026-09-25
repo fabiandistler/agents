@@ -87,7 +87,7 @@ patterns from the book cover most structural cases:
 
 - **Cycle detection** — fail the build if any component cycle exists
   (JDepend's `containsCycles()`, dependency-cruiser's `no-circular`,
-  import-linter's `independence` contract).
+  import-linter's `acyclic_siblings` contract).
 - **Threshold on a metric** — e.g. every package's Distance from the Main
   Sequence within a project-dependent tolerance of the ideal. Thresholds are
   legitimate; vibes are not. (To *measure and choose* the threshold on an
@@ -97,7 +97,9 @@ patterns from the book cover most structural cases:
   `ShouldNot().HaveDependencyOn(...)`) and fail on violations.
 
 Whatever the pattern, the assessment must be **objective**: a person rerunning
-the check gets the same verdict. If the rule can't be stated as code, it isn't
+the check gets the same verdict. Prove the check can fail: introduce a
+deliberate violation without committing, watch the check go red, then revert.
+If the rule can't be stated as code, it isn't
 a fitness function yet — sharpen the rule first.
 
 ### 4. Wire it into the pipeline
