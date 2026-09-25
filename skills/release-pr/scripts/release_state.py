@@ -76,7 +76,13 @@ def normalize_python(version: str | None) -> str:
 def tag_exact(repo: Path, candidate: str) -> bool:
     if not candidate:
         return False
-    return candidate in git(repo, "tag", "-l", candidate).split()
+    out = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"refs/tags/{candidate}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return out.returncode == 0
 
 
 def usage_error(msg: str) -> None:
@@ -192,13 +198,13 @@ def is_dev_version(language: str, version: str | None) -> bool:
     parts = numeric(version)
     if language == "r":
         return len(parts) >= 4 and parts[3] >= DEV_R
-    return bool(re.search(r"\.dev\d*$", version))
+    return bool(re.search(r"\.dev\d*$", version, re.IGNORECASE))
 
 
 def has_prerelease(language: str, version: str | None) -> bool:
     if not version or language != "python":
         return False
-    return bool(re.search(r"(a|b|rc)\d+", version))
+    return bool(re.search(r"(a|b|rc)\d+", version, re.IGNORECASE))
 
 
 def bump(parts: tuple[int, ...], which: str) -> str:
