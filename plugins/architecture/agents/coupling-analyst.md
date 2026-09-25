@@ -22,9 +22,9 @@ First read <skill>/SKILL.md and follow its Mode B (codebase-wide coupling
 metrics) workflow exactly. Key mechanics:
 
 1. Pick one unit of analysis (package / module / service / class) and state it.
-2. Build the directed dependency graph (imports via Grep/Glob, or an ecosystem
-   tool from the skill's table) plus abstract/concrete artifact counts per
-   component.
+2. Build the directed dependency graph with the ecosystem tool from the skill's
+   table first; Grep/Glob imports only as a fallback, and say so in the
+   report, plus abstract/concrete artifact counts per component.
 3. Write the model JSON to a temporary file in the system temp directory —
    never inside the analyzed repository. Use the format shown in
    <skill>/scripts/coupling_metrics.example.json, then run:
