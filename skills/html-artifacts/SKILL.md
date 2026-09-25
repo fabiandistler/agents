@@ -2,7 +2,7 @@
 name: html-artifacts
 category: communication
 environments: coding, chat
-description: Produce a self-contained HTML file instead of a markdown reply when the content has spatial, comparative, or interactive structure. Covers side-by-side comparisons, diagrams, timelines, decks, and throwaway editors.
+description: Produce a self-contained HTML file for deliverables the reader will keep, share, or manipulate; not for ordinary answers. Use when spatial layout, comparison, or interaction carries meaning.
 ---
 
 # HTML Artifacts
@@ -13,7 +13,7 @@ The use cases below are not the only places HTML helps, but they cover most of t
 
 ## When to use
 
-Reach for HTML when **any** of the following is true. Don't wait for the user to ask explicitly.
+Default to a one-line offer and stay in markdown unless the user asked for HTML or the output is clearly a deliverable they will keep, share, or manipulate. Reach for HTML only when that deliverable test holds and one of the following is true.
 
 - **Comparison.** Two or more options/approaches/designs the reader needs to weigh against each other. Side-by-side beats stacked.
 - **Spatial information.** Diffs, call graphs, module maps, flowcharts, timelines, before/after — anything where position carries meaning.
@@ -22,11 +22,12 @@ Reach for HTML when **any** of the following is true. Don't wait for the user to
 - **Color or hierarchy carries meaning.** Severity tags, status colors, syntax highlighting, design tokens.
 - **One-off editor.** The reader needs to manipulate a thing (drag tickets, toggle flags, tune a prompt) and round-trip the result back into a prompt or a commit.
 - **The reader will share it.** A spec going to leadership, a PR writeup going to reviewers, a status report going to a team. People are dramatically more likely to actually read an HTML page than a markdown file.
-- **Length.** Anything longer than ~100 lines in markdown becomes hard to read. HTML's navigation and layout earn their keep past that threshold.
 
-The heuristic, said another way: if the user is going to *do* something with the document — read it carefully, share it, refer back to it, hand it to an implementer, paste edits back in — make it HTML.
+The heuristic, said another way: if the user is going to *do* something with the document — read it carefully, share it, refer back to it, hand it to an implementer, paste edits back in — offer HTML.
 
-The request rarely says "HTML" or "artifact." It says: doc, writeup, plan, spec, report, explainer, summary, comparison, review, PR description, mockup, diagram, flowchart, deck, slides, status update, post-mortem, incident report, playground — or a one-off editor for triaging, reordering, or tuning something. It also shows up as a verb: explain, summarize, compare, explore options for, brainstorm directions for, walk through. When any of those lands on a non-trivial topic, HTML is on the table.
+The request rarely says "HTML" or "artifact." It says: doc, writeup, plan, spec, report, explainer, comparison, review, PR description, mockup, diagram, flowchart, deck, slides, status update, post-mortem, incident report, playground — or a one-off editor for triaging, reordering, or tuning something. A bare verb alone (explain, summarize, compare, explore options, brainstorm) without a keep/share/manipulate deliverable stays in markdown.
+
+Trigger examples — HTML: "compare these three options side by side for the leadership review"; "turn this incident timeline into a shareable post-mortem"; "build a board to triage these tickets and copy the result back". Markdown: "summarize what's in this file"; "explain this error in three bullets".
 
 ## This skill picks the format, not the content
 
@@ -95,7 +96,7 @@ Sandboxed preview panes are stricter than a local file. Assume: no `localStorage
 
 ## A note on token cost and time
 
-HTML artifacts cost roughly 2–4× the tokens of a markdown equivalent and take longer to generate. This is a real tradeoff. The skill is configured to err toward HTML because the reading experience is dramatically better and shareability matters, but if the user is iterating fast on something disposable ("just summarize what's in this file"), a markdown reply is fine. Don't manufacture a use case for HTML where there isn't one.
+HTML artifacts cost roughly 2–4× the tokens of a markdown equivalent and take longer to generate. This is a real tradeoff. Default to a one-line offer ("I can render this as HTML — want it?") and stay in markdown unless the user says yes or the output is clearly a shareable deliverable. If the user is iterating fast on something disposable ("just summarize what's in this file"), a markdown reply is fine. Don't manufacture a use case for HTML where there isn't one.
 
 ## A note on taste
 
