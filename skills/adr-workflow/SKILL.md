@@ -57,19 +57,19 @@ Do not use an ADR for trivial implementation details, local style preferences, o
 
 ## ADR template
 
-Use this structure when drafting a new record:
+Default to this MADR-aligned minimal template when drafting a new record:
 
 ```markdown
-# ADR-NNNN: Short title
+# NNNN Title
 
-## Status
-Proposed | Accepted | Deprecated | Superseded by ADR-000X
+Status: Proposed | Accepted | Rejected | Deprecated | Superseded by NNNN
 
-## Context
+Date:
+
+Deciders:
+
+## Context and problem
 What problem are we solving? What constraints matter?
-
-## Decision
-What did we choose?
 
 ## Decision drivers
 - Why these factors mattered
@@ -80,16 +80,18 @@ What did we choose?
 - Option B
 - Option C
 
-## Consequences
-- Positive outcomes
-- Negative trade-offs
-- Follow-up work or risks
+## Decision outcome
+Chosen: X, because ...
 
-## Notes
-Optional links, migration steps, or implementation details
+## Consequences
+- Good outcomes
+- Bad trade-offs
+- Revisit when ...
 ```
 
-If the team wants a lighter format, keep the same essentials: title, status, context, decision, and consequences.
+If the repo already uses Nygard (Status/Context/Decision/Consequences) or full MADR, match it instead.
+
+If the team wants a lighter format, keep the same essentials: title, status, context, decision outcome, and consequences.
 
 ## Workflow for adopting ADRs in a repo
 
