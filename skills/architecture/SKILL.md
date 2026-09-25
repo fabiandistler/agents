@@ -3,8 +3,8 @@ name: architecture
 category: architecture
 activation: router
 environments: coding
-description: "Use for any question about how software should be structured or whether its structure is sound: organizing a codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and communication, domain modeling (DDD), system diagrams (C4), decision records (ADRs), coupling/cohesion review, SQL schemas as stable consumer interfaces (views, drift gates), architecture checks in CI. Routes to a sub-skill."
-when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain, keep reports/apps from breaking when tables change."
+description: "Use for any question about how software should be structured or whether its structure is sound: organizing a codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and communication, domain modeling (DDD), system diagrams (C4), decision records (ADRs), coupling/cohesion review, architecture checks in CI. Routes to a sub-skill."
+when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain."
 ---
 
 # Architecture & design
@@ -41,7 +41,6 @@ model's trigger surface.
 | fitness-functions | Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes. | `members/fitness-functions/SKILL.md` |
 | logical-component-design | Decompose a NEW system or feature into named logical components; to measure an existing decomposition use coupling-cohesion instead. | `members/logical-component-design/SKILL.md` |
 | microservices-design | Design or review how services interact — boundaries, coupling, communication style, contract versioning, sagas, resiliency patterns. | `members/microservices-design/SKILL.md` |
-| sql-schema-design | Give database consumers a stable interface so physical storage can change without breaking their queries — views as the contract, named CTE pipelines, deployment gates against schema drift. | `members/sql-schema-design/SKILL.md` |
 <!-- END generated:members -->
 
 The table above is generated from `skills.json` by
