@@ -96,10 +96,12 @@ each has a real trade-off:
 | **Conformist** | Downstream adapts to an upstream model it cannot influence | Integrating with an external or legacy system where you have no leverage over the upstream model | Simplest to implement, but you inherit the upstream's modeling choices, good or bad, with no ability to push back |
 | **Anti-Corruption Layer (ACL)** | A translation/adapter layer isolates your model from an external model | Legacy integration, third-party APIs, or any Conformist situation where you want to protect model integrity anyway | Adds complexity and a translation layer (possible performance overhead), but buys long-term maintainability — your model stays clean and changeable independent of the external system |
 | **Open-Host Service (OHS)** | The *upstream* mirror of the ACL: the provider exposes a stable integration contract — a **published language** — decoupled from its internal model | You are the upstream provider and want to evolve internals freely without breaking every consumer, or serve many downstream contexts through one contract | The published language is a second model to design and maintain; contract changes still need versioning and consumer migration — but internal refactoring stops being a breaking change |
+| **Partnership** | Two contexts succeed or fail together with a cooperative, mutually dependent relationship | Two teams must evolve their models in lockstep toward a shared goal | Joint success needs synchronized planning and continuous coordination — high coordination cost, stalls if either side stops cooperating |
+| **Published Language** | A shared, well-documented contract language for integration, usually served through an OHS | Many consumers need one stable contract, or integration needs a common tongue decoupled from any internal model | One more language to design, version, and translate to and from — pays off only when consumer count or stability need justifies it |
+| **Separate Ways** | Contexts proceed independently with no integration | No leverage over the other side and low integration value — duplicating the sliver you need costs less than integrating | Duplication instead of reuse; if the overlap grows, two diverging models cost more — revisit if integration value rises |
+| **Big Ball of Mud** | An unmodelable legacy tangle acknowledged as-is and bounded | A legacy system too tangled to model or remap pattern by pattern | No real integration pattern applies — wall it off with an ACL and don't let its model leak outward |
 
-If none of Shared Kernel, Customer-Supplier, or Conformist apply and there is
-no leverage over the other side, default to Conformist plus an ACL: adapt to
-the external model but don't let it leak into your own. The same protection
+No leverage and low integration value → Separate Ways; no leverage but data needed → Conformist, plus an ACL if your side is Core. The same protection
 works in both directions: an ACL guards a downstream consumer, an OHS guards
 an upstream provider — a context that is both consumes through ACLs and
 serves through a published language.
@@ -128,13 +130,15 @@ default to the most sophisticated pattern out of habit.
 
 ## Decision path
 
-Walk questions 1–3 in order and stop at the first "yes"; questions 4 and 5 are follow-ups, not further rungs:
+Walk questions 1–4 in order and stop at the first "yes"; question 5 is a follow-up, not a further rung:
 
-1. **Is the data structure flat/simple and the process a linear, straightforward operation** (ETL, batch/report generation, simple CRUD)? → **Transaction Script.**
-2. **Is the data structure complex** (object trees, hierarchies, 1:n or n:m relations) **but the logic is still essentially CRUD**, with no rich business rules to enforce? → **Active Record.**
-3. **Does the subdomain carry complex, changing business logic or domain invariants that must be enforced** (this is where Core subdomains usually land)? → **Domain Model.**
-4. **If step 3 selected Domain Model, additionally ask: does the subdomain involve monetary transactions, regulatory audit requirements, or a genuine need for full history / point-in-time reconstruction?** → Upgrade to an **Event-Sourced Domain Model.**
+1. **Does the subdomain involve monetary transactions, regulatory audit requirements, or a genuine need for full history / deep analytics / point-in-time reconstruction?** → **Event-Sourced Domain Model.**
+2. **Does the subdomain carry complex, changing business logic or domain invariants that must be enforced** (this is where Core subdomains usually land)? → **Domain Model.**
+3. **Is the data structure complex** (object trees, hierarchies, 1:n or n:m relations) **but the logic is still essentially CRUD**, with no rich business rules to enforce? → **Active Record.**
+4. **Otherwise** (flat/simple data, linear straightforward operation — ETL, batch/report generation, simple CRUD)? → **Transaction Script.**
 5. **Does the system need multiple persistence models** (e.g. a write model and separately optimized read models)? → Layer **CQRS + Event Sourcing**, or a **Ports & Adapters** architecture, on top of whichever pattern steps 1–4 selected — this is an orthogonal concern, not a fifth rung on the ladder.
+
+Testing shape follows the pattern (Ch 10): Transaction Script → reversed pyramid (few unit tests, mostly integration/E2E); Active Record → diamond (integration-heavy); Domain Model and Event-Sourced Domain Model → pyramid (mostly unit tests).
 
 Never select a pattern above what the subdomain's classification and actual
 complexity justify. A Supporting subdomain implemented as a full Domain Model
@@ -246,9 +250,8 @@ aggregate** — a gatekeeper:
    Generic, invest best engineers in Core, keep Supporting pragmatic and
    in-house.
 3. **Identify the bounded context(s) involved** and, for each relationship to
-   another context, pick a context-mapping pattern (Shared Kernel,
-   Customer-Supplier, Conformist, or ACL) and name the trade-off being
-   accepted.
+   another context, pick a context-mapping pattern from the table above and
+   name the trade-off being accepted.
 4. **Walk the tactical decision path** (above) to choose an implementation
    pattern for the subdomain's logic, keeping the pattern proportional to the
    subdomain's classification and complexity.
@@ -355,7 +358,7 @@ aggregate** — a gatekeeper:
   internal entity or value object breaks the consistency guarantee the
   aggregate exists to provide.
 - **Skipping the context-mapping choice.** Integrating two bounded contexts
-  without naming Shared Kernel / Customer-Supplier / Conformist / ACL hides a
+  without naming the context-mapping pattern (see table above) hides a
   real trade-off (usually coupling vs. control) that should be made
   consciously.
 - **Jumping straight to Event Sourcing** for complexity's sake, without an
