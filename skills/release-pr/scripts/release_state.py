@@ -10,9 +10,10 @@ version string appears in tracked files, and which forge hosts the remote
 
 The package is detected from `DESCRIPTION` (R, changelog `NEWS.md`) or
 `pyproject.toml` with a `[project]` table (Python, changelog `CHANGELOG.md`).
-Versions are compared on their leading numeric components; a fourth component
+R versions are compared on their leading numeric components; a fourth component
 of 9000 or more (R) or a `(development version)` / `[Unreleased]` heading marks
-a development state.
+a development state. Python versions follow PEP 440 (release, pre, dev, post);
+`released` means an exact tag `<prefix><version>` exists.
 
 STATE is one of:
 
@@ -48,6 +49,40 @@ except ImportError:  # Python < 3.11: regex fallback below
 DEV_R = 9000
 MAX_MENTIONS = 20
 CONVENTIONAL = re.compile(r"^(?P<type>[a-z]+)(?:\([^)]*\))?(?P<bang>!)?:\s")
+PEP440 = re.compile(
+    r"^v?(?P<release>\d+(?:\.\d+)*)(?P<pre>(?:a|b|rc)\d+)?(?P<post>\.post\d+)?(?P<dev>\.dev\d+)?(?:\+.+)?$",
+    re.IGNORECASE,
+)
+
+
+def pep440_release(version: str | None) -> str | None:
+    if not version:
+        return None
+    m = PEP440.match(version.strip())
+    if not m:
+        return None
+    return m.group("release")
+
+
+def normalize_python(version: str | None) -> str:
+    if not version:
+        return ""
+    v = version.strip()
+    if len(v) > 1 and v[0] in "vV" and v[1].isdigit():
+        v = v[1:]
+    return v.lower()
+
+
+def tag_exact(repo: Path, candidate: str) -> bool:
+    if not candidate:
+        return False
+    out = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"refs/tags/{candidate}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return out.returncode == 0
 
 
 def usage_error(msg: str) -> None:
@@ -163,13 +198,13 @@ def is_dev_version(language: str, version: str | None) -> bool:
     parts = numeric(version)
     if language == "r":
         return len(parts) >= 4 and parts[3] >= DEV_R
-    return bool(re.search(r"\.dev\d*$", version))
+    return bool(re.search(r"\.dev\d*$", version, re.IGNORECASE))
 
 
 def has_prerelease(language: str, version: str | None) -> bool:
     if not version or language != "python":
         return False
-    return bool(re.search(r"(a|b|rc)\d+", version))
+    return bool(re.search(r"(a|b|rc)\d+", version, re.IGNORECASE))
 
 
 def bump(parts: tuple[int, ...], which: str) -> str:
@@ -377,6 +412,7 @@ def main() -> None:
     exports_gone = removed_exports(repo, tag)
 
     problems: list[str] = []
+    notes: list[str] = []
     dynamic = bool(pkg.get("dynamic_version"))
     if dynamic:
         problems.append(
@@ -393,16 +429,20 @@ def main() -> None:
         state = "mismatch"
     elif dev:
         state = "development"
-    elif changelog["version"] is None or numeric(changelog["version"]) != numeric(version):
+    elif changelog["version"] is None or (
+        normalize_python(changelog["version"]) != normalize_python(version)
+        if language == "python"
+        else numeric(changelog["version"]) != numeric(version)
+    ):
         problems.append(
             f"{pkg['source']} says {version} but the top {pkg['changelog']} heading says {changelog['version']}"
         )
         state = "mismatch"
-    elif tag_version and numeric(tag_version) == numeric(version):
+    elif version and tag_exact(repo, f"{prefix}{version}"):
         state = "released"
         if not head_tags:
             problems.append(
-                f"{version} is already tagged as {tag} and HEAD is not that commit: bump before releasing"
+                f"{version} is already tagged as {prefix}{version} and HEAD is not that commit: bump before releasing"
             )
     elif changelog["entries"] == 0:
         problems.append(f"top {pkg['changelog']} heading {changelog['version']} has no entries")
@@ -425,9 +465,16 @@ def main() -> None:
     if state in ("consistent", "open-heading") and which and numeric(suggested) <= base:
         suggested = version
     if has_prerelease(language, version):
-        problems.append(f"{version} is a pre-release; a final release drops the suffix")
+        notes.append(f"{version} is a pre-release; a final release drops the suffix")
         which = "stable"
-        suggested = ".".join(str(x) for x in (list(base) + [0, 0, 0])[:3])
+        suggested = pep440_release(version) or ".".join(
+            str(x) for x in (list(base) + [0, 0, 0])[:3]
+        )
+    elif language == "python" and is_dev_version(language, version):
+        which = "stable"
+        suggested = pep440_release(version) or ".".join(
+            str(x) for x in (list(base) + [0, 0, 0])[:3]
+        )
 
     report = {
         "language": language,
@@ -449,6 +496,7 @@ def main() -> None:
             repo, version, {pkg["source"], pkg["changelog"], "NEWS.md", "CHANGELOG.md"}
         ),
         "problems": problems,
+        "notes": notes,
     }
     text = json.dumps(report, indent=2)
     if args.output:
