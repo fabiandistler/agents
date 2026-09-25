@@ -26,8 +26,12 @@ The bundled script ranks files by their git history, the one source of
 evidence every repo already has:
 
 ```
-python3 skills/refactoring/scripts/churn.py [path] [--since '12 months ago'] [--json]
+python3 <skill>/scripts/churn.py [path] [--since '12 months ago'] [--json]
 ```
+
+`<skill>` is this skill's directory; `[path]` is the repository to rank
+(default: the current directory). Because the script takes the target as an
+argument, the command works from any working directory once installed.
 
 Per file it reports commits in the window, distinct authors, current size,
 recency, and one composite score (change frequency × size, Tornhill's hotspot

@@ -46,14 +46,16 @@ is new), a bulk reformat or license-header sweep inside the window (one commit
 touching every file flattens the ranking), and a shallow clone (history is cut
 off at the clone depth -- the script warns when it detects one).
 
-Renames are followed the way `git log -M` follows them: history accrues to the
-current path. Paths that are no longer regular files in the working tree --
+Renames are mapped through `git log -M --name-status`: each `R old new` edge
+resolves along the chain to its current path, so history accrues to the path
+in the working tree. Paths that are no longer regular files in the working tree --
 deleted, or tracked symlinks pointing at directories -- are counted in the
 summary but dropped from the ranking; there is nothing left to refactor.
 
 COMMITS counts every non-merge commit that touched the file, both sides of a
-merge included. Cross-checking a row with `git log -- <file>` will read lower,
-because that applies history simplification; `git log --full-history --no-merges
+merge included, renames counted under the current path. Cross-checking a row
+with `git log -- <file>` will read lower, because that applies history
+simplification and stops at renames; `git log --follow --no-merges
 --since=<window> -- <file>` is the equivalent command.
 
 --include narrows the set to matching paths; --exclude subtracts from whatever
@@ -178,7 +180,7 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
         "--no-merges",
         "-M",
         "-z",
-        "--name-only",
+        "--name-status",
         f"--pretty=format:{COMMIT_SEP}%H{FIELD_SEP}%an{FIELD_SEP}%aI",
     ]
     if pathspec:
@@ -186,6 +188,7 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
 
     out = run_git(root, args)
     files: dict[str, FileChurn] = {}
+    renames: dict[str, str] = {}
     commits = 0
 
     for chunk in out.split(COMMIT_SEP):
@@ -197,13 +200,60 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
             continue
         commits += 1
         author, when = parts[1], parse_iso(parts[2])
-        for raw in body.replace("\n", "\0").split("\0"):
-            name = raw.strip()
-            if not name:
+        tokens = body.replace("\n", "\0").split("\0")
+        idx = 0
+        while idx < len(tokens):
+            token = tokens[idx].strip()
+            idx += 1
+            if not token:
                 continue
-            files.setdefault(name, FileChurn(name)).record(author, when)
+            if len(token) > 1 and token[0] == "R" and token[1:].isdigit():
+                if idx + 1 < len(tokens):
+                    old = tokens[idx].strip()
+                    new = tokens[idx + 1].strip()
+                    idx += 2
+                    if old and new:
+                        renames[old] = new
+                        files.setdefault(new, FileChurn(new)).record(author, when)
+                continue
+            if len(token) > 1 and token[0] == "C" and token[1:].isdigit():
+                if idx + 1 < len(tokens):
+                    new = tokens[idx + 1].strip()
+                    idx += 2
+                    if new:
+                        files.setdefault(new, FileChurn(new)).record(author, when)
+                continue
+            if len(token) == 1 and token in "ADMRTUXB":
+                if idx < len(tokens):
+                    name = tokens[idx].strip()
+                    idx += 1
+                    if name:
+                        files.setdefault(name, FileChurn(name)).record(author, when)
+                continue
+            files.setdefault(token, FileChurn(token)).record(author, when)
 
-    return files, commits
+    def resolve(path: str) -> str:
+        seen: set[str] = set()
+        while path in renames and path not in seen:
+            seen.add(path)
+            path = renames[path]
+        return path
+
+    merged: dict[str, FileChurn] = {}
+    for path, entry in files.items():
+        target = resolve(path)
+        if target == path:
+            merged.setdefault(path, entry)
+            continue
+        dest = merged.setdefault(target, FileChurn(target))
+        dest.commits += entry.commits
+        dest.authors |= entry.authors
+        if entry.last_commit is not None and (
+            dest.last_commit is None or entry.last_commit > dest.last_commit
+        ):
+            dest.last_commit = entry.last_commit
+
+    return merged, commits
 
 
 def matches(path: str, globs: list[str]) -> bool:
