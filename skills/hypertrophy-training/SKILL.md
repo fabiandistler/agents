@@ -25,7 +25,8 @@ question is how to keep training while injury risk is elevated — an irritated
 joint, heavy sleep debt, high life stress, a return after a layoff — or how to
 work back to normal training after an injury and completed physical therapy.
 Draws on meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022,
-Aube 2022, Robinson 2024) and Israetel et al.; not aimed at beginners.
+Robinson 2024, Pelland 2025), one RCT (Aube 2022), and Israetel et al.;
+not aimed at beginners.
 
 > **Scope and safety note.** This is an educational summary of
 > strength-training research, not medical, physical-therapy, or
@@ -48,30 +49,20 @@ Aube 2022, Robinson 2024) and Israetel et al.; not aimed at beginners.
 
 ## Part A — Programming principles
 
-### 1. Weekly volume: 12–20 sets per muscle group, with diminishing returns
+### 1. Weekly volume: diminishing returns, no clear ceiling
 
-Meta-analyses from 2020–2024 converge on a working ceiling for productive
-volume in experienced trainees:
+Meta-analyses converge on diminishing returns for productive volume in
+experienced trainees, counted in fractional sets (Pelland et al. 2025,
+https://doi.org/10.1007/s40279-025-02344-w, found diminishing returns with no
+plateau found):
 
-- Baz-Valle et al. (2022) found no additional hypertrophy benefit above
-  ~20 sets/muscle group/week.
-- Aube et al. (2022) found an inverted-U relationship in which 18 sets/week
-  outperformed both 12 and 24 sets/week.
+- Baz-Valle et al. (2022) found a dose-response in which added sets add
+  progressively less hypertrophy at higher volumes.
+- Aube et al. (2022, RCT) found muscle thickness did not differ by set number.
 - Schoenfeld et al. (2017) quantified the dose-response curve at an average
   effect size of 0.023 per additional weekly set (~0.37% additional muscle
   growth per set) — a relationship that holds roughly linearly at low volumes
   but breaks down at high volumes due to recovery limits.
-
-The per-set return on volume drops off sharply, not linearly (the index below
-is an illustrative relative-return scale, not a Cohen's-d effect size — the
-measured average per-set effect size is the 0.023 cited above):
-
-| Set range (per muscle group/week) | Relative per-set return (illustrative) | Return |
-|---|---|---|
-| 1–5 | 0.4–0.8 | Highest |
-| 6–10 | 0.2–0.4 | Moderate |
-| 11–15 | 0.1–0.2 | Diminishing |
-| 16+ | <0.1 | Minimal |
 
 The practical reading: the first 10–12 sets deliver most of the hypertrophic
 stimulus; sets beyond that trade an increasingly small stimulus gain for a
@@ -87,10 +78,11 @@ to outperform high volume at moderate intensity.
 Proximity to failure appears to matter as much as, or more than, absolute
 volume for experienced trainees:
 
-- Refalo et al. (2022) found that training to muscular failure produces a
-  significant hypertrophy benefit in experienced trainees.
-- The Robinson meta-analysis (2024) confirmed a dose-response relationship:
-  hypertrophy improves the closer training gets to failure.
+- Refalo et al. (2022) found no significant hypertrophy benefit of training
+  to momentary failure (ES 0.12, p = 0.34): failure itself is not superior.
+- The Robinson meta-analysis (2024) found hypertrophy improves the closer
+  training gets to failure; that dose-response came from an exploratory
+  analysis using estimated RIR.
 - Mechanical tension — believed to be the primary driver of hypertrophy (see
   below) — reaches its maximum only at high intensity.
 
@@ -106,12 +98,9 @@ at submaximal intensity.
 "Point of Undetectable Results Superiority" (PUOS) is the threshold beyond
 which additional volume in a single session produces no statistically
 detectable extra benefit — identified at roughly **11 fractional sets per
-session**. This is the mechanism behind the Aube et al. inverted-U finding
-above: 18 sets/week beat 24 sets/week not because more volume is bad in
-principle, but because concentrating it in too few sessions wastes it.
-Practical consequence: distributing a given weekly volume across 3–6 sessions
-is more effective than concentrating it — e.g. 2×10 sets across two sessions
-rather than 20 sets in one.
+session**. Practical consequence: distributing a given weekly volume across
+3–6 sessions is more effective than concentrating it — e.g. 2×10 sets across
+two sessions rather than 20 sets in one.
 
 ### 4. The Stimulus:Fatigue ratio as the primary metric
 
@@ -137,7 +126,7 @@ and intensity decisions.
 
 Advanced trainees often do better with lower volume and a better ratio than
 with maximal volume and a poor one. Individual recovery capacity should set
-the target ratio — this is why the fixed "12–20 sets" figure above is a
+the target ratio — this is why any fixed volume figure above is a
 population average, not an individual prescription.
 
 ### 5. Volume by training experience
@@ -360,9 +349,9 @@ and individual genetics can still shift the outcome by roughly ±50%.
 
 ## Common pitfalls to avoid
 
-- **Treating the 12–20 set range as a target rather than a ceiling.** The
-  research shows no benefit beyond ~20 sets/week and sharply diminishing
-  returns above ~10–12; more is not automatically better.
+- **Treating the volume range as a target rather than a ceiling.** Returns
+  diminish with added sets and no plateau was found (Pelland 2025); more is
+  not automatically better.
 - **Chasing volume while training at submaximal RIR.** The volume figures
   assume 0–2 RIR; the same volume at 4+ RIR is a materially weaker stimulus.
 - **Increasing volume as the default response to a plateau.** Run the
@@ -384,8 +373,9 @@ and individual genetics can still shift the outcome by roughly ±50%.
 
 ## Sources
 
-Baz-Valle et al. (2022); Schoenfeld et al. (2017); Refalo et al. (2022); Aube
-et al. (2022); Robinson meta-analysis (2024); Alan Aragon, Lyle McDonald, Eric
+Baz-Valle et al. (2022); Schoenfeld et al. (2017); Refalo et al. (2022);
+Aube et al. (2022, RCT); Robinson meta-analysis (2024); Pelland et al. (2025,
+https://doi.org/10.1007/s40279-025-02344-w); Alan Aragon, Lyle McDonald, Eric
 Helms (muscle-gain-rate estimates).
 
 **Part C** (both sections) is distilled from Israetel et al., *Scientific
