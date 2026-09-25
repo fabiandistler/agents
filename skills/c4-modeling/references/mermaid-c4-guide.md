@@ -141,6 +141,9 @@ legend). Use the conventional C4 palette so it still reads as C4:
 | Data store | same fill as its level, cylinder shape `[( )]` | |
 
 ```mermaid
+---
+title: Container diagram — Web Shop
+---
 flowchart TB
     accTitle: Container diagram — Web Shop
 
@@ -158,6 +161,13 @@ flowchart TB
     spa -- "Calls [JSON/HTTPS]" --> api
     api -- "Reads/writes [SQL]" --> db
     api -- "Charges cards [HTTPS]" --> payments
+
+    subgraph legend [Key]
+        direction LR
+        personKey["Person"]:::person
+        containerKey["Container"]:::container
+        externalKey["External"]:::external
+    end
 
     classDef person fill:#08427b,color:#fff,stroke:#052e56
     classDef container fill:#1168bd,color:#fff,stroke:#0b4884
