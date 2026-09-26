@@ -1,0 +1,14 @@
+# Basis: generische Hooks ueber pre-commit/pre-commit-hooks.
+# prek erkennt diese Repo-URL und fuehrt seine Rust-Implementierung aus
+# (automatic fast path). Config bleibt mit dem originalen pre-commit lauffaehig.
+# Preis: prek klont das Repo trotzdem und legt eine Python-venv als Fallback an.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
