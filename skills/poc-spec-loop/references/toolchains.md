@@ -51,13 +51,13 @@ git submodule add https://github.com/bats-core/bats-assert  test/test_helper/bat
 
 | Step | Python | R | bash |
 |---|---|---|---|
-| test | `uv run pytest -q` | `Rscript -e 'testthat::test_local(reporter = "LlmReporter")'` | `bats --recursive test/` |
+| test | `uv run pytest -q` | `Rscript -e 'testthat::test_local(reporter = "llm")'` | `bats --recursive test/` |
 | test one | `uv run pytest tests/test_x.py -q` | `Rscript -e 'testthat::test_file("tests/testthat/test-x.R")'` | `bats test/x.bats` |
 | lint | `uv run ruff check . && uv run ruff format --check .` | `Rscript -e 'lintr::lint_package()'` + `air format --check .` | `shellcheck -x src/*.sh && shfmt -d -i 2 -ci .` |
 | typecheck | `uv run pyright` | — | — |
 | full gate | all of the above | `Rscript -e 'devtools::check(error_on = "warning")'` | all of the above |
 
-`testthat::LlmReporter` (3.3+) emits agent-readable failure output — use it in the loop, not the default reporter.
+`testthat::LlmReporter` (3.3+) emits agent-readable failure output — use it in the loop, not the default reporter. Select it by its short name `"llm"`: testthat appends `Reporter` itself, so `"LlmReporter"` aborts with "Cannot find test reporter".
 
 ## CI (prd item 2) — GitHub Actions
 

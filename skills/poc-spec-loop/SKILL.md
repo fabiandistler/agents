@@ -42,7 +42,7 @@ Phase 1 only:
 Phase 2 only:
 
 5. `plans/prd.json` has `approved: true` (see Dispatch).
-6. `claude`, `gh`, `jq` on `PATH` and non-interactive permission flags in place (see `assets/loop.sh` header). Phase 2 hangs on permission prompts without them.
+6. `claude`, `gh`, `jq`, and GNU `timeout` on `PATH` and non-interactive permission flags in place (see `assets/loop.sh` header). Without the flags, headless tool calls are denied and every task fails its check.
 7. `mattpocock-skills:tdd` and `mattpocock-skills:code-review` are plugin skills; a headless `claude -p` run only sees them if the plugin is installed for the CLI on this machine. Check with `claude -p "list your available skills"`. If missing, the loop still runs — the task prompt spells out red-green-refactor itself, and the checkpoint falls back to a plain review against `SPEC.md` — but say so to the user before starting.
 
 ## Dispatch — the state machine
@@ -82,11 +82,13 @@ bash <skill-dir>/assets/loop.sh
 
 **Enforced by `loop.sh`** (mechanically, independent of model behaviour):
 
-- Branch `poc/<YYYY-MM-DD>`, created from `main` on first run; the loop itself only commits on that branch.
-- After the task, the script runs `check` literally. Exit 0 → `passes: true`. Otherwise `attempts` +1; at 3 the item goes to `plans/BLOCKED.md` with the last failure output and the loop moves on. A `BLOCKED:` line on the task's stdout blocks the item immediately.
+- Branch `poc/<YYYY-MM-DD>`, created from `main` on first run; the loop itself only commits on that branch. A restart (from `main` or the branch) resumes the newest existing `poc/*` branch.
+- `deps` naming an id that does not exist abort the run before it starts.
+- Run logs and the last failure output live under `.git/poc-loop/`, never in the working tree, so a stopped run restarts without cleanup.
+- After the task, uncommitted changes are discarded (`git reset --hard` + `git clean -fd`, ignored files kept): only committed work counts, and nothing leaks into the next task. Then the script runs `check` literally, under `timeout` (`CHECK_TIMEOUT`, default 900 s). Exit 0 → `passes: true`. Otherwise `attempts` +1; at 3 the item goes to `plans/BLOCKED.md` with the last failure output and the loop moves on. A `BLOCKED:` line on the task's stdout blocks the item immediately.
 - `check: null` items are never selected and never marked `passes: true`; they stay open for the human in the PR.
 - **Checkpoint** every 5 passed items: a separate `claude -p` run of `mattpocock-skills:code-review` since the branch start. Spec findings become new prd items (`origin: checkpoint`, `deps` on the causing item); standards findings go to `plans/REVIEW.md` and from there into the PR body. Checkpoint items may push the list past the Phase 1 range, up to the schema cap of 40; findings beyond the cap go to `REVIEW.md` instead of `prd.json`.
-- **Stop the whole run** when 3 consecutive items land in BLOCKED, or when item 1 or 2 (toolchain, CI) blocks → **draft** PR immediately.
+- **Stop the whole run** when 3 consecutive items land in BLOCKED, or when item 1 or 2 (toolchain, CI) blocks → **draft** PR immediately, listing the open items under `## Not reached (run stopped early)`.
 - **Unreachable items**: when no item is selectable but some with a `check` are still open (their `deps` include a blocked item), the run ends with a **draft** PR that lists them under `## Unreachable`.
 - **End of run**: PR `poc/<date>` → `main` with item checklist, open `manual_reason` items, BLOCKED.md contents, standards findings and the `## Definition of Done` section of `SPEC.md` as deployment instructions. Ready PR only if nothing is blocked or unreachable.
 
