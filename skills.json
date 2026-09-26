@@ -187,7 +187,8 @@
       "path": "skills/prek-hooks/SKILL.md",
       "environments": [
         "coding"
-      ]
+      ],
+      "version": "1.0"
     },
     {
       "name": "problem-first-explanation",

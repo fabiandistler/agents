@@ -3,6 +3,8 @@ name: prek-hooks
 category: workflow
 description: Set up prek git hooks in Python/R repos — detects project type and assembles a pinned pre-commit config from fragments.
 environments: coding
+metadata:
+  version: "1.0"
 ---
 
 # Prek Hooks
@@ -20,7 +22,7 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
 
 1. **Check prerequisites.** `prek` is in PATH (`uv tool install prek`), the target is a Git repo, and for the `lintr` hook a system `Rscript` exists. Without `Rscript` the lintr hook fails at run time.
 2. **Pick the base.** Default is compat (`references/fragments/base-compat.yaml` via `pre-commit/pre-commit-hooks`), so the config also runs under original pre-commit while prek uses its native implementations. Use `--builtin` for `references/fragments/base-builtin.yaml` (`repo: builtin`) in pure R repos to skip the clone and Python fallback; that config is prek-only.
-3. **Run the setup script from anywhere inside the target repo.** It moves to the repo root itself, refuses to overwrite an existing `.pre-commit-config.yaml` or a `prek.toml` unless `--force` is given, and detects the project type (`pyproject.toml`, `setup.py`, or tracked `*.py` files mean Python; `DESCRIPTION` or tracked `*.R`/`*.r` files mean R). With neither present it stops.
+3. **Run the setup script from anywhere inside the target repo.** Flags and exit codes are in `--help`. It moves to the repo root itself, refuses to overwrite an existing `.pre-commit-config.yaml` or a `prek.toml` unless `--force` is given, and detects the project type (`pyproject.toml`, `setup.py`, or tracked `*.py` files mean Python; `DESCRIPTION` or tracked `*.R`/`*.r` files mean R). With neither present it stops.
     ```bash
     references/setup-hooks.sh
     references/setup-hooks.sh --builtin
@@ -46,7 +48,8 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
 
 - `repo: builtin` is prek-only. With `--builtin` the config no longer runs under pre-commit. Most useful in pure R repos, where otherwise a Python environment exists only for whitespace checks. Available IDs per prek version: `prek util list-builtins -v`.
 - ty is at 0.0.x. Breaking changes between patch versions are expected. A mypy replacement block is included in `references/fragments/python.yaml`.
-- The `lorenzwalthert/precommit` rev is unverified. The recorded `v0.4.3.9014` is the last verifiable tag; `prek update` during setup corrects it.
+- `lorenzwalthert/precommit` publishes only development tags (`v0.4.3.90xx`). The pin is the newest one as of 2026-09-26; `prek update` during setup moves it forward.
+- ruff ≥ 0.16 enables 413 rules by default (up from 59). In a repo without its own rule selection the first `prek run --all-files` floods it with findings; the setup script warns when it finds no ruff config. Pin e.g. `[tool.ruff.lint] select = ["E", "F", "I", "B", "UP"]`.
 - lintr is the expensive hook. renv restore on the first run, and an R version change invalidates the cache. `stages: [pre-push]` is prepared in the fragment when the commit path is too slow.
 - The compat path is not setup-free. prek clones `pre-commit-hooks` and creates a venv fallback even when execution runs natively.
 
@@ -55,5 +58,5 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
 - `references/setup-hooks.sh` — detection, assembly, pinning, installation; run with `--help` for flags.
 - `references/fragments/base-compat.yaml` — generic hooks, pre-commit compatible (pinned `v6.0.0`).
 - `references/fragments/base-builtin.yaml` — same hooks as prek builtins, prek-only.
-- `references/fragments/python.yaml` — ruff-check `--fix`, ruff-format, ty (pinned `v0.15.17`, `v0.0.50`).
-- `references/fragments/r.yaml` — air-format, lintr (pinned `0.10.0`, `v0.4.3.9014`).
+- `references/fragments/python.yaml` — ruff-check `--fix`, ruff-format, ty (pinned `v0.16.9`, `v0.0.84`, verified 2026-09-26).
+- `references/fragments/r.yaml` — air-format, lintr (pinned `0.11.0`, `v0.4.3.9032`, verified 2026-09-26).

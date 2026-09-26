@@ -1,8 +1,10 @@
 
   # Python: Formatierung und Linting.
   # ruff-check laeuft vor ruff-format, damit --fix-Ergebnisse formatiert werden.
+  # Ab ruff 0.16 sind 413 statt 59 Regeln Default: Regelauswahl im Projekt
+  # pinnen ([tool.ruff.lint] select), sonst flutet der erste Lauf das Repo.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.17
+    rev: v0.16.9
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -15,6 +17,6 @@
   # mypy braucht additional_dependencies fuer Projekt-Abhaengigkeiten,
   # ty loest sie ueber uv aus der pyproject.toml auf.
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: v0.0.50
+    rev: v0.0.84
     hooks:
       - id: ty
