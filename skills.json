@@ -193,6 +193,16 @@
       "version": "1.0"
     },
     {
+      "name": "prek-hooks",
+      "summary": "Set up prek git hooks in Python/R repos — detects project type and assembles a pinned pre-commit config from fragments.",
+      "category": "workflow",
+      "path": "skills/prek-hooks/SKILL.md",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "problem-first-explanation",
       "summary": "Output-form skill for explaining anything that solves a problem — a tool, method, concept, rule, or proposal — by leading with the concrete problem before the solution.",
       "category": "communication",
