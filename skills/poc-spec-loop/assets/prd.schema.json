@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "poc-spec-loop/prd.schema.json",
+  "title": "prd.json — task list driving Phase 2",
+  "type": "object",
+  "required": ["approved", "language", "target", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "approved": {
+      "type": "boolean",
+      "description": "Human gate. false after Phase 1; the human flips it to true and commits to release the loop."
+    },
+    "language": { "enum": ["python", "r", "bash"] },
+    "target": {
+      "type": "string",
+      "pattern": "^(package|http-service|mcp-server|cli|other:.+)$"
+    },
+    "branch": {
+      "type": "string",
+      "description": "Set by loop.sh on first run: poc/<YYYY-MM-DD>."
+    },
+    "items": {
+      "type": "array",
+      "description": "Phase 1 writes 15-30 items with origin:spec. Checkpoints may append origin:checkpoint items up to the hard cap of 40; further findings go to plans/REVIEW.md.",
+      "minItems": 15,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "deps", "check", "passes", "attempts"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^prd-[0-9]{2}$" },
+          "title": { "type": "string", "minLength": 8 },
+          "detail": { "type": "string", "description": "What to build, 1–5 sentences. The task prompt sees only this item and SPEC.md." },
+          "deps": { "type": "array", "items": { "type": "string", "pattern": "^prd-[0-9]{2}$" } },
+          "check": {
+            "type": ["string", "null"],
+            "description": "Literal shell command run by loop.sh from repo root. Exit 0 = passes. null only with manual_reason."
+          },
+          "manual_reason": {
+            "type": "string",
+            "description": "Why no machine check exists. Required when check is null; the loop never sets passes:true on such items."
+          },
+          "passes": { "type": "boolean" },
+          "attempts": { "type": "integer", "minimum": 0, "maximum": 3 },
+          "origin": {
+            "enum": ["spec", "checkpoint"],
+            "description": "checkpoint = inserted by a code-review finding during Phase 2."
+          }
+        },
+        "if": { "properties": { "check": { "type": "null" } } },
+        "then": { "required": ["manual_reason"] }
+      }
+    }
+  }
+}
