@@ -93,6 +93,7 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 |---|---|
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
 | [oss-scouting](skills/oss-scouting/SKILL.md) | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
+| [prek-hooks](skills/prek-hooks/SKILL.md) | Setting up prek Git hooks in Python/R repos — detecting the project type and assembling a pinned pre-commit config from fragments. |
 | [pypet-snippets](skills/pypet-snippets/SKILL.md) | Curating pypet command snippets — creating, finding, editing, running and aliasing them on request, or proposing one for recurring terminal commands. |
 | [release-pr](skills/release-pr/SKILL.md) | Turning the current branch into a release PR for an R or Python package — confirmed version bump, NEWS.md/CHANGELOG.md, checks, PR body — and, after merge, tagging and publishing the release (GitHub, Azure Repos, GitLab). |
 | [repo-status](skills/repo-status/SKILL.md) | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |

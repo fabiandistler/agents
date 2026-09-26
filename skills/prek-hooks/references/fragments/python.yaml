@@ -1,0 +1,20 @@
+
+  # Python: Formatierung und Linting.
+  # ruff-check laeuft vor ruff-format, damit --fix-Ergebnisse formatiert werden.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.17
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Typechecker. ty steht bei 0.0.x — bewusst frueh gewaehlt (uv-nativ, schnell).
+  # Konservative Alternative: diesen Block ersetzen durch
+  #   - repo: https://github.com/pre-commit/mirrors-mypy
+  #     hooks: [{ id: mypy }]
+  # mypy braucht additional_dependencies fuer Projekt-Abhaengigkeiten,
+  # ty loest sie ueber uv aus der pyproject.toml auf.
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: v0.0.50
+    hooks:
+      - id: ty

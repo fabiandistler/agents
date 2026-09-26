@@ -1,0 +1,18 @@
+
+  # R-Formatierung ueber air. Single Binary, braucht weder R noch renv.
+  # Formatiert ausschliesslich .R/.r; .qmd und Default-Excludes wie cpp11.R
+  # werden seit air 0.9 auch dann uebersprungen, wenn der Hook sie uebergibt.
+  - repo: https://github.com/posit-dev/air-pre-commit
+    rev: 0.10.0
+    hooks:
+      - id: air-format
+
+  # R-Linting ueber lintr. Braucht System-Rscript und stellt eine
+  # renv-Umgebung her — das ist der langsame Teil des Setups, vor allem
+  # beim ersten Lauf und nach jedem Wechsel der R-Version.
+  # Wenn das im Commit-Pfad stoert: stages auf pre-push umstellen.
+  - repo: https://github.com/lorenzwalthert/precommit
+    rev: v0.4.3.9014
+    hooks:
+      - id: lintr
+        # stages: [pre-push]
