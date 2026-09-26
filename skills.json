@@ -181,6 +181,18 @@
       "version": "1.0"
     },
     {
+      "name": "poc-spec-loop",
+      "summary": "Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request.",
+      "category": "workflow",
+      "path": "skills/poc-spec-loop/SKILL.md",
+      "activation": "command",
+      "compatibility": "Requires claude, gh, and jq on PATH, a single github.com remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "prek-hooks",
       "summary": "Set up prek git hooks in Python/R repos — detects project type and assembles a pinned pre-commit config from fragments.",
       "category": "workflow",
