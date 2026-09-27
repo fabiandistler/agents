@@ -32,7 +32,7 @@
 - **Pick the communication style (request-response vs event-driven, sync vs async) before picking the technology.** Don't start from a favorite tool. (ch4)
 - **Don't use an event-streaming broker (e.g. Kafka) for request-response.** Match the tool to the style. (ch4)
   - ❌ Kafka topic used as an RPC call/response channel   ← likely-default
-- **Drive client behavior off transport error semantics.** With HTTP: 4xx (e.g. 404) → don't retry; 503/504 and most 5xx → retryable. (ch4)
+- **Drive client behavior off transport error semantics.** With HTTP: retry 429/502/503/504 and timeouts; don't retry other 4xx or a plain 500 unless the error is known-transient. (ch4)
 - **Publish an explicit schema for every interface, even over "schemaless" JSON.** A schemaless consumer still has a schema — just an implicit, unenforced one. (ch5)
 - **Consume as a tolerant reader: extract only the fields you need and ignore the rest;** don't bind the entire payload into a strict typed object. (ch5)
   - ❌ deserializing the whole response into a fixed class that breaks when an unused field moves or disappears   ← likely-default
@@ -78,8 +78,11 @@
 - **Set an overall operation time budget and propagate the remaining time downstream;** abort when the budget is exhausted rather than summing per-call timeouts. (ch12)
 - **Use a separate connection/thread pool per downstream dependency (bulkhead),** so one slow dependency can't exhaust the pool for all of them. (ch12)
   - ❌ one shared HTTP connection pool for every downstream service   ← likely-default
-- **Wrap every synchronous downstream call in a circuit breaker** that fails fast while open and probes for recovery. (ch12)
-- **Retry only idempotent operations and only retryable errors** (timeouts / 5xx, not 4xx); add a delay/backoff; count retry time against the operation budget. (ch12)
+- **Wrap synchronous downstream calls in a circuit breaker** that fails fast while open and probes for recovery; skip it only where the owning layer already provides one. (ch12)
+- **Retry only idempotent operations and only retryable errors** (see the transport-error rule above); use exponential backoff with jitter; cap retries with a budget (~10–20% of traffic); honor 429/`Retry-After`; retry at exactly one layer; count retry time against the operation budget. (ch12)
+- **Decide whether the mesh/gateway or the client library owns timeouts, retries, and breakers — never both.** (ch12)
+  - ❌ retry and timeout policy set in both the client library and the mesh/gateway for the same call   ← likely-default
+- **For tail-latency-critical idempotent reads, consider hedging: send a follow-up request after a latency percentile and take the first response.** (ch12)
 - **Make an operation idempotent by carrying a business key** (e.g. the originating order ID), not by trusting HTTP-verb idempotency alone. (ch12)
 - **Design explicit graceful degradation per dependency — ask "what if this is down?" for each one.** A page assembled from N services must not fail wholesale when one is unavailable. (ch12)
 - **Spread instances across real failure domains (distinct availability zones / physical hosts), not just distinct logical hosts.** (ch12)
