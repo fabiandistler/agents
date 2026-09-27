@@ -34,19 +34,22 @@ Without this translation, technical excellence is wasted effort. Before any ML d
 
 If a decision cannot be traced to a business metric, treat that as a signal to stop and re-scope, not a detail to fill in later.
 
-### The five-baseline gate
+Ask early whether a prompted LLM or a plain rule would already meet the business bar — if so, follow `llm-application-engineering` instead of training a model.
 
-A model's absolute metric score is meaningless without a baseline. Effective ML evaluation compares a candidate model against **five baseline types** before it is deployment-worthy:
+### The baseline gate
+
+A model's absolute metric score is meaningless without a baseline. Climb this ladder before calling anything deployment-worthy:
 
 | # | Baseline | What it is |
 |---|----------|------------|
-| 1 | Random baseline | Random predictions — the floor |
+| 1 | Dummy | Always predict the most frequent class — the floor |
 | 2 | Simple heuristic | A hand-written domain rule (e.g. "spam if >5 links") |
-| 3 | Zero rule baseline | Always predict the most frequent class |
-| 4 | Human baseline | Human expert performance on the same task |
-| 5 | Existing solution | The current production system, if one exists |
+| 3 | Linear | Logistic or linear regression on the same features |
+| 4 | Strong simple model | Untuned GBDT or tabular foundation model |
+| 5 | Zero-shot LLM | Optional comparator for text and label tasks |
+| 6 | Incumbent | The current production system, if one exists, with human expert performance as the reference ceiling |
 
-This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. The bar: clearly beat the random, simple-heuristic, and zero-rule baselines, and beat the existing production solution if one exists. The human baseline is a reference ceiling rather than a pass/fail gate — measure the gap to expert performance and judge whether it is acceptable for the use case.
+This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. Beat means the candidate's cost-weighted metric clears the baseline's cross-validation spread or bootstrap confidence interval — a point win inside the noise does not count. The human baseline is a reference ceiling rather than a pass/fail gate — measure the gap to expert performance and judge whether it is acceptable for the use case.
 
 ### Missing values: prediction default first, mechanism only for inference
 
@@ -195,7 +198,7 @@ Retrain on any of these signals, not on a schedule alone:
 ## Common pitfalls
 
 - Optimizing a technical metric (accuracy, F1) that was never tied back to a business metric — this is the single most common way "successful" ML projects fail to matter.
-- Comparing a new model only to its own past runs, never to all five baseline types — a model can look good in isolation and still lose to a domain heuristic.
+- Comparing a new model only to its own past runs, never to the baseline ladder — a model can look good in isolation and still lose to a domain heuristic.
 - Treating every missing-value column the same way (blanket drop or blanket impute) instead of using native NaN handling or imputation plus a missingness indicator — this silently discards signal, especially where the missingness itself carries information.
 - Reaching for deep learning on structured/tabular data by default, when a gradient-boosted tree model is usually both simpler and stronger there.
 - Fitting any preprocessing step (imputation, scaling, encoding, selection, tuning) outside cross-validation — a data-leakage bug that inflates offline metrics and does not survive contact with production.
