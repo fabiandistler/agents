@@ -203,16 +203,6 @@
       "version": "1.0"
     },
     {
-      "name": "problem-first-explanation",
-      "summary": "Output-form skill for explaining anything that solves a problem — a tool, method, concept, rule, or proposal — by leading with the concrete problem before the solution.",
-      "category": "communication",
-      "path": "skills/problem-first-explanation/SKILL.md",
-      "environments": [
-        "coding",
-        "chat"
-      ]
-    },
-    {
       "name": "pypet-snippets",
       "summary": "Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
       "category": "workflow",
