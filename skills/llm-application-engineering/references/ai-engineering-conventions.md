@@ -243,6 +243,7 @@ obvious — the cost of guessing wrong is high._
 _SKILL.md places finetuning on the ladder; these are the mechanics once you're
 actually on that rung._
 
+- **Choose SFT for format and style with demonstrations, DPO when pairwise preferences are cheaper than demonstrations, RFT when outputs are verifiable and a grader exists.** RFT works with scarce labels, often after an SFT cold start; the grader must first pass the judge-calibration rule in Evaluation above.
 - **Start with LoRA/PEFT; attempt full finetuning only with thousands of
   examples or more** — with a few hundred, full finetuning won't beat LoRA.
   (Ch. 7)
@@ -252,7 +253,7 @@ actually on that rung._
 - **After finetuning for one task, re-evaluate every other task type the model
   serves** — single-task finetuning degrades the rest. If irreconcilable, use
   separate models or merge. (Ch. 7)
-- **Hyperparameter starting points:** LR = 0.1–1× the model's final
+- **Hyperparameter starting points (self-hosted training only; hosted finetuning APIs manage these):** LR = 0.1–1× the model's final
   pre-training LR (search 1e-7–1e-3); effective batch ≥ 8 (use gradient
   accumulation); 1–2 epochs for millions of examples, 4–10 for thousands;
   prompt-loss weight ~10%. (Ch. 7)
