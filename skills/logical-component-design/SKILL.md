@@ -126,8 +126,10 @@ split: in the GGG auction, one `Bid Capture` component handled bids from both
 bidders and the auctioneer, but bidders need high scalability/elasticity
 (thousands of them) while the auctioneer needs high reliability/availability
 (one connection that must not drop) — so it splits into `Bid Capture` and
-`Auctioneer Capture`. This step assumes you already know which characteristics
-matter most; determine those first.
+ `Auctioneer Capture`. This step assumes you already know which characteristics
+matter most; ask the user for the top 3 driving characteristics, or take them
+from an existing ADR or architecture-pattern-advisor's trade-off analysis —
+do not assume them.
 
 ### 5. Restructure and iterate
 
@@ -212,3 +214,7 @@ Mark Richards & Neal Ford, *Fundamentals of Software Architecture*, 2nd ed.
 (O'Reilly), ch. 8, "Component-Based Thinking" — the component identification and
 refactoring cycle, the Workflow / Actor-Action approaches, the Entity Trap,
 component coupling, and the Law of Demeter.
+
+Raju Gandhi, Mark Richards & Neal Ford, *Head First Software Architecture*
+(O'Reilly, 2024), ch. 4 — deciding which architecture characteristics matter
+and designing for them.
