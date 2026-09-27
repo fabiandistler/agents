@@ -167,6 +167,26 @@ expresses the same rules as pytest tests
 when the team prefers rules living in the test suite. **pydeps --show-cycles**
 works as a quick cycle gate.
 
+**tach** — component boundaries declared in `tach.toml`, enforced by a
+Rust-backed CLI. `tach check` fails the build on undeclared cross-module
+imports, `tach check-external` does the same for third-party packages, and
+`tach sync` writes the dependencies a codebase already has back into the
+config — so an existing project can be pinned as-is and tightened later.
+Closer to modular-monolith governance than to a pure import contract; still
+pre-1.0 (0.35.x), but the second most used option in this list by a wide
+margin.
+
+**ArchUnitPython** — ArchUnit-style fluent rules living in the test suite
+rather than in config:
+`project_files("src/").in_folder("**/api/**").should_not().depend_on_files().in_folder("**/db/**")`.
+Also covers named layers (`project_layers()`), external modules, naming
+conventions, LCOM and distance metrics, and PlantUML component-diagram
+adherence in one API; zero runtime dependencies, works with pytest or
+unittest. Empty matches fail by default, which catches glob typos. Caveat:
+first release April 2026, one maintainer, roughly two orders of magnitude
+less adopted than import-linter — weigh that before it becomes a build
+blocker.
+
 ## Go
 
 **go-arch-lint** — YAML-declared components and allowed dependencies, checked

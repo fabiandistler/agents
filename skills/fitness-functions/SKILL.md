@@ -159,6 +159,11 @@ governance suite. Deliver the check ready to commit, not as a proposal.
 - **Only build-time thinking.** Some characteristics (resilience, conformity
   of deployed services, cost hygiene) only exist in production — that's what
   monitors and chaos-engineering fitness functions are for.
+- **Rules that can pass vacuously.** A contract whose selector matches
+  nothing — a typo in a glob, a package renamed since the rule was written,
+  a layer that moved — reports green forever and protects nothing. Prefer a
+  tool that fails on empty matches; where it doesn't, assert separately that
+  the selector matched at least one module.
 
 ## Related skills
 
