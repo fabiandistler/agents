@@ -208,10 +208,11 @@ machine consumption prefer `skills.json`.
 ## Scripts an agent runs
 
 Applies to any executable an agent invokes: `scripts/` in a skill or
-plugin, hook commands, CI helpers. The four rules that hold outside this
-repo too — non-interactive input, `--help`, exit codes, bounded output —
-are also carried globally by `instructions/85-agent-scripts.md`; edit
-both when they change.
+plugin, hook commands, CI helpers. The seven rules that hold outside
+this repo too — non-interactive input, `--help`, exit codes, named
+writes, secrets, installed smoke test, bounded output — are also carried
+globally by `instructions/85-agent-scripts.md`; edit both when they
+change.
 
 - Never read from an interactive prompt. Agents run non-interactive
   shells; a TTY prompt hangs the session until timeout. Take every input
@@ -226,6 +227,11 @@ both when they change.
   caller can branch without parsing prose.
 - Idempotent by default: agents retry. "Create if not exists", never
   "fail on duplicate".
+- One named verb per write, narrowest stable ID, `--dry-run` first;
+  never hide writes in `fix`/`auto`/raw.
+- Secrets from env or config, never a flag (shell history, `ps`); never
+  echo them, not in `--json` errors.
+- Smoke-test the installed command from `/tmp`, not the source folder.
 - Bound the output. Harness output is truncated past roughly 10–30k
   characters, silently. Default to a summary; offer `--output FILE` and
   `--offset` for the rest.
