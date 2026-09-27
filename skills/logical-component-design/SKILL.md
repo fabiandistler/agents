@@ -40,6 +40,17 @@ or choosing system topology and folder layout
 Read it when you need the full examples or the worksheet; this file is the
 workflow.
 
+## Relation to siblings
+
+- **ddd** — aggregates live inside components, and bounded contexts group
+  components. The Entity Trap below is about naming components after nouns,
+  not about modeling domain entities.
+- **architecture-pattern-advisor** — use it for the top-level
+  domain-vs-technical partition; this skill decomposes within that split.
+- **c4-modeling** — render the final component table as a C4 Component view.
+- **microservices-design** — reach for it when components become deployment
+  units.
+
 ## The cycle
 
 Run these five steps in order, then loop. Enter at whatever step matches what the
@@ -62,7 +73,10 @@ generate the initial buckets — and avoid a third that looks tempting.
   components than the Workflow approach. It is the sensible **default** when
   there are no special constraints and you want a good general decomposition.
 - **Entity Trap (antipattern — avoid)** — deriving components from entities
-  (`Customer` → `Customer Manager`, `Order` → `Order Manager`). Avoid it:
+  (`Customer` → `Customer Manager`, `Order` → `Order Manager`). This trap is
+  about naming components after nouns, not about modeling domain entities —
+  a well-modeled entity is fine; a component named after one is the problem.
+  Avoid it:
   entity-noun names describe nothing ("Order Manager manages orders"), and the
   component becomes a dumping ground for every bit of order logic — a god-
   component that is hard to test and deploy. Red-flag suffixes: **Manager,
