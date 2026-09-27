@@ -12,7 +12,7 @@ then draw pictures of them. Everything in a C4 model is one of:
 | Abstraction | Definition | Examples | Not this |
 |---|---|---|---|
 | **Person** | A human user of the system | Customer, back-office admin, support agent | Other software |
-| **Software System** | Highest level: something that delivers value to users, built by one team or bought | Web shop, CRM, identity provider | A microservice (usually a container) |
+| **Software System** | Highest level: something that delivers value to users, built by one team or bought | Web shop, CRM, identity provider | A microservice (a microservice is a group of containers, or a software system when a separate team owns it) |
 | **Container** | A separately **runnable/deployable** unit that executes code or stores data | SPA, mobile app, API service, background worker, database, message broker, file store | A Docker container per se; a library; a class |
 | **Component** | A cohesive grouping of related functionality behind a well-defined interface, living **inside** a container; **not** separately deployable | `OrderPlacement`, `EmailNotifier`, a controller + its service | A separately deployable service (that's a container) |
 
