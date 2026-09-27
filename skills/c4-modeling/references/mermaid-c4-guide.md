@@ -125,7 +125,7 @@ order; one scenario per diagram.
 | Relationship labels overlap | `UpdateRelStyle(..., $offsetX/$offsetY)` |
 | No automatic legend | Add a one-line key under the diagram in Markdown ("gray = external"), or use the flowchart fallback with a legend subgraph |
 | No links/tooltips on elements | Put element details in the model table above the diagram |
-| Renderer major differs (GitHub vs mmdc, Mermaid 12 ELK default and neo look) | Mermaid C4 stays experimental; check with the target renderer early, and set `config: {look: classic, layout: dagre}` in the diagram frontmatter to keep the C4 palette and layout stable |
+| Renderer differences (older Mermaid versions) | GitHub tracks recent Mermaid; check with the target renderer early, not after ten diagrams |
 
 ## Flowchart fallback (C4-styled)
 
@@ -187,7 +187,7 @@ checklist-compliant.
 Before committing, render every diagram once. Options, cheapest first:
 
 1. Paste into the target renderer (GitHub preview, mermaid.live).
-2. `npx -y @mermaid-js/mermaid-cli@11.17.0 -i diagram.md -o /tmp/out.svg` — batch
+2. `npx -y @mermaid-js/mermaid-cli -i diagram.md -o /tmp/out.svg` — batch
    validation; it exits non-zero on syntax errors.
 
 A diagram that has never been rendered is a diagram with a syntax error.

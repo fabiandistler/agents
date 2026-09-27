@@ -1,10 +1,8 @@
 # Balanced Coupling model reference
 
 The model below is Vlad Khononov's **Balanced Coupling**, from *Balancing
-Coupling in Software Design* (Addison-Wesley, 2024), the companion site
-[coupling.dev](https://coupling.dev), and the author's
-[`balanced-coupling`](https://github.com/vladikk/modularity) skill
-(CC BY-NC-SA 4.0). It unifies the classic coupling
+Coupling in Software Design* (Addison-Wesley, 2024) and the companion site
+[coupling.dev](https://coupling.dev). It unifies the classic coupling
 taxonomies — structured design's module coupling and connascence — into three
 dimensions, and gives one rule for when a dependency helps modularity and when
 it feeds complexity. This page is a distillation in this repo's own words;
@@ -96,11 +94,12 @@ implicit (nobody agreed to share anything).
 Distance is how far apart the coupled components live — and therefore what a
 coordinated change costs. The ladder, near to far:
 
-1. Same method
-2. Same object or file
+1. Same function/method
+2. Same class or file
 3. Same package/namespace
-4. Same service
-5. Different systems, different teams
+4. Same component/library
+5. Same runtime, different service — or different deploy units
+6. Different systems, different teams
 
 Two forces move along it in opposite directions:
 
@@ -143,7 +142,7 @@ consumers — that is precisely what the contract is for.
 ## The balance rule
 
 Reduce strength and distance to high/low (strength: intrusive, functional,
-and model are high, contract is low; distance: rungs 1–3 are low, 4–5 are
+and model are high, contract is low; distance: rungs 1–3 are low, 4–6 are
 high, shifted by team boundaries). The quadrants:
 
 | | Low distance | High distance |

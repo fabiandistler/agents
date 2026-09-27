@@ -3,8 +3,7 @@ name: ai-ml
 category: ai-ml
 activation: router
 environments: coding
-description: "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill."
-when_to_use: "Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting."
+description: Building AI/ML systems — engineering an LLM or foundation-model application (prompts, tool calling, evals) or running a machine-learning project from framing to deployment. Routes to the right sub-skill.
 ---
 
 # AI & ML
@@ -32,8 +31,8 @@ model's trigger surface.
 <!-- BEGIN generated:members -->
 | Sub-skill | When to use | Read before acting |
 |---|---|---|
-| llm-application-engineering | Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning. | `members/llm-application-engineering/SKILL.md` |
-| ml-project-lifecycle | Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining. | `members/ml-project-lifecycle/SKILL.md` |
+| llm-application-engineering | Guide the engineering of a foundation-model application across three linked decisions. | `members/llm-application-engineering/SKILL.md` |
+| ml-project-lifecycle | Guide a machine learning project from problem framing through model selection to production deployment. | `members/ml-project-lifecycle/SKILL.md` |
 <!-- END generated:members -->
 
 The table above is generated from `skills.json` by

@@ -12,7 +12,7 @@ then draw pictures of them. Everything in a C4 model is one of:
 | Abstraction | Definition | Examples | Not this |
 |---|---|---|---|
 | **Person** | A human user of the system | Customer, back-office admin, support agent | Other software |
-| **Software System** | Highest level: something that delivers value to users, built by one team or bought | Web shop, CRM, identity provider | A microservice (a microservice is a group of containers, or a software system when a separate team owns it) |
+| **Software System** | Highest level: something that delivers value to users, built by one team or bought | Web shop, CRM, identity provider | A microservice (usually a container) |
 | **Container** | A separately **runnable/deployable** unit that executes code or stores data | SPA, mobile app, API service, background worker, database, message broker, file store | A Docker container per se; a library; a class |
 | **Component** | A cohesive grouping of related functionality behind a well-defined interface, living **inside** a container; **not** separately deployable | `OrderPlacement`, `EmailNotifier`, a controller + its service | A separately deployable service (that's a container) |
 
@@ -65,8 +65,7 @@ C4 is notation-independent (it is *not* UML), but c4model.com recommends:
 - **No unexplained acronyms/abbreviations.** Diagrams travel further than
   their narrator.
 - **Shape and color are a supplement, not a code.** The diagram must survive
-  black-and-white printing; every diagram carries a key/legend explaining
-  shapes, colors, line styles, and arrows.
+  black-and-white printing; if color carries meaning, add a legend/key.
 - **Consistency across diagrams**: the same element keeps the same name,
   color, and shape everywhere; boundaries (system/container) drawn the same
   way on every level.
@@ -90,7 +89,7 @@ Adapted from c4model.com's review checklist. Run it on every finished diagram:
 7. Does every **relationship** have a label describing its purpose?
 8. Are relationship **technologies/protocols** shown where they matter?
 9. Is every line **unidirectional** with a clear primary direction?
-10. Is there a key/legend explaining shapes, colors, line styles, and arrows?
+10. If **color or shape** carries meaning, is there a key/legend?
 11. Is the **notation consistent** with the other diagrams of the model?
 12. Would the diagram **make sense standalone**, without verbal explanation?
 13. Are there **≤ ~20 elements**, and only elements of one abstraction level

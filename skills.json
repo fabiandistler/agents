@@ -12,7 +12,7 @@
     },
     {
       "name": "ai-ml",
-      "summary": "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill. - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting.",
+      "summary": "Building AI/ML systems — engineering an LLM or foundation-model application (prompts, tool calling, evals) or running a machine-learning project from framing to deployment. Routes to the right sub-skill.",
       "category": "ai-ml",
       "path": "skills/ai-ml/SKILL.md",
       "activation": "router",
@@ -22,7 +22,7 @@
     },
     {
       "name": "architecture",
-      "summary": "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, ADRs, coupling/cohesion analysis, CI architecture rules, and SQL schemas as stable consumer interfaces. - Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors.",
+      "summary": "Use for any question about how software should be structured or whether its structure is sound: organizing a codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and communication, domain modeling (DDD), system diagrams (C4), decision records (ADRs), coupling/cohesion review, architecture checks in CI. Routes to a sub-skill. - Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain.",
       "category": "architecture",
       "path": "skills/architecture/SKILL.md",
       "activation": "router",
@@ -121,7 +121,7 @@
     },
     {
       "name": "llm-application-engineering",
-      "summary": "Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning.",
+      "summary": "Guide the engineering of a foundation-model application across three linked decisions.",
       "category": "ai-ml",
       "path": "skills/llm-application-engineering/SKILL.md",
       "environments": [
@@ -150,7 +150,7 @@
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining.",
+      "summary": "Guide a machine learning project from problem framing through model selection to production deployment.",
       "category": "ai-ml",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "environments": [
@@ -160,7 +160,7 @@
     },
     {
       "name": "natural-planning",
-      "summary": "Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions) when it feels stuck, vague, or overwhelming; does not triage inboxes or pick toda…",
+      "summary": "Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague, stuck, or overwhelming project into concrete physical next actions.",
       "category": "workflow",
       "path": "skills/natural-planning/SKILL.md",
       "environments": [
@@ -203,12 +203,20 @@
       "version": "1.0"
     },
     {
+      "name": "problem-first-explanation",
+      "summary": "Output-form skill for explaining anything that solves a problem — a tool, method, concept, rule, or proposal — by leading with the concrete problem before the solution.",
+      "category": "communication",
+      "path": "skills/problem-first-explanation/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
+      ]
+    },
+    {
       "name": "pypet-snippets",
-      "summary": "Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
+      "summary": "Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
       "category": "workflow",
       "path": "skills/pypet-snippets/SKILL.md",
-      "activation": "command",
-      "compatibility": "Requires pypet-cli 0.9 on PATH (upstream archived Aug 2026, final v0.9.0).",
       "environments": [
         "coding"
       ]

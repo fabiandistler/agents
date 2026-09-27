@@ -18,14 +18,14 @@ retold for engineering, partners, or customers. It starts by settling the
 update type and audience, because both change the shape of the output.
 
 For the daily team-facing version — yesterday / today / blockers, drafted
-immediately from recent activity without a clarifying round — suggest the user
-run the `repo-status` command skill instead.
+immediately from recent activity without a clarifying round — use the
+`repo-status` skill instead.
 
 ## Workflow
 
 ### 1. Determine Update Type
 
-Infer the update type from the request; ask only if ambiguous. Default to weekly:
+Ask the user what kind of update:
 - **Weekly**: Regular cadence update on progress, blockers, and next steps
 - **Monthly**: Higher-level summary with trends, milestones, and strategic alignment
 - **Launch**: Announcement of a feature or product launch with details and impact
@@ -33,7 +33,7 @@ Infer the update type from the request; ask only if ambiguous. Default to weekly
 
 ### 2. Determine Audience
 
-Infer the audience from the request; ask only if ambiguous. Default to leadership:
+Ask who the update is for:
 - **Executives / leadership**: High-level, outcome-focused, strategic framing, brief
 - **Engineering team**: Technical detail, implementation context, blockers, decisions needed
 - **Cross-functional partners**: Context-appropriate detail, focus on shared goals and dependencies
@@ -216,38 +216,6 @@ Feedback:
 - Frame everything in terms of what the customer can now DO, not what you built.
 - Be honest about timelines but do not overcommit. "Later this quarter" is better than a date you might miss.
 - Mention customer-impacting issues with status and next-update date even without a fix.
-
-### Risk Escalation
-Escalations need: the ask up front, the situation in SCQA shape, options with a recommendation, and what delay costs.
-
-**Format**:
-```
-BLUF: [Specific ask] — need a decision by [date].
-
-Situation: [Shared context the reader already knows]
-Complication: [What changed and why it matters now]
-Question: [The decision to make]
-Answer: [Recommended option and why]
-
-Options:
-- [Option A]: [Trade-offs]. Recommended.
-- [Option B]: [Trade-offs].
-
-Cost of delay: [What happens if there is no decision by the deadline]
-```
-
-### Launch Announcement
-Launches need: what shipped, who gets it and when, what it does not do yet, how it rolls out, and where feedback goes.
-
-**Format**:
-```
-What: [Feature or product launched] — [Why it matters, in reader terms]
-
-Available to: [Who]. When: [Date or window].
-Limits: [Scope exclusions, known limitations].
-Rollout: [Stages, dates, who is affected when].
-Feedback: [Channel for feedback or issues]
-```
 
 ## Status Reporting Framework
 

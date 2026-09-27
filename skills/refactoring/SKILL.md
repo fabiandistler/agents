@@ -26,12 +26,14 @@ The bundled script ranks files by their git history, the one source of
 evidence every repo already has:
 
 ```
-python3 scripts/churn.py [path] [--since '12 months ago'] [--json]
+python3 ~/.config/opencode/skills/refactoring/scripts/churn.py [path] [--since '12 months ago'] [--json]
 ```
 
-`[path]` is the repository to rank (default: the current directory). Resolve
-`scripts/` against the installed skill directory and pass the target
-repository as the argument, so the command works from any working directory.
+`[path]` is the repository to rank (default: the current directory). The
+same script lives at `~/.claude/skills/refactoring/scripts/churn.py`
+(Claude) and `~/.codex/skills/refactoring/scripts/churn.py` (Codex).
+Because the script takes the target as an argument, the command works from
+any working directory once installed.
 
 Per file it reports commits in the window, distinct authors, current size,
 recency, and one composite score (change frequency × size, Tornhill's hotspot
@@ -45,9 +47,7 @@ hard to change safely, and only opening it shows which. For each top hit, open
 it and say concretely what makes it expensive to change, or that nothing does,
 before proposing any work. Pair the history signal with a structural one where
 it matters: `coupling-cohesion` measures how tangled a module is, and a file
-that scores high on both is the strongest candidate. For each top hit, list its co-changers with the same `--since` window (`--name-only` with a path shows only that path, so expand the commits first):
-`for c in $(git log --since '<window>' --pretty=%H -- <file>); do git show --name-only --pretty=format: $c; done | grep . | sort | uniq -c | sort -rn | head`
-Files that co-change are one change, not two: refactor them together, or say why not.
+that scores high on both is the strongest candidate.
 
 ## When the ranking lies
 

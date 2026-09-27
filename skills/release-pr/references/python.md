@@ -58,10 +58,6 @@ All notable changes to this project are documented here. The format follows
 - Categories in this order, only the ones used: Added, Changed, Deprecated,
   Removed, Fixed, Security.
 - One bullet per user-visible change, ending with the issue or PR number.
-- Mark breaking changes inline with a `**Breaking:**` marker inside their
-  type section (`Changed` or `Removed`), with a short upgrade note in the
-  entry itself; link to a migration guide instead when the steps are long.
-  Never collect breaks into a separate section.
 - Comparison links at the bottom; add the new one, keep the old ones.
 - Under this skill's version model there is no `[Unreleased]` section
   between releases: entries go straight under the version heading. A
@@ -91,7 +87,6 @@ The repository's own gate first (`pre-commit run -a`, a `Makefile` or
 | Tests | `uv run pytest` |
 | Build | `uv build --no-sources` |
 | Metadata | `uvx --from twine==7.0.0 twine check --strict dist/*` |
-| License metadata (PEP 639) | `license` is an SPDX string with no `License ::` classifier, and `license-files` lists the license file (`rg 'License ::|^license' pyproject.toml`) |
 | Wheel imports | `uv run --isolated --no-project --with dist/*.whl python -c "import <pkg>"` |
 
 `uv build` has no `--check`; the twine and import lines are the equivalent.

@@ -26,8 +26,8 @@ Accepted values (aliases for high/low are reduced as shown):
 
     strength:   intrusive | functional | model  -> high
                 contract                        -> low
-    distance:   method | object | package        -> low
-                service | system                 -> high
+    distance:   function | class | package      -> low
+                component | service | system    -> high
     volatility: core                            -> high
                 generic | supporting            -> low
 
@@ -73,9 +73,10 @@ STRENGTH = {
 }
 
 DISTANCE = {
-    "method": False,
-    "object": False,
+    "function": False,
+    "class": False,
     "package": False,
+    "component": True,
     "service": True,
     "system": True,
     "high": True,
@@ -90,7 +91,7 @@ VOLATILITY = {
     "low": False,
 }
 
-
+# (strength, distance, volatility) -> (rank, verdict, balance label)
 VERDICTS = {
     (True, True, True): (0, "knowledge leak", "IMBALANCED"),
     (False, False, True): (1, "low cohesion", "IMBALANCED"),
@@ -114,15 +115,12 @@ def reduce_level(edge: dict, field: str, scale: dict[str, bool]) -> bool:
 
 
 def load_edges(path: Path) -> list[dict]:
-    """Read the non-empty edge list from the JSON input file."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise InputError(f"no such file: {path}") from exc
     except json.JSONDecodeError as exc:
         raise InputError(f"{path}: invalid JSON ({exc})") from exc
-    except OSError as exc:
-        raise InputError(f"{path}: cannot read input ({exc})") from exc
     edges = raw.get("edges") if isinstance(raw, dict) else None
     if not isinstance(edges, list) or not edges:
         raise InputError(f"{path}: expected a non-empty 'edges' list")
@@ -191,26 +189,17 @@ def render_table(rows: list[dict]) -> str:
 
 
 def main(argv: list[str]) -> int:
-    """Assess every edge with the balance rule and print the table or JSON."""
     parser = argparse.ArgumentParser(
-        description="Apply the Balanced Coupling rule to assessed dependencies.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n"
-        "  balance_check.py input.json\n"
-        "  balance_check.py input.json --json\n"
-        "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",
+        description="Apply the Balanced Coupling rule to assessed dependencies."
     )
     parser.add_argument("input", type=Path, help="JSON file with edges")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
     args = parser.parse_args(argv)
-    if not args.input.exists():
-        print(f"error: no such file: {args.input}", file=sys.stderr)
-        return 1
     try:
         rows = assess(load_edges(args.input))
     except InputError as exc:
         print(f"error: {exc}", file=sys.stderr)
-        return 3
+        return 1
     if args.json:
         print(json.dumps(rows, indent=2))
     else:

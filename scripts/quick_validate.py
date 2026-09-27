@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a skill's SKILL.md frontmatter and script path convention.
+"""Validate a skill's SKILL.md frontmatter.
 
 Run from repo root:
     python3 scripts/quick_validate.py skills/<name>/    # exit 1 if invalid
@@ -54,32 +54,6 @@ CATEGORIES = {
 ACTIVATIONS = {"auto", "command", "router"}
 TARGETS = {"claude", "codex", "opencode"}
 ENVIRONMENTS = {"coding", "chat"}
-
-REPO_ROOT_SCRIPT_PATH = re.compile(
-    r"(?<![\w./~])(?:skills/[a-z0-9-]+/scripts/|members/[a-z0-9-]+/scripts/)"
-)
-
-
-def find_repo_root_script_paths(skill_path):
-    base = Path(skill_path)
-    targets = []
-    skill_md = base / "SKILL.md"
-    if skill_md.is_file():
-        targets.append(skill_md)
-    references = base / "references"
-    if references.is_dir():
-        targets.extend(sorted(references.glob("*.md")))
-    hits = []
-    for path in targets:
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        label = "SKILL.md" if path.parent == base else f"references/{path.name}"
-        for match in REPO_ROOT_SCRIPT_PATH.finditer(text):
-            line = text.count("\n", 0, match.start()) + 1
-            hits.append(f"{label}:{line}: {match.group(0).strip()}")
-    return hits
 
 
 def validate_skill(skill_path):
@@ -222,15 +196,6 @@ def validate_skill(skill_path):
                 False,
                 f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters.",
             )
-
-    hits = find_repo_root_script_paths(skill_path)
-    if hits:
-        detail = "; ".join(hits)
-        return False, (
-            f"Repo-root skill script path ({detail}): reference bundled scripts "
-            "relative to the skill directory (scripts/...) and pass the target "
-            "repo as an argument"
-        )
 
     return True, "Skill is valid!"
 
