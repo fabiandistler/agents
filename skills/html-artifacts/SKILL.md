@@ -34,7 +34,7 @@ Trigger examples — HTML: "compare these three options side by side for the lea
 It decides how a deliverable is rendered. What goes *in* the deliverable is often another skill's job, and the two compose — run the other skill for the substance, then render its output as HTML instead of markdown:
 
 - Weekly/monthly leadership status, launch announcements, risk escalations → `stakeholder-update`.
-- Standup prep or a status update assembled from recent repo activity → `repo-status`.
+- Standup prep or a status update assembled from recent repo activity → suggest the user run `repo-status`, then render its Yesterday / Today / Blockers output as HTML.
 - The internal structure of a technical explanation (problem before solution) → `problem-first-explanation`.
 
 ## When to stay in markdown
@@ -60,6 +60,7 @@ Every artifact this skill produces must satisfy all of these:
 5. **Readable on its own.** Title at the top, a one-paragraph TL;DR or framing sentence right below, then the substance. The reader should know what they're looking at within five seconds.
 6. **Tasteful by default.** A neutral but considered design: legible serif or sans body, comfortable line length (60–75ch), generous spacing, restrained color, dark-mode-friendly if cheap. Resist the default-AI aesthetic of "everything is a card with a gradient." See `references/matching-your-style.md` if the user has an existing design system to match.
 7. **Editors export back to text.** This one is non-negotiable for any artifact where the reader manipulates state. The artifact must end with a "copy as markdown" / "copy as JSON" / "copy as prompt" button that turns the UI state into something pasteable. The whole point of a throwaway editor is the round-trip.
+8. **Accessible and safe.** Set `lang`, use semantic landmarks (`header`/`main`/`nav`/`footer`), keep contrast readable, label every control and give every figure `alt` text or a caption. Keep every interaction keyboard-operable with a visible focus style, honor `prefers-reduced-motion`, give each figure unique IDs, offer a keyboard or button alternative to drag and swipe, and redact secrets and personal data before sharing.
 
 ## Category index
 

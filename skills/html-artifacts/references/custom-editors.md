@@ -76,7 +76,7 @@ Drag tickets across columns (Now / Next / Later / Cut), pre-sorted. Export = mar
 
   <script>
     const tickets = [/* pre-filled from the prompt */];
-    /* render, drag-drop with HTML5 DnD, keep state in a Map */
+    /* render, drag-drop with HTML5 DnD plus a keyboard move (arrow keys or move buttons), keep state in a Map */
     /* on copy-md: ## Now\n- TICK-101: short title\n... */
   </script>
 </main>

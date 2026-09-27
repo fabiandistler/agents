@@ -29,7 +29,7 @@ If the content is dense reference material that the reader will study on their o
 
 ## What's load-bearing
 
-- Keyboard navigation. A deck without arrow keys is a webpage that has slides on it.
+- Keyboard navigation plus visible Previous/Next buttons. A deck without arrow keys is a webpage that has slides on it; buttons and touch swipe cover readers without a keyboard.
 - Real fullscreen behavior. Add a "press F to fullscreen" hint or a button. Browser chrome is distracting in a presentation.
 - Slide counter. The presenter and audience both want to know where they are.
 - Aspect-ratio handling. Default to 16:9 with letterboxing on other aspect ratios — don't let layout shift between slides.
@@ -59,6 +59,11 @@ If the content is dense reference material that the reader will study on their o
     .slide h1 { font-size: 6vmin; margin: 0 0 .4em; }
     .slide h2 { font-size: 4vmin; margin: 0; opacity: .8; }
     .counter { position:fixed; bottom: 1em; right: 1em; opacity:.6; font-size:.7em; }
+    .deck-nav { position:fixed; bottom: 1em; left: 1em; display:flex; gap:.5em; }
+    .deck-nav button { font: inherit; padding:.3em .8em; }
+    @media (prefers-reduced-motion: reduce) {
+      .slide, .slide * { animation: none; transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -78,6 +83,10 @@ If the content is dense reference material that the reader will study on their o
   </section>
 
   <div class="counter"><span id="i">1</span> / <span id="n"></span></div>
+  <div class="deck-nav">
+    <button id="prev" type="button">Previous</button>
+    <button id="next" type="button">Next</button>
+  </div>
 
   <script>
     const slides = document.querySelectorAll('.slide');
@@ -88,6 +97,8 @@ If the content is dense reference material that the reader will study on their o
       slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
       document.getElementById('i').textContent = i + 1;
     }
+    document.getElementById('prev').addEventListener('click', () => go(i - 1));
+    document.getElementById('next').addEventListener('click', () => go(i + 1));
     document.addEventListener('keydown', e => {
       if (e.key === 'ArrowRight' || e.key === ' ') go(i + 1);
       else if (e.key === 'ArrowLeft') go(i - 1);
