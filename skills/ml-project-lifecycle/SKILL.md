@@ -61,16 +61,17 @@ Keep the MCAR/MAR/MNAR taxonomy only for inference and effect estimation, where 
 
 ## Part B — Model selection
 
-### Data-type decision table
+### Default model choice (as of 2026-09)
 
 Pick the model family from the shape of the data first, and prefer the boring, well-understood option unless the data specifically calls for more:
 
-| Data type | First choice | Notes |
-|-----------|--------------|-------|
-| Structured / tabular | XGBoost / LightGBM / CatBoost | Frequently outperforms deep learning on tabular data. Reach for deep learning only with very large datasets (>100k rows) or genuinely complex feature interactions; a simple 3–5 layer feed-forward network is usually enough when you do |
-| Images | CNNs | Transfer learning with a pretrained backbone (ResNet, EfficientNet) is the practical default; vision transformers become worthwhile only at very large dataset sizes |
-| Text | Transformer-based models (BERT-style; language-specific variants such as GBERT for German) | For classification, sentence-transformer embeddings are often sufficient without a full fine-tune; LSTMs are legacy and rarely the right first choice now |
-| Time series | ARIMA / Prophet | Often sufficient on their own. LSTMs, GRUs, or Temporal Fusion Transformers for deep-learning approaches; transformer-based time-series models (e.g. TimesFM) are the current frontier |
+| Data type | Default | Notes |
+|-----------|---------|-------|
+| Tabular, up to about 10k-50k rows | Tabular foundation model (TabPFN, TabICL) alongside untuned CatBoost or LightGBM; check licence before commercial use | Foundation models lead on small and medium data; GBDT stays the untuned comparator |
+| Tabular, larger data | XGBoost / LightGBM / CatBoost | GBDT first; tabular deep learning only via RealMLP or TabM |
+| Images | Pretrained vision foundation model with transfer learning | Train a CNN backbone only when the foundation model cannot run |
+| Text | Zero-shot LLM, then embeddings plus linear model, then fine-tune | Sentence-transformer embeddings are often sufficient without a full fine-tune |
+| Time series | AutoETS or Theta plus a zero-shot time-series foundation model (Chronos, TimesFM) | Via statsforecast or fable; Prophet is not a first choice |
 
 Treat the specific model names as illustrative of the *category* to reach for, not a permanent ranking — this table will date faster than the decision process itself.
 
@@ -91,7 +92,7 @@ Must-have working knowledge before tuning anything further: data preprocessing (
 
 ### AutoML notes
 
-AutoML (AutoKeras, H2O AutoML, AutoGluon, FLAML) is a legitimate way to get a fast baseline and a proof-of-concept, and it bundles hyperparameter tuning. It is not a substitute for a considered model.
+AutoML (AutoGluon, H2O AutoML, FLAML; workflowsets in R) is a legitimate way to get a fast baseline and a proof-of-concept, and it bundles hyperparameter tuning. It is not a substitute for a considered model.
 
 - **Use it for:** a quick baseline, proof-of-concept work, standard well-trodden problems where time matters more than a marginal accuracy gain.
 - **Its costs:** it is a black box that is hard to debug, it can overfit to the validation data, it gets expensive on large datasets, and it cannot encode domain-specific structure a practitioner knows about.
