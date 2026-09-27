@@ -240,6 +240,10 @@ change.
   --script` to edit, `uv lock --script` when the run must reproduce.
 - A one-off command in SKILL.md (`uvx`, `npx`) is version-pinned, or it
   is not a convention.
+- Reference bundled skill scripts relative to the skill directory
+  (`python3 scripts/tool.py <repo-path>`), never via a repo-root path
+  (`skills/<name>/scripts/`, `members/<name>/scripts/`). The skill is
+  installed elsewhere, so the target repo is always passed as an argument.
 
 ## Agent skills
 
