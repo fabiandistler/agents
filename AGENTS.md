@@ -226,6 +226,11 @@ both when they change.
   caller can branch without parsing prose.
 - Idempotent by default: agents retry. "Create if not exists", never
   "fail on duplicate".
+- One named verb per write, narrowest stable ID, `--dry-run` first;
+  never hide writes in `fix`/`auto`/raw.
+- Secrets from env or config, never a flag (shell history, `ps`); never
+  echo them, not in `--json` errors.
+- Smoke-test the installed command from `/tmp`, not the source folder.
 - Bound the output. Harness output is truncated past roughly 10–30k
   characters, silently. Default to a summary; offer `--output FILE` and
   `--offset` for the rest.

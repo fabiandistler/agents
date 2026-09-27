@@ -16,3 +16,6 @@ targets: all
   - Re-check the entry condition immediately before the write, not only at the start. The pipeline runtime sits between the first check and the write, and the state can have changed since.
   - A state file and a re-check cover different failure modes: the file prevents repetition across runs, the re-check catches a state change within a run. Both are needed.
   - If the re-check fails, abort with no side effect and one log line naming the reason.
+  - An unattended LLM step never holds a write credential; it emits a patch artifact, a separate model-free step validates and publishes it.
+  - Enforce scope outside the prompt: check every changed path against an anchored allowlist, including untracked files (`git ls-files --others --exclude-standard`), and stage only that list.
+  - Agent self-edits (prompt, workflow, references) pass the same allowlist and human PR; an edit loosening tools, tokens or permissions is reported, never applied.
