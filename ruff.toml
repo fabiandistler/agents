@@ -10,3 +10,10 @@ extend-exclude = [
     "**/fixtures/**",
     "**/bad_examples/**",
 ]
+
+[lint]
+# request-without-timeout: flags module-level `requests.*` calls without
+# `timeout`, and `requests`/`httpx` calls with `timeout=None`. Does not see
+# calls on Session/Client instances, and ignores aiohttp.
+# Source: Albada, Building Applications with AI Agents, ch. 4.
+extend-select = ["S113"]
