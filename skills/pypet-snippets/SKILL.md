@@ -5,7 +5,7 @@ activation: command
 disable-model-invocation: true
 environments: coding
 compatibility: Requires pypet-cli 0.9 on PATH (upstream archived Aug 2026, final v0.9.0).
-description: Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.
+description: Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.
 ---
 
 # Pypet Snippets
@@ -21,16 +21,17 @@ its store.
 
 - Someone asks to save a command as a snippet ("save this as a snippet",
   "create a snippet").
-- Someone calls a command annoying or recurring — offer to turn it into a
-  snippet.
+- Someone calls a command annoying or recurring — only offer a snippet when
+  `command -v pypet` succeeds; if pypet is missing, give no proactive hint.
 - The same long command obviously repeats — drop at most a single hint
-  offering a snippet. Never create one uninvited, never nag twice for the
-  same command.
+  offering a snippet, and only when pypet is installed. Never create one
+  uninvited, never nag twice for the same command.
 
 ## Workflow
 
-1. **Check install**: run `command -v pypet`; if missing, install with
-   `uv tool install pypet-cli` and re-check before continuing.
+1. **Check presence first**: run `command -v pypet`. If pypet is missing,
+   give no proactive hint; on an explicit request, say `uv tool install
+   pypet-cli` and stop before continuing.
 2. **Dedup first**: run `pypet search "<keyword>"` and `pypet list` before
    proposing anything. If a matching snippet exists, point at it instead of
    creating one.
