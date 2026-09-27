@@ -1,51 +1,43 @@
 ---
 name: pypet-snippets
 category: workflow
-activation: command
-disable-model-invocation: true
+description: Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.
 environments: coding
-compatibility: Requires pypet-cli 0.9 on PATH (upstream archived Aug 2026, final v0.9.0).
-description: Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.
 ---
 
 # Pypet Snippets
 
 Curate [pypet](https://github.com/fabiandistler/pypet) command snippets
 through its CLI. pypet is a small, archived snippet manager: it stores named
-shell commands with descriptions, tags and parameters as plain TOML. Upstream
-is archived (Aug 2026, final v0.9.0); the CLI installs as `pypet-cli`, not
-`pypet`. Only call its CLI — never modify its package and never hand-edit
-its store.
+shell commands with descriptions, tags and parameters as plain TOML. Only
+call its CLI — never modify its package and never hand-edit its store.
 
 ## When to use
 
 - Someone asks to save a command as a snippet ("save this as a snippet",
   "create a snippet").
-- Someone calls a command annoying or recurring — only offer a snippet when
-  `command -v pypet` succeeds; if pypet is missing, give no proactive hint.
+- Someone calls a command annoying or recurring — offer to turn it into a
+  snippet.
 - The same long command obviously repeats — drop at most a single hint
-  offering a snippet, and only when pypet is installed. Never create one
-  uninvited, never nag twice for the same command.
+  offering a snippet. Never create one uninvited, never nag twice for the
+  same command.
 
 ## Workflow
 
-1. **Check presence first**: run `command -v pypet`. If pypet is missing,
-   give no proactive hint; on an explicit request, say `uv tool install
-   pypet-cli` and stop before continuing.
-2. **Dedup first**: run `pypet search "<keyword>"` and `pypet list` before
+1. **Dedup first**: run `pypet search "<keyword>"` and `pypet list` before
    proposing anything. If a matching snippet exists, point at it instead of
    creating one.
-3. **Propose and wait**: show the command, a one-line description,
+2. **Propose and wait**: show the command, a one-line description,
    lowercase comma-separated tags, and parameters with defaults where the
    command varies (ports, paths, image names). Redact literal tokens,
    passwords or keys into a `{{param}}` with no default or an `$ENV_VAR`
    and call this out in the proposal. Do nothing until the person
    confirms — this holds for edits too.
-4. **Mutate on yes only**:
+3. **Mutate on yes only**:
    `pypet new "<command>" -d "<description>" -t "<tag1,tag2>" -p "name=default:description,..." -a <alias>`
    The `-d`, `-t`, `-p` and `-a` flags are all optional. Use `{{name}}` for
    required and `{{name=default}}` for optional placeholders in the command.
-5. **Offer next steps**: a shell alias (`pypet alias list` first to rule
+4. **Offer next steps**: a shell alias (`pypet alias list` first to rule
    out a name conflict, then `pypet alias add <id> <name>`, then
    `source ~/.config/pypet/aliases.sh` to activate) for frequent use, or
    show `pypet exec <id> -p -P k=v` for the person to run themselves —

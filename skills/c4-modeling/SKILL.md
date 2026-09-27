@@ -80,9 +80,7 @@ asking.
 2. **The system itself** — one-sentence purpose statement.
 3. **Containers** — the separately deployable/runnable pieces: web app, SPA,
    mobile app, API, background worker, database, message broker, file store.
-   A microservice is a group of containers (the service plus its data store),
-   not a single container. Push back on containers that are really components
-   (not deployable alone).
+   Push back on containers that are really components (not deployable alone).
 4. **Components** — only for containers picked in step 1; the major structural
    building blocks behind interfaces. If the user is *designing* this
    decomposition rather than describing an existing one, hand off to
@@ -137,10 +135,7 @@ Mermaid blocks below (GitHub renders them inline). Add a line telling future
 editors to change the table first. If the user needs publication-grade visuals
 (slides, print, wiki without Mermaid), map the same model to C4-PlantUML via
 [references/c4-plantuml-guide.md](references/c4-plantuml-guide.md) — the model
-table makes this a mechanical translation. If the model outgrows one table
-(more than about 30 elements or several systems), move it to Structurizr DSL
-(Structurizr vNext) or LikeC4 and export Mermaid or PlantUML; the table maps
-one to one onto that source.
+table makes this a mechanical translation.
 
 If architectural decisions surfaced during drafting ("why is search its own
 container?"), suggest recording them with `adr-workflow` rather than burying
@@ -158,7 +153,6 @@ bar for every diagram:
   primary direction. No unlabeled or double-headed lines.
 - **Technology** stated on containers, components, and non-obvious relationships.
 - **No unexplained acronyms**; the diagram must stand alone without a narrator.
-- **Key/legend** on every diagram explaining shapes, colors, line styles, and arrows. Mermaid C4 cannot draw one, so add a one-line `Key:` under the block.
 - **Consistency** across diagrams: same element ⇒ same name, same color/shape.
 
 ## Common mistakes

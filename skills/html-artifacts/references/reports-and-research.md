@@ -16,7 +16,7 @@ For "explain consistent hashing to me" or "how does our rate limiter actually wo
 - Tabbed code samples for languages/frameworks the reader might use.
 
 **What's load-bearing**
-- The live demo. For concepts that have a spatial or stateful character, a five-second interaction beats five paragraphs of prose. Honor `prefers-reduced-motion` so the demo stays usable with animation off.
+- The live demo. For concepts that have a spatial or stateful character, a five-second interaction beats five paragraphs of prose.
 - Marginal glossary, not a glossary at the bottom. Bottom glossaries are never read; marginal ones are scanned.
 - Comparison to the naive approach with numbers, not adjectives. "Better" is meaningless; "moves 1/N keys instead of (N-1)/N" is meaningful.
 

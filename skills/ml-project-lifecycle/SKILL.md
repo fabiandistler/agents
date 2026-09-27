@@ -2,7 +2,7 @@
 name: ml-project-lifecycle
 category: ai-ml
 environments: coding
-description: "Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining."
+description: Guide a machine learning project from problem framing through model selection to production deployment.
 metadata:
   version: "1.0"
 ---
@@ -34,22 +34,19 @@ Without this translation, technical excellence is wasted effort. Before any ML d
 
 If a decision cannot be traced to a business metric, treat that as a signal to stop and re-scope, not a detail to fill in later.
 
-Ask early whether a prompted LLM or a plain rule would already meet the business bar — if so, follow `llm-application-engineering` instead of training a model.
+### The five-baseline gate
 
-### The baseline gate
-
-A model's absolute metric score is meaningless without a baseline. Climb this ladder before calling anything deployment-worthy:
+A model's absolute metric score is meaningless without a baseline. Effective ML evaluation compares a candidate model against **five baseline types** before it is deployment-worthy:
 
 | # | Baseline | What it is |
 |---|----------|------------|
-| 1 | Dummy | Always predict the most frequent class — the floor |
+| 1 | Random baseline | Random predictions — the floor |
 | 2 | Simple heuristic | A hand-written domain rule (e.g. "spam if >5 links") |
-| 3 | Linear | Logistic or linear regression on the same features |
-| 4 | Strong simple model | Untuned GBDT or tabular foundation model |
-| 5 | Zero-shot LLM | Optional comparator for text and label tasks |
-| 6 | Incumbent | The current production system, if one exists, with human expert performance as the reference ceiling |
+| 3 | Zero rule baseline | Always predict the most frequent class |
+| 4 | Human baseline | Human expert performance on the same task |
+| 5 | Existing solution | The current production system, if one exists |
 
-This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. Beat means the candidate's cost-weighted metric clears the baseline's cross-validation spread or bootstrap confidence interval — a point win inside the noise does not count. The human baseline is a reference ceiling rather than a pass/fail gate — measure the gap to expert performance and judge whether it is acceptable for the use case.
+This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. The bar: clearly beat the random, simple-heuristic, and zero-rule baselines, and beat the existing production solution if one exists. The human baseline is a reference ceiling rather than a pass/fail gate — measure the gap to expert performance and judge whether it is acceptable for the use case.
 
 ### Missing values: prediction default first, mechanism only for inference
 
@@ -64,17 +61,16 @@ Keep the MCAR/MAR/MNAR taxonomy only for inference and effect estimation, where 
 
 ## Part B — Model selection
 
-### Default model choice (as of 2026-09)
+### Data-type decision table
 
 Pick the model family from the shape of the data first, and prefer the boring, well-understood option unless the data specifically calls for more:
 
-| Data type | Default | Notes |
-|-----------|---------|-------|
-| Tabular, up to about 10k-50k rows | Tabular foundation model (TabPFN, TabICL) alongside untuned CatBoost or LightGBM; check licence before commercial use | Foundation models lead on small and medium data; GBDT stays the untuned comparator |
-| Tabular, larger data | XGBoost / LightGBM / CatBoost | GBDT first; tabular deep learning only via RealMLP or TabM |
-| Images | Pretrained vision foundation model with transfer learning | Train a CNN backbone only when the foundation model cannot run |
-| Text | Zero-shot LLM, then embeddings plus linear model, then fine-tune | Sentence-transformer embeddings are often sufficient without a full fine-tune |
-| Time series | AutoETS or Theta plus a zero-shot time-series foundation model (Chronos, TimesFM) | Via statsforecast or fable; Prophet is not a first choice |
+| Data type | First choice | Notes |
+|-----------|--------------|-------|
+| Structured / tabular | XGBoost / LightGBM / CatBoost | Frequently outperforms deep learning on tabular data. Reach for deep learning only with very large datasets (>100k rows) or genuinely complex feature interactions; a simple 3–5 layer feed-forward network is usually enough when you do |
+| Images | CNNs | Transfer learning with a pretrained backbone (ResNet, EfficientNet) is the practical default; vision transformers become worthwhile only at very large dataset sizes |
+| Text | Transformer-based models (BERT-style; language-specific variants such as GBERT for German) | For classification, sentence-transformer embeddings are often sufficient without a full fine-tune; LSTMs are legacy and rarely the right first choice now |
+| Time series | ARIMA / Prophet | Often sufficient on their own. LSTMs, GRUs, or Temporal Fusion Transformers for deep-learning approaches; transformer-based time-series models (e.g. TimesFM) are the current frontier |
 
 Treat the specific model names as illustrative of the *category* to reach for, not a permanent ranking — this table will date faster than the decision process itself.
 
@@ -95,7 +91,7 @@ Must-have working knowledge before tuning anything further: data preprocessing (
 
 ### AutoML notes
 
-AutoML (AutoGluon, H2O AutoML, FLAML; workflowsets in R) is a legitimate way to get a fast baseline and a proof-of-concept, and it bundles hyperparameter tuning. It is not a substitute for a considered model.
+AutoML (AutoKeras, H2O AutoML, AutoGluon, FLAML) is a legitimate way to get a fast baseline and a proof-of-concept, and it bundles hyperparameter tuning. It is not a substitute for a considered model.
 
 - **Use it for:** a quick baseline, proof-of-concept work, standard well-trodden problems where time matters more than a marginal accuracy gain.
 - **Its costs:** it is a black box that is hard to debug, it can overfit to the validation data, it gets expensive on large datasets, and it cannot encode domain-specific structure a practitioner knows about.
@@ -103,14 +99,6 @@ AutoML (AutoGluon, H2O AutoML, FLAML; workflowsets in R) is a legitimate way to 
 A workable default workflow: start with a simple model (e.g. XGBoost) as the real baseline, run AutoML in parallel purely as a comparison point, move to deep learning (starting from pretrained models where available) only if the simple baseline is insufficient, and refine iteratively only in response to a genuine business need — not because a metric could theoretically go higher.
 
 ## Part C — Pipeline and deployment checklist
-
-### Tooling
-
-| Step | Python | R |
-|------|--------|---|
-| Pipeline | sklearn Pipeline | tidymodels workflow with recipes |
-| Versioning and deployment | vetiver plus pins, MLflow 3 LoggedModel plus registry | vetiver plus pins |
-| Monitoring | vetiver monitoring, MLflow | vetiver monitoring |
 
 ### Feature-engineering pipeline, in order
 
@@ -181,31 +169,32 @@ group_vfold_cv(train, group = entity_id, v = 5)
 sliding_period(train, index = timestamp, period = "month", lookback = 12, assess_stop = 1)
 ```
 
-**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): never hard-code a fixed vocabulary. Prefer one of these: sklearn `OneHotEncoder(handle_unknown="infrequent_if_exist")` or TargetEncoder; recipes `step_novel` plus `step_other` plus `step_dummy_hash`; CatBoost native handling. A hashing trick into a fixed index space (e.g. 2^18 slots) remains a fallback where none of the above fits.
+**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): a hash function maps every category — seen or unseen — into a fixed index space (e.g. 2^18 = 262,144 slots) that is defined ahead of time. New categories are automatically encoded validly; occasional hash collisions between two categories are an acceptable trade-off for never crashing on an unseen value. (`sklearn.feature_extraction.FeatureHasher`, TensorFlow `tf.keras.layers.Hashing`, or Vowpal Wabbit's hashing trick.)
 
 ### Staged deployment
 
-Two tracks — pick the one matching how the model serves.
+Roll out a new model in four stages, each one de-risking the next:
 
-Online: shadow, then canary with pre-declared rollback metrics, then full rollout. Shadow runs the new model in parallel with predictions logged and zero user impact. Canary graduates traffic in steps with rollback criteria declared before rollout — roll back when a canary metric breaches its bound. Run an A/B test only when the business effect needs causal proof, with sticky assignment.
+1. **Shadow deployment** — the new model runs in parallel, its predictions are logged, but it has zero user impact.
+2. **A/B testing** — route a percentage of traffic to the new model and compare business metrics against the incumbent, not just ML metrics.
+3. **Canary release** — graduate the rollout in steps (e.g. 1% -> 10% -> 50% -> 100%).
+4. **Full deployment** — switch all traffic over once every prior stage has validated the model.
 
-Batch: backtest on historical windows, then parallel run alongside the incumbent, then switch. Switch only after the parallel run matches the backtest within the pre-declared tolerance.
-
-Skipping shadow or canary (online) or backtest or parallel run (batch) reintroduces the risk the sequence was built to remove.
+This sequence exists to minimize production risk on every model update — skipping a stage (e.g. going straight from shadow to full) reintroduces the risk the sequence was built to remove.
 
 ### Retraining triggers
 
 Retrain on any of these signals, not on a schedule alone:
 
 - **Scheduled** — daily or weekly, as a baseline cadence.
-- **Performance degradation** — the business metric from Part A moves beyond the cost bound agreed there, not a fixed percentage.
-- **Data-distribution shift** — PSI above 0.25 signals major shift, above 0.1 minor shift; investigate major shifts and monitor minor ones. Use a proxy metric such as prediction distribution or feature means when labels arrive late.
+- **Performance degradation** — e.g. an accuracy drop greater than 2%.
+- **Data-distribution shift** — e.g. KL-divergence between recent and training-time feature distributions exceeding a set threshold.
 - **Business event** — a product launch, a seasonal change, or another event known to shift the underlying data-generating process.
 
 ## Common pitfalls
 
 - Optimizing a technical metric (accuracy, F1) that was never tied back to a business metric — this is the single most common way "successful" ML projects fail to matter.
-- Comparing a new model only to its own past runs, never to the baseline ladder — a model can look good in isolation and still lose to a domain heuristic.
+- Comparing a new model only to its own past runs, never to all five baseline types — a model can look good in isolation and still lose to a domain heuristic.
 - Treating every missing-value column the same way (blanket drop or blanket impute) instead of using native NaN handling or imputation plus a missingness indicator — this silently discards signal, especially where the missingness itself carries information.
 - Reaching for deep learning on structured/tabular data by default, when a gradient-boosted tree model is usually both simpler and stronger there.
 - Fitting any preprocessing step (imputation, scaling, encoding, selection, tuning) outside cross-validation — a data-leakage bug that inflates offline metrics and does not survive contact with production.

@@ -93,7 +93,7 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
-| [natural-planning](skills/natural-planning/SKILL.md) | Plans one multi-step project with GTD's Natural Planning Model when stuck, vague or overwhelming; no inbox triage, no daily-task picks. |
+| [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
 | [oss-scouting](skills/oss-scouting/SKILL.md) | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
 | [poc-spec-loop](skills/poc-spec-loop/SKILL.md) | Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request. |
 | [prek-hooks](skills/prek-hooks/SKILL.md) | Setting up prek Git hooks in Python/R repos — detecting the project type and assembling a pinned pre-commit config from fragments. |
@@ -108,6 +108,7 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 | [communication-analysis](skills/communication-analysis/SKILL.md) | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | [documentation](skills/documentation/SKILL.md) | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
+| [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing explanations — technical or not — that lead with the concrete problem before the solution. |
 | [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 | [tldr](skills/tldr/SKILL.md) | Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread. |
 
@@ -239,14 +240,6 @@ change.
   --script` to edit, `uv lock --script` when the run must reproduce.
 - A one-off command in SKILL.md (`uvx`, `npx`) is version-pinned, or it
   is not a convention.
-- Reference bundled skill scripts relative to the skill directory
-  (`python3 scripts/tool.py <repo-path>`), never via a repo-root path
-  (`skills/<name>/scripts/`, `members/<name>/scripts/`). The skill is
-  installed elsewhere, so the target repo is always passed as an argument.
-- Per-skill eval prompts live in `skills/<name>/evals.json` (>=3
-  `should_trigger`, >=1 `should_not_trigger`, optional `expected_behavior`;
-  see `docs/adr/0006-skill-eval-prompts.md`). CI's `scripts/check_evals.py`
-  reports coverage warn-only until content lands.
 
 ## Agent skills
 

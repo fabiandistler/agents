@@ -1,4 +1,4 @@
-# HTTP API Reference
+# API Reference
 
 The reader is writing code against your service right now, with your page open
 in a second window. Optimize for scanning and copying, not for reading.

@@ -42,24 +42,13 @@ not tool-as-interface design._
 - **In production, prefer pre-built, tested tools over agent-generated
   per-invocation code** (no repeatability); any model-generated tool code gets
   human review before entering CI/CD. (Ch. 4)
-- **Namespace tools by domain so names never collide across groups.**
-  - ✅ `orders_cancel`, `users_get_profile`
-  - ❌ `cancel`, `get`   ← likely-default
-- **Return token-efficient responses by default: paginate lists, accept filters, truncate with a default limit.**
-  - ✅ `list_orders(limit=20, status="open") -> page plus next cursor`
-  - ❌ `list_orders() -> all 10,000 rows`   ← likely-default
-- **Return high-signal values, not raw IDs — resolve names the agent can act on.**
-  - ✅ `{"id": 42, "customer": "Acme GmbH", "status": "open"}`
-  - ❌ `{"id": 42, "cid": 7, "s": 1}`   ← likely-default
-- **Return actionable errors naming what failed and what to try next.**
-  - ✅ `order 42 not found in open orders; check status or create it`
-  - ❌ `error 400`   ← likely-default
-- **Iterate tools from evals: every tool addition or rename ships with eval cases asserting correct selection and parameters.** (Ch. 9)
 
 ## Orchestration & Context
 
-- **Prefer provider-native tool search and deferred loading once the toolset grows;** fall back to DIY embedding top-k selection only where native search is unavailable; plain
-  in-prompt selection is fine for small toolsets.
+- **Default to semantic tool selection (embed descriptions, retrieve top-k from
+  a vector index) once the toolset grows;** use two-stage hierarchical selection
+  only for large, semantically similar toolsets (it costs latency); plain
+  in-prompt selection is fine for small toolsets. (Ch. 5)
 - **Choose the simplest topology that meets the requirement, in order: single
   tool → parallel → chain → graph.** Adopt a graph only when you must both
   branch *and* consolidate results. (Ch. 5)
@@ -127,7 +116,6 @@ integration and drift triage._
 - **Route agent telemetry into the same observability stack as other services —
   no separate agent-monitoring silo.** Tag spans/logs with session ID,
   agent/prompt version, and workflow ID so traces and logs correlate. (Ch. 10)
-- **Instrument with the OpenTelemetry GenAI semantic conventions: `invoke_agent` parent with `chat` and `execute_tool` spans, `gen_ai.request.model` and `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` attributes; keep content capture off by default per the PII-redaction rule in Security below.** Experimental — opt in via `OTEL_SEMCONV_STABILITY_OPT_IN`.
 - **Triage failures with a reproducibility test before reacting: rerun 3–5×;
   ≥80% failure rate = systematic bug for engineering; otherwise check drift
   statistically (PSI > 0.25 major / > 0.1 minor, KS > 0.1)** instead of chasing

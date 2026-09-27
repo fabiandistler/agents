@@ -12,7 +12,6 @@ Richards & Ford, *Fundamentals of Software Architecture* (O'Reilly).
 - [Worked example: when to split a module](#worked-example-when-to-split-a-module)
 - [The LCOM metric](#the-lcom-metric)
 - [What LCOM cannot tell you](#what-lcom-cannot-tell-you)
-- [The same law at every scale](#the-same-law-at-every-scale)
 - [Cohesion is not an object-oriented idea](#cohesion-is-not-an-object-oriented-idea)
 
 ## What cohesion is
@@ -213,26 +212,6 @@ the same module. So:
 
 Always finish with the human judgment in the
 [worked example's three questions](#worked-example-when-to-split-a-module).
-
-## The same law at every scale
-
-"High cohesion, low coupling" is the principle other design rules reduce to:
-ask **does this belong here?** (cohesion) and **could I change this without
-touching other parts?** (coupling). The questions repeat at every scale:
-
-| Level | Principle | Cohesion expression | Coupling expression |
-|-------|-----------|----------------------|-----------------------|
-| Function / method | Single Responsibility | One reason to change | Minimal side effects outward |
-| Module | Deep modules | Complete, coherent problem domain | Narrow, simple interface |
-| Architecture | Separation of Concerns | One layer per concern | Layers talk only through defined boundaries |
-| Domain | Bounded Context | Consistent ubiquitous language within the context | Explicit context maps at the edges |
-| Service | Microservices | Self-contained business capability | Loose coupling via defined APIs |
-
-Classic failure shapes trace back to a cohesion and/or coupling root cause:
-
-- **God Object** — low internal cohesion plus high external coupling.
-- **Shotgun Surgery** — one concern scattered across modules (cohesion by distribution).
-- **Feature Envy** — a method living in the wrong home (cohesion by wrong placement).
 
 ## Cohesion is not an object-oriented idea
 

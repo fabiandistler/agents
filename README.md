@@ -136,7 +136,7 @@ still listed here.
 
 | Skill | When to use |
 |---|---|
-| `skills/natural-planning/` | Plans one multi-step project with GTD's Natural Planning Model when stuck, vague or overwhelming; no inbox triage, no daily-task picks. |
+| `skills/natural-planning/` | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
 | `skills/oss-scouting/` | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
 | `skills/poc-spec-loop/` | Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request. |
 | `skills/prek-hooks/` | Setting up prek Git hooks in Python/R repos — detecting the project type and assembling a pinned pre-commit config from fragments. |
@@ -151,6 +151,7 @@ still listed here.
 | `skills/communication-analysis/` | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | `skills/documentation/` | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | `skills/html-artifacts/` | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
+| `skills/problem-first-explanation/` | Producing explanations — technical or not — that lead with the concrete problem before the solution. |
 | `skills/stakeholder-update/` | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 | `skills/tldr/` | Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread. |
 
