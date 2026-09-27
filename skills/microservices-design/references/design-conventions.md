@@ -1,6 +1,6 @@
 # Microservices Design Conventions
 
-> Non-obvious design forks distilled from *Building Microservices*, 2nd ed. (Newman), chapters 2–6 and 12.
+> Non-obvious design forks distilled from *Building Microservices*, 2nd ed. (Newman), chapters 2–6, 9, and 12.
 > Generic best practice ("loose coupling good", "write tests", "monitor everything", ACID definitions) is assumed and omitted.
 > These are design-principle rules, not project rules — nothing here is specific to any codebase.
 > Chapter references in `(ch N)` instead of rationale.
@@ -42,6 +42,8 @@
 - **Make only additive (expansion) changes to a published interface** — add fields; never remove, rename, or restructure existing ones in place. (ch5)
 - **Gate CI on a schema-diff *compatibility* check that fails the build on breaking changes,** not one that merely reports a diff (Protolock / json-schema-diff-validator / openapi-diff; Confluent Schema Registry). (ch5)
 - **When a breaking change is unavoidable, coexist the old and new endpoints inside one service and let consumers migrate,** then delete the old. Avoid lockstep deploys; avoid running two whole service versions side-by-side for anything longer than a canary. (ch5)
+- **Gate provider deploys on consumer contract verification (Pact `can-i-deploy`, or bi-directional contracts checked against the OpenAPI spec) when an API has two or more consumers.** (ch5, ch9)
+- **Describe event contracts in AsyncAPI 3.x and run them through the same breaking-change gate as synchronous interfaces.** (ch5, ch9)
 
 ## Code Reuse
 
