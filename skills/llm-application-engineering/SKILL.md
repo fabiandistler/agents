@@ -57,18 +57,20 @@ fix the root cause.
 
 | # | Technique | What it is |
 |---|---|---|
-| 1 | **Prompting** | Structured task description, role, output format — with systematic versioning of prompts. |
-| 2 | **Few-shot prompting** | 1–50 examples placed directly in the prompt. Very high leverage for the effort. |
-| 3 | **Basic RAG** | Term-based retrieval (e.g. BM25), used when the failure is missing information. |
-| 4 | **Advanced RAG** | Embedding-based retrieval, reranking, hybrid search — when basic retrieval is not enough. |
-| 5 | **Finetuning** | Used when the problem is *behavior* (irrelevant, malformatted, unsafe responses), not missing knowledge. |
-| 6 | **RAG + finetuning combined** | Largest performance boost available, but the highest combined complexity. |
+| 1 | **Prompting** | Zero-shot task description first on reasoning models, with systematic versioning of prompts. |
+| 2 | **Structured outputs** | Schema-constrained outputs or tool schemas for format failures — fix format without training. |
+| 3 | **Few-shot prompting** | A few diverse canonical examples; on reasoning models try zero-shot first and skip step-by-step scaffolds. |
+| 4 | **Stronger model** | A stronger model or enabled reasoning when the failure is capability, not knowledge. |
+| 5 | **Cached long context** | Whole knowledge base in a cached prompt under about 200k tokens; still prefer retrieval for fact-seeking or freshness-critical data. |
+| 6 | **Retrieval** | Hybrid plus contextual chunks plus rerank as the default, or agentic search, when the failure is missing information. |
+| 7 | **Finetuning** | Used when the problem is *behavior* (irrelevant, unsafe responses), not missing knowledge or format. Largest boost combined with retrieval, at the highest complexity. |
 
 ### The diagnosis that gates every step up
 
 Before moving to a higher rung, ask: **what kind of failure is this?**
 
-- **Information failure** — the model simply did not know something → go to RAG.
+- **Information failure** — the model simply did not know something → go to retrieval or cached long context.
+- **Format failure** — the content is right but the shape is wrong → go to structured outputs.
 - **Behavior failure** — the model knew it, but responded wrongly anyway → go to finetuning.
 
 This distinction blocks the single most expensive wrong turn in LLM projects:
