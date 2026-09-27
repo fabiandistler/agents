@@ -32,6 +32,12 @@ with >=3 should_trigger and >=1 should_not_trigger prompts (ADR-0006).
 
   --strict   exit 1 on any gap (CI flips to this once content lands)
   --help     show this message
+
+examples:
+  python3 scripts/check_evals.py
+  python3 scripts/check_evals.py --strict
+
+exit: 0 ok (warn-only by default) | 1 gaps found with --strict
 """
 
 
@@ -109,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     sys.stdout.write(f"evals coverage: {covered}/{checked} auto+router skills (warn-only)\n")
     for gap in gaps:
-        sys.stdout.write(f"  warn: {gap}\n")
+        sys.stderr.write(f"  warn: {gap}\n")
     return 0
 
 
