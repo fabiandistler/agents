@@ -92,15 +92,19 @@ Use a weighted matrix when more than two close alternatives need a side-by-side 
 
 Treat the weighted average as a discussion aid, not a verdict — a close score is a signal to re-check the weights or surface a qualitative factor the matrix can't capture, not to default to the highest number.
 
-## Microservice Boundary Design
+## Once topology lands on microservices
 
-When the topology axis lands on microservices — or an existing repo is being decomposed into them — the hardest and most consequential call is where to cut. Apply these checks before finalizing service boundaries in step 5 (Implement):
+Stop here for boundary work: find bounded contexts with `ddd`, then cut and wire services with `microservices-design`. This skill's only rule: extract from a modular monolith along module seams already proven by change-locality. Never cut along technical layers.
 
-- **Bounded context as the natural boundary.** A domain's bounded context — the boundary within which a model and its terms carry one consistent meaning — is the strongest starting point for a service boundary. Context boundaries change more slowly than technical architecture, so services cut along them stay stable longer. If contexts aren't already identified, use the `ddd` skill to find and map them first; this skill consumes that boundary, it doesn't derive it (context-mapping patterns live there, not here).
-- **Start wide, decompose later.** "As small as possible" is an anti-heuristic for cutting services: size a boundary as a function of the model it protects, not of a target service count. For core or volatile subdomains especially, keep the boundary wide (fewer, larger services) until the model is understood — refactoring a *logical* boundary inside one deployable is cheap, while moving a *physical* service boundary (APIs, data ownership, deploy pipelines, consumers) is expensive. Defaulting to microservices before the model is understood locks in guesses at the most expensive layer.
-- **Cohesion / change-locality test.** A well-cut service absorbs a change entirely within itself. If two or more services are habitually modified together for the same feature, that is a direct signal the cut is wrong — either the boundary split a single cohesive capability, or a shared concept was duplicated incorrectly. Treat repeated cross-service changes for one feature as a boundary smell, not a normal cost of doing business.
-- **Database-per-service.** Each service owns its data exclusively; other services reach it only through its API, never through a direct foreign-database connection or shared schema. A shared database is coupling in disguise — it silently reintroduces the monolith's shared-state problem across process boundaries. Expect some data duplication and eventual consistency as the accepted trade-off (see Trade-off Analysis above); resolve cross-service queries with API composition or CQRS rather than joins.
-- **Anti-pattern: cutting along technical layers.** Do not carve out a "data-access service," "business-logic service," or "UI service" — that is the by-layer code-organization mistake (see the Code-organization axis in [references/pattern-catalog.md](references/pattern-catalog.md)) applied at the topology level, and it produces the worst of both: network calls for what used to be a function call, with none of the domain cohesion microservices are meant to buy. Name services after business capabilities (`Order Service`, `Customer Service`), not technical roles.
+## Related skills
+
+- `ddd` — use when domain boundaries are unclear and bounded contexts must be found first.
+- `microservices-design` — use when services exist and their boundaries, communication, or contracts need design or review.
+- `logical-component-design` — use when decomposing a new system or feature into named logical components.
+- `fitness-functions` — use when a chosen boundary must be enforced by a check that fails CI.
+- `c4-modeling` — use when the chosen architecture must be drawn as Context, Container, or Component diagrams.
+- `coupling-cohesion` — use when measuring whether an existing decomposition is sound.
+- `adr-workflow` — use when recording the chosen topology or code organization as a decision.
 
 ## Quick Reference
 
