@@ -62,14 +62,13 @@
 #
 # --instructions (off by default) additionally composes the Markdown
 # fragments in instructions/ into each agent's global instruction file
-# (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md), as one marker-delimited managed
-# block. Fragments are ordered by their numeric filename prefix and may limit
+# (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.config/opencode/AGENTS.md), as
+# one marker-delimited managed block. Fragments are ordered by their numeric filename prefix and may limit
 # themselves to some agents with a `targets:` frontmatter field, as skills do.
 # Anything outside the markers is left untouched, so hand-written notes and
 # @-imports survive; --uninstall strips the block and nothing else. opencode
-# gets no file of its own on purpose: it already reads ~/.claude/CLAUDE.md
-# unless disableClaudeCodePrompt is set, so a second copy would load every
-# rule twice.
+# gets its own ~/.config/opencode/AGENTS.md: it reads ~/.claude/CLAUDE.md only
+# as a fallback when that file is missing, and opencode V2 not at all.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -659,21 +658,22 @@ uninstall_codex_agents() {
 # the user keeps outside it — an @-import, a machine-specific note — survives
 # install, reinstall and uninstall untouched.
 #
-# opencode has no destination on purpose. Its instruction loader reads
-# <config>/AGENTS.md *and* ~/.claude/CLAUDE.md unless disableClaudeCodePrompt
-# is set, so giving it its own copy would load every rule twice per session.
+# opencode gets its own file. Its loader reads ~/.claude/CLAUDE.md only as a
+# fallback when ~/.config/opencode/AGENTS.md does not exist, and opencode V2
+# drops that fallback entirely (https://opencode.ai/docs/rules,
+# https://opencode.ai/v2/docs/instructions). Its own file therefore never loads
+# alongside CLAUDE.md, so no rule loads twice.
 # Note the filenames differ per agent (CLAUDE.md vs AGENTS.md): the content is
 # one AGENTS.md-style document, written to whatever each agent actually reads.
 
 instructions_dir() { printf '%s/instructions' "$REPO_ROOT"; }
 
-# Global instruction file for a target, or empty when the target deliberately
-# has none (see above). Unknown targets are an error.
+# Global instruction file for a target. Unknown targets are an error.
 instruction_file_for() {
   case "$1" in
     claude)   printf '%s/.claude/CLAUDE.md' "$HOME" ;;
     codex)    printf '%s/.codex/AGENTS.md'  "$HOME" ;;
-    opencode) ;;
+    opencode) printf '%s/.config/opencode/AGENTS.md' "$HOME" ;;
     *) echo "unknown target: $1" >&2; return 1 ;;
   esac
 }
@@ -784,11 +784,6 @@ write_text_file() {
 install_instructions() {
   local target="$1" dest
   dest="$(instruction_file_for "$target")" || return 1
-  if [[ -z "$dest" ]]; then
-    printf '  note      instructions: %s reads them from %s/.claude/CLAUDE.md (nothing to write)\n' \
-      "$target" "$HOME"
-    return 0
-  fi
   local fragments count=0 file
   fragments="$(list_instruction_fragments "$target")"
   while IFS= read -r file; do
@@ -833,7 +828,7 @@ install_instructions() {
 remove_instructions() {
   local target="$1" dest
   dest="$(instruction_file_for "$target")" || return 1
-  [[ -n "$dest" && -f "$dest" ]] || return 0
+  [[ -f "$dest" ]] || return 0
   local before after
   before="$(cat "$dest")"
   if ! instructions_markers_balanced <<< "$before"; then

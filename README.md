@@ -92,8 +92,9 @@ are user-invoked only and install as commands — `/oss-scouting`,
 
 **Shared rules are separate from skills.** Skills are capabilities loaded on
 demand; rules that apply to *every* session live in `instructions/` as
-single-topic fragments, composed into `~/.claude/CLAUDE.md` or
-`~/.codex/AGENTS.md` by `./install.sh --instructions`. Content outside the
+single-topic fragments, composed into `~/.claude/CLAUDE.md`,
+`~/.codex/AGENTS.md` or `~/.config/opencode/AGENTS.md` by
+`./install.sh --instructions`. Content outside the
 managed markers is never touched.
 
 **Reading without installing:** [`skills.json`](skills.json) is the

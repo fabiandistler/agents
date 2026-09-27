@@ -666,16 +666,20 @@ diff -q "$HOME_INS/claude-before.md" "$CLAUDE_MD" >/dev/null \
   || fail "uninstall did not restore the original instruction file"
 pass "instructions uninstall removes only the managed block"
 
-# 42. codex gets its own file created from nothing; opencode deliberately gets
-#     none (it already reads ~/.claude/CLAUDE.md).
+# 42. codex and opencode each get their own file created from nothing
+#     (opencode reads ~/.claude/CLAUDE.md only as a fallback, V2 not at all),
+#     and --uninstall strips the block from both.
 HOME_INS2="$(mktemp -d)"
 HOME="$HOME_INS2" "$INSTALL" --target=all --category=communication --instructions >/dev/null
-[[ -f "$HOME_INS2/.codex/AGENTS.md" ]] || fail "codex AGENTS.md was not created"
-grep -q 'Use uv for Python package development' "$HOME_INS2/.codex/AGENTS.md" \
-  || fail "codex AGENTS.md has no fragment body"
-[[ ! -e "$HOME_INS2/.config/opencode/AGENTS.md" ]] \
-  || fail "opencode instruction file written (would duplicate ~/.claude/CLAUDE.md)"
-pass "instructions create codex's file and skip opencode on purpose"
+for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
+  [[ -f "$HOME_INS2/$f" ]] || fail "$f was not created"
+  grep -q 'Use uv for Python package development' "$HOME_INS2/$f" \
+    || fail "$f has no fragment body"
+done
+HOME="$HOME_INS2" "$INSTALL" --target=opencode --category=communication --instructions --uninstall >/dev/null
+! grep -q 'agents instructions' "$HOME_INS2/.config/opencode/AGENTS.md" \
+  || fail "opencode uninstall left the instructions block"
+pass "instructions create codex's and opencode's own files"
 
 # 43. Unbalanced markers (a hand edit) leave the file completely alone, and
 #     --dry-run never writes.

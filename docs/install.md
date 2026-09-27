@@ -67,7 +67,8 @@ single-topic Markdown fragments, ordered by their numeric filename prefix.
 
 Each fragment is authored once and composed into a marker-delimited managed
 block in the agent's global instruction file — `~/.claude/CLAUDE.md` for Claude
-Code, `~/.codex/AGENTS.md` for Codex CLI. The filenames differ because that is
+Code, `~/.codex/AGENTS.md` for Codex CLI, `~/.config/opencode/AGENTS.md` for
+opencode. The filenames differ because that is
 what each agent reads; the content is one AGENTS.md-style document either way.
 A fragment may limit itself to some agents with a `targets:` frontmatter field,
 exactly as a skill does.
@@ -76,9 +77,13 @@ Anything outside the markers is left alone, so hand-written notes and
 `@`-imports survive install, reinstall, and uninstall. Unbalanced markers (from
 a hand edit) make the installer skip the file rather than guess.
 
-opencode gets no file of its own on purpose: its instruction loader already
-reads `~/.claude/CLAUDE.md` unless `disableClaudeCodePrompt` is set, so a
-second copy would load every rule twice per session.
+opencode reads `~/.claude/CLAUDE.md` only as a fallback when
+`~/.config/opencode/AGENTS.md` does not exist
+([rules](https://opencode.ai/docs/rules)), and opencode V2 drops that fallback
+([instructions](https://opencode.ai/v2/docs/instructions)), so it gets a file of
+its own and no rule loads twice. Once that file exists, opencode stops reading
+`~/.claude/CLAUDE.md`: anything you wrote there outside the markers and want in
+opencode too belongs in `~/.config/opencode/AGENTS.md` as well.
 
 The flag is opt-in — plain `./install.sh --target=...` only touches skills.
 

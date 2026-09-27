@@ -21,7 +21,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   Markdown files, ordered by their numeric filename prefix, that
   `install.sh --instructions` composes into a marker-delimited managed block
   in each agent's global instruction file (`~/.claude/CLAUDE.md`,
-  `~/.codex/AGENTS.md`). A rule is authored once here instead of being copied
+  `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`). A rule is authored once here instead of being copied
   by hand into every agent's config. Content outside the markers is never
   touched.
 - `plugins/` packages the same skills as Claude plugins, one plugin per
