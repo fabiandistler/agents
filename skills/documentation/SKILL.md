@@ -14,7 +14,8 @@ drafting, and say out loud where the doc will rot.
 ## When to use
 
 - "Write docs for X", "document this", "create a README", "write a runbook",
-  "onboarding guide", "document the API".
+  "onboarding guide", "document the API", "add roxygen docs to this package",
+  "document these docstrings".
 - A module, service, or endpoint exists and has no prose entry point.
 - Existing docs are being revised, split, or merged.
 - A postmortem action item is "write the runbook".
@@ -27,7 +28,8 @@ Do **not** use for:
   component views) use `c4-modeling`; this skill only says where a diagram goes
   in the surrounding document.
 - **Rules files for coding agents** (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`) —
-  those are distilled constraints, not documentation, and out of scope here.
+  those are distilled constraints kept short in the repo root; no skill governs
+  them, and they stay out of scope here.
 - **The shape of an explanatory passage** — when a section has to explain a
   concept, the explanations instruction (`instructions/65-explanations.md`)
   governs its structure (problem before solution). It composes with this skill
@@ -53,21 +55,33 @@ what you may leave out.
 
 ### 2. Pick the document type
 
-| The reader's job | Type | Reference page |
-|---|---|---|
-| Decide whether to use this, then get it running | README | `references/readme.md` |
-| Call this service correctly from their own code | API reference | `references/api-reference.md` |
-| Execute a known operational procedure under pressure | Runbook | `references/runbook.md` |
-| Understand how the system fits together before changing it | Architecture doc | `references/architecture-doc.md` |
-| Become productive in an unfamiliar codebase or team | Onboarding guide | `references/onboarding-guide.md` |
+| The reader's job | Type | Diátaxis | Reference page |
+|---|---|---|---|
+| Decide whether to use this, then get it running | README | Reference | `references/readme.md` |
+| Call this service correctly from their own code | HTTP API reference | Reference | `references/api-reference.md` |
+| Call this library's functions from their own code | Package reference | Reference | `references/package-docs.md` |
+| Execute a known operational procedure under pressure | Runbook | How-to | `references/runbook.md` |
+| Learn by doing, step by step | Tutorial | Tutorial | Inline in step 4 |
+| Solve one specific task | How-to guide | How-to | Inline in step 4 |
+| Understand how the system fits together before changing it | Architecture doc | Explanation | `references/architecture-doc.md` |
+| Become productive in an unfamiliar codebase or team | Onboarding guide | Tutorial | `references/onboarding-guide.md` |
 
 One document, one job. If two rows apply, write two documents and link them —
 a README that also tries to be an architecture doc serves neither reader.
 
-### 3. Draft from the skeleton
+### 3. Revise what exists before drafting
+
+When revising rather than starting fresh: audit each section against the
+reader sentence from step 1, split by job when two table rows apply, and
+replace copied values with links to their source of truth.
+
+### 4. Draft from the skeleton
 
 Open the one reference page for the chosen type and follow its section
-skeleton. While drafting:
+skeleton. Tutorials and how-to guides use no reference page: a tutorial is
+prerequisites, ordered steps with a visible check after each, and what to do
+next; a how-to is the problem, the solution steps, and the variants.
+While drafting:
 
 - **Read the code, don't paraphrase it.** Ports, env var names, endpoint
   paths, flag names, and default values get copied out of the source, not
@@ -79,7 +93,7 @@ skeleton. While drafting:
 - **Cut every section you have nothing real to put in.** An empty
   "Troubleshooting" heading is a promise the doc breaks.
 
-### 4. Currency check
+### 5. Currency check
 
 Before finishing, state in one short block — to the user, or as a comment in
 the doc's source where the project's conventions allow — what will make this
@@ -92,7 +106,7 @@ doc wrong, and what would catch it:
 
 A doc with no rot story is a doc that will silently become misinformation.
 
-### 5. Cold-reader test
+### 6. Cold-reader test
 
 Run this when the draft is for readers outside the current session. You have
 the whole conversation in your head, and the reader does not. So test the doc
@@ -104,6 +118,12 @@ conversation context. Then do one pass over the answers: what was ambiguous,
 what prior knowledge the doc assumed, and what contradicts itself. Fix the doc
 and run the test again until it turns up no new gap. If you cannot start
 subagents, give the user the questions to try with the doc in a fresh chat.
+
+## When agents read your docs
+
+Keep the Markdown source plain with stable headings, generate the `llms.txt`
+index with the site tool rather than hand-writing one, and never put content
+only in images.
 
 ## Principles
 
@@ -126,8 +146,10 @@ Open only the page for the type you are writing.
 
 - `references/readme.md` — what/why, five-minute quick start, configuration,
   usage, contributing.
-- `references/api-reference.md` — endpoints, auth, errors, pagination, rate
-  limits, SDK examples.
+- `references/api-reference.md` — HTTP endpoints, auth, errors, pagination,
+  rate limits, SDK examples.
+- `references/package-docs.md` — exported functions, parameters, return
+  values, reference index, runnable examples.
 - `references/runbook.md` — trigger, prerequisites, procedure, verification,
   rollback, escalation.
 - `references/architecture-doc.md` — context and goals, design, trade-offs,
