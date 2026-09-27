@@ -104,6 +104,14 @@ A workable default workflow: start with a simple model (e.g. XGBoost) as the rea
 
 ## Part C — Pipeline and deployment checklist
 
+### Tooling
+
+| Step | Python | R |
+|------|--------|---|
+| Pipeline | sklearn Pipeline | tidymodels workflow with recipes |
+| Versioning and deployment | vetiver plus pins, MLflow 3 LoggedModel plus registry | vetiver plus pins |
+| Monitoring | vetiver monitoring, MLflow | vetiver monitoring |
+
 ### Feature-engineering pipeline, in order
 
 1. **Missing values** — native NaN handling or simple imputation plus a missingness indicator, per the prediction default above.
@@ -173,7 +181,7 @@ group_vfold_cv(train, group = entity_id, v = 5)
 sliding_period(train, index = timestamp, period = "month", lookback = 12, assess_stop = 1)
 ```
 
-**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): a hash function maps every category — seen or unseen — into a fixed index space (e.g. 2^18 = 262,144 slots) that is defined ahead of time. New categories are automatically encoded validly; occasional hash collisions between two categories are an acceptable trade-off for never crashing on an unseen value. (`sklearn.feature_extraction.FeatureHasher`, TensorFlow `tf.keras.layers.Hashing`, or Vowpal Wabbit's hashing trick.)
+**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): never hard-code a fixed vocabulary. Prefer one of these: sklearn `OneHotEncoder(handle_unknown="infrequent_if_exist")` or TargetEncoder; recipes `step_novel` plus `step_other` plus `step_dummy_hash`; CatBoost native handling. A hashing trick into a fixed index space (e.g. 2^18 slots) remains a fallback where none of the above fits.
 
 ### Staged deployment
 
