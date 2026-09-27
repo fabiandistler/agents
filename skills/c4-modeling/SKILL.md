@@ -153,6 +153,7 @@ bar for every diagram:
   primary direction. No unlabeled or double-headed lines.
 - **Technology** stated on containers, components, and non-obvious relationships.
 - **No unexplained acronyms**; the diagram must stand alone without a narrator.
+- **Key/legend** on every diagram explaining shapes, colors, line styles, and arrows. Mermaid C4 cannot draw one, so add a one-line `Key:` under the block.
 - **Consistency** across diagrams: same element ⇒ same name, same color/shape.
 
 ## Common mistakes
