@@ -185,22 +185,21 @@ sliding_period(train, index = timestamp, period = "month", lookback = 12, assess
 
 ### Staged deployment
 
-Roll out a new model in four stages, each one de-risking the next:
+Two tracks — pick the one matching how the model serves.
 
-1. **Shadow deployment** — the new model runs in parallel, its predictions are logged, but it has zero user impact.
-2. **A/B testing** — route a percentage of traffic to the new model and compare business metrics against the incumbent, not just ML metrics.
-3. **Canary release** — graduate the rollout in steps (e.g. 1% -> 10% -> 50% -> 100%).
-4. **Full deployment** — switch all traffic over once every prior stage has validated the model.
+Online: shadow, then canary with pre-declared rollback metrics, then full rollout. Shadow runs the new model in parallel with predictions logged and zero user impact. Canary graduates traffic in steps with rollback criteria declared before rollout — roll back when a canary metric breaches its bound. Run an A/B test only when the business effect needs causal proof, with sticky assignment.
 
-This sequence exists to minimize production risk on every model update — skipping a stage (e.g. going straight from shadow to full) reintroduces the risk the sequence was built to remove.
+Batch: backtest on historical windows, then parallel run alongside the incumbent, then switch. Switch only after the parallel run matches the backtest within the pre-declared tolerance.
+
+Skipping shadow or canary (online) or backtest or parallel run (batch) reintroduces the risk the sequence was built to remove.
 
 ### Retraining triggers
 
 Retrain on any of these signals, not on a schedule alone:
 
 - **Scheduled** — daily or weekly, as a baseline cadence.
-- **Performance degradation** — e.g. an accuracy drop greater than 2%.
-- **Data-distribution shift** — e.g. KL-divergence between recent and training-time feature distributions exceeding a set threshold.
+- **Performance degradation** — the business metric from Part A moves beyond the cost bound agreed there, not a fixed percentage.
+- **Data-distribution shift** — PSI above 0.25 signals major shift, above 0.1 minor shift; investigate major shifts and monitor minor ones. Use a proxy metric such as prediction distribution or feature means when labels arrive late.
 - **Business event** — a product launch, a seasonal change, or another event known to shift the underlying data-generating process.
 
 ## Common pitfalls
