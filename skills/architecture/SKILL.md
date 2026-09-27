@@ -3,8 +3,8 @@ name: architecture
 category: architecture
 activation: router
 environments: coding
-description: "Use for any question about how software should be structured or whether its structure is sound: organizing a codebase or project (monolith vs microservices, layered/hexagonal/clean, modules, folders), service boundaries and communication, domain modeling (DDD), system diagrams (C4), decision records (ADRs), coupling/cohesion review, architecture checks in CI. Routes to a sub-skill."
-when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, which modules or folders, is this design sound, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain."
+description: "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, ADRs, coupling/cohesion analysis, CI architecture rules, and SQL schemas as stable consumer interfaces."
+when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors."
 ---
 
 # Architecture & design
@@ -16,15 +16,16 @@ one. Do not answer an architecture or design question from this file alone.
 ## How to use
 
 1. Match the request to a row in the table below.
-2. **Read that sub-skill's `SKILL.md` before acting.** Open the file at the
-   path in the last column (relative to this router's directory) with your
-   file-reading tool. The sub-skills are *not* registered skills of their own:
-   invoking one by name (for example `architecture:ddd`) fails with "unknown
-   skill" and wastes a turn. Read the file instead; it carries the real
-   workflow, references, and scripts — this router only points the way.
-3. If two rows seem to apply, read both; if none fit, use your general knowledge
-   and say the catalogue had no dedicated sub-skill. Plain table/index design
-   has no member — answer directly and say so.
+2. **Read that sub-skill's `SKILL.md` before acting.** The sub-skills are
+   files; open `members/<name>/SKILL.md` relative to this file's directory.
+   If your agent also lists them as skills, still route through this table.
+   The file carries the real workflow, references, and scripts — this router
+   only points the way.
+3. If two rows seem to apply, apply the tie-break below and read the default
+   member; read a second member only if the first points to it. If none fit,
+   use your general knowledge and say the catalogue had no dedicated
+   sub-skill. Plain table/index design has no member — answer directly and
+   say so.
 
 The sub-skills are nested under this router's `members/` directory, so they load
 only when routed to (progressive disclosure) rather than each competing for the
@@ -45,3 +46,16 @@ model's trigger surface.
 
 The table above is generated from `skills.json` by
 `scripts/build_routers.py`; edit the manifest, not this region.
+
+## Tie-breaks
+
+When more than one row matches, route to exactly one default member:
+
+- Split into services or organize code → `architecture-pattern-advisor`
+- Where domain boundaries lie → `ddd`
+- Components of a new system or feature → `logical-component-design`
+- How services talk to each other → `microservices-design`
+- Measure existing code for coupling or cohesion → `coupling-cohesion`
+- Enforce a rule in CI so the design cannot erode → `fitness-functions`
+- Two services share a database → `microservices-design`
+- Where to start refactoring an unfamiliar codebase → the top-level `refactoring` skill, outside this router
