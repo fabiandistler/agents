@@ -119,7 +119,10 @@ this. Three reasons:
    hard to maintain, test, and deploy, and thus unreliable.
 
 **Red-flag suffixes** that signal the trap: **Manager, Supervisor, Controller,
-Handler, Engine, Processor.**
+Handler, Engine, Processor.** A name passes when its role statement names one
+job — changing the suffix alone is not a fix; the suffixes are only a prompt
+to write the role statement. `Inventory Management` passes because its role
+names a single responsibility: stock levels.
 
 **Escape hatch:** if a system genuinely is just CRUD (create/read/update/delete)
 over entities with no real business logic, it doesn't need an architecture — use
@@ -354,7 +357,8 @@ current loop, not a final artifact.
 
 ## Entity-Trap check
 - Any component named *Manager / Handler / Processor / Engine / Controller /
-  Supervisor? Rename to a role, or split.  [ ] clear
+  Supervisor? Write its role statement: if it names one job the name stands,
+  otherwise rename to a role or split. A suffix change alone is not a fix.  [ ] clear
 
 ## Cohesion pass (roles & responsibilities)
 - Any role statement leaning on and / also / as well as / in addition / commas?
