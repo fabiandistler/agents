@@ -86,6 +86,7 @@ decision path).
 - **architecture-pattern-advisor** — once bounded contexts are identified, use this skill for the topology decision (monolith vs. modular monolith vs. microservices) and code-organization pattern; bounded contexts are the natural seams, but the topology call is out of scope here.
 - **coupling-cohesion** — to judge whether a specific cross-context dependency is acceptable as designed (integration strength × distance × volatility), e.g. before accepting a conformist relationship or a shared kernel; and because Aggregates are, among other things, a cohesion boundary.
 - **adr-workflow** — record the subdomain classification and the chosen context-mapping / implementation pattern as an ADR when the decision is significant or likely to be revisited.
+- **logical-component-design** — to decompose a bounded context into named logical components; aggregates live inside components and bounded contexts group components.
 
 ## Source
 
