@@ -65,7 +65,8 @@ C4 is notation-independent (it is *not* UML), but c4model.com recommends:
 - **No unexplained acronyms/abbreviations.** Diagrams travel further than
   their narrator.
 - **Shape and color are a supplement, not a code.** The diagram must survive
-  black-and-white printing; if color carries meaning, add a legend/key.
+  black-and-white printing; every diagram carries a key/legend explaining
+  shapes, colors, line styles, and arrows.
 - **Consistency across diagrams**: the same element keeps the same name,
   color, and shape everywhere; boundaries (system/container) drawn the same
   way on every level.
@@ -89,7 +90,7 @@ Adapted from c4model.com's review checklist. Run it on every finished diagram:
 7. Does every **relationship** have a label describing its purpose?
 8. Are relationship **technologies/protocols** shown where they matter?
 9. Is every line **unidirectional** with a clear primary direction?
-10. If **color or shape** carries meaning, is there a key/legend?
+10. Is there a key/legend explaining shapes, colors, line styles, and arrows?
 11. Is the **notation consistent** with the other diagrams of the model?
 12. Would the diagram **make sense standalone**, without verbal explanation?
 13. Are there **≤ ~20 elements**, and only elements of one abstraction level
