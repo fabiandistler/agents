@@ -119,6 +119,13 @@ and the developers understand the behaviors more deeply. Fold the results back
 into step 1 and go around again. Stopping "because the diagram is done" is the
 mistake; the loop is the method.
 
+**Pass complete when:** every story is assigned to a component; each role
+statement is one sentence and passes the conjunction test; no component has
+an entity-only or red-flag name; temporal couplings are listed; the top-3
+driving characteristics have been reviewed. After any split or merge,
+re-run these checks on the changed components. End the pass when all checks
+pass and record any open questions under "Next iteration" in the output.
+
 ## Refinement lens: coupling
 
 Once a candidate set of components exists, examine how they depend on each other
@@ -165,7 +172,7 @@ Approach: <Workflow | Actor/Action> — <one-line why>
 | ...       | (single-sentence role, passes the conjunction test) | ... | .. | ... |
 
 Characteristics reviewed: <which -ilities drove any split>
-Next iteration / open questions: <what to revisit as requirements firm up>
+Next iteration / open questions: <unmet checks from above + what to revisit as requirements firm up>
 ```
 
 ## Common mistakes

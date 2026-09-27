@@ -373,6 +373,14 @@ current loop, not a final artifact.
 - Driving characteristics: <scalability / reliability / availability / ...>
 - Splits they force: <component> → <...> because <characteristic mismatch>
 
+## Pass-complete checklist
+- Every story assigned to a component  [ ] pass
+- Each role statement one sentence, passes the conjunction test  [ ] pass
+- No entity-only or red-flag names  [ ] pass
+- Temporal couplings listed  [ ] pass
+- Top-3 driving characteristics reviewed  [ ] pass
+- After any split or merge, re-ran the checks on the changed components  [ ] pass
+
 ## Next iteration / open questions
-- <requirements still to uncover, decisions to revisit>
+- <unmet checks from above + requirements still to uncover, decisions to revisit>
 ```
