@@ -208,13 +208,15 @@ State the level you chose in the report; it frames everything else.
 Extract directed edges where `A → B` means "A depends on B". Use the ecosystem's
 own tool rather than hand-tracing:
 
-| Ecosystem | Tools for the dependency graph |
-|---|---|
-| Python | `pydeps`, `import-linter`, `grimp` |
-| JS / TS | `dependency-cruiser`, `madge` |
-| Java / JVM | JDepend, ArchUnit, `jdeps` |
-| .NET | NDepend, `dotnet` analyzers |
-| Go | `go list -deps`, `goda` |
+| Ecosystem | Tools for the dependency graph | Native metrics? |
+|---|---|---|
+| Python | `grimp`, `import-linter`, `tach`, `pydeps` | — |
+| JS / TS | `dependency-cruiser --metrics`, `madge` | dependency-cruiser: Ca, Ce, I |
+| Java / JVM | ArchUnit `ComponentDependencyMetrics`, `jdeps` | ArchUnit: Ca, Ce, I, A, D |
+| .NET | NDepend | Ca, Ce, I, A, D |
+| Go | `go list -deps`, `goda` | — |
+
+If the tool emits Ca/Ce/I, use it; the script adds A/D and uniform output.
 
 Normalize the output into the script's JSON input (see
 `scripts/coupling_metrics.example.json`): a list of `components` and a list of
