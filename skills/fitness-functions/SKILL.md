@@ -121,6 +121,13 @@ checks run continuously against live systems. Once wired in, the architect can
 "stop worrying about trigger-happy developers accidentally introducing cycles"
 — accidental lapses are caught mechanically, which is the entire point.
 
+When a coding agent works in the repo, the checks double as its deterministic
+feedback loop: run them in pre-commit and in the test command the agent
+invokes, so violations surface before the agent declares the task done.
+Failure messages must name the rule, the violating edge, and the allowed
+alternative, so the agent can fix the violation without asking. Reference the
+rule and its fix command from the repo's agent instruction file.
+
 ### 5. Get developer buy-in and anticipate gaming
 
 Two social rules the chapter is emphatic about:
@@ -146,7 +153,7 @@ Characteristic: <what is being governed and why it matters here>
 Mechanism:      <structural test | metric threshold | monitor | chaos>
 Check:          <the actual code / config, in the project's ecosystem>
 Trigger:        <where it runs — test suite, CI stage, production schedule>
-On failure:     <what a developer sees and what they should do about it>
+On failure:     <the message naming the rule, the violating edge, the allowed alternative, and how to fix it>
 ```
 
 Keep it proportional: one eroding rule needs one fitness function, not a
