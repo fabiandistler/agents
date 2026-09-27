@@ -220,28 +220,14 @@ opt-out — lost trust costs more than the data is worth.
 
 ### Baseline checklist before calling anything deployment-worthy
 
-Independent of the metric families above, compare a model against five
-baseline types before considering it fit to deploy — this guards against "a
-good model with good metrics that is still not good enough":
-
-1. **Random baseline** — random predictions (the floor).
-2. **Simple heuristic** — a domain rule (e.g. "spam if >5 links").
-3. **Zero-rule baseline** — always predict the most frequent class.
-4. **Human baseline** — expert human performance on the same task.
-5. **Existing solution** — whatever system is currently in production.
-
-The model must clearly beat the random, simple-heuristic, and zero-rule
-baselines, and beat the existing production solution if one exists. The human
-baseline is a reference ceiling rather than a pass/fail gate: measure the gap
-to expert performance and decide whether that gap is acceptable for the use
-case.
+For classifiers, use the five-baseline gate in `ml-project-lifecycle` Part A. For generative apps, compare against these four instead: the current prompt and model version as the regression baseline, the strongest available model as the ceiling, a simple non-LLM heuristic or template, and a human expert. Ship only when the candidate beats the regression baseline and the heuristic, and the gap to the ceiling and the expert is acceptable for the use case.
 
 ## Applying the three parts together
 
 The parts compose: Part A decides *what adaptation to apply* when output
 quality is the problem. Part B decides *what to build next* when the
 application's surrounding system is the problem — and its step 1 (Enhance
-Context) is exactly where basic/advanced RAG from Part A gets implemented
+and minimize context) is exactly where retrieval from Part A gets implemented
 in practice; context construction is the same discipline as feature
 engineering was for classical ML, just with retrieved information standing
 in for engineered columns. Part C decides *how to know* whether either
@@ -264,5 +250,5 @@ back into Part A's diagnosis step.
   and ignoring the richer, continuous implicit signals.
 - Writing generic metrics before reading traces — run error analysis first,
   then encode persistent failures as checks or judges.
-- Declaring a model deployment-worthy without checking it against all five
-  baseline types.
+- Declaring a generative app deployment-worthy without checking it against the
+  regression baseline, strongest-model ceiling, heuristic, and human expert.
