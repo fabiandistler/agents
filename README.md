@@ -136,7 +136,7 @@ still listed here.
 
 | Skill | When to use |
 |---|---|
-| `skills/natural-planning/` | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
+| `skills/natural-planning/` | Plans one multi-step project with GTD's Natural Planning Model when stuck, vague or overwhelming; no inbox triage, no daily-task picks. |
 | `skills/oss-scouting/` | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
 | `skills/poc-spec-loop/` | Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request. |
 | `skills/prek-hooks/` | Setting up prek Git hooks in Python/R repos — detecting the project type and assembling a pinned pre-commit config from fragments. |
