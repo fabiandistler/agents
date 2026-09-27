@@ -40,6 +40,8 @@ job.
 5. **Invent nothing.** Unclear cause → mark it open, don't fill it in
    plausibly. No policy statement found → "no explicit policy found", not
    "allowed".
+6. **No sign-off by the agent.** Drafts never contain `Signed-off-by` or a
+   CLA acceptance; the user adds them under their own name on submission.
 
 ## Procedure
 
@@ -106,7 +108,7 @@ Summarize in README.md as a table:
 |---|---|---|
 | AI-assisted contributions | allowed / allowed with disclosure / rejected / no explicit policy | file/URL |
 | Who may open PRs | open / issue-approved-only / vouched-only / collaborators-only / closed | file/URL |
-| Disclosure wording | quote, if required | |
+| Disclosure format and wording | trailer / PR-template field / free text; quote exact wording | |
 | DCO / CLA | sign-off needed? CLA bot? | |
 | Tests | framework, mandatory?, how to invoke | |
 | NEWS/changelog | entry required? format? | |
@@ -205,15 +207,18 @@ their own work.
 - [ ] Lint/format gate: <command>
 - [ ] NEWS/changelog entry: <required yes/no, format>
 - [ ] Issue reference in the PR: <"Closes #nr" or project convention>
-- [ ] DCO sign-off / CLA: <yes/no, how>
-- [ ] AI disclosure: <required yes/no; proposed wording, if yes>
+- [ ] DCO sign-off / CLA: <left for the user on submission, never in drafts>
+- [ ] AI disclosure in the recorded format: <e.g. `Assisted-by: <agent>:<model> [tools]` trailer>
 - [ ] PR template fields: <list>
 - [ ] Scope: this fix only, no side changes
 ```
 
-Proposed disclosure wording, where required or customary: honest, short,
-responsibility with the user — "Analysis and draft assisted by an AI tool; I
-reproduced, reviewed and tested the change myself."
+Where the project requires disclosure, fill the recorded format exactly. For
+a trailer project use e.g. `Assisted-by: <agent>:<model> [tools]`; for a
+PR-template field or free-text project use that field or an honest short
+sentence with responsibility on the user — "Analysis and draft assisted by an
+AI tool; I reproduced, reviewed and tested the change myself." Drafts never
+carry `Signed-off-by` or a CLA acceptance; the user adds them.
 
 ### 6 Wrap-up
 
