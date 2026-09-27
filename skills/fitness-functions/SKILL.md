@@ -102,6 +102,16 @@ deliberate violation without committing, watch the check go red, then revert.
 If the rule can't be stated as code, it isn't
 a fitness function yet — sharpen the rule first.
 
+#### Baseline first on an existing codebase
+
+A new rule on legacy code fails on day one, and a check that is red on day
+one gets disabled. Start from the current metric value instead of an ideal
+threshold: freeze the existing violations, fail only on new ones, and track
+the baseline size as a metric that must not grow. Ratchet the baseline
+tighter as violations are fixed; never impose a big-bang threshold the
+codebase cannot meet yet. Per-ecosystem baseline mechanics are listed in
+[references/tooling-catalog.md](references/tooling-catalog.md).
+
 ### 4. Wire it into the pipeline
 
 A fitness function that isn't executed automatically is documentation.
@@ -110,6 +120,13 @@ in the same place with their threshold committed next to the code; production
 checks run continuously against live systems. Once wired in, the architect can
 "stop worrying about trigger-happy developers accidentally introducing cycles"
 — accidental lapses are caught mechanically, which is the entire point.
+
+When a coding agent works in the repo, the checks double as its deterministic
+feedback loop: run them in pre-commit and in the test command the agent
+invokes, so violations surface before the agent declares the task done.
+Failure messages must name the rule, the violating edge, and the allowed
+alternative, so the agent can fix the violation without asking. Reference the
+rule and its fix command from the repo's agent instruction file.
 
 ### 5. Get developer buy-in and anticipate gaming
 
@@ -136,7 +153,7 @@ Characteristic: <what is being governed and why it matters here>
 Mechanism:      <structural test | metric threshold | monitor | chaos>
 Check:          <the actual code / config, in the project's ecosystem>
 Trigger:        <where it runs — test suite, CI stage, production schedule>
-On failure:     <what a developer sees and what they should do about it>
+On failure:     <the message naming the rule, the violating edge, the allowed alternative, and how to fix it>
 ```
 
 Keep it proportional: one eroding rule needs one fitness function, not a
