@@ -42,13 +42,24 @@ not tool-as-interface design._
 - **In production, prefer pre-built, tested tools over agent-generated
   per-invocation code** (no repeatability); any model-generated tool code gets
   human review before entering CI/CD. (Ch. 4)
+- **Namespace tools by domain so names never collide across groups.**
+  - ✅ `orders_cancel`, `users_get_profile`
+  - ❌ `cancel`, `get`   ← likely-default
+- **Return token-efficient responses by default: paginate lists, accept filters, truncate with a default limit.**
+  - ✅ `list_orders(limit=20, status="open") -> page plus next cursor`
+  - ❌ `list_orders() -> all 10,000 rows`   ← likely-default
+- **Return high-signal values, not raw IDs — resolve names the agent can act on.**
+  - ✅ `{"id": 42, "customer": "Acme GmbH", "status": "open"}`
+  - ❌ `{"id": 42, "cid": 7, "s": 1}`   ← likely-default
+- **Return actionable errors naming what failed and what to try next.**
+  - ✅ `order 42 not found in open orders; check status or create it`
+  - ❌ `error 400`   ← likely-default
+- **Iterate tools from evals: every tool addition or rename ships with eval cases asserting correct selection and parameters.** (Ch. 9)
 
 ## Orchestration & Context
 
-- **Default to semantic tool selection (embed descriptions, retrieve top-k from
-  a vector index) once the toolset grows;** use two-stage hierarchical selection
-  only for large, semantically similar toolsets (it costs latency); plain
-  in-prompt selection is fine for small toolsets. (Ch. 5)
+- **Prefer provider-native tool search and deferred loading once the toolset grows;** fall back to DIY embedding top-k selection only where native search is unavailable; plain
+  in-prompt selection is fine for small toolsets.
 - **Choose the simplest topology that meets the requirement, in order: single
   tool → parallel → chain → graph.** Adopt a graph only when you must both
   branch *and* consolidate results. (Ch. 5)
