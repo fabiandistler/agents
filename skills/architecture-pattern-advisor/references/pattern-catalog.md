@@ -36,9 +36,11 @@ Many small independently deployable services, each owning its data, communicatin
 Stateless functions run on demand by a managed platform; scale to zero.
 
 - **Pros:** no server management; pay-per-use; auto-scaling; great for spiky/event-triggered work.
-- **Cons:** cold starts; vendor lock-in; local testing/debugging harder; execution time hard-capped by platform (e.g. 15 min on AWS Lambda, ~9 min on Google Cloud Functions 1st gen); payload/response size limits (e.g. ~6 MB synchronous on Lambda); concurrency throttling under bursty load.
+- **Cons:** cold starts; vendor lock-in; local testing/debugging harder; a hard execution cap per invocation; payload and response size limits; concurrency throttling under bursty load.
 - **Fits:** event-driven glue, scheduled jobs, spiky stateless workloads, webhooks.
-- **Avoid:** steady high-throughput services, long-lived connections, heavy stateful processing.
+- **Avoid:** steady high-throughput on per-invocation pricing, long-lived connections, unless the platform offers durable or managed-instance modes.
+
+> Platform limits (checked 2026-09): AWS Lambda caps a single invocation at 15 minutes; Cloud Run functions (the renamed Cloud Functions, 2nd gen) allow up to 60 minutes for HTTP functions; Lambda synchronous payloads stay small while response streaming reaches up to 200 MB; Lambda Durable Functions support checkpointed workflows lasting up to 1 year; Lambda Managed Instances target steady high-volume traffic. Recheck before deciding, these numbers move.
 
 > **Note:** Event-Driven (see Advanced section below) is a *communication style* that overlays any topology, not a topology itself — a monolith, microservices deployment, or serverless cluster can all be event-driven internally.
 
