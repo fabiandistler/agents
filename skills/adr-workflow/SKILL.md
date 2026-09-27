@@ -103,6 +103,7 @@ If the team wants a lighter format, keep the same essentials: title, status, con
 5. Explain the rule for when an ADR is required and when it is unnecessary.
 6. Link older ADRs from the index instead of creating duplicate records.
 7. Backfill only the 3-5 decisions people keep re-asking about, as Accepted with their original date.
+8. Add one line to the agent instruction file: read the relevant ADRs in `docs/adr/` before architectural changes.
 
 ## Workflow for drafting a new ADR
 
@@ -122,6 +123,14 @@ When the user wants a specific decision recorded, draft the ADR in repo-appropri
 - Create a new ADR that references the earlier one.
 - Mark the old ADR as `Superseded` or `Deprecated`.
 - Explain what changed in the environment or understanding that justified the new decision.
+
+## Keeping ADRs useful to agents
+
+Before changing code in an area, list `docs/adr/` and read the Accepted ADRs whose title or scope matches the change.
+
+- If the change contradicts an Accepted ADR, stop and propose a superseding ADR instead of proceeding.
+- Add optional frontmatter for retrieval: `status`, `date`, `scope` (paths or modules), and `tags`.
+- Record a "revisit when" trigger under Consequences so future work knows when to reconsider the decision.
 
 ## Response style
 
