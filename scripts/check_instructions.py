@@ -7,7 +7,8 @@ Run from repo root:
 install.sh --instructions composes these fragments into the managed block in
 each agent's global instruction file. Composition is plain concatenation in
 filename order, so most mistakes never surface as a broken render — a typo in
-`targets:` silently drops a rule from an agent instead of failing loudly, and
+`targets:` silently drops a rule from an agent instead of failing loudly, a
+malformed `paths:` glob makes Claude load a path-scoped rule everywhere, and
 two fragments sharing a numeric prefix reorder on any filesystem whose glob
 order differs. This check is where those become errors.
 
@@ -58,6 +59,22 @@ def check_targets(value: str) -> list[str]:
     return errors
 
 
+def check_paths(value: str) -> list[str]:
+    globs = [g.strip() for g in value.split(",")]
+    if not any(globs):
+        return ["'paths' is empty (omit the field to load the fragment always)"]
+    errors = []
+    if any(not g for g in globs):
+        errors.append("'paths' has an empty entry (stray comma)")
+    # install.sh writes each glob inside a double-quoted YAML string; a quote
+    # or backslash would break that frontmatter, and Claude then loads the rule
+    # unconditionally instead of failing.
+    bad = [g for g in globs if '"' in g or "\\" in g]
+    if bad:
+        errors.append(f"'paths' glob(s) {', '.join(bad)} contain a quote or backslash")
+    return errors
+
+
 def main() -> int:
     if not INSTRUCTIONS_DIR.is_dir():
         sys.stderr.write(f"missing directory: {INSTRUCTIONS_DIR}\n")
@@ -97,6 +114,9 @@ def main() -> int:
         targets = fields.get("targets")
         if targets:
             errors.extend(f"{name}: {e}" for e in check_targets(targets))
+
+        if "paths" in fields:
+            errors.extend(f"{name}: {e}" for e in check_paths(fields["paths"]))
 
         if not body.strip():
             errors.append(f"{name}: body is empty; the fragment would render nothing")

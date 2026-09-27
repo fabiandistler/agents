@@ -73,6 +73,15 @@ what each agent reads; the content is one AGENTS.md-style document either way.
 A fragment may limit itself to some agents with a `targets:` frontmatter field,
 exactly as a skill does.
 
+A fragment with a `paths:` field (comma-separated globs, e.g.
+`paths: **/*.R, **/DESCRIPTION`) leaves Claude's block and is written as a
+[path-scoped rule](https://code.claude.com/docs/en/memory#path-specific-rules)
+to `~/.claude/rules/agents-<fragment>.md`, which Claude Code loads only once it
+reads a matching file. Codex and opencode have no equivalent and keep the
+fragment in their block. Rule files without the `managed-by:` line are never
+touched. The catch: nothing loads before the first matching read, so a rule that
+must hold while *creating* the first such file does not belong behind `paths:`.
+
 Anything outside the markers is left alone, so hand-written notes and
 `@`-imports survive install, reinstall, and uninstall. Unbalanced markers (from
 a hand edit) make the installer skip the file rather than guess.
