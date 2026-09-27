@@ -65,6 +65,9 @@
 # (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.config/opencode/AGENTS.md), as
 # one marker-delimited managed block. Fragments are ordered by their numeric filename prefix and may limit
 # themselves to some agents with a `targets:` frontmatter field, as skills do.
+# For claude, a fragment with a `paths:` field (comma-separated globs) goes to
+# ~/.claude/rules/agents-<fragment>.md instead and loads only when Claude reads
+# a matching file; codex and opencode keep it in their block.
 # Anything outside the markers is left untouched, so hand-written notes and
 # @-imports survive; --uninstall strips the block and nothing else. opencode
 # gets its own ~/.config/opencode/AGENTS.md: it reads ~/.claude/CLAUDE.md only
@@ -700,12 +703,24 @@ fragment_matches_target() {
   return 1
 }
 
-# Fragment paths for a target, in filename order.
+# True if a fragment goes to Claude as a path-scoped rule instead of into the
+# block: it has a `paths:` field and the target is claude. Claude Code loads a
+# rule with `paths:` only once it reads a matching file; codex and opencode have
+# no equivalent, so they keep the fragment in their block.
+fragment_is_claude_rule() {
+  local file="$1" want="$2" paths
+  [[ "$want" == "claude" ]] || return 1
+  paths="$(instruction_field "$file" paths)"
+  [[ -n "${paths//[[:space:]]/}" ]]
+}
+
+# Fragment paths for a target's block, in filename order.
 list_instruction_fragments() {
   local want="$1" file
   for file in "$(instructions_dir)"/*.md; do
     [[ -f "$file" ]] || continue
     fragment_matches_target "$file" "$want" || continue
+    fragment_is_claude_rule "$file" "$want" && continue
     printf '%s\n' "$file"
   done
 }
@@ -822,6 +837,100 @@ install_instructions() {
   ensure_parent "${dest%/*}"
   write_text_file "$dest" "$after"
   printf '  updated   %s (%s instruction fragments)\n' "$dest" "$count"
+}
+
+# --- Path-scoped Claude rules ------------------------------------------------
+#
+# A fragment with `paths:` (comma-separated globs) goes to Claude as its own
+# ~/.claude/rules/agents-<fragment>.md with `paths:` frontmatter, so it enters
+# context only when Claude reads a matching file. The globs are written as a
+# quoted YAML list: a bare `**/*.R` would parse as a YAML alias, and Claude
+# loads a rule whose frontmatter does not parse unconditionally. The
+# `managed-by:` line (ignored by Claude) marks the files this script owns;
+# rules without it are never touched.
+
+claude_rules_dir() { printf '%s/.claude/rules' "$HOME"; }
+
+claude_rule_marker() { printf 'managed-by: fabiandistler/agents install.sh'; }
+
+claude_rule_dest() {
+  local name="${1##*/}"
+  printf '%s/agents-%s' "$(claude_rules_dir)" "$name"
+}
+
+render_claude_rule() {
+  local file="$1" paths glob globs
+  paths="$(instruction_field "$file" paths)"
+  printf -- '---\npaths:\n'
+  # read -a, not an unquoted for-loop: the globs must not expand against $PWD.
+  IFS=',' read -ra globs <<< "$paths"
+  for glob in "${globs[@]}"; do
+    glob="${glob#"${glob%%[![:space:]]*}"}"
+    glob="${glob%"${glob##*[![:space:]]}"}"
+    [[ -n "$glob" ]] && printf '  - "%s"\n' "$glob"
+  done
+  printf '%s\n---\n\n' "$(claude_rule_marker)"
+  fragment_body "$file"
+}
+
+# Our rule files currently on disk, one path per line.
+list_managed_claude_rules() {
+  local file
+  for file in "$(claude_rules_dir)"/agents-*.md; do
+    [[ -f "$file" ]] || continue
+    grep -qxF "$(claude_rule_marker)" "$file" && printf '%s\n' "$file"
+  done
+}
+
+remove_claude_rule() {
+  if (( DRY_RUN )); then
+    printf '[dry-run] remove rule %s\n' "$1"
+    return 0
+  fi
+  rm "$1"
+  printf '  removed   %s\n' "$1"
+}
+
+# Write every path-scoped fragment as a rule file and drop managed rule files
+# whose fragment is gone or lost its `paths:`. A foreign file already at a
+# destination is left alone with a warning.
+install_claude_rules() {
+  local file dest content wanted=""
+  for file in "$(instructions_dir)"/*.md; do
+    [[ -f "$file" ]] || continue
+    fragment_matches_target "$file" claude || continue
+    fragment_is_claude_rule "$file" claude || continue
+    dest="$(claude_rule_dest "$file")"
+    wanted+="$dest"$'\n'
+    content="$(render_claude_rule "$file")"
+    if [[ -f "$dest" ]] && ! grep -qxF "$(claude_rule_marker)" "$dest"; then
+      printf '  WARN      %s exists and is not managed by install.sh (leaving it untouched)\n' \
+        "$dest" >&2
+      continue
+    fi
+    if [[ -f "$dest" && "$(cat "$dest")" == "$content" ]]; then
+      printf '  ok        %s\n' "$dest"
+      continue
+    fi
+    if (( DRY_RUN )); then
+      printf '[dry-run] write rule %s\n' "$dest"
+      continue
+    fi
+    ensure_parent "$(claude_rules_dir)"
+    write_text_file "$dest" "$content"
+    printf '  updated   %s\n' "$dest"
+  done
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    grep -qxF "$file" <<< "$wanted" || remove_claude_rule "$file"
+  done < <(list_managed_claude_rules)
+}
+
+remove_claude_rules() {
+  local file
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && remove_claude_rule "$file"
+  done < <(list_managed_claude_rules)
 }
 
 # Strip our instructions block from a target's file, leaving the rest.
@@ -1033,8 +1142,10 @@ main() {
     if (( INSTRUCTIONS )); then
       if (( UNINSTALL )); then
         remove_instructions "$target"
+        if [[ "$target" == "claude" ]]; then remove_claude_rules; fi
       else
         install_instructions "$target"
+        if [[ "$target" == "claude" ]]; then install_claude_rules; fi
       fi
     fi
   done < <(resolve_targets)
