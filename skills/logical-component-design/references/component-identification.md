@@ -225,7 +225,9 @@ a component's size.
   differing characteristics argue for splitting them.
 
 This step assumes you already know which architecture characteristics matter most
-to the system — determine those first, then run this pass.
+to the system — ask the user for the top 3, or take them from an existing ADR
+or architecture-pattern-advisor's trade-off analysis, then run this pass. Do
+not assume them.
 
 ---
 
