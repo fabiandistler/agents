@@ -35,7 +35,7 @@ It decides how a deliverable is rendered. What goes *in* the deliverable is ofte
 
 - Weekly/monthly leadership status, launch announcements, risk escalations → `stakeholder-update`.
 - Standup prep or a status update assembled from recent repo activity → `repo-status`.
-- The internal structure of a technical explanation (problem before solution) → `problem-first-explanation`.
+- The internal structure of a technical explanation (problem before solution) → the explanations instruction (`instructions/65-explanations.md`).
 
 ## When to stay in markdown
 

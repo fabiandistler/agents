@@ -29,8 +29,9 @@ Do **not** use for:
 - **Rules files for coding agents** (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`) —
   those are distilled constraints, not documentation, and out of scope here.
 - **The shape of an explanatory passage** — when a section has to explain a
-  concept, `problem-first-explanation` governs its structure (problem before
-  solution). It composes with this skill rather than replacing it.
+  concept, the explanations instruction (`instructions/65-explanations.md`)
+  governs its structure (problem before solution). It composes with this skill
+  rather than replacing it.
 
 ## Workflow
 
