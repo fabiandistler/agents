@@ -300,7 +300,10 @@ across the boundary (**integration strength**), how far apart the coupled
 components live (**distance**), and how likely that shared knowledge is to
 change (**volatility**). The model is Vlad Khononov's Balanced Coupling, from
 *Balancing Coupling in Software Design* (Addison-Wesley, 2024) and
-[coupling.dev](https://coupling.dev). Its core rule:
+[coupling.dev](https://coupling.dev). The author also publishes it as the
+`balanced-coupling` skill in the
+[vladikk/modularity](https://github.com/vladikk/modularity) plugin
+(CC BY-NC-SA 4.0), with the same four strength levels and balance rule. Its core rule:
 
 ```
 MODULARITY = STRENGTH XOR DISTANCE
@@ -326,7 +329,7 @@ Fixes per imbalance live in [references/rebalancing.md](references/rebalancing.m
 
 ## Balanced-coupling workflow
 
-The model is fractal: the same steps apply between methods, classes, packages,
+The model is fractal: the same steps apply between methods, objects, packages,
 services, or whole systems. Hold the level constant within one assessment.
 
 ### 1. List the dependencies to assess
@@ -357,9 +360,8 @@ connascence scales map onto them, are in the reference.
 
 ### 3. Assess distance
 
-Place the pair on the distance ladder: same function → same class/file → same
-package → same component/library → same service → different systems owned by
-different teams. Distance is socio-technical: a team boundary adds distance
+Place the pair on the distance ladder: methods → objects → packages →
+services → systems. Distance is socio-technical: a team boundary adds distance
 even between services in one repo, and asynchronous integration adds lifecycle
 slack. Greater distance makes each coordinated change cost more.
 

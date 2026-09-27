@@ -26,8 +26,8 @@ Accepted values (aliases for high/low are reduced as shown):
 
     strength:   intrusive | functional | model  -> high
                 contract                        -> low
-    distance:   function | class | package      -> low
-                component | service | system    -> high
+    distance:   method | object | package        -> low
+                service | system                 -> high
     volatility: core                            -> high
                 generic | supporting            -> low
 
@@ -73,10 +73,9 @@ STRENGTH = {
 }
 
 DISTANCE = {
-    "function": False,
-    "class": False,
+    "method": False,
+    "object": False,
     "package": False,
-    "component": True,
     "service": True,
     "system": True,
     "high": True,
