@@ -109,6 +109,34 @@ DESCRIPTION
 NAMESPACE
 ```
 
+### Vertical Slice
+Group code by use case: one folder per request with its handler, validation, and data access, sharing only genuinely cross-cutting infrastructure.
+
+- **Pros:** a change touches one folder; small context window per change, which suits agent-assisted development; no cross-feature merge contention.
+- **Cons:** duplication across slices; weak home for shared domain rules; shared logic drifts unless actively consolidated.
+- **Fits:** request-driven apps with many independent use cases (web APIs, CRUD-heavy services).
+- **Avoid:** rich shared domain models where one rule spans many use cases.
+
+```
+app/                        # Python — vertical slices
+  features/
+    place_order/
+      route.py              # HTTP endpoint for this use case
+      handler.py            # orchestration for this use case only
+      repository.py         # data access for this use case only
+    cancel_order/
+      route.py
+      handler.py
+      repository.py
+  shared/                   # genuinely cross-cutting helpers only
+  core/                     # config, db engine/session, logging
+  main.py
+tests/
+  features/
+    test_place_order.py
+    test_cancel_order.py
+```
+
 ### Ports & Adapters (Hexagonal)
 A framework-agnostic core defines **ports** (interfaces); **adapters** implement them for specific tech (DB, HTTP, queues). Dependencies point inward.
 

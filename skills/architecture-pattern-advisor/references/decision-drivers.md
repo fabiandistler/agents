@@ -15,6 +15,7 @@ The diagnostic questions for step 2, plus how answers map to candidate patterns.
 | 7 | Testability & external integrations | Few/stable · several swappable (DB, payment, 3rd-party APIs) · must mock heavily |
 | 8 | Expected lifetime & change rate | Throwaway/short · long-lived, steady · long-lived, fast-evolving |
 | 9 | Operational maturity | No CI/CD or on-call · CI/CD in place · full observability + on-call |
+| 10 | Coding agents make most changes | Agent-written changes dominate · mixed · human-written dominates |
 
 ## For an existing repo: what to inspect (read-only)
 
@@ -51,5 +52,6 @@ Default when unsure: **modular monolith** — monolith simplicity with seams to 
 | Multiple teams owning distinct features | By-domain / package-by-feature | Shared technical layers (merge contention) |
 | Framework-centric, conventions matter (e.g. Django, Shiny) | Layered following framework convention | Fighting the framework with heavy hexagonal layers |
 | Need strict dependency-inversion / testable core | Clean / Onion, Hexagonal | Layered with logic in controllers |
+| Coding agents make most changes | By-domain / Vertical Slice with enforced module contracts and a short per-module README or AGENTS.md | Deep Clean/Onion layering that spreads one change across many directories |
 
 Common sweet spot for a long-lived service: **by-domain modules with hexagonal boundaries**, inside a modular monolith.
