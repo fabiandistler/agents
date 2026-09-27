@@ -57,8 +57,10 @@
 - **Model any multi-service business process as an explicit saga with compensating transactions.** You get no cross-service ACID atomicity; compensations are *semantic* rollbacks (you can't un-send an email — send a correcting one). (ch6)
 - **Order saga steps so the most-likely-to-fail steps run first,** so fewer already-committed steps need compensating. (ch6)
 - **Use sagas to recover from *business* failures only** (e.g. insufficient funds); handle *technical* failures (timeouts, 5xx) with the resiliency patterns below. (ch6)
-- **Choose orchestration when one team owns the whole flow; choose choreography when multiple teams are involved.** (ch6)
-- **Thread a single correlation ID through every call and event in a workflow** — mandatory for choreographed sagas to reconstruct state. (ch6)
+- **Run an orchestrated saga on a durable-execution engine (Temporal, Restate, or DBOS if Postgres-only with no new infra — examples, not endorsements; post-2021 practice). Hand-roll a saga state machine only if no durable-execution engine can be adopted.** (ch6)
+  - ❌ a hand-rolled saga state machine with ad-hoc timers and retries   ← likely-default
+- **Default to orchestration for a saga — durable execution keeps it cheap even across teams; choose choreography only when no single team can own the orchestrator.** (ch6)
+- **Propagate W3C `traceparent` via OpenTelemetry through every call and message header in a workflow** — mandatory for choreographed sagas to reconstruct state. (ch6)
 
 ## Messaging Reliability
 
