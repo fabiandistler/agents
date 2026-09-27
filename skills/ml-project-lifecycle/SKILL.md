@@ -2,7 +2,7 @@
 name: ml-project-lifecycle
 category: ai-ml
 environments: coding
-description: Guide a machine learning project from problem framing through model selection to production deployment.
+description: "Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining."
 metadata:
   version: "1.0"
 ---
