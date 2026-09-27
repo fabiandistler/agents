@@ -54,7 +54,7 @@ If the artifact is going to be edited by hand by a human afterward, markdown is 
 Every artifact this skill produces must satisfy all of these:
 
 1. **Single self-contained `.html` file.** No build step, no bundler, no `npm install`. CSS goes in a `<style>` tag, JS goes in a `<script>` tag, images are inline SVG or data URIs.
-2. **Works offline.** No required network calls at view time. If a CDN is used (Tailwind, a font, a library), prefer well-known stable CDNs and assume the user might want to swap to inlined later. For a file that may be archived or uploaded to object storage, lean toward fewer external dependencies.
+2. **Works offline, inline-first.** No required network calls at view time: ship CSS, JS, SVG, and fonts inline in the single file with no external CDN dependencies. If a library is needed while drafting, pin the exact version with `integrity` and `crossorigin` from cdnjs or the jsDelivr npm endpoint, then inline it before delivery. Avoid third-party web fonts in shared files; use system stacks.
 3. **Mobile responsive.** Include `<meta name="viewport" content="width=device-width, initial-scale=1">` and a layout that survives a narrow viewport. The reader may open it on a phone.
 4. **Real layout, not stacked headers.** If the content is a comparison, lay it out in columns. If it's a timeline, draw a timeline. If it's a diff, render a diff. Don't translate markdown structure 1:1 into HTML — that's wasted effort.
 5. **Readable on its own.** Title at the top, a one-paragraph TL;DR or framing sentence right below, then the substance. The reader should know what they're looking at within five seconds.
@@ -93,7 +93,9 @@ If the artifact is a member of a *web* of related files (explorations → mockup
 
 Some runtimes render a document inline next to the conversation instead of writing it to disk. Emit a single `text/html` document — not a component framework, not a bare diagram, not SVG-only — unless the request specifically calls for one of those. It is the closest analog to the file on disk and gives the user the same affordance: open, screenshot, share.
 
-Sandboxed preview panes are stricter than a local file. Assume: no `localStorage`/`sessionStorage` (use in-memory state), no external scripts beyond whatever the host allows, and everything in one file.
+Sandboxed preview panes are stricter than a local file. Guard storage access with try/catch and an in-memory fallback instead of assuming `localStorage`/`sessionStorage` exists, keep everything in one file, and load no external scripts beyond whatever the host allows.
+
+As of 2026-09: ChatGPT code-block Preview and the Codex in-app browser both render a single self-contained file with storage possibly unavailable, so the guarded in-memory fallback above is the portable default.
 
 ## A note on token cost and time
 

@@ -36,7 +36,7 @@ If the task is one-off and the input is structured, this pattern fits.
 - **The export, again.** Without it, nothing else matters.
 - **Pre-filled data.** The user already gave you the data in the prompt. Don't make them type it twice.
 - **Constraints visible.** If toggling flag A requires flag B, show the warning at the moment of the conflict, not as a footer disclaimer.
-- **State persistence within the session.** If the user accidentally refreshes, they shouldn't lose 30 minutes of triage. (In a sandboxed preview pane: in-memory only, no localStorage. For an .html file saved locally: localStorage is fine and worth using.)
+- **State persistence within the session.** If the user accidentally refreshes, they shouldn't lose 30 minutes of triage. Guard storage with try/catch and an in-memory fallback: sandboxed preview panes may block it, while a local `.html` file can use `localStorage`.
 - **Keyboard support for repetitive actions.** If the user is going to label 100 examples, they need `j`/`k` or `1`/`2`/`3`, not just clicks.
 
 ## Common mistakes
