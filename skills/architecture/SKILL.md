@@ -16,12 +16,11 @@ one. Do not answer an architecture or design question from this file alone.
 ## How to use
 
 1. Match the request to a row in the table below.
-2. **Read that sub-skill's `SKILL.md` before acting.** Open the file at the
-   path in the last column (relative to this router's directory) with your
-   file-reading tool. The sub-skills are *not* registered skills of their own:
-   invoking one by name (for example `architecture:ddd`) fails with "unknown
-   skill" and wastes a turn. Read the file instead; it carries the real
-   workflow, references, and scripts — this router only points the way.
+2. **Read that sub-skill's `SKILL.md` before acting.** The sub-skills are
+   files; open `members/<name>/SKILL.md` relative to this file's directory.
+   If your agent also lists them as skills, still route through this table.
+   The file carries the real workflow, references, and scripts — this router
+   only points the way.
 3. If two rows seem to apply, apply the tie-break below and read the default
    member; read a second member only if the first points to it. If none fit,
    use your general knowledge and say the catalogue had no dedicated
