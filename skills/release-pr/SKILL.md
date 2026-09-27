@@ -55,7 +55,8 @@ bumping again, and re-set the version if the evidence calls for a larger bump.
    If the argument asks for a smaller bump than the evidence supports, stop and
    say why before proceeding.
 2. **Never edit a version by hand when a tool exists.** R: `usethis::use_version()`.
-   Python: `uv version`. They keep the lockfile and the changelog heading in step.
+   Python: `uv version`. They keep `DESCRIPTION` / `pyproject.toml` and the
+   lockfile in step; the changelog section is still written by hand (step 3).
 3. **Checks run before the push, and their results go into the PR body
    verbatim.** A failing check is fixed if it is in the PR's own scope,
    otherwise the run stops and reports. Never skip, disable, or loosen a test
@@ -146,8 +147,9 @@ Under the new heading, one bullet per user-visible change, in the language's
 house style (tidyverse NEWS style or Keep a Changelog; on the language page).
 Sources: the branch's diff and commits, the linked issues. Only what a user
 of the package notices; internal refactors stay out unless they change
-behavior. Reference the issue or PR number. Breaking changes come first, each
-with the symptom a user sees and what to do instead.
+behavior. Reference the issue or PR number. Mark breaking changes inline
+with a `**Breaking:**` marker inside their type section, each with the
+symptom a user sees and what to do instead.
 
 If entries already exist on the branch, proofread against the diff: every
 exported function that changed has a bullet; no bullet describes something
