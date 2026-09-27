@@ -106,10 +106,11 @@ For anything with the structure of methods-and-fields or functions-and-shared-
 state, get the structural signal from the bundled script:
 
 ```
-python3 scripts/lcom.py <path...> [--lang auto|python|r|bash]
+python3 scripts/lcom.py <path...> [--lang auto|python|r|bash] [--top N] [--output FILE]
 ```
 
-It reports, per class and per file:
+It reports, per class and per file, worst first (capped at `--top`, default
+20, with a summary line of total modules and multi-cluster ones):
 - **clusters** — how many disconnected groups the parts fall into. **This is
   the actionable number:** 1 means well connected (like the book's Class X);
   2+ means the module could split into that many (Class Y / Z).
