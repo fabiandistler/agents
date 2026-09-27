@@ -67,7 +67,7 @@ decision path).
 
 ## Design workflow
 
-1. **Classify the subdomain first** (Core / Generic / Supporting) with input from domain experts — read `references/strategic-design.md` for the classification table and the resourcing rule. State the classification explicitly before recommending anything.
+1. **Classify the subdomain first** (Core / Generic / Supporting) with input from domain experts — run Big Picture EventStorming to surface candidate subdomains first (see "Discovering subdomains and boundaries" in `references/strategic-design.md`), then apply the classification table and the resourcing rule there. State the classification explicitly before recommending anything.
 2. **Identify the bounded context(s) involved** and, for each relationship to another context, pick a context-mapping pattern from the table in `references/strategic-design.md` and name the trade-off being accepted.
 3. **Walk the tactical decision path** above to choose an implementation pattern, keeping the pattern proportional to the subdomain's classification and complexity.
 4. **Model with the building blocks** in `references/implementation-conventions.md`: identify Entities (identity + a lifecycle worth tracking), Value Objects (validated, immutable, no identity), and the Aggregate boundary — keep the aggregate as small as the actual consistency requirement allows.

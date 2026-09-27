@@ -6,9 +6,27 @@ implementation pattern is chosen.
 
 ## Contents
 
+- [Discovering subdomains and boundaries](#discovering-subdomains-and-boundaries)
 - [Classify the subdomain](#classify-the-subdomain)
 - [Context Mapping: relating bounded contexts](#context-mapping-relating-bounded-contexts)
 - [Migration paths](#migration-paths)
+
+## Discovering subdomains and boundaries
+
+"Classify with domain experts" needs a concrete method behind it. Run
+discovery before classifying — the events and boundaries it surfaces are the
+input the classification table below consumes:
+
+- **Big Picture EventStorming** — gather domain experts and walk the end-to-end flow of domain events on a wide timeline. Clusters of pivotal events suggest where one subdomain (and later one bounded context) ends and the next begins.
+- **Core Domain Chart** — place each discovered subdomain on the chart to decide its Core, Supporting, or Generic placement before any resourcing call is made.
+- **Bounded Context Canvas** — document each candidate context (name, ubiquitous language, responsibilities, relationships) so the boundary decision is written down, not tribal knowledge.
+- **Process- and Design-level EventStorming** — zoom into one context's flow (process level) and then into its commands, policies, and aggregates (design level); this feeds aggregate design directly.
+
+References: the DDD starter modelling process
+(<https://ddd-crew.github.io/ddd-starter-modelling-process/>), the Bounded
+Context Canvas (<https://github.com/ddd-crew/bounded-context-canvas>), and
+the EventStorming glossary cheat sheet
+(<https://ddd-crew.github.io/eventstorming-glossary-cheat-sheet/>).
 
 ## Classify the subdomain
 
