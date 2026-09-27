@@ -60,10 +60,11 @@ Once chosen, document it. **REQUIRED SUB-SKILL:** use the `adr-workflow` skill t
 - **New repo:** generate the folder/file skeleton from the annotated example tree for the chosen pattern in [references/pattern-catalog.md](references/pattern-catalog.md), adapted to the repo name and language.
 - **Existing repo:** produce an **incremental migration plan** (strangler-fig): smallest first move, what moves where, keeping the build green at every step. Never a big-bang rewrite.
 - Apply deep-module thinking when shaping boundaries: small interfaces hiding complexity.
+- Add a boundary check to the target repo that fails CI when a module reaches into another module's internals (Python: import-linter contract or Tach; Java: Spring Modulith or ArchUnit; JavaScript/TypeScript: dependency-cruiser rule). See `fitness-functions` for the check shape.
 
 ### 6. Verify
 
-Sanity-check the result: Python — package imports, a minimal `pyproject.toml`; R — package loads via `devtools::load_all()`. For a migration, confirm the first step builds before listing the rest.
+Sanity-check the result: the project's build/test command passes and the boundary check from step 5 passes. For a migration, confirm the first step is green before listing the rest.
 
 ## Trade-off Analysis
 
