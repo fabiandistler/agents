@@ -2,7 +2,7 @@
 name: natural-planning
 category: workflow
 environments: chat
-description: Walk a project through GTD's Natural Planning Model (purpose -> outcome -> brainstorm -> organize -> next actions) to turn a vague, stuck, or overwhelming project into concrete physical next actions.
+description: Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions) when it feels stuck, vague, or overwhelming; does not triage inboxes or pick today's task.
 metadata:
   version: "1.0"
 ---
@@ -20,6 +20,19 @@ This skill is distilled from personal notes on David Allen's *Getting Things
 Done* (German edition *Wie ich die Dinge geregelt kriege*, trans. Helmut
 Reuter); apply it as a general reasoning tool, not as a prescription for how
 any one person must plan.
+
+## When to use
+
+- A single project feels stuck, vague, or overwhelming and needs deliberate
+  planning before action.
+- A to-do is not yet a concrete physical next action and belongs to a larger
+  project that needs clarifying first.
+- A stalled project needs its purpose or outcome restated before organizing
+  or picking actions.
+
+Not for:
+- Triaging an inbox or processing loose inputs into a task manager.
+- Picking what to work on today from existing next actions.
 
 ## The five phases
 
