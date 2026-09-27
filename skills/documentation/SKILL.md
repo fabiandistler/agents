@@ -14,7 +14,8 @@ drafting, and say out loud where the doc will rot.
 ## When to use
 
 - "Write docs for X", "document this", "create a README", "write a runbook",
-  "onboarding guide", "document the API".
+  "onboarding guide", "document the API", "add roxygen docs to this package",
+  "document these docstrings".
 - A module, service, or endpoint exists and has no prose entry point.
 - Existing docs are being revised, split, or merged.
 - A postmortem action item is "write the runbook".
@@ -55,7 +56,8 @@ what you may leave out.
 | The reader's job | Type | Reference page |
 |---|---|---|
 | Decide whether to use this, then get it running | README | `references/readme.md` |
-| Call this service correctly from their own code | API reference | `references/api-reference.md` |
+| Call this service correctly from their own code | HTTP API reference | `references/api-reference.md` |
+| Call this library's functions from their own code | Package reference | `references/package-docs.md` |
 | Execute a known operational procedure under pressure | Runbook | `references/runbook.md` |
 | Understand how the system fits together before changing it | Architecture doc | `references/architecture-doc.md` |
 | Become productive in an unfamiliar codebase or team | Onboarding guide | `references/onboarding-guide.md` |
@@ -125,8 +127,10 @@ Open only the page for the type you are writing.
 
 - `references/readme.md` — what/why, five-minute quick start, configuration,
   usage, contributing.
-- `references/api-reference.md` — endpoints, auth, errors, pagination, rate
-  limits, SDK examples.
+- `references/api-reference.md` — HTTP endpoints, auth, errors, pagination,
+  rate limits, SDK examples.
+- `references/package-docs.md` — exported functions, parameters, return
+  values, reference index, runnable examples.
 - `references/runbook.md` — trigger, prerequisites, procedure, verification,
   rollback, escalation.
 - `references/architecture-doc.md` — context and goals, design, trade-offs,
