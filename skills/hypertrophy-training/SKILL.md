@@ -132,7 +132,8 @@ and intensity decisions.
 - Very high volume (>8 direct sets per muscle group per session, about 11 fractional sets — the PUOS ceiling above)
 - Training multiple sets to 0 RIR / failure
 - High frequency (>3×/week per muscle group; expert heuristic — Pelland et al. 2025 find no consistent independent frequency effect on hypertrophy)
-- Exercises dominated by the stretched position (more muscle damage)
+- Exercises with a large stretch load (extra damage per unit of stimulus —
+  a cost worth paying given the hypertrophy benefit; see section 7)
 - Fast-twitch-dominant individuals
 
 **Improves the ratio (less fatigue per unit of stimulus):**
@@ -205,6 +206,25 @@ calendar; continuous training over blocks of up to about 9 weeks is a viable
 default. The plateau test in Part B stays the arbiter: when in doubt, test
 fatigue versus stimulus rather than deloading on schedule.
 
+### 7. Rest intervals and long muscle lengths
+
+Rest at least 60 seconds between sets; Singer et al. (2024) find a small
+hypertrophy benefit to rest beyond 60 seconds, with no appreciable further
+benefit past about 90 seconds, likely mediated by preserved volume load.
+Hypertrophy happens across a wide rest spectrum, and training to failure or
+not does not meaningfully change the picture — so rest 60–90 seconds minimum
+on isolation work and longer (2–3 minutes or more) on heavy compounds where
+short rest would cost reps, without timing longer rests for hypertrophy's
+sake.
+
+Emphasize the lengthened position: prior work finds greater hypertrophy
+training at long versus short muscle lengths, and Wolf et al. (2025) find
+lengthened partials match full range of motion in trained lifters — so a
+full range of motion with a controlled stretch, or lengthened partials as an
+alternative, both satisfy the requirement. The stretch imposes extra damage,
+which is why section 4 lists it as a fatigue cost, but the net trade favors
+including it rather than avoiding it.
+
 ### Physiological foundation (why these levers matter)
 
 Three mechanisms drive hypertrophy, in descending order of importance:
@@ -225,9 +245,12 @@ an accurate sense of RIR; see the calibration step first if that is in doubt.
 
 ### Prerequisite: RIR calibration (single working set)
 
-Most trainees, when tested, discover they were training at 3+ RIR while
-believing they were at 0–1 RIR. Before relying on any auto-regulation
-protocol, recalibrate:
+Most trainees systematically underpredict proximity to failure by about 1
+rep (Halperin et al. 2022) — enough to turn a programmed 1 RIR into an
+actual 2 RIR. Accuracy is worse on high-rep sets (above about 12 reps) and
+better near failure, on heavier lower-rep sets, and in later sets, so treat
+early-set high-rep RIR calls as the least trustworthy. Before relying on any
+auto-regulation protocol, recalibrate:
 
 1. Use a single working set per exercise.
 2. Choose safe exercises (machines, dumbbells, a power rack with safeties) —
@@ -415,7 +438,9 @@ et al. (2022); Robinson meta-analysis (2024); Alan Aragon, Lyle McDonald, Eric
 Helms (muscle-gain-rate estimates); Remmert et al. (2025, SportRxiv preprint
 537 — PUOS); Pelland et al. (2025 — weekly volume and frequency
 dose-response); Moesgaard et al. (2022 — periodization); Coleman et al.
-(2024, PeerJ 16777 — deload).
+(2024, PeerJ 16777 — deload); Singer et al. (2024 — rest intervals); Wolf et
+al. (2025 — lengthened partials versus full range of motion); Halperin et
+al. (2022 — RIR prediction accuracy).
 
 **Part C** (both sections) is distilled from Israetel et al., *Scientific
 Principles of Hypertrophy Training* (Renaissance Periodization), pp. 352–357.
