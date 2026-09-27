@@ -91,6 +91,19 @@ doc wrong, and what would catch it:
 
 A doc with no rot story is a doc that will silently become misinformation.
 
+### 5. Cold-reader test
+
+Run this when the draft is for readers outside the current session. You have
+the whole conversation in your head, and the reader does not. So test the doc
+on a reader who has only the doc.
+
+If you can start subagents, write 5–10 questions the named reader from step 1
+would bring. Give a fresh subagent only the doc and one question, with no
+conversation context. Then do one pass over the answers: what was ambiguous,
+what prior knowledge the doc assumed, and what contradicts itself. Fix the doc
+and run the test again until it turns up no new gap. If you cannot start
+subagents, give the user the questions to try with the doc in a fresh chat.
+
 ## Principles
 
 Upstream's five, each with the tell that you violated it:
