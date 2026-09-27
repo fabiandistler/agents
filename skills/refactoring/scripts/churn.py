@@ -67,7 +67,10 @@ assumption that naming paths explicitly is the stronger signal:
 
 Usage:
     python churn.py [PATH] [--since '12 months ago'] [--top N] [--min-commits N]
-                    [--include GLOB]... [--exclude GLOB]... [--json]
+                    [--include GLOB]... [--exclude GLOB]... [--json] [--output FILE]
+
+--top caps the JSON file list too (0 = all); --since takes an ISO date or
+'<N> <unit> ago'. Exit codes: 0 ok, 1 git or path error, 2 bad usage.
 
 Stdlib only; runs on any Python 3.9+.
 """
@@ -134,7 +137,7 @@ def run_git(root: Path, args: list[str]) -> str:
             capture_output=True,
             check=False,
         )
-    except FileNotFoundError as exc:  # git not installed
+    except FileNotFoundError as exc:
         raise GitError("git is not installed or not on PATH") from exc
     if proc.returncode != 0:
         detail = proc.stderr.decode("utf-8", errors="replace").strip()
@@ -165,11 +168,52 @@ def has_commits(root: Path) -> bool:
     return True
 
 
+def is_shallow(root: Path) -> bool:
+    """True when git reports a truncated history; also true inside worktrees."""
+    try:
+        return run_git(root, ["rev-parse", "--is-shallow-repository"]).strip() == "true"
+    except GitError:
+        return False
+
+
 def parse_iso(value: str) -> datetime | None:
     try:
         return datetime.fromisoformat(value.strip())
     except ValueError:
         return None
+
+
+def valid_since(value: str) -> bool:
+    """True for the --since forms this script documents, so git never silently guesses."""
+    text = value.strip().lower()
+    if text in ("now", "today", "yesterday", "last week", "last month", "last year"):
+        return True
+    stamp = value.strip()
+    if stamp[-1:].lower() == "z":
+        stamp = f"{stamp[:-1]}+00:00"
+    try:
+        datetime.fromisoformat(stamp)
+        return True
+    except ValueError:
+        pass
+    words = text.replace(".", " ").split()
+    units = (
+        "second",
+        "seconds",
+        "minute",
+        "minutes",
+        "hour",
+        "hours",
+        "day",
+        "days",
+        "week",
+        "weeks",
+        "month",
+        "months",
+        "year",
+        "years",
+    )
+    return len(words) == 3 and words[0].isdigit() and words[1] in units and words[2] == "ago"
 
 
 def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, FileChurn], int]:
@@ -365,26 +409,44 @@ def to_dict(entry: FileChurn) -> dict:
     }
 
 
+def emit(payload: str, dest: str | None) -> int:
+    """Print payload, or write it to dest; returns the process exit code."""
+    if dest is None:
+        print(payload)
+        return 0
+    try:
+        Path(dest).write_text(payload + "\n", encoding="utf-8")
+    except OSError as exc:
+        sys.stderr.write(f"error: cannot write {dest}: {exc}\n")
+        return 1
+    print(f"wrote {dest}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Rank files by git churn x size to suggest where to look for "
-        "refactor targets. Orders evidence; it does not judge whether anything "
-        "should change.",
+        description="Rank files by git churn x size; orders evidence, judges nothing.",
+        epilog="examples:\n"
+        "  churn.py --since '6 months ago' --top 10\n"
+        "  churn.py --json --output hotspots.json .\n"
+        "exit codes: 0 ok, 1 git or path error, 2 bad usage.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "path", nargs="?", default=".", type=Path, help="repo root or subdirectory (default: .)"
+        "path", nargs="?", default=".", type=Path, help="repo or subdir to rank (default: .)"
     )
     parser.add_argument(
         "--since",
         default="12 months ago",
-        help="history window, in any form git accepts (default: '12 months ago')",
+        help="ISO date or '<N> <unit> ago' (default: '12 months ago')",
     )
-    parser.add_argument("--top", type=int, default=20, help="rows in the table (default: 20)")
+    parser.add_argument("--top", type=int, default=20, help="rows shown, 0 = all (default: 20)")
     parser.add_argument(
         "--min-commits",
         type=int,
         default=2,
-        help="drop files touched fewer times, before scoring (default: 2)",
+        metavar="N",
+        help="hide files below N commits (default: 2)",
     )
     parser.add_argument(
         "--include", action="append", default=[], metavar="GLOB", help="keep only matching paths"
@@ -394,14 +456,26 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="GLOB",
-        help="skip matching paths, on top of the built-in defaults",
+        help="also skip matching paths",
     )
-    parser.add_argument("--json", action="store_true", help="emit JSON")
+    parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
+    parser.add_argument(
+        "--output", default=None, metavar="FILE", help="write to FILE instead of stdout"
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.top < 0 or args.min_commits < 0:
+        sys.stderr.write("error: --top and --min-commits must be 0 or greater\n")
+        return 2
+    if not valid_since(args.since):
+        sys.stderr.write(
+            f"error: --since '{args.since}' is not a supported date "
+            "(use ISO 'YYYY-MM-DD' or '<N> <unit> ago')\n"
+        )
+        return 2
 
     try:
         target = args.path.resolve()
@@ -416,11 +490,12 @@ def main(argv: list[str] | None = None) -> int:
     except GitError as exc:
         sys.stderr.write(f"error: {exc}\n")
         return 1
-    except ValueError:  # target outside the resolved work tree
+    except ValueError:
         sys.stderr.write(f"error: {args.path} is not inside its git work tree\n")
         return 1
 
-    if (root / ".git" / "shallow").exists():
+    shallow = is_shallow(root)
+    if shallow:
         sys.stderr.write(
             "warning: shallow clone -- history is truncated at the clone depth, "
             "so the window may be incomplete\n"
@@ -443,22 +518,24 @@ def main(argv: list[str] | None = None) -> int:
     entries = rank(ranked_input)
 
     if args.json:
-        print(
+        page = entries if args.top <= 0 else entries[: args.top]
+        return emit(
             json.dumps(
                 {
                     "root": str(root),
                     "since": args.since,
+                    "shallow": shallow,
                     "commits_scanned": commit_count,
                     "files_seen": len(files),
                     "files_ranked": len(entries),
                     "dropped_missing": dropped_missing,
                     "dropped_below_min_commits": dropped_min,
-                    "files": [to_dict(e) for e in entries],
+                    "files": [to_dict(e) for e in page],
                 },
                 indent=2,
-            )
+            ),
+            args.output,
         )
-        return 0
 
     if not entries:
         print(
@@ -467,7 +544,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    print(
+    return emit(
         render(
             entries,
             since=args.since,
@@ -475,9 +552,9 @@ def main(argv: list[str] | None = None) -> int:
             dropped_missing=dropped_missing,
             dropped_min=dropped_min,
             now=datetime.now(timezone.utc),
-        )
+        ),
+        args.output,
     )
-    return 0
 
 
 if __name__ == "__main__":
