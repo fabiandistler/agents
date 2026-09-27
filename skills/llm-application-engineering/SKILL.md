@@ -148,7 +148,7 @@ preemptively.
 
 | Step | Name | What it adds | Add it when |
 |---|---|---|---|
-| 1 | **Enhance context** | Retrieval from text/image/tabular sources, tool outputs (web search, APIs) | Always first — poor context is the most common cause of poor output |
+| 1 | **Enhance and minimize context** | Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/ai-engineering-conventions.md` | Always first — poor context is the most common cause of poor output |
 | 2 | **Put in guardrails** | Input protection (prompt-injection detection, PII filtering) and output protection (hallucination/toxicity filters) | As soon as real users can reach the system |
 | 3 | **Add router and gateway** | Router sends each request to the right model (e.g. cheap model for simple queries); gateway unifies the interface across self-hosted models and APIs, centralizing load balancing, logging, caching, guardrails | As soon as more than one model or provider is in use |
 | 4 | **Reduce latency with caches** | Prompt cache for shared prefixes first (hosted APIs, cache reads ~0.1× input price); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable | As soon as requests repeat, or individual calls are expensive |
