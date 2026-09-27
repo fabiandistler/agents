@@ -50,8 +50,16 @@ jobs:
           done
           exit $fail
 
+      - name: Eval coverage
+        run: python scripts/check_evals.py
+
       - name: Lint (ruff)
         run: ruff check .
+
+      - name: release-pr fixture tests
+        run: |
+          pip install pytest
+          pytest skills/release-pr/scripts/test_release_state.py
 
       - name: Hooks in sync (prek)
         run: |
