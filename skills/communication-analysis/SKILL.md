@@ -141,12 +141,64 @@ you rework X by Friday?" The facts stay; the attack goes.
    in that weight order.
 5. **Look for a hidden appeal.** State it as a question, not an accusation.
 6. **Check the solution reflex.** Paraphrase the concern before proposing fixes.
-7. **When rewriting:** produce a version that is congruent, relevant,
-   comprehensible, and makes any request explicit. Use the values square when
-   feedback is too blunt or too vague.
+7. **When rewriting:** fill the ## Output template below. The rewrite must be
+   congruent, relevant, comprehensible, and make any request explicit. Use
+   the values square when feedback is too blunt or too vague.
 8. **When a boundary is at stake:** draft one explicit statement naming the
    limit, the context, and the consequence, e.g. "I can't take calls after
    18:00; message me and I'll reply in the morning."
+
+## Output
+
+Use this shape for every analysis. Alternatives with confidence are required;
+never give a single verdict on relationship or appeal.
+
+### Template
+
+| Side | Decoding A (confidence) | Decoding B (confidence) |
+|------|-------------------------|-------------------------|
+| Factual | ... (high/med/low) | ... (high/med/low) |
+| Self-revealing | ... (high/med/low) | ... (high/med/low) |
+| Relationship | ... (high/med/low) | ... (high/med/low) |
+| Appeal | ... (high/med/low) | ... (high/med/low) |
+
+- Congruence note: quote both signals, or state "no contradiction found".
+- Hidden-appeal hypothesis (as a question): "... — is that right?"
+- Rewrite:
+> ...
+- What changed and why: 2-4 bullets naming the fix per side.
+
+### Example 1: terse chat reply
+
+Input: "fine. do whatever you want."
+
+| Side | A (confidence) | B (confidence) |
+|------|----------------|----------------|
+| Factual | Agreement (low) | Withdrawal (medium) |
+| Self-revealing | Frustrated, disengaged (medium) | Overloaded, needs pause (medium) |
+| Relationship | "Your input doesn't matter" (low) | "I don't trust this decision" (medium) |
+| Appeal | "Decide without me" (medium) | "Convince me this is safe" (low) |
+
+- Congruence note: words say agreement, brevity and period signal withdrawal.
+- Hidden-appeal hypothesis: "I hear you'd like me to pause and check back — is that right?"
+- Rewrite: "I'm not convinced yet. Can we revisit this tomorrow morning?"
+- What changed and why: appeal made explicit; incongruence removed; request checkable.
+
+### Example 2: blunt review feedback
+
+Input: "This PR is a mess. Did you even test it?"
+
+| Side | A (confidence) | B (confidence) |
+|------|----------------|----------------|
+| Factual | PR has defects (medium) | Process gap, no tests (low) |
+| Self-revealing | Reviewer is frustrated (high) | Reviewer is under time pressure (medium) |
+| Relationship | "I don't respect your work" (low) | "I expect higher care" (medium) |
+| Appeal | "Fix it now" (high) | "Add tests before re-request" (medium) |
+
+- Congruence note: no signal contradiction; content and bluntness align at brutality.
+- Hidden-appeal hypothesis: "I hear you want failing tests listed before rework — is that right?"
+- Rewrite: "I found three failing cases (X, Y, Z). Can you add tests and rework X by Friday?"
+- What changed and why: values square applied (brutality toward tact); facts kept, attack cut; request explicit.
 
 ## Common mistakes to avoid
 
