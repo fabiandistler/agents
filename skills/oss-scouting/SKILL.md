@@ -36,10 +36,12 @@ job.
    result and is reported as one. The `good first issue` label is neutral, not
    a filter.
 4. **The repro must run.** A candidate without a reproduction confirmed on
-   current `main` is not worked up. No "probably reproducible".
+   the current default branch is not worked up. No "probably reproducible".
 5. **Invent nothing.** Unclear cause → mark it open, don't fill it in
    plausibly. No policy statement found → "no explicit policy found", not
    "allowed".
+6. **No sign-off by the agent.** Drafts never contain `Signed-off-by` or a
+   CLA acceptance; the user adds them under their own name on submission.
 
 ## Procedure
 
@@ -79,8 +81,8 @@ layout under the resolved root:
   README.md              policy summary, ranking, rejected issues
   01-issue-<nr>/
     repro.<ext>          runnable, minimal, expected vs. actual output
-    analysis.md          cause with file:line references into current main
-    fix.diff             proposal as a unified diff against main
+    analysis.md          cause with file:line references into the current default branch
+    fix.diff             proposal as a unified diff against the default branch
     test.<ext>           test case in the project's own test framework
     submit-checklist.md  filled in per project
   02-issue-<nr>/ …
@@ -106,7 +108,7 @@ Summarize in README.md as a table:
 |---|---|---|
 | AI-assisted contributions | allowed / allowed with disclosure / rejected / no explicit policy | file/URL |
 | Who may open PRs | open / issue-approved-only / vouched-only / collaborators-only / closed | file/URL |
-| Disclosure wording | quote, if required | |
+| Disclosure format and wording | trailer / PR-template field / free text; quote exact wording | |
 | DCO / CLA | sign-off needed? CLA bot? | |
 | Tests | framework, mandatory?, how to invoke | |
 | NEWS/changelog | entry required? format? | |
@@ -123,12 +125,16 @@ or by looking for auto-close bots and pinned notices.
 
 ### 2 Issue review
 
-Tool: `gh` CLI, read-only. Window: the last 6 months.
+Tool: `gh` CLI, read-only. Window: the last 6 months. Resolve the default
+branch once per run and use it everywhere below instead of a hardcoded name:
 
 ```bash
+DEFAULT_BRANCH=$(gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name)
+SINCE=$(date -v-6m +%F 2>/dev/null || date -d '6 months ago' +%F)
 gh issue list -R <owner>/<repo> --state open --limit 200 \
-  --search "created:>=$(date -d '6 months ago' +%F) no:assignee" \
-  --json number,title,labels,comments,createdAt,updatedAt,author,url
+  --search "created:>=$SINCE no:assignee" \
+  --json number,title,labels,comments,createdAt,updatedAt,author,url \
+  --jq '.[] | {number,title,labels,commentCount: (.comments|length),createdAt,updatedAt,author,url}'
 ```
 
 Check each issue with `gh issue view <nr> --comments`:
@@ -137,7 +143,9 @@ Check each issue with `gh issue view <nr> --comments`:
 documentation error; narrowly scoped; at least one maintainer response
 (`authorAssociation` OWNER, MEMBER, COLLABORATOR) confirming the problem or
 setting a direction; no assignee; no open PR linked (cross-check with
-`gh pr list --search "<nr>"`).
+`gh issue view <nr> -R <owner>/<repo> --json closedByPullRequestsReferences`,
+which covers open and closed linked PRs; on older `gh` fall back to
+`gh pr list -R <owner>/<repo> --state all --search "<nr>"`).
 
 **Out:** design or architecture discussion; labels such as `needs-decision`,
 `discussion`, `wontfix`, `breaking`, `RFC`, `blocked`; a maintainer has voiced a
@@ -155,7 +163,8 @@ the criteria to fill the list.
 
 ### 3 Working up each candidate
 
-Read-only clone (`git clone --depth 50`), current `main`. The clone is
+Read-only clone (`git clone --depth 50`), current default branch
+(`$DEFAULT_BRANCH` from step 2). The clone is
 regenerable, so it belongs in cache rather than in the artifact tree — use
 `mktemp -d` or `${XDG_CACHE_HOME:-$HOME/.cache}/oss-scouting/<owner>-<repo>/`.
 Keeping the two apart means deleting the clone never risks the analysis, and the
@@ -205,15 +214,18 @@ their own work.
 - [ ] Lint/format gate: <command>
 - [ ] NEWS/changelog entry: <required yes/no, format>
 - [ ] Issue reference in the PR: <"Closes #nr" or project convention>
-- [ ] DCO sign-off / CLA: <yes/no, how>
-- [ ] AI disclosure: <required yes/no; proposed wording, if yes>
+- [ ] DCO sign-off / CLA: <left for the user on submission, never in drafts>
+- [ ] AI disclosure in the recorded format: <e.g. `Assisted-by: <agent>:<model> [tools]` trailer>
 - [ ] PR template fields: <list>
 - [ ] Scope: this fix only, no side changes
 ```
 
-Proposed disclosure wording, where required or customary: honest, short,
-responsibility with the user — "Analysis and draft assisted by an AI tool; I
-reproduced, reviewed and tested the change myself."
+Where the project requires disclosure, fill the recorded format exactly. For
+a trailer project use e.g. `Assisted-by: <agent>:<model> [tools]`; for a
+PR-template field or free-text project use that field or an honest short
+sentence with responsibility on the user — "Analysis and draft assisted by an
+AI tool; I reproduced, reviewed and tested the change myself." Drafts never
+carry `Signed-off-by` or a CLA acceptance; the user adds them.
 
 ### 6 Wrap-up
 
