@@ -27,6 +27,7 @@ Before proposing a new ADR setup or drafting a record, inspect the repository fo
 
 - Existing docs folders and naming patterns
 - Any current decision-record convention such as `adr/`, `decisions/`, or `docs/architecture/decisions/`
+- Tool markers such as `.adr-dir` (adr-tools) or `.log4brains.yml` (log4brains); when present, keep that tool's layout and numbering
 - Markdown style and tone used elsewhere in the repo
 - Existing ADRs that should be indexed instead of duplicated
 
@@ -98,9 +99,10 @@ If the team wants a lighter format, keep the same essentials: title, status, con
 1. Identify the decision-record location and naming convention that best matches the repository.
 2. Add a short README or index that explains what ADRs are and when to use them.
 3. Add a template file so new ADRs start from the same structure.
-4. Define the review flow: work in a dedicated branch, open a PR, discuss the trade-offs, then merge the ADR separately from the implementation when practical.
+4. Define the review flow: work in a dedicated branch, open a PR, and discuss the trade-offs. Include the ADR in the same PR as the change for small or agent-driven repos; open a separate ADR PR first when the decision needs wider review.
 5. Explain the rule for when an ADR is required and when it is unnecessary.
 6. Link older ADRs from the index instead of creating duplicate records.
+7. Backfill only the 3-5 decisions people keep re-asking about, as Accepted with their original date.
 
 ## Workflow for drafting a new ADR
 
@@ -111,7 +113,7 @@ When the user wants a specific decision recorded, draft the ADR in repo-appropri
 3. List realistic alternatives, not strawmen.
 4. Record the chosen option and why it won.
 5. Document the consequences honestly, including the drawbacks.
-6. Assign the next sequential number only after the ADR is ready to commit.
+6. Assign the next sequential number only after the ADR is ready to commit. If another open PR took the same number, renumber the later-merging ADR before merge, never after.
 7. Open a PR for review before merging.
 
 ## Workflow for changing a decision
