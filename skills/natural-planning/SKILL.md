@@ -65,23 +65,27 @@ genuinely complex or stuck project is why it stays stuck.
 
 ## Workflow: walking a project through the model
 
-1. **Pick the project.** Choose something new, stalled, or that could simply be
-   done better.
-2. **State intentions and purpose.** Ask "Why?" explicitly, even if the answer
-   feels obvious. Write down what success criteria and motivations this
-   surfaces.
-3. **Visualize the outcome.** Describe what successful completion looks like —
-   concretely, not as a vague aspiration.
+1. **Assign the tier first.** Decide up front how much planning this project
+   needs — Light (outcome + next action, ~80%), Medium (plus a sketch of
+   brainstorm, ~15%), or Full (all five phases in writing, ~5%). Everything
+   below follows from that choice.
+2. **Ask for the purpose — don't invent it.** Ask the user "Why are we doing
+   this at all?", then wait for the answer. Ask one question at a time and
+   never fill in purpose or outcome on the user's behalf.
+3. **Ask for the outcome picture.** Ask what successful completion looks like —
+   concretely, not as a vague aspiration — and again wait for the answer.
 4. **Brainstorm without editing.** Generate every possible step or angle. Defer
-   all judgment, structuring, and prioritization to the next step.
+   all judgment, structuring, and prioritization to the next step. This is the
+   only step the agent may generate on its own.
 5. **Organize the ideas.** Group, sequence, and prioritize what came out of the
    brainstorm. Use whatever structure fits — an outline, a flowchart, a simple
    list.
 6. **Decide the next action(s).** For every front the project can currently move
-   on, name the concrete physical next action. Stop only when nothing is left
-   vague.
+   on, name the concrete physical next action. When a front's next move belongs
+   to someone else, record it as Waiting For — who owes what — instead of a
+   next action. Stop only when nothing is left vague.
 
-For roughly 80% of projects, steps 4–5 collapse: go straight from outcome (step
+For Light-tier projects, steps 4–5 collapse: go straight from outcome (step
 3) to next action (step 6).
 
 ## The physical-next-action rule
@@ -147,6 +151,8 @@ When applying this skill to a project, produce:
 5. A list of concrete physical next actions — checked against the
    physical-next-action rule above, one per currently-movable front of the
    project.
+6. A Waiting-For list for fronts whose next move belongs to someone else —
+   who owes what — kept separate from your own next actions.
 
 If the process stalls at any point, run the stuck-session diagnostic above —
 move up for clarity, move down for motion — before pushing further on
