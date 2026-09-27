@@ -207,3 +207,25 @@ def test_r_mismatch(tmp_path):
     proc, data = report(repo)
     assert proc.returncode == 3
     assert data["state"] == "mismatch"
+
+
+def test_mentions_skip_longer_version(tmp_path):
+    files = python_files("1.4.0", "1.4.0", BULLET)
+    files["pins.txt"] = "foo>=11.4.0\n"
+    files["exact.txt"] = "requires demo 1.4.0\n"
+    repo = make_repo(tmp_path / "repo", files)
+    _, data = report(repo)
+    hit_files = [hit["file"] for hit in data["version_mentions"]]
+    assert "exact.txt" in hit_files
+    assert "pins.txt" not in hit_files
+    assert data["mentions_truncated"] is False
+
+
+def test_mentions_truncated_over_cap(tmp_path):
+    files = python_files("1.4.0", "1.4.0", BULLET)
+    for i in range(25):
+        files[f"dep{i:02d}.txt"] = "pin 1.4.0\n"
+    repo = make_repo(tmp_path / "repo", files)
+    _, data = report(repo)
+    assert len(data["version_mentions"]) == 20
+    assert data["mentions_truncated"] is True
