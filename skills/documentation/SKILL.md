@@ -28,7 +28,8 @@ Do **not** use for:
   component views) use `c4-modeling`; this skill only says where a diagram goes
   in the surrounding document.
 - **Rules files for coding agents** (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`) —
-  those are distilled constraints, not documentation, and out of scope here.
+  those are distilled constraints kept short in the repo root; no skill governs
+  them, and they stay out of scope here.
 - **The shape of an explanatory passage** — when a section has to explain a
   concept, `problem-first-explanation` governs its structure (problem before
   solution). It composes with this skill rather than replacing it.
@@ -116,6 +117,12 @@ conversation context. Then do one pass over the answers: what was ambiguous,
 what prior knowledge the doc assumed, and what contradicts itself. Fix the doc
 and run the test again until it turns up no new gap. If you cannot start
 subagents, give the user the questions to try with the doc in a fresh chat.
+
+## When agents read your docs
+
+Keep the Markdown source plain with stable headings, generate the `llms.txt`
+index with the site tool rather than hand-writing one, and never put content
+only in images.
 
 ## Principles
 
