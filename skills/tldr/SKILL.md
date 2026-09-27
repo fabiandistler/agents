@@ -52,27 +52,28 @@ picked in one clause. Answer rather than ask.
 
 The shape is the length budget; there is no word count to hit.
 
-The same PR review, as a telegram and as cliffs:
+The same thread as a telegram, its source, and its cliffs:
 
-Telegram:
+Telegram: `Auth → gateway. Cache unchanged. New secret. LGTM w/ nit.`
+
+Source:
 
 ```markdown
-Auth → gateway. Cache unchanged. New secret. LGTM w/ nit.
+Mara: gateway migration ships Friday, I own the rollout.
+Luis: rate limiting is untested, keep it out of this PR.
+Mara: agreed, rate limiting waits; `GATEWAY_JWT_KEY` must exist first.
 ```
 
 Cliffs:
 
 ```markdown
-**Bottom line.** Mergeable once the deploy secret exists and the rate-limiting dispute is settled.
+**Bottom line.** Mergeable once the secret exists; rate-limit timing is settled.
 
-- Auth checks move from each service into the API gateway; services now trust
-  the `X-User-Id` header.
-- Deploy fails without the new `GATEWAY_JWT_KEY` secret in every environment.
-- One reviewer wants rate limiting in this PR, the author wants a follow-up —
-  unresolved.
+- Auth checks move to the gateway; Mara owns the Friday rollout.
+- Deploy fails without `GATEWAY_JWT_KEY` in staging and prod.
+- Rate limiting ships next week (inferred — agreed as follow-up, no date given).
 
-**Your move.** Create `GATEWAY_JWT_KEY` in staging and prod, then decide the
-rate-limiting question.
+**Your move.** Create `GATEWAY_JWT_KEY`, then confirm Friday with Mara.
 
 **Left out:** the caching refactor (no behavior change) and three naming nits.
 ```
@@ -85,8 +86,9 @@ disagreement as two positions.
 
 A fact is **load-bearing** when removing it changes what the user does next.
 Load-bearing detail survives verbatim: numbers, versions, paths, identifiers,
-error strings, names. Adjectives, transitions, restatements, and the order the
-source happened to use are what compression eats.
+error strings, names, owners, deadlines, decisions taken. Adjectives,
+transitions, restatements, and the order the source happened to use are what
+compression eats.
 
 Three things stay load-bearing however long the source is:
 
@@ -115,6 +117,11 @@ translate back.
   the argument: both positions and what each turns on.
 - **Already short, no core, or a summary just written.** Say that in one line;
   a thinner copy helps nobody.
+
+## Before sending
+
+Point each bullet at its source line or passage. A bullet with no source
+goes out or goes marked "(inferred)".
 
 ## Done when
 
