@@ -81,6 +81,10 @@ ArchUnit also covers cycles (`slices().should().beFreeOfCycles()`), naming
 conventions, annotation rules, and anti-gaming checks such as requiring every
 test method to contain at least one assertion.
 
+Baselining legacy code: wrap the rule in a `FreezingArchRule` so current
+violations are frozen and only new ones fail the build; remove frozen entries
+as the code is cleaned up.
+
 ## .NET
 
 **NetArchTest** — fluent layer/dependency rules as ordinary unit tests
@@ -99,6 +103,9 @@ var result = Types.InCurrentDomain()
 
 **ArchUnitNET** — a .NET port of ArchUnit with the same rule vocabulary,
 including layered-architecture and cycle rules.
+
+Baselining legacy code: commit the current violation list and fail only on
+entries not already on it, shrinking the list as violations are fixed.
 
 ## JavaScript / TypeScript
 
@@ -122,6 +129,10 @@ inside an existing ESLint setup; good when the team already treats lint
 failures as build failures. **ts-arch** offers ArchUnit-style assertions
 (`filesOfProject().inFolder("ui").shouldNot().dependOnFiles().inFolder("db")`)
 inside Jest/Vitest.
+
+Baselining legacy code: generate a known-violations file (`depcruise-baseline`
+command, `baseline` reporter) and run CI with `depcruise --ignore-known`, so
+only new violations fail the build.
 
 ## Python
 
@@ -187,6 +198,10 @@ first release April 2026, one maintainer, roughly two orders of magnitude
 less adopted than import-linter — weigh that before it becomes a build
 blocker.
 
+Baselining legacy code: pin current violations with per-contract
+`ignore_imports` (import-linter) or `tach sync` (tach), then remove pinned
+entries as the code is cleaned up.
+
 ## Go
 
 **go-arch-lint** — YAML-declared components and allowed dependencies, checked
@@ -208,6 +223,9 @@ deps:
 `golangci-lint` with `depguard` covers banned imports;
 `go list -deps` piped into a small script is a zero-dependency cycle/boundary
 check when adding tooling is not an option.
+
+Baselining legacy code: commit the current violation output and fail only
+when it grows, tightening the allowed set as violations are fixed.
 
 ## Language-agnostic / build-level
 
