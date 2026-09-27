@@ -127,6 +127,7 @@ integration and drift triage._
 - **Route agent telemetry into the same observability stack as other services —
   no separate agent-monitoring silo.** Tag spans/logs with session ID,
   agent/prompt version, and workflow ID so traces and logs correlate. (Ch. 10)
+- **Instrument with the OpenTelemetry GenAI semantic conventions: `invoke_agent` parent with `chat` and `execute_tool` spans, `gen_ai.request.model` and `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` attributes; keep content capture off by default per the PII-redaction rule in Security below.** Experimental — opt in via `OTEL_SEMCONV_STABILITY_OPT_IN`.
 - **Triage failures with a reproducibility test before reacting: rerun 3–5×;
   ≥80% failure rate = systematic bug for engineering; otherwise check drift
   statistically (PSI > 0.25 major / > 0.1 minor, KS > 0.1)** instead of chasing
