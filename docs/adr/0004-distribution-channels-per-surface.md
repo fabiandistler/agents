@@ -150,11 +150,14 @@ user timer per machine, not by more manifest.
   implementation lands they contradict this ADR, and a reader of either gets the
   opposite answer about what `install.sh` does. They are part of the change, not
   follow-up.
-- **`--target=claude --instructions` stays mandatory for `opencode` to have any
-  rules.** opencode gets no instruction file of its own on purpose: its loader
-  reads `~/.claude/CLAUDE.md` unless `disableClaudeCodePrompt` is set. So
-  `--target=claude` becomes a no-op for skills while remaining the only way
-  opencode receives the instruction block. Do not "simplify" that target away.
+- ~~**`--target=claude --instructions` stays mandatory for `opencode` to have
+  any rules.**~~ *Amended 2026-09-27:* the premise was wrong. opencode reads
+  `~/.claude/CLAUDE.md` only as a fallback when `~/.config/opencode/AGENTS.md`
+  is missing ([rules](https://opencode.ai/docs/rules)), and opencode V2 drops
+  the fallback ([instructions](https://opencode.ai/v2/docs/instructions)).
+  `--target=opencode --instructions` now writes its own
+  `~/.config/opencode/AGENTS.md`, so opencode no longer depends on the claude
+  target for its rules.
 - "Live" is not uniform. A push to `main` reaches Claude within a session and
   reaches Codex and opencode only after the timer fires. A bad push is visible
   on Claude first.

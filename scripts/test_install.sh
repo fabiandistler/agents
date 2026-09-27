@@ -666,16 +666,20 @@ diff -q "$HOME_INS/claude-before.md" "$CLAUDE_MD" >/dev/null \
   || fail "uninstall did not restore the original instruction file"
 pass "instructions uninstall removes only the managed block"
 
-# 42. codex gets its own file created from nothing; opencode deliberately gets
-#     none (it already reads ~/.claude/CLAUDE.md).
+# 42. codex and opencode each get their own file created from nothing
+#     (opencode reads ~/.claude/CLAUDE.md only as a fallback, V2 not at all),
+#     and --uninstall strips the block from both.
 HOME_INS2="$(mktemp -d)"
 HOME="$HOME_INS2" "$INSTALL" --target=all --category=communication --instructions >/dev/null
-[[ -f "$HOME_INS2/.codex/AGENTS.md" ]] || fail "codex AGENTS.md was not created"
-grep -q 'Use uv for Python package development' "$HOME_INS2/.codex/AGENTS.md" \
-  || fail "codex AGENTS.md has no fragment body"
-[[ ! -e "$HOME_INS2/.config/opencode/AGENTS.md" ]] \
-  || fail "opencode instruction file written (would duplicate ~/.claude/CLAUDE.md)"
-pass "instructions create codex's file and skip opencode on purpose"
+for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
+  [[ -f "$HOME_INS2/$f" ]] || fail "$f was not created"
+  grep -q 'Use uv for Python package development' "$HOME_INS2/$f" \
+    || fail "$f has no fragment body"
+done
+HOME="$HOME_INS2" "$INSTALL" --target=opencode --category=communication --instructions --uninstall >/dev/null
+! grep -q 'agents instructions' "$HOME_INS2/.config/opencode/AGENTS.md" \
+  || fail "opencode uninstall left the instructions block"
+pass "instructions create codex's and opencode's own files"
 
 # 43. Unbalanced markers (a hand edit) leave the file completely alone, and
 #     --dry-run never writes.
@@ -691,5 +695,26 @@ HOME_INS4="$(mktemp -d)"
 HOME="$HOME_INS4" "$INSTALL" --target=codex --category=communication --instructions --dry-run >/dev/null
 [[ ! -e "$HOME_INS4/.codex/AGENTS.md" ]] || fail "dry-run wrote an instruction file"
 pass "unbalanced markers and dry-run never write instruction files"
+
+# 44. A fragment with `paths:` leaves Claude's block for a path-scoped rule
+#     under ~/.claude/rules/ (codex and opencode keep it inline), a foreign
+#     rule file is never touched, and --uninstall removes only ours.
+HOME_RULES="$(mktemp -d)"
+mkdir -p "$HOME_RULES/.claude/rules"
+printf 'mine\n' >"$HOME_RULES/.claude/rules/own.md"
+HOME="$HOME_RULES" "$INSTALL" --target=all --category=communication --instructions >/dev/null
+R_RULE="$HOME_RULES/.claude/rules/agents-40-r.md"
+[[ -f "$R_RULE" ]] || fail "path-scoped R rule was not written"
+grep -qxF '  - "**/*.R"' "$R_RULE" || fail "R rule lacks its quoted paths glob"
+grep -q 'Namespace' "$R_RULE" || fail "R rule has no fragment body"
+! grep -q 'Namespace' "$HOME_RULES/.claude/CLAUDE.md" \
+  || fail "path-scoped fragment still inside Claude's block"
+for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
+  grep -q 'Namespace' "$HOME_RULES/$f" || fail "$f lost the path-scoped fragment"
+done
+HOME="$HOME_RULES" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null
+[[ ! -e "$R_RULE" ]] || fail "uninstall left the managed R rule"
+[[ -f "$HOME_RULES/.claude/rules/own.md" ]] || fail "uninstall removed a foreign rule file"
+pass "paths: fragments become path-scoped Claude rules only"
 
 echo "all install.sh tests passed"

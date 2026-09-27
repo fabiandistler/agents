@@ -21,9 +21,11 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   Markdown files, ordered by their numeric filename prefix, that
   `install.sh --instructions` composes into a marker-delimited managed block
   in each agent's global instruction file (`~/.claude/CLAUDE.md`,
-  `~/.codex/AGENTS.md`). A rule is authored once here instead of being copied
-  by hand into every agent's config. Content outside the markers is never
-  touched.
+  `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`). A rule is authored
+  once here instead of being copied by hand into every agent's config.
+  Content outside the markers is never touched. A fragment with a `paths:`
+  field goes to Claude as a path-scoped rule in `~/.claude/rules/` instead
+  (codex and opencode keep it in their block).
 - `plugins/` packages the same skills as Claude plugins, one plugin per
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
