@@ -177,6 +177,19 @@ _Extends SKILL.md Part B (the five-step build order)._
   quantization, replica parallelism, tensor parallelism, and attention/KV-cache
   optimization. (Ch. 9)
 
+## Context engineering
+
+_Extends SKILL.md Part B step 1. Minimize first, then enhance._
+
+- **Keep the smallest high-signal context that solves the task — never fill the window because it fits.** Context rot degrades quality well below documented limits.
+  - ❌ dumping the corpus into the window because the model accepts it   ← likely-default
+- **Budget operating context well below the documented window**, with headroom for tool outputs and multi-turn growth.
+- **Set compaction and clearing thresholds for long agent loops** — compact or clear at a fixed turn or token count, not when the window errors.
+- **Keep structured notes outside the window** for persistent state across turns and sessions.
+- **Isolate sub-agent context: sub-agents return condensed summaries, never full transcripts.**
+  - ❌ forwarding full conversation history between agents   ← likely-default
+- **Load identifiers first and fetch content on demand** — just-in-time retrieval over preloaded documents.
+
 ## Result surface
 
 _How a model result is shown to the person who acts on it. Source: Apple HIG
