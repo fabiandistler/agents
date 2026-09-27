@@ -52,10 +52,10 @@ For both figure sheets and flowcharts:
 
 ```html
 <figure>
-  <svg viewBox="0 0 600 200" role="img" aria-labelledby="title">
-    <title id="title">Request lifecycle</title>
+  <svg viewBox="0 0 600 200" role="img" aria-labelledby="req-flow-title">
+    <title id="req-flow-title">Request lifecycle</title>
     <defs>
-      <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5"
+      <marker id="req-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5"
               markerWidth="6" markerHeight="6" orient="auto">
         <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
       </marker>
@@ -72,10 +72,20 @@ For both figure sheets and flowcharts:
       <text x="240" y="105" text-anchor="middle">auth</text>
     </g>
     <line x1="140" y1="100" x2="180" y2="100"
-          stroke="currentColor" marker-end="url(#arrow)"/>
+          stroke="currentColor" marker-end="url(#req-flow-arrow)"/>
     ...
   </svg>
   <figcaption>Happy-path request flow. Click any step for details.</figcaption>
   <button onclick="copySvg(this)">Copy SVG</button>
 </figure>
+
+Give every figure on the page its own ID prefix (`req-flow-` above is one example) so repeated figures never share an ID. Define the copy helper once per page:
+
+```html
+<script>
+  async function copySvg(btn) {
+    const svg = btn.closest('figure').querySelector('svg');
+    await navigator.clipboard.writeText(new XMLSerializer().serializeToString(svg));
+  }
+</script>
 ```
