@@ -419,7 +419,7 @@ def emit(payload: str, dest: str | None) -> int:
     except OSError as exc:
         sys.stderr.write(f"error: cannot write {dest}: {exc}\n")
         return 1
-    print(f"wrote {dest}")
+    sys.stderr.write(f"wrote {dest}\n")
     return 0
 
 
