@@ -2,7 +2,7 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: Guide the engineering of a foundation-model application across three linked decisions. Adapt the model when its output fails, choose what to build next, and monitor it live — plus the craft-level conventions underneath.
+description: "Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning. Adapt the model when its output fails, choose what to build next, and monitor it live."
 metadata:
   version: "1.2"
 ---
