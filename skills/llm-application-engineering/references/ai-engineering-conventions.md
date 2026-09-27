@@ -41,9 +41,9 @@ baselines live in SKILL.md — cross-reference, don't duplicate._
 _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
 (<https://github.com/responsibleai/ASSERT>), not from Huyen._
 
-- **Write the evaluation guideline before building** — including out-of-scope
+- **Write the evaluation guideline as a first draft before building, then revise it after error analysis** — including out-of-scope
   inputs and the required refusal behavior. "Correct" ≠ "good"; define good per
-  application. (Ch. 4)
+  application, and expect the first definition to move once traces are read. (Ch. 4)
 - **Record refusals as their own outcome class, by category — never let the
   retry path absorb them.** A refusal is a result, not a transient error; a
   harness that retries until the output parses silently deletes the safety

@@ -126,6 +126,17 @@ None of the rungs above should be climbed without evaluation criteria and a
 pipeline already in place. Without eval, every step up is a gamble — there is
 no way to tell whether it helped or introduced a regression.
 
+#### Error analysis first
+
+Start every eval from outputs, not from metrics:
+
+1. Sample about 100 traces from current behavior.
+2. Take free-form notes on each trace (open coding).
+3. Group the notes into a failure taxonomy (axial coding).
+4. Count traces per category.
+5. Fix cheap failures directly; write code checks or binary judges only for persistent categories.
+6. Re-run the set on every change (CI).
+
 ## Part B — Progressive architecture: five build steps
 
 LLM applications grow more complex in a deliberate sequence, not all at once.
@@ -249,5 +260,7 @@ back into Part A's diagnosis step.
   quality, security, and drift entirely.
 - Treating explicit feedback (thumbs up/down) as the whole feedback picture
   and ignoring the richer, continuous implicit signals.
+- Writing generic metrics before reading traces — run error analysis first,
+  then encode persistent failures as checks or judges.
 - Declaring a model deployment-worthy without checking it against all five
   baseline types.
