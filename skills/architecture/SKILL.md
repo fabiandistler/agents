@@ -22,9 +22,11 @@ one. Do not answer an architecture or design question from this file alone.
    invoking one by name (for example `architecture:ddd`) fails with "unknown
    skill" and wastes a turn. Read the file instead; it carries the real
    workflow, references, and scripts — this router only points the way.
-3. If two rows seem to apply, read both; if none fit, use your general knowledge
-   and say the catalogue had no dedicated sub-skill. Plain table/index design
-   has no member — answer directly and say so.
+3. If two rows seem to apply, apply the tie-break below and read the default
+   member; read a second member only if the first points to it. If none fit,
+   use your general knowledge and say the catalogue had no dedicated
+   sub-skill. Plain table/index design has no member — answer directly and
+   say so.
 
 The sub-skills are nested under this router's `members/` directory, so they load
 only when routed to (progressive disclosure) rather than each competing for the
@@ -45,3 +47,16 @@ model's trigger surface.
 
 The table above is generated from `skills.json` by
 `scripts/build_routers.py`; edit the manifest, not this region.
+
+## Tie-breaks
+
+When more than one row matches, route to exactly one default member:
+
+- Split into services or organize code → `architecture-pattern-advisor`
+- Where domain boundaries lie → `ddd`
+- Components of a new system or feature → `logical-component-design`
+- How services talk to each other → `microservices-design`
+- Measure existing code for coupling or cohesion → `coupling-cohesion`
+- Enforce a rule in CI so the design cannot erode → `fitness-functions`
+- Two services share a database → `microservices-design`
+- Where to start refactoring an unfamiliar codebase → the top-level `refactoring` skill, outside this router
