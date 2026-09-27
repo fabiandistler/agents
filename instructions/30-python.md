@@ -7,3 +7,23 @@ targets: all
 
 - [rule] Use uv for Python package development
 - [rule] Use ruff for Python formatting and linting
+- **New project baseline**: when setting up a new Python project with uv, add this dev group and config without asking:
+
+  ```sh
+  uv add --dev ruff ty pytest pytest-cov pip-audit
+  ```
+
+  ```toml
+  [tool.ruff.lint]
+  extend-select = ["S"]
+
+  [tool.coverage.run]
+  branch = true
+  ```
+
+  Why (keep this list when trimming the rule; the non-obvious choices get undone without it):
+  - `extend-select`, never `select`: since ruff 0.16 the default set (413 rules) already covers `UP`, `DTZ` and `B`, which catch what models copy from training data (`datetime.utcnow()`, `typing.List`). `select` would replace that default.
+  - `S` adds the bandit rules, so bandit itself is not needed. The default has only 3 of them. The hardcoded-secret rules (S105–S107) match on variable names, so a real key under an innocent name still gets through. Keep reviewing secrets by eye.
+  - `branch = true` shows untested error paths that happy-path code skips.
+  - `pip-audit` finds known vulnerabilities in dependencies.
+  - `ty`: same checker the prek hooks run. It is still beta. If it breaks on a library it does not support yet, fall back to `mypy` with `[tool.mypy] strict = true`.
