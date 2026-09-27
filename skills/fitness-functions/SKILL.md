@@ -102,6 +102,16 @@ deliberate violation without committing, watch the check go red, then revert.
 If the rule can't be stated as code, it isn't
 a fitness function yet — sharpen the rule first.
 
+#### Baseline first on an existing codebase
+
+A new rule on legacy code fails on day one, and a check that is red on day
+one gets disabled. Start from the current metric value instead of an ideal
+threshold: freeze the existing violations, fail only on new ones, and track
+the baseline size as a metric that must not grow. Ratchet the baseline
+tighter as violations are fixed; never impose a big-bang threshold the
+codebase cannot meet yet. Per-ecosystem baseline mechanics are listed in
+[references/tooling-catalog.md](references/tooling-catalog.md).
+
 ### 4. Wire it into the pipeline
 
 A fitness function that isn't executed automatically is documentation.
