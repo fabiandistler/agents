@@ -55,6 +55,7 @@ service. Not for deciding whether to use microservices at all
 | Contracts & Versioning | changing a published interface, event schema, or API payload |
 | Code Reuse | shared libraries, client libraries, common packages across services |
 | Workflow & Transactions | any business process spanning more than one service |
+| Messaging Reliability | publishing or consuming events, outbox use, at-least-once delivery, consumer dedupe |
 | Resiliency | any out-of-process call — timeouts, retries, pools, breakers, degradation |
 | Data & Security | sensitive data flows, reporting/analytics access, post-split integrity |
 

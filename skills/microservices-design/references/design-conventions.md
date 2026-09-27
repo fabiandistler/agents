@@ -10,7 +10,7 @@
 - **Draw boundaries around business domains (bounded contexts), never technical layers.** (ch2)
   - ❌ splitting into `ui-service` / `logic-service` / `data-service`, or a shared `repository-service` fronting a datastore over RPC   ← likely-default
   - ✅ `orders`, `warehouse`, `payments`, each owning its own logic *and* storage
-- **Start coarse — one service per bounded context — and only subdivide into finer services later.** Resist creating many tiny services up front. (ch2, ch3)
+- **Start coarse — one service per bounded context — and only subdivide into finer services later.** Resist creating many tiny services up front; see ddd for bounded-context sizing. (ch2, ch3)
 - **Own each aggregate in exactly one service.** One service may own several aggregates; one aggregate must never be split across services. (ch2)
 - **Treat an inbound state-change as a request the owning service may reject** by validating it against the aggregate's state machine — not a command it blindly applies. (ch2)
 - **Don't build a service that is a thin CRUD wrapper over a table.** Public get/set over private rows leaks state-transition logic to callers and weakens cohesion. (ch2)
@@ -22,7 +22,7 @@
 
 - **Never read from or write to another service's database or internal tables.** The DB is not a public interface; go through the owning service's API. (ch2)
   - ❌ `SELECT ... FROM orders_db.order` from the warehouse service   ← likely-default
-- **Avoid a shared mutable database across services.** Sharing *read-only static reference data* is tolerable; shared writable data is not. (ch2, ch4)
+- **Avoid a shared mutable database across services.** Shared writable data is never allowed; read-only reference data is allowed if the consuming context owns its copy. (ch2, ch4)
 - **Don't pass data through an intermediary service purely because a further-downstream service needs it.** Either call the downstream directly, have the intermediary build the payload itself, or make the intermediary treat it as an opaque blob it never parses. (ch2)
 - **Send the minimum data a call or event requires.** Every extra field becomes an assumption consumers couple to — and, in an event, part of your contract. (ch2, ch4)
 - **Treat a service that depends on many downstreams as a smell** — logic has likely been over-centralized into it. (ch2)
@@ -59,6 +59,13 @@
 - **Use sagas to recover from *business* failures only** (e.g. insufficient funds); handle *technical* failures (timeouts, 5xx) with the resiliency patterns below. (ch6)
 - **Choose orchestration when one team owns the whole flow; choose choreography when multiple teams are involved.** (ch6)
 - **Thread a single correlation ID through every call and event in a workflow** — mandatory for choreographed sagas to reconstruct state. (ch6)
+
+## Messaging Reliability
+
+- **Write the state change and the event through a transactional outbox in the same local transaction; relay the outbox to the broker asynchronously.** See ddd for the outbox pattern. (ch4, ch6)
+- **Assume at-least-once delivery and dedupe consumers on the message or business ID.** A consumer must tolerate receiving the same event twice. (ch4)
+- **Never publish to the broker inside the business transaction.** Commit state (plus the outbox row) first; let the relay publish afterward. (ch4, ch6)
+  - ❌ `db.commit(); broker.publish(evt)`   ← likely-default
 
 ## Resiliency
 
