@@ -80,7 +80,11 @@ generate the initial buckets — and avoid a third that looks tempting.
   entity-noun names describe nothing ("Order Manager manages orders"), and the
   component becomes a dumping ground for every bit of order logic — a god-
   component that is hard to test and deploy. Red-flag suffixes: **Manager,
-  Supervisor, Controller, Handler, Engine, Processor**. Prefer role names that
+  Supervisor, Controller, Handler, Engine, Processor**. A name passes when
+  its role statement names one job — changing the suffix alone is not a fix;
+  the suffixes are only a prompt to write the role statement. `Inventory
+  Management` passes because its role names a single responsibility: stock
+  levels. Prefer role names that
   say what the component *does* — `Validate Order`, not `Order Manager`.
   *(Escape hatch: if the system truly is CRUD over entities with no real logic,
   it doesn't need an architecture at all — reach for a CRUD/low-code framework.)*
