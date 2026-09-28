@@ -24,9 +24,9 @@ When the user has an existing visual identity (a deployed product, a brand, a co
 
 The flow:
 
-1. Point Claude at the user's codebase (Tailwind config, theme file, design tokens, CSS variables, any `theme.ts` / `colors.ts`).
+1. Point the agent at the user's codebase (Tailwind config, theme file, design tokens, CSS variables, any `theme.ts` / `colors.ts`).
 2. Generate `design-system.html` — color swatches with hex/token name, type scale specimens, spacing/radius/shadow examples. (See `design-and-prototypes.md` for the layout.)
-3. Save it somewhere it can be reused: project root, `.claude/` folder, wherever fits.
+3. Save it somewhere it can be reused: project root, an agent config folder, wherever fits.
 4. For every subsequent HTML artifact, read `design-system.html` first, then use those tokens as the artifact's CSS variables.
 
 This is one-time work that pays off across every future artifact. Suggest it the first time the user asks for an HTML artifact in a project that has a real design system.

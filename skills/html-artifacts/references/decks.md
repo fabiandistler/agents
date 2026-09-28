@@ -2,6 +2,15 @@
 
 A handful of `<section>` tags and twenty lines of JavaScript is a slide deck. Use this for short presentations the user wants to arrow-key through in a meeting — no Keynote, no export step, no PowerPoint roundtrip.
 
+## Contents
+
+- [When to make a deck](#when-to-make-a-deck)
+- [Layout](#layout)
+- [Per-slide structure](#per-slide-structure)
+- [What's load-bearing](#whats-load-bearing)
+- [Common mistakes](#common-mistakes)
+- [Example skeleton](#example-skeleton)
+
 ## When to make a deck
 
 - The user explicitly says "deck," "slides," or "presentation."
