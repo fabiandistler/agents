@@ -2,7 +2,7 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Evidence-based hypertrophy programming and auto-regulation with precise stop criteria, for experienced trainees. Covers set volume, RIR targets, the Stimulus:Fatigue ratio, training when injury risk is elevated, and returning after an injury.
+description: Evidence-based hypertrophy programming and auto-regulation with stop criteria for experienced trainees. Covers set volume, RIR targets, Stimulus:Fatigue ratio, rest intervals, long muscle lengths, elevated injury risk, and returning after injury.
 metadata:
   version: "1.1"
 ---
@@ -101,17 +101,24 @@ practical implication is that moderate volume (12–15 sets) at high intensity
 (RPE 8–9) is often more effective for an experienced trainee than high volume
 at submaximal intensity.
 
-### 3. Session distribution: the PUOS ceiling (~11 sets/session)
+### 3. Session distribution: the PUOS ceiling (~11 fractional sets/session)
 
-"Point of Undetectable Results Superiority" (PUOS) is the threshold beyond
-which additional volume in a single session produces no statistically
-detectable extra benefit — identified at roughly **11 fractional sets per
-session**. This is the mechanism behind the Aube et al. inverted-U finding
-above: 18 sets/week beat 24 sets/week not because more volume is bad in
-principle, but because concentrating it in too few sessions wastes it.
-Practical consequence: distributing a given weekly volume across 3–6 sessions
-is more effective than concentrating it — e.g. 2×10 sets across two sessions
-rather than 20 sets in one.
+"Point of Undetectable Outcome Superiority" (PUOS; Remmert et al. 2025,
+SportRxiv preprint) is the per-session volume beyond which additional sets
+have less than a 50% probability of producing a detectably larger
+hypertrophy effect — estimated at roughly **11 fractional sets per session**
+(direct sets count 1, indirect sets count 0.5; about 8 direct sets).
+Returns diminish before the ceiling rather than falling off a cliff, and the
+estimate carries growing uncertainty at high volumes, so treat it as a soft
+ceiling rather than a hard limit. This is one plausible mechanism behind the
+Aube et al. inverted-U finding above: 18 sets/week beat 24 sets/week partly
+because concentrating volume in too few sessions wastes it.
+Practical consequence (expert heuristic): distributing a given weekly volume
+across several sessions tends to work better in practice than concentrating
+it — e.g. 2×10 sets across two sessions rather than 20 sets in one. Direct
+evidence on frequency itself is weak (see section 6), so this rule rests on
+the per-session dose-response plus coaching practice, not on a measured
+frequency effect.
 
 ### 4. The Stimulus:Fatigue ratio as the primary metric
 
@@ -122,16 +129,17 @@ it accumulates — is proposed as the metric that should actually drive volume
 and intensity decisions.
 
 **Worsens the ratio (more fatigue per unit of stimulus):**
-- Very high volume (>8 sets per muscle group per session)
+- Very high volume (>8 direct sets per muscle group per session, about 11 fractional sets — the PUOS ceiling above)
 - Training multiple sets to 0 RIR / failure
-- High frequency (>3×/week per muscle group)
-- Exercises dominated by the stretched position (more muscle damage)
+- High frequency (>3×/week per muscle group; expert heuristic — Pelland et al. 2025 find no consistent independent frequency effect on hypertrophy)
+- Exercises with a large stretch load (extra damage per unit of stimulus —
+  a cost worth paying given the hypertrophy benefit; see section 7)
 - Fast-twitch-dominant individuals
 
 **Improves the ratio (less fatigue per unit of stimulus):**
 - Moderate volume (2–6 sets per muscle group)
 - Training with 1–2 RIR reserve
-- Adjusted frequency (1.5–2.5×/week)
+- Adjusted frequency (1.5–2.5×/week; expert heuristic, same caveat as above)
 - Balanced exercise selection
 - Auto-regulation protocols (Part B)
 
@@ -153,16 +161,22 @@ recovery — higher volume forces a larger RIR buffer.
 
 ### 6. Frequency and periodization
 
+Pelland et al. (2025) find no consistent independent effect of weekly
+frequency on hypertrophy once volume is accounted for — the effect is small
+and compatible with negligible, while higher frequency does benefit
+strength. Treat every frequency rule below as an expert heuristic for
+managing per-session volume and recovery, not as a measured frequency
+optimum.
+
 Optimal frequency per muscle group is set by individual recovery
 determinants (fiber-type dominance, age, training experience, sleep,
 nutrition, stress, and the session's own Stimulus:Fatigue ratio), not by an
 abstract "3–5×/week" figure from the literature. For higher frequency
 (3×/week), lower the reps, lower the volume per session (≤3 sets), raise RIR
-reserve (2+), or favor less stretch-dominated exercises. For lower frequency
+reserve (2+), or favor less fatiguing exercise variants. For lower frequency
 (1–2×/week), the opposite combination — higher volume per session, closer to
-failure, higher reps, stretch-dominant exercises — is appropriate. When
-progress stalls, add rest days before adding volume; when volume rises,
-frequency should fall to compensate.
+failure, higher reps — is appropriate. When progress stalls, add rest days
+before adding volume; when volume rises, frequency should fall to compensate.
 
 Two periodization strategies apply this over time:
 
@@ -171,14 +185,45 @@ Two periodization strategies apply this over time:
   under-exposed to other training qualities for long stretches.
 - **Undulating periodization** — volume and intensity vary within the week
   (e.g. heavy/low-volume, moderate, light/high-volume days). More varied
-  stimulus and often better results for experienced (9+ year) trainees, at
-  the cost of being harder to plan and track.
+  stimulus, at the cost of being harder to plan and track. Moesgaard et al.
+  (2022) find no hypertrophy difference between linear and undulating
+  schemes (or between periodized and non-periodized training) when volume is
+  equated; the undulating advantage appears for maximal strength, mainly in
+  trained lifters — so choose between them on preference and strength goals,
+  not on expected hypertrophy.
 
-**Volume cycling** is a concrete undulating implementation: an accumulation
-phase (4–6 weeks) at 12–15 sets/muscle group, an intensification phase
-(2–3 weeks) at 16–20 sets, then a 1-week deload at 6–8 sets. Muscle growth
-can stagnate within about 3 months without such variation. A ~20%
-volume increase between cycles is suggested as an optimal progression rate.
+**Volume cycling** (expert heuristic) is a concrete undulating
+implementation: an accumulation phase (4–6 weeks) at 12–15 sets/muscle
+group, an intensification phase (2–3 weeks) at 16–20 sets, then a 1-week
+deload at 6–8 sets. The "growth stagnates within about 3 months without
+variation" and "~20% volume increase between cycles is optimal" figures are
+coaching rules of thumb, not measured optima — use them as defaults to
+individualize, not as targets. Coleman et al. (2024) find a mid-block week
+off leaves hypertrophy unchanged while slightly reducing strength gains and
+shows no potentiation effect, so schedule deloads by need (persistent
+performance drop, unrecovered soreness, rising RIR error) rather than by the
+calendar; continuous training over blocks of up to about 9 weeks is a viable
+default. The plateau test in Part B stays the arbiter: when in doubt, test
+fatigue versus stimulus rather than deloading on schedule.
+
+### 7. Rest intervals and long muscle lengths
+
+Rest at least 60 seconds between sets; Singer et al. (2024) find a small
+hypertrophy benefit to rest beyond 60 seconds, with no appreciable further
+benefit past about 90 seconds, likely mediated by preserved volume load.
+Hypertrophy happens across a wide rest spectrum, and training to failure or
+not does not meaningfully change the picture — so rest 60–90 seconds minimum
+on isolation work and longer (2–3 minutes or more) on heavy compounds where
+short rest would cost reps, without timing longer rests for hypertrophy's
+sake.
+
+Emphasize the lengthened position: prior work finds greater hypertrophy
+training at long versus short muscle lengths, and Wolf et al. (2025) find
+lengthened partials match full range of motion in trained lifters — so a
+full range of motion with a controlled stretch, or lengthened partials as an
+alternative, both satisfy the requirement. The stretch imposes extra damage,
+which is why section 4 lists it as a fatigue cost, but the net trade favors
+including it rather than avoiding it.
 
 ### Physiological foundation (why these levers matter)
 
@@ -200,9 +245,12 @@ an accurate sense of RIR; see the calibration step first if that is in doubt.
 
 ### Prerequisite: RIR calibration (single working set)
 
-Most trainees, when tested, discover they were training at 3+ RIR while
-believing they were at 0–1 RIR. Before relying on any auto-regulation
-protocol, recalibrate:
+Most trainees systematically underpredict proximity to failure by about 1
+rep (Halperin et al. 2022) — enough to turn a programmed 1 RIR into an
+actual 2 RIR. Accuracy is worse on high-rep sets (above about 12 reps) and
+better near failure, on heavier lower-rep sets, and in later sets, so treat
+early-set high-rep RIR calls as the least trustworthy. Before relying on any
+auto-regulation protocol, recalibrate:
 
 1. Use a single working set per exercise.
 2. Choose safe exercises (machines, dumbbells, a power rack with safeties) —
@@ -248,7 +296,8 @@ keep intensity and per-session volume unchanged
         ├── Progress returns ──▶ FATIGUE problem
         │                        → reduce volume and/or frequency
         │                          durably (trade one for the other)
-        │                        → schedule a deload every 4-6 weeks
+        │                        → deload when need signals show it (see Part A.6),
+        │                          rather than on a fixed 4–6 week cycle
         │
         └── No progress ──────▶ STIMULUS problem
                                  → train closer to failure (lower RIR)
@@ -386,7 +435,12 @@ and individual genetics can still shift the outcome by roughly ±50%.
 
 Baz-Valle et al. (2022); Schoenfeld et al. (2017); Refalo et al. (2022); Aube
 et al. (2022); Robinson meta-analysis (2024); Alan Aragon, Lyle McDonald, Eric
-Helms (muscle-gain-rate estimates).
+Helms (muscle-gain-rate estimates); Remmert et al. (2025, SportRxiv preprint
+537 — PUOS); Pelland et al. (2025 — weekly volume and frequency
+dose-response); Moesgaard et al. (2022 — periodization); Coleman et al.
+(2024, PeerJ 16777 — deload); Singer et al. (2024 — rest intervals); Wolf et
+al. (2025 — lengthened partials versus full range of motion); Halperin et
+al. (2022 — RIR prediction accuracy).
 
 **Part C** (both sections) is distilled from Israetel et al., *Scientific
 Principles of Hypertrophy Training* (Renaissance Periodization), pp. 352–357.
