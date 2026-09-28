@@ -25,7 +25,7 @@ question is how to keep training while injury risk is elevated — an irritated
 joint, heavy sleep debt, high life stress, a return after a layoff — or how to
 work back to normal training after an injury and completed physical therapy.
 Draws on meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022,
-Aube 2022, Robinson 2024) and Israetel et al.; not aimed at beginners.
+Robinson 2024, Pelland 2025), an RCT (Aube 2022), and Israetel et al.; not aimed at beginners.
 
 > **Scope and safety note.** This is an educational summary of
 > strength-training research, not medical, physical-therapy, or
@@ -48,30 +48,21 @@ Aube 2022, Robinson 2024) and Israetel et al.; not aimed at beginners.
 
 ## Part A — Programming principles
 
-### 1. Weekly volume: 12–20 sets per muscle group, with diminishing returns
+### 1. Weekly volume: diminishing returns, no hard ceiling — count fractional sets
 
-Meta-analyses from 2020–2024 converge on a working ceiling for productive
-volume in experienced trainees:
+Pelland et al. (2025, https://doi.org/10.1007/s40279-025-02344-w) find hypertrophy
+rises with weekly volume with diminishing returns and no plateau found; count
+fractional sets (direct sets 1, indirect sets 0.5):
 
-- Baz-Valle et al. (2022) found no additional hypertrophy benefit above
-  ~20 sets/muscle group/week.
-- Aube et al. (2022) found an inverted-U relationship in which 18 sets/week
-  outperformed both 12 and 24 sets/week.
-- Schoenfeld et al. (2017) quantified the dose-response curve at an average
-  effect size of 0.023 per additional weekly set (~0.37% additional muscle
-  growth per set) — a relationship that holds roughly linearly at low volumes
-  but breaks down at high volumes due to recovery limits.
-
-The per-set return on volume drops off sharply, not linearly (the index below
-is an illustrative relative-return scale, not a Cohen's-d effect size — the
-measured average per-set effect size is the 0.023 cited above):
-
-| Set range (per muscle group/week) | Relative per-set return (illustrative) | Return |
-|---|---|---|
-| 1–5 | 0.4–0.8 | Highest |
-| 6–10 | 0.2–0.4 | Moderate |
-| 11–15 | 0.1–0.2 | Diminishing |
-| 16+ | <0.1 | Minimal |
+- Schoenfeld et al. (2017) quantified the dose-response at an average effect
+  size of 0.023 per additional weekly set (~0.37% additional muscle growth
+  per set) — roughly linear at low volumes, flattening at high volumes as
+  recovery limits bind.
+- Baz-Valle et al. (2022) reported the same flattening pattern at high
+  volumes, consistent with diminishing returns rather than a hard cutoff.
+- Aube et al. (2022, RCT, https://doi.org/10.1519/JSC.0000000000003524)
+  compared 12, 18, and 24 sets/week and found no difference in muscle
+  thickness by set number.
 
 The practical reading: the first 10–12 sets deliver most of the hypertrophic
 stimulus; sets beyond that trade an increasingly small stimulus gain for a
@@ -87,10 +78,10 @@ to outperform high volume at moderate intensity.
 Proximity to failure appears to matter as much as, or more than, absolute
 volume for experienced trainees:
 
-- Refalo et al. (2022) found that training to muscular failure produces a
-  significant hypertrophy benefit in experienced trainees.
-- The Robinson meta-analysis (2024) confirmed a dose-response relationship:
-  hypertrophy improves the closer training gets to failure.
+- Refalo et al. (2022, https://doi.org/10.1007/s40279-022-01784-y) found no
+  benefit of momentary failure itself (ES 0.12, p=0.34).
+- Robinson et al. (2024) found hypertrophy improves the closer training gets
+  to failure; the proximity analysis was exploratory with estimated RIR.
 - Mechanical tension — believed to be the primary driver of hypertrophy (see
   below) — reaches its maximum only at high intensity.
 
@@ -110,9 +101,7 @@ hypertrophy effect — estimated at roughly **11 fractional sets per session**
 (direct sets count 1, indirect sets count 0.5; about 8 direct sets).
 Returns diminish before the ceiling rather than falling off a cliff, and the
 estimate carries growing uncertainty at high volumes, so treat it as a soft
-ceiling rather than a hard limit. This is one plausible mechanism behind the
-Aube et al. inverted-U finding above: 18 sets/week beat 24 sets/week partly
-because concentrating volume in too few sessions wastes it.
+ceiling rather than a hard limit.
 Practical consequence (expert heuristic): distributing a given weekly volume
 across several sessions tends to work better in practice than concentrating
 it — e.g. 2×10 sets across two sessions rather than 20 sets in one. Direct
@@ -145,8 +134,8 @@ and intensity decisions.
 
 Advanced trainees often do better with lower volume and a better ratio than
 with maximal volume and a poor one. Individual recovery capacity should set
-the target ratio — this is why the fixed "12–20 sets" figure above is a
-population average, not an individual prescription.
+the target ratio — volume ranges are starting points to individualize, not
+individual prescriptions.
 
 ### 5. Volume by training experience
 
@@ -409,9 +398,9 @@ and individual genetics can still shift the outcome by roughly ±50%.
 
 ## Common pitfalls to avoid
 
-- **Treating the 12–20 set range as a target rather than a ceiling.** The
-  research shows no benefit beyond ~20 sets/week and sharply diminishing
-  returns above ~10–12; more is not automatically better.
+- **Treating a volume range as a target rather than a starting range.** The
+  research shows diminishing returns with no hard ceiling; more is not
+  automatically better.
 - **Chasing volume while training at submaximal RIR.** The volume figures
   assume 0–2 RIR; the same volume at 4+ RIR is a materially weaker stimulus.
 - **Increasing volume as the default response to a plateau.** Run the
