@@ -12,15 +12,39 @@ locally beats a more powerful one bolted on from outside.
 - [JavaScript / TypeScript](#javascript--typescript)
 - [Python](#python)
 - [Go](#go)
+- [PHP](#php)
+- [R](#r)
 - [Language-agnostic / build-level](#language-agnostic--build-level)
 - [Production / runtime fitness functions](#production--runtime-fitness-functions)
 
 ## Java
 
-**JDepend** — the chapter's original metrics tool; understands Java package
-structure. Two canonical fitness functions:
+Recommended default: **ArchUnit**.
 
-Cycle detection (Example 6-2 in the book):
+**ArchUnit** — the modern special-purpose choice; JUnit-ecosystem tests with
+predefined governance rules. Layer governance (Example 6-4):
+
+```java
+@ArchTest
+static final ArchRule layers = layeredArchitecture()
+    .consideringAllDependencies()
+    .layer("Controller").definedBy("..controller..")
+    .layer("Service").definedBy("..service..")
+    .layer("Persistence").definedBy("..persistence..")
+    .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+    .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
+    .whereLayer("Persistence").mayOnlyBeAccessedByLayers("Service");
+```
+
+Outside the JUnit5 runner the same rule runs as `layers.check(classes)`.
+
+ArchUnit also covers cycles (`slices().should().beFreeOfCycles()`), naming
+conventions, annotation rules, and anti-gaming checks such as requiring every
+test method to contain at least one assertion.
+
+**JDepend** — historical (unmaintained): the chapter's original metrics tool,
+kept because the book's canonical examples use it; new projects should use
+ArchUnit above. Cycle detection (Example 6-2 in the book):
 
 ```java
 public class CycleTest {
@@ -60,30 +84,15 @@ void AllPackages() {
 }
 ```
 
-**ArchUnit** — the modern special-purpose choice; JUnit-ecosystem tests with
-predefined governance rules. Layer governance (Example 6-4):
-
-```java
-@ArchTest
-static final ArchRule layers = layeredArchitecture()
-    .consideringAllDependencies()
-    .layer("Controller").definedBy("..controller..")
-    .layer("Service").definedBy("..service..")
-    .layer("Persistence").definedBy("..persistence..")
-    .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
-    .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
-    .whereLayer("Persistence").mayOnlyBeAccessedByLayers("Service");
-```
-
-Outside the JUnit5 runner the same rule runs as `layers.check(classes)`.
-
-ArchUnit also covers cycles (`slices().should().beFreeOfCycles()`), naming
-conventions, annotation rules, and anti-gaming checks such as requiring every
-test method to contain at least one assertion.
+Baselining legacy code: wrap the rule in a `FreezingArchRule` so current
+violations are frozen and only new ones fail the build; remove frozen entries
+as the code is cleaned up.
 
 ## .NET
 
-**NetArchTest** — fluent layer/dependency rules as ordinary unit tests
+Recommended default: **ArchUnitNET**.
+
+**NetArchTest** — stale (no release since 2021): fluent layer/dependency rules as ordinary unit tests
 (Example 6-5):
 
 ```csharp
@@ -98,9 +107,15 @@ var result = Types.InCurrentDomain()
 ```
 
 **ArchUnitNET** — a .NET port of ArchUnit with the same rule vocabulary,
-including layered-architecture and cycle rules.
+including layered-architecture and cycle rules. Teams already on NetArchTest
+should move to its maintained continuation, **NetArchTest.eNhancedEdition**.
+
+Baselining legacy code: commit the current violation list and fail only on
+entries not already on it, shrinking the list as violations are fixed.
 
 ## JavaScript / TypeScript
+
+Recommended default: **dependency-cruiser**.
 
 **dependency-cruiser** — declarative rules over the import graph; runs as a
 CLI in CI. Cycle detection plus boundary rules:
@@ -119,11 +134,19 @@ module.exports = {
 
 **eslint-plugin-boundaries** / **import/no-cycle** — same governance expressed
 inside an existing ESLint setup; good when the team already treats lint
-failures as build failures. **ts-arch** offers ArchUnit-style assertions
+failures as build failures. **ArchUnitTS** (npm `archunit`) offers
+ArchUnit-style assertions
 (`filesOfProject().inFolder("ui").shouldNot().dependOnFiles().inFolder("db")`)
-inside Jest/Vitest.
+inside Jest/Vitest. **ts-arch** covers the same ground but shows no release
+since 2024-12, so prefer ArchUnitTS for new rules.
+
+Baselining legacy code: generate a known-violations file (`depcruise-baseline`
+command, `baseline` reporter) and run CI with `depcruise --ignore-known`, so
+only new violations fail the build.
 
 ## Python
+
+Recommended default: **import-linter**.
 
 **import-linter** — contracts over the import graph, enforced by a CLI.
 pyproject.toml:
@@ -164,7 +187,9 @@ forbids dependency cycles between siblings; `forbidden` covers banned
 dependencies. **pytest-archon**
 expresses the same rules as pytest tests
 (`archrule("no db in ui").match("myapp.ui*").should_not_import("myapp.persistence*").check("myapp")`)
-when the team prefers rules living in the test suite. **pydeps --show-cycles**
+when the team prefers rules living in the test suite. **pytestarch** covers
+similar layer and dependency rules as pytest tests, an alternative for the
+same preference. **pydeps --show-cycles**
 works as a quick cycle gate.
 
 **tach** — component boundaries declared in `tach.toml`, enforced by a
@@ -187,7 +212,13 @@ first release April 2026, one maintainer, roughly two orders of magnitude
 less adopted than import-linter — weigh that before it becomes a build
 blocker.
 
+Baselining legacy code: pin current violations with per-contract
+`ignore_imports` (import-linter) or `tach sync` (tach), then remove pinned
+entries as the code is cleaned up.
+
 ## Go
+
+Recommended default: **go-arch-lint**.
 
 **go-arch-lint** — YAML-declared components and allowed dependencies, checked
 by a CLI:
@@ -208,6 +239,57 @@ deps:
 `golangci-lint` with `depguard` covers banned imports;
 `go list -deps` piped into a small script is a zero-dependency cycle/boundary
 check when adding tooling is not an option.
+
+Baselining legacy code: commit the current violation output and fail only
+when it grows, tightening the allowed set as violations are fixed.
+
+## PHP
+
+Recommended default: **Deptrac**.
+
+**Deptrac** — layers declared in `deptrac.yaml`, checked by a CLI:
+
+```yaml
+parameters:
+  paths:
+    - ./src
+  layers:
+    - name: Controller
+      collectors:
+        - type: className
+          regex: .*Controller.*
+    - name: Service
+      collectors:
+        - type: className
+          regex: .*Service.*
+    - name: Repository
+      collectors:
+        - type: className
+          regex: .*Repository.*
+  ruleset:
+    Controller:
+      - Service
+    Service:
+      - Repository
+    Repository: ~
+```
+
+Baselining legacy code: dump current violations with `--formatter=baseline`
+into `deptrac.baseline.yaml` and import it from `deptrac.yaml`, so only new
+violations fail the build.
+
+## R
+
+Recommended default: **a custom boundary script** — no ArchUnit equivalent
+exists for R.
+
+With `box` modules (for example a `rhino` application layout), keep
+boundaries with a small script that parses `box::use()` declarations and
+fails on forbidden edges, or with a custom `lintr` linter flagging imports
+across module boundaries.
+
+Baselining legacy code: commit the current violation output and fail only
+when it grows, tightening the allowed set as violations are fixed.
 
 ## Language-agnostic / build-level
 
