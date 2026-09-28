@@ -209,6 +209,9 @@ machine consumption prefer `skills.json`.
   symlink `plugins/<category>/skills/<skill-name>` →
   `../../../skills/<skill-name>`. CI enforces this with
   `python3 scripts/check_plugins.py`.
+- A reference file over 100 lines carries a `## Contents` heading with
+  section links within its first 20 lines, so a partial read still shows its
+  scope. CI enforces this with `python3 scripts/check_reference_tocs.py`.
 
 ## Scripts an agent runs
 

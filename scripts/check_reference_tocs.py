@@ -6,9 +6,10 @@ Run from repo root:
 
 A reference file over 100 lines must contain a `## Contents` heading within
 its first 20 lines, so a partial read still shows the file's scope (per
-Anthropic's skill-authoring best practices). Symlinked member copies resolve
-to the same file and are reported once. Stdlib-only, matching the other
-scripts/check_*.py gates.
+Anthropic's skill-authoring best practices). Only files directly inside a
+`references/` directory are checked, not nested subdirectories. Symlinked
+member copies resolve to the same file and are reported once. Stdlib-only,
+matching the other scripts/check_*.py gates.
 """
 
 from __future__ import annotations
@@ -51,12 +52,7 @@ def reference_files() -> list[Path]:
     return files
 
 
-def has_toc(path: Path) -> bool:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return False
-    lines = text.splitlines()
+def has_toc(lines: list[str]) -> bool:
     return any(TOC.match(line) for line in lines[:HEAD_LINES])
 
 
@@ -65,14 +61,15 @@ def collect_violations() -> tuple[list[str], int]:
     checked = 0
     for path in reference_files():
         try:
-            count = len(path.read_text(encoding="utf-8").splitlines())
+            lines = path.read_text(encoding="utf-8").splitlines()
         except OSError as exc:
             violations.append(f"{path.relative_to(REPO_ROOT)}: unreadable: {exc}")
             continue
+        count = len(lines)
         if count <= MAX_LINES:
             continue
         checked += 1
-        if not has_toc(path):
+        if not has_toc(lines):
             violations.append(
                 f"{path.relative_to(REPO_ROOT)}: {count} lines, no `## Contents` in first {HEAD_LINES} lines"
             )
