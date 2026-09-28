@@ -270,3 +270,13 @@ The five canonical triage roles use their default label strings (`needs-triage`,
 ### Domain docs
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Weekly skill audit
+
+A scheduled Claude Code routine follows `docs/agents/skill-audit.md` every
+week: the `repo-error-checker` subagent runs the CI checks repo-wide, and the
+`skill-reviewer` subagent judges a rotating quarter of the skills (plus the
+most-changed ones) against `docs/agents/skill-audit-checklist.md`. Findings
+land in one rolling `skill-audit` issue; mechanical fixes in one
+`claude/skill-audit-<date>` PR. Record a finding you decide to keep under the
+issue's *Accepted* section so the audit stops reporting it.
