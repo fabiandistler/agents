@@ -2,19 +2,14 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Evidence-based hypertrophy programming and auto-regulation with stop criteria for experienced trainees. Covers set volume, RIR targets, Stimulus:Fatigue ratio, rest intervals, long muscle lengths, elevated injury risk, and returning after injury.
+description: Evidence-based hypertrophy programming and auto-regulation with plateau diagnosis for experienced trainees. Covers set volume, RIR targets, Stimulus:Fatigue ratio, rest, muscle lengths, elevated injury risk, and returning after injury.
 metadata:
   version: "1.1"
 ---
 
 # Hypertrophy Training
 
-This skill summarizes evidence-based principles for programming resistance
-training for muscle hypertrophy, and a set of auto-regulation protocols for
-applying those principles set-by-set and session-by-session. It is aimed at
-**experienced trainees** (roughly 9+ years of systematic training) — the
-volume and intensity ranges below assume a trainee who has already exhausted
-the large, fast gains available to beginners and intermediates.
+This skill covers evidence-based hypertrophy programming and auto-regulation for **experienced trainees** (roughly 9+ years of systematic training).
 
 ## When to use
 
@@ -24,8 +19,7 @@ why progress has stalled (a two-step plateau diagnosis). Also when the
 question is how to keep training while injury risk is elevated — an irritated
 joint, heavy sleep debt, high life stress, a return after a layoff — or how to
 work back to normal training after an injury and completed physical therapy.
-Draws on meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022,
-Aube 2022, Robinson 2024) and Israetel et al.; not aimed at beginners.
+Draws on recent volume and failure meta-analyses and Israetel et al.; not aimed at beginners.
 
 > **Scope and safety note.** This is an educational summary of
 > strength-training research, not medical, physical-therapy, or
@@ -48,30 +42,21 @@ Aube 2022, Robinson 2024) and Israetel et al.; not aimed at beginners.
 
 ## Part A — Programming principles
 
-### 1. Weekly volume: 12–20 sets per muscle group, with diminishing returns
+### 1. Weekly volume: diminishing returns, no hard ceiling — count fractional sets
 
-Meta-analyses from 2020–2024 converge on a working ceiling for productive
-volume in experienced trainees:
+Pelland et al. (2025, https://doi.org/10.1007/s40279-025-02344-w) find hypertrophy
+rises with weekly volume with diminishing returns and no plateau found; count
+fractional sets (direct sets 1, indirect sets 0.5):
 
-- Baz-Valle et al. (2022) found no additional hypertrophy benefit above
-  ~20 sets/muscle group/week.
-- Aube et al. (2022) found an inverted-U relationship in which 18 sets/week
-  outperformed both 12 and 24 sets/week.
-- Schoenfeld et al. (2017) quantified the dose-response curve at an average
-  effect size of 0.023 per additional weekly set (~0.37% additional muscle
-  growth per set) — a relationship that holds roughly linearly at low volumes
-  but breaks down at high volumes due to recovery limits.
-
-The per-set return on volume drops off sharply, not linearly (the index below
-is an illustrative relative-return scale, not a Cohen's-d effect size — the
-measured average per-set effect size is the 0.023 cited above):
-
-| Set range (per muscle group/week) | Relative per-set return (illustrative) | Return |
-|---|---|---|
-| 1–5 | 0.4–0.8 | Highest |
-| 6–10 | 0.2–0.4 | Moderate |
-| 11–15 | 0.1–0.2 | Diminishing |
-| 16+ | <0.1 | Minimal |
+- Schoenfeld et al. (2017) quantified the dose-response at an average effect
+  size of 0.023 per additional weekly set (~0.37% additional muscle growth
+  per set) — roughly linear at low volumes, flattening at high volumes as
+  recovery limits bind.
+- Baz-Valle et al. (2022) reported the same flattening pattern at high
+  volumes, consistent with diminishing returns rather than a hard cutoff.
+- Aube et al. (2022, RCT, https://doi.org/10.1519/JSC.0000000000003524)
+  compared 12, 18, and 24 sets/week and found no difference in muscle
+  thickness by set number.
 
 The practical reading: the first 10–12 sets deliver most of the hypertrophic
 stimulus; sets beyond that trade an increasingly small stimulus gain for a
@@ -87,10 +72,10 @@ to outperform high volume at moderate intensity.
 Proximity to failure appears to matter as much as, or more than, absolute
 volume for experienced trainees:
 
-- Refalo et al. (2022) found that training to muscular failure produces a
-  significant hypertrophy benefit in experienced trainees.
-- The Robinson meta-analysis (2024) confirmed a dose-response relationship:
-  hypertrophy improves the closer training gets to failure.
+- Refalo et al. (2022, https://doi.org/10.1007/s40279-022-01784-y) found no
+  benefit of momentary failure itself (ES 0.12, p=0.34).
+- Robinson et al. (2024) found hypertrophy improves the closer training gets
+  to failure; the proximity analysis was exploratory with estimated RIR.
 - Mechanical tension — believed to be the primary driver of hypertrophy (see
   below) — reaches its maximum only at high intensity.
 
@@ -110,9 +95,7 @@ hypertrophy effect — estimated at roughly **11 fractional sets per session**
 (direct sets count 1, indirect sets count 0.5; about 8 direct sets).
 Returns diminish before the ceiling rather than falling off a cliff, and the
 estimate carries growing uncertainty at high volumes, so treat it as a soft
-ceiling rather than a hard limit. This is one plausible mechanism behind the
-Aube et al. inverted-U finding above: 18 sets/week beat 24 sets/week partly
-because concentrating volume in too few sessions wastes it.
+ceiling rather than a hard limit.
 Practical consequence (expert heuristic): distributing a given weekly volume
 across several sessions tends to work better in practice than concentrating
 it — e.g. 2×10 sets across two sessions rather than 20 sets in one. Direct
@@ -145,8 +128,8 @@ and intensity decisions.
 
 Advanced trainees often do better with lower volume and a better ratio than
 with maximal volume and a poor one. Individual recovery capacity should set
-the target ratio — this is why the fixed "12–20 sets" figure above is a
-population average, not an individual prescription.
+the target ratio — volume ranges are starting points to individualize, not
+individual prescriptions.
 
 ### 5. Volume by training experience
 
@@ -398,20 +381,19 @@ loosen at once on the first good day.
 
 ## Realistic expectations
 
-For experienced trainees (9+ years), realistic gains are modest by beginner
-standards: roughly **2–5 kg of muscle mass per year** (3–7% of current
-muscle mass), trending toward the lower end (2–3 kg/year) at the high end of
-experience. Independent estimates converge: Alan Aragon (0.25–0.5% body
-weight/month), Lyle McDonald (0.5–1 lb/month), and Eric Helms (~2.3 kg/year
-as a conservative figure). These rates assume optimal training, adequate
-recovery, consistent nutrition in a slight surplus, and no extended layoffs —
-and individual genetics can still shift the outcome by roughly ±50%.
+For very experienced trainees (9+ years), realistic gains are modest:
+roughly **1–3 kg of muscle mass per year**. Independent estimates converge:
+Alan Aragon (0.25–0.5% body weight/month), Lyle McDonald (~2–3 lb/year in
+year 4+), and Eric Helms (~2.3 kg/year as a conservative figure). These rates
+assume optimal training, adequate recovery, consistent nutrition in a slight
+surplus, and no extended layoffs — and individual genetics can still shift
+the outcome by roughly ±50%.
 
 ## Common pitfalls to avoid
 
-- **Treating the 12–20 set range as a target rather than a ceiling.** The
-  research shows no benefit beyond ~20 sets/week and sharply diminishing
-  returns above ~10–12; more is not automatically better.
+- **Treating a volume range as a target rather than a starting range.** The
+  research shows diminishing returns with no hard ceiling; more is not
+  automatically better.
 - **Chasing volume while training at submaximal RIR.** The volume figures
   assume 0–2 RIR; the same volume at 4+ RIR is a materially weaker stimulus.
 - **Increasing volume as the default response to a plateau.** Run the
@@ -433,14 +415,19 @@ and individual genetics can still shift the outcome by roughly ±50%.
 
 ## Sources
 
-Baz-Valle et al. (2022); Schoenfeld et al. (2017); Refalo et al. (2022); Aube
-et al. (2022); Robinson meta-analysis (2024); Alan Aragon, Lyle McDonald, Eric
-Helms (muscle-gain-rate estimates); Remmert et al. (2025, SportRxiv preprint
-537 — PUOS); Pelland et al. (2025 — weekly volume and frequency
-dose-response); Moesgaard et al. (2022 — periodization); Coleman et al.
-(2024, PeerJ 16777 — deload); Singer et al. (2024 — rest intervals); Wolf et
-al. (2025 — lengthened partials versus full range of motion); Halperin et
-al. (2022 — RIR prediction accuracy).
+- Baz-Valle et al. (2022) — https://doi.org/10.2478/hukin-2022-0017
+- Schoenfeld et al. (2017) — https://doi.org/10.1080/02640414.2016.1210197
+- Refalo et al. (2022) — https://doi.org/10.1007/s40279-022-01784-y
+- Aube et al. (2022, RCT) — https://doi.org/10.1519/JSC.0000000000003524
+- Robinson et al. (2024) — https://doi.org/10.1007/s40279-024-02069-2
+- Pelland et al. (2025) — https://doi.org/10.1007/s40279-025-02344-w
+- Moesgaard et al. (2022) — https://doi.org/10.1007/s40279-021-01636-1
+- Coleman et al. (2024) — https://doi.org/10.7717/peerj.16777
+- Singer et al. (2024) — https://doi.org/10.3389/fspor.2024.1429789
+- Halperin et al. (2022) — https://doi.org/10.1007/s40279-021-01559-x
+- Wolf et al. (2025, lengthened partials) — https://pubmed.ncbi.nlm.nih.gov/?term=Wolf+lengthened+partials+full+range+2025
+- Remmert et al. (2025, PUOS preprint) — https://sportrxiv.org/
+- Gain-rate estimates: Aragon — https://alanaragon.com/, McDonald — https://bodyrecomposition.com/muscle-gain/genetic-muscular-potential, Helms — https://www.strongerbyscience.com/mass/
 
 **Part C** (both sections) is distilled from Israetel et al., *Scientific
 Principles of Hypertrophy Training* (Renaissance Periodization), pp. 352–357.
