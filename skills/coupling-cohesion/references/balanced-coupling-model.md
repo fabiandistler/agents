@@ -11,6 +11,15 @@ it feeds complexity. This page is a distillation in this repo's own words;
 consult the book for the full treatment, case studies, and the finer-grained
 numeric scales.
 
+## Contents
+
+- [Premise: coupling is shared knowledge](#premise-coupling-is-shared-knowledge)
+- [Dimension 1: Integration strength](#dimension-1-integration-strength)
+- [Dimension 2: Distance](#dimension-2-distance)
+- [Dimension 3: Volatility](#dimension-3-volatility)
+- [The balance rule](#the-balance-rule)
+- [Fractal modularity](#fractal-modularity)
+
 ## Premise: coupling is shared knowledge
 
 Two components are coupled when they can make each other change. What

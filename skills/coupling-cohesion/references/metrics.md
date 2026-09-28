@@ -7,6 +7,14 @@ Architecture* (ch. 3, "Modularity"). They are computed over a directed
 (package / module / service / class) and an edge `A → B` means "A depends
 on B" — a call, import, or reference that forms part of the call graph.
 
+## Contents
+
+- [The five metrics](#the-five-metrics)
+- [The zone map](#the-zone-map)
+- [Stable Dependencies & Stable Abstractions Principles](#stable-dependencies--stable-abstractions-principles)
+- [Worked example](#worked-example)
+- [The limitations of these metrics](#the-limitations-of-these-metrics)
+
 ## The five metrics
 
 ### Afferent coupling — Cᵃ (incoming)
