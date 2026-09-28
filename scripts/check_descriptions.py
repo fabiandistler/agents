@@ -72,12 +72,14 @@ def main() -> int:
     for skill_md in find_skill_files():
         text = skill_md.read_text(encoding="utf-8")
         fm = parse_frontmatter(extract_frontmatter(text))
-        name = fm.get("name") or skill_md.parent.name
+        raw_name = fm.get("name")
+        name = raw_name if isinstance(raw_name, str) and raw_name else skill_md.parent.name
         description = fm.get("description")
         if not isinstance(description, str) or not description:
             errors.append(f"{name}: missing or empty 'description'")
             continue
-        activation = fm.get("activation", "auto")
+        raw_activation = fm.get("activation", "auto")
+        activation = raw_activation if isinstance(raw_activation, str) else "auto"
         length = len(description)
         budget = budget_for(name, activation)
         if length > budget:

@@ -291,7 +291,9 @@ def main() -> int:
         return 0
 
     MANIFEST_PATH.write_text(rendered, encoding="utf-8")
-    print(f"wrote {MANIFEST_PATH.relative_to(REPO_ROOT)} ({len(manifest['skills'])} skills)")
+    skills = manifest["skills"]
+    assert isinstance(skills, list)
+    print(f"wrote {MANIFEST_PATH.relative_to(REPO_ROOT)} ({len(skills)} skills)")
     return 0
 
 
