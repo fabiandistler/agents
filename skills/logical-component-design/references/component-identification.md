@@ -31,7 +31,12 @@ restructuring logical components. The architect:
 4. Analyzes the **architectural characteristics** the system must support.
 5. **Refines / restructures** the components — then loops.
 
-The loop rationale lives in `SKILL.md`; the worked detail for each step follows below.
+The loop is deliberate. You know least about the system at the start, so the
+first components are a *best guess*. It is better to iterate as you learn than to
+try to get everything perfect when you know the least. The cycle applies to
+greenfield systems and to any feature added to or changed in an existing system
+(a change may add components, alter existing ones, or both — and as roles change,
+so does where the code should live).
 
 ---
 
@@ -113,7 +118,16 @@ this. Three reasons:
 3. **Coarse-grained and purposeless.** The component does too much; it becomes
    hard to maintain, test, and deploy, and thus unreliable.
 
-See `SKILL.md` for the red-flag suffixes, the role-statement test, and the CRUD escape hatch.
+**Red-flag suffixes** that signal the trap: **Manager, Supervisor, Controller,
+Handler, Engine, Processor.** A name passes when its role statement names one
+job — changing the suffix alone is not a fix; the suffixes are only a prompt
+to write the role statement. `Inventory Management` passes because its role
+names a single responsibility: stock levels.
+
+**Escape hatch:** if a system genuinely is just CRUD (create/read/update/delete)
+over entities with no real business logic, it doesn't need an architecture — use
+a CRUD-based framework or a no-code/low-code environment that generates the code
+acting on those entities.
 
 ---
 
@@ -221,7 +235,16 @@ not assume them.
 
 Components are **coupled** when they communicate, or when a change to one may
 impact another. More coupling → harder to maintain and test → pay attention to it.
-Static-coupling definitions and the afferent/efferent example live in `SKILL.md`.
+
+### Static coupling
+
+Synchronous communication between components. Two directions:
+
+- **Afferent coupling (Cᴀ)** — *incoming* / fan-in: how many other components
+  depend on this one. `Customer Notification` is called by both `Order Placement`
+  and `Order Shipment` to email the customer → Cᴀ = 2.
+- **Efferent coupling (Cᴇ)** — *outgoing* / fan-out: how many components this one
+  depends on. `Order Placement` depends on `Order Fulfillment` → Cᴇ = 1.
 
 ### Temporal coupling
 
@@ -259,8 +282,12 @@ rest of the system.
 But the knowledge that "low stock → reorder *and* reprice" can be **deferred to
 `Inventory Management`**, which already owns inventory. `Order Placement` no
 longer needs to know about `Supplier Ordering` or `Item Pricing`, lowering its
-coupling. The redistribution trade-off lives in `SKILL.md`: move knowledge to
-where it belongs, don't just push a number down on one node.
+coupling.
+
+**The honest trade-off.** Applying the Law of Demeter reduced `Order Placement`'s
+coupling but **raised `Inventory Management`'s**. It does not necessarily reduce
+system-wide coupling; it **redistributes** it. Move knowledge to where it belongs,
+don't just push a number down on one node.
 
 ---
 
@@ -329,8 +356,6 @@ current loop, not a final artifact.
 | Component | Role / responsibility (one sentence, passes the conjunction test) | Assigned stories / requirements | Cᴀ (fan-in) | Cᴇ (fan-out) | Notes |
 |-----------|-------------------------------------------------------------------|---------------------------------|------|------|-------|
 |           |                                                                   |                                 |      |      |       |
-
-(Cᴀ / Cᴇ optional for designs with fewer than about 5 components.)
 
 ## Entity-Trap check
 - Any component named *Manager / Handler / Processor / Engine / Controller /

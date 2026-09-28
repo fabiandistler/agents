@@ -24,8 +24,6 @@ runs on greenfield systems and every time a feature is added or changed.
 Detailed approaches, worked examples, the Going-Going-Gone case study, and a
 fill-in worksheet live in
 [references/component-identification.md](references/component-identification.md).
-Read it when you need the full examples or the worksheet; this file is the
-workflow.
 
 ## When to use
 
@@ -34,9 +32,13 @@ need for …", "how do I break this new system into components", "decompose this
 domain", "how should I organize these user stories into components", or
 "identify the building blocks for my <app>", or is filling empty buckets,
 applying the Workflow or Actor/Action approach, or worrying about the Entity
-Trap — even without naming the book. Not for analyzing existing code
-(→ coupling-cohesion) or choosing system topology and folder layout
+Trap — even without naming the book. Produces descriptively-named components
+with role statements, assigned user stories, and a coupling/Law-of-Demeter
+refinement pass. Not for analyzing existing code (→ coupling-cohesion)
+or choosing system topology and folder layout
 (→ architecture-pattern-advisor).
+Read it when you need the full examples or the worksheet; this file is the
+workflow.
 
 ## Relation to siblings
 
@@ -185,11 +187,9 @@ Keep it proportional — a small feature needs a few rows, not a report.
 ```
 Approach: <Workflow | Actor/Action> — <one-line why>
 
-| Component | Role / responsibility | Assigned stories | Cᴀ / Cᴇ* | Notes |
+| Component | Role / responsibility | Assigned stories | Cᴀ / Cᴇ | Notes |
 |-----------|-----------------------|------------------|---------|-------|
 | ...       | (single-sentence role, passes the conjunction test) | ... | .. | ... |
-
-*Cᴀ / Cᴇ is optional for designs with fewer than about 5 components.
 
 Characteristics reviewed: <which -ilities drove any split>
 Next iteration / open questions: <unmet checks from above + what to revisit as requirements firm up>

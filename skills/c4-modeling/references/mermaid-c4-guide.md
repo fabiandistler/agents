@@ -3,15 +3,7 @@
 How to render a C4 model with Mermaid: the dedicated C4 syntax, layout
 control, its known limitations, and a styled `flowchart` fallback for when
 the C4 syntax gets in the way. Mermaid renders natively on GitHub, GitLab,
-Obsidian, and most Markdown tools, and in VS Code with a Mermaid extension — no toolchain required beyond that.
-
-## Contents
-
-- [Diagram types and element macros](#diagram-types)
-- [Relationships](#relationships)
-- [Layout and styling](#layout-and-styling)
-- [Worked example and flowchart fallback](#worked-example-container-diagram)
-- [Limitations, validation](#known-limitations-and-workarounds)
+VS Code, Obsidian, and most Markdown tools — no toolchain required.
 
 > Mermaid's C4 diagram type is officially **experimental**. It is fine for
 > Context and Container diagrams of moderate size; expect friction with deep
@@ -46,7 +38,7 @@ ComponentDb(alias, label, [techn], [descr])   ComponentQueue(...)
 Boundaries (grouping boxes):
 
 ```
-Enterprise_Boundary(alias, label) { ... }   // legacy: C4 dropped the enterprise concept; prefer a plain Boundary or group
+Enterprise_Boundary(alias, label) { ... }
 System_Boundary(alias, label) { ... }       // in Container diagrams
 Container_Boundary(alias, label) { ... }    // in Component diagrams
 Boundary(alias, label, [type]) { ... }      // generic
@@ -68,7 +60,7 @@ diagram sends; don't skip it.
 ```
 Rel(from, to, label, [techn])       // solid arrow
 BiRel(from, to, label, [techn])     // avoid: double-headed hides initiator
-Rel_U / Rel_D / Rel_L / Rel_R(...)  // same, with a weak layout hint (statement order dominates)
+Rel_U / Rel_D / Rel_L / Rel_R(...)  // same, with a layout direction hint
 Rel_Back(from, to, label, [techn])  // reverse-drawn arrow (prefer Rel)
 RelIndex(index, from, to, label, [techn])  // C4Dynamic only: index ignored, steps number in statement order
 ```
@@ -78,12 +70,11 @@ Always pass a purpose label, and a technology argument where it matters:
 
 ## Layout and styling
 
-Mermaid C4 auto-layouts; statement order plus `UpdateLayoutConfig` are the main levers:
+Mermaid C4 auto-layouts; you steer it coarsely:
 
 - `UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")` — how many
   shapes/boundaries per row. The single most effective layout knob.
-- Declaration order — elements lay out in statement order, so reorder declarations to move boxes.
-- `Rel_U/D/L/R` direction hints — a weak nudge only; fix order and layout config first.
+- `Rel_U/D/L/R` direction hints nudge element placement.
 - `UpdateElementStyle(alias, $bgColor=..., $fontColor=..., $borderColor=...)`
   — recolor a single element (e.g. highlight the diagram's focus).
 - `UpdateRelStyle(from, to, $textColor=..., $lineColor=..., $offsetX=..., $offsetY=...)`
@@ -128,7 +119,7 @@ order; one scenario per diagram.
 
 | Limitation | Workaround |
 |---|---|
-| Coarse layout; elements land in odd rows | `UpdateLayoutConfig`, reorder declarations (statement order dominates placement); `Rel_U/D/L/R` hints are a weak nudge only |
+| Coarse layout; elements land in odd rows | `UpdateLayoutConfig`, reorder declarations (order influences placement), `Rel_U/D/L/R` hints |
 | Nested boundaries (> 2 levels) render poorly | Flatten: one boundary level per diagram; split the diagram |
 | Long labels overflow their boxes | Shorten labels; move detail into the description argument; break with `<br/>` |
 | Relationship labels overlap | `UpdateRelStyle(..., $offsetX/$offsetY)` |

@@ -1,6 +1,6 @@
 # Cohesion taxonomy and the LCOM metric
 
-Reference material for the `coupling-cohesion` skill (Mode A). Read this when you need
+Reference material for the `analyze-cohesion` skill. Read this when you need
 the precise definition of a cohesion type, the worked trade-off example, or
 the details of the LCOM metric. The source is the *Cohesion* section of
 Richards & Ford, *Fundamentals of Software Architecture* (O'Reilly).

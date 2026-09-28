@@ -59,15 +59,14 @@ service. Not for deciding whether to use microservices at all
 | Resiliency | any out-of-process call — timeouts, retries, pools, breakers, degradation |
 | Data & Security | sensitive data flows, reporting/analytics access, post-split integrity |
 
-For modules in a modular monolith, Coupling / Contracts / Code Reuse apply; Resiliency does not.
-
 ## Division of labor with related skills
 
 - **architecture-pattern-advisor** — decides *whether* microservices are the
   right topology and where to cut boundaries; this skill governs how the
-  resulting services *interact*. Boundary sizing and extraction live there;
-  the Service Boundaries cluster keeps only the interaction-level rules so
-  the reference file still reads alone as a review checklist.
+  resulting services *interact*. The boundary rules here (bounded contexts,
+  database-per-service, strangler-fig) intentionally restate that skill's
+  Microservice Boundary Design section so the reference file stands alone as
+  a review checklist.
 - **ddd** — derives the bounded contexts and aggregates that the
   Service Boundaries cluster assumes as given; context-mapping patterns live
   there.

@@ -3,13 +3,19 @@ name: c4-modeling
 category: architecture
 environments: coding, chat
 description: Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4). Drafts a C4 model with the user from one element/relationship table and renders it as Mermaid.
-compatibility: No dependencies — Mermaid renders natively on GitHub, GitLab, and most Markdown tools, and in VS Code with a Mermaid extension. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.
+compatibility: No dependencies — Mermaid renders natively on GitHub, GitLab, VS Code, and most Markdown tools. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.
 ---
 
 # C4 Modeling
 
-The C4 model (Simon Brown, c4model.com) describes a software system at four zoom levels — **Context, Containers, Components, Code**.
-This skill drafts that model *with* the user in a short interview, then renders the agreed diagrams as Mermaid so they display directly in the repository and in chat.
+The C4 model (Simon Brown, c4model.com) describes a software system at four
+zoom levels — **Context, Containers, Components, Code** — using just four
+abstractions: **Person**, **Software System**, **Container** (a separately
+runnable/deployable unit: an app or a data store — *not* a Docker container),
+and **Component** (a cohesive grouping of functionality inside a container,
+not separately deployable). This skill drafts that model *with* the user in a
+short interview, then renders the agreed diagrams as Mermaid so they display
+directly in the repository and in chat.
 
 The one habit that makes C4 diagrams stay consistent: **model first, diagrams
 second.** All diagrams are projections of one element/relationship table; you

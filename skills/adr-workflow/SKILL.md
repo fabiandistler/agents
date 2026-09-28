@@ -2,12 +2,12 @@
 name: adr-workflow
 category: architecture
 environments: coding
-description: Establish, draft, supersede, and maintain Architecture Decision Records (ADRs) in software repositories.
+description: Establish and maintain Architecture Decision Records (ADRs) in software repositories.
 ---
 
 # ADR Workflow
 
-Use this skill when a repository needs a durable record of important architectural choices.
+Use this skill when a repository needs a durable record of important architectural choices. The goal is not to add more documentation for its own sake. The goal is to make the repo explain why key choices exist so future contributors can maintain or revisit them without rediscovering the same debate.
 
 ## When to use
 
@@ -16,11 +16,10 @@ Whenever the user mentions ADRs, architecture decisions, decision logs, technica
 ## Core principles
 
 - Keep ADRs close to the code, usually under `docs/adr/`, unless the repository already uses a better convention.
-- Prefer one ADR per decision.
-- Treat accepted ADRs as immutable history. If the decision changes, write a new ADR that supersedes the old one; never renumber old ADRs after the fact.
-- Write for future readers who were not in the room: record the decision and its consequences, not a meeting transcript.
-- Capture the trade-offs honestly, including the downsides of the chosen option and the alternatives considered.
-- Keep an index or README over the records instead of letting unindexed ADRs accumulate.
+- Prefer one ADR per decision. Small, reversible choices usually do not need an ADR.
+- Treat accepted ADRs as immutable history. If the decision changes, write a new ADR that supersedes the old one.
+- Write for future readers who were not in the room.
+- Capture the trade-offs honestly, including the downsides of the chosen option.
 
 ## What to check first
 
@@ -47,7 +46,15 @@ Use zero-padded numbers so records stay sortable as the list grows.
 
 ## When an ADR is worth writing
 
-Write an ADR if the choice is hard to reverse, has cross-team impact, or is likely to be re-litigated; otherwise a commit message or PR description is enough.
+Use an ADR when the choice has one or more of these traits:
+
+- Long-term maintenance cost
+- Cross-team impact
+- Security, compliance, or operational consequences
+- Hard-to-reverse technical debt
+- A likely future disagreement about why the team chose this path
+
+Do not use an ADR for trivial implementation details, local style preferences, or decisions that only matter for a single short-lived task.
 
 ## ADR template
 
@@ -93,9 +100,10 @@ If the team wants a lighter format, keep the same essentials: title, status, con
 2. Add a short README or index that explains what ADRs are and when to use them.
 3. Add a template file so new ADRs start from the same structure.
 4. Define the review flow: work in a dedicated branch, open a PR, and discuss the trade-offs. Include the ADR in the same PR as the change for small or agent-driven repos; open a separate ADR PR first when the decision needs wider review.
-5. Link older ADRs from the index instead of creating duplicate records.
-6. Backfill only the 3-5 decisions people keep re-asking about, as Accepted with their original date.
-7. Add one line to the agent instruction file: read the relevant ADRs in `docs/adr/` before architectural changes.
+5. Explain the rule for when an ADR is required and when it is unnecessary.
+6. Link older ADRs from the index instead of creating duplicate records.
+7. Backfill only the 3-5 decisions people keep re-asking about, as Accepted with their original date.
+8. Add one line to the agent instruction file: read the relevant ADRs in `docs/adr/` before architectural changes.
 
 ## Workflow for drafting a new ADR
 
@@ -111,7 +119,9 @@ When the user wants a specific decision recorded, draft the ADR in repo-appropri
 
 ## Workflow for changing a decision
 
-- Create a new ADR that references the earlier one and mark the old ADR as `Superseded` or `Deprecated`.
+- Do not rewrite accepted ADRs to hide history.
+- Create a new ADR that references the earlier one.
+- Mark the old ADR as `Superseded` or `Deprecated`.
 - Explain what changed in the environment or understanding that justified the new decision.
 
 ## Keeping ADRs useful to agents
@@ -124,4 +134,13 @@ Before changing code in an area, list `docs/adr/` and read the Accepted ADRs who
 
 ## Response style
 
-If the repository already uses another documentation language, match it; otherwise default to English.
+When the user asks for guidance, return a practical adoption plan instead of abstract process advice. When the user asks for an ADR, draft the record directly with repo-appropriate naming and structure. If the repository already uses another documentation language, match it; otherwise default to English.
+
+## Common pitfalls to avoid
+
+- Writing ADRs for trivial implementation details
+- Treating the ADR as a meeting transcript
+- Omitting consequences or alternatives
+- Renumbering old ADRs after the fact
+- Editing old accepted ADRs instead of superseding them
+- Letting the repository have ADRs with no index or README

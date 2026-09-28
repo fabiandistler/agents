@@ -7,10 +7,14 @@
 
 ## Service Boundaries
 
-Cut boundaries around business domains with one owner per aggregate — see `architecture-pattern-advisor` for boundary sizing and extraction.
+- **Draw boundaries around business domains (bounded contexts), never technical layers.** (ch2)
+  - ❌ splitting into `ui-service` / `logic-service` / `data-service`, or a shared `repository-service` fronting a datastore over RPC   ← likely-default
+  - ✅ `orders`, `warehouse`, `payments`, each owning its own logic *and* storage
+- **Start coarse — one service per bounded context — and only subdivide into finer services later.** Resist creating many tiny services up front; see ddd for bounded-context sizing. (ch2, ch3)
+- **Own each aggregate in exactly one service.** One service may own several aggregates; one aggregate must never be split across services. (ch2)
 - **Treat an inbound state-change as a request the owning service may reject** by validating it against the aggregate's state machine — not a command it blindly applies. (ch2)
 - **Don't build a service that is a thin CRUD wrapper over a table.** Public get/set over private rows leaks state-transition logic to callers and weakens cohesion. (ch2)
-- **Reference an aggregate living in another service by an explicit URI or pseudo-URI, not a bare foreign-key ID.** `soundcloud:tracks:123` over `track_id = 123` — the owner can rekey its internals without breaking every holder of the reference. (ch2)
+- **Reference an aggregate living in another service by an explicit URI or pseudo-URI, not a bare foreign-key ID.** `soundcloud:tracks:123` over `track_id = 123`. (ch2)
 - **Name endpoints, events, and fields in the domain's ubiquitous language;** don't impose a generic canonical/"universal" data model across contexts. (ch2)
 - **When migrating a monolith, extract incrementally (strangler-fig intercept + redirect); never big-bang rewrite,** and try scaling/other fixes before decomposing at all. (ch3)
 
@@ -19,12 +23,13 @@ Cut boundaries around business domains with one owner per aggregate — see `arc
 - **Never read from or write to another service's database or internal tables.** The DB is not a public interface; go through the owning service's API. (ch2)
   - ❌ `SELECT ... FROM orders_db.order` from the warehouse service   ← likely-default
 - **Avoid a shared mutable database across services.** Shared writable data is never allowed; read-only reference data is allowed if the consuming context owns its copy. (ch2, ch4)
-- **Don't pass data through an intermediary service purely because a further-downstream service needs it.** Every hop adds coupling and a failure mode for data the intermediary never uses. Either call the downstream directly, have the intermediary build the payload itself, or make the intermediary treat it as an opaque blob it never parses. (ch2)
+- **Don't pass data through an intermediary service purely because a further-downstream service needs it.** Either call the downstream directly, have the intermediary build the payload itself, or make the intermediary treat it as an opaque blob it never parses. (ch2)
 - **Send the minimum data a call or event requires.** Every extra field becomes an assumption consumers couple to — and, in an event, part of your contract. (ch2, ch4)
 - **Treat a service that depends on many downstreams as a smell** — logic has likely been over-centralized into it. (ch2)
 
 ## Communication Style
 
+- **Pick the communication style (request-response vs event-driven, sync vs async) before picking the technology.** Don't start from a favorite tool. (ch4)
 - **Don't use an event-streaming broker (e.g. Kafka) for request-response.** Match the tool to the style. (ch4)
   - ❌ Kafka topic used as an RPC call/response channel   ← likely-default
 - **Drive client behavior off transport error semantics.** With HTTP: retry 429/502/503/504 and timeouts; don't retry other 4xx or a plain 500 unless the error is known-transient. (ch4)

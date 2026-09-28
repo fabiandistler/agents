@@ -2,7 +2,7 @@
 name: ddd
 category: architecture
 environments: coding
-description: "Domain-Driven Design: subdomain classification, context mapping and legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing."
+description: Domain-Driven Design end to end — strategic subdomain classification and context mapping, tactical pattern choice, and implementation conventions for aggregates, value objects, and events.
 metadata:
   version: "2.0"
 ---

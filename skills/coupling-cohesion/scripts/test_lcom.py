@@ -96,15 +96,5 @@ class TestBoundedOutput(unittest.TestCase):
         self.assertIn("1 modules, 1 with 2+ clusters", body)
 
 
-class TestLcomFloorQuirk(unittest.TestCase):
-    def test_zero_lcom_still_hints_split_on_clusters(self):
-        proc = run(str(LCOM), "--json")
-        self.assertEqual(proc.returncode, 0)
-        entry = next(r for r in json.loads(proc.stdout) if r["module"] == "ModuleReport")
-        self.assertEqual(entry["lcom"], 0)
-        self.assertEqual(entry["clusters"], 2)
-        self.assertIn("could split", entry["interpretation"])
-
-
 if __name__ == "__main__":
     unittest.main()

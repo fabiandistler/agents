@@ -4,14 +4,6 @@ Condensed from Simon Brown's [c4model.com](https://c4model.com). This page is
 the "what makes a C4 diagram good" reference: abstractions, diagram types with
 audience guidance, notation rules, and the review checklist.
 
-## Contents
-
-- [The four abstractions](#the-four-abstractions)
-- [The diagram types](#the-diagram-types)
-- [Notation recommendations](#notation-recommendations)
-- [Diagram review checklist](#diagram-review-checklist)
-- [Keeping diagrams alive](#keeping-diagrams-alive)
-
 ## The four abstractions
 
 C4 is an *abstraction-first* model: you first agree on the building blocks,
