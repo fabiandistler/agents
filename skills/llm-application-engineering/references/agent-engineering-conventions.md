@@ -14,8 +14,16 @@
 > Keep-filter: counter-default, quantitative heuristic, or security-relevant.
 > Generic best practice a competent model already follows is omitted.
 
-Contents: Tool Design, Orchestration & Context, Agent Evaluation,
-Memory & Retrieval, Deployment & Learning, Monitoring, Security, UX.
+## Contents
+
+- [Tool Design](#tool-design)
+- [Orchestration & Context](#orchestration--context)
+- [Agent Evaluation](#agent-evaluation)
+- [Memory & Retrieval](#memory--retrieval)
+- [Deployment & Learning](#deployment--learning)
+- [Monitoring](#monitoring)
+- [Security](#security)
+- [UX](#ux)
 
 ## Tool Design
 
@@ -139,7 +147,10 @@ integration and drift triage._
   ensemble of runs, or low mean token logprobs) or high consequence;** a
   self-reported confidence score is a weak tiebreaker only, since verbalized
   confidence is poorly calibrated. Tune thresholds so < ~10% of cases
-  escalate. (Ch. 11)
+  escalate. (Ch. 11 for escalation and the ~10% target; demoting the
+  self-reported score departs from it, per Xiong et al., ICLR 2024,
+  arXiv:2306.13063: verbalized confidence runs overconfident, sampling
+  consistency predicts failure better.)
 
 ## Security
 

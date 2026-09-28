@@ -121,10 +121,3 @@ of it.
 Snippets run through a shell, so pipes, `$(...)` and quoting survive — but
 the command is stored verbatim. Check it with `pypet list` after creating it;
 backslash-heavy paths deserve a second look.
-
-## Recall probes
-
-Should trigger: "save this command as a snippet", "this long command keeps
-recurring — snippet it?", "make a shell alias for this via pypet". Should not
-trigger: hinting at snippets when pypet is not installed, creating or editing
-a snippet uninvited.

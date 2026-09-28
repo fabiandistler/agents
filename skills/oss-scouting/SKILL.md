@@ -249,18 +249,11 @@ Append to LOG.md. Report to the user: the ranking table, three sentences per
 candidate (problem, cause, fix), and what they have to do next themselves.
 Do not offer to submit.
 
-## Recall probes
-
-Should trigger: "scouting run for `<owner>/<repo>`", "find me issues in
-`<lib>` I could contribute to", "where could a small first PR land in
-`<lib>`". Should not trigger: debugging the user's own code, submitting
-anything upstream, maintaining the user's own repositories.
-
 ## Provenance and teardown
 
 Written 2026-09-02. The guardrails come from the 2026 AI-slop debate in open
 source — curl shut its paid bug bounty
-(<https://curl.se>), Ghostty gated first-time contributors behind vouching
+(<https://daniel.haxx.se/blog/2026/01/26/the-end-of-the-curl-bug-bounty/>), Ghostty gated first-time contributors behind vouching
 (<https://github.com/ghostty-org/ghostty/blob/main/CONTRIBUTING.md>), tldraw
 auto-closed external pull requests
 (<https://github.com/tldraw/tldraw/issues/7695>): unreviewed

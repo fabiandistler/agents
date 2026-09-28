@@ -10,9 +10,10 @@ metadata:
 # Natural Planning Model
 
 Projects the brain plans well all go through the same five phases, whether or
-not anyone names them. GTD formalizes the sequence so it can be applied
-deliberately to projects that are stuck, vague, or new — to arrive at clear
-outcomes and concrete next actions.
+not anyone names them. David Allen's *Getting Things Done* (GTD) formalizes the
+sequence so it can be applied deliberately to projects that are stuck, vague,
+or new — to arrive at clear outcomes and concrete next actions. Apply it as a
+general reasoning tool, not as a prescription for how anyone must plan.
 
 ## When to use
 
@@ -81,7 +82,7 @@ Checklist for testing a candidate next action:
 
 In: "our onboarding is bad" — vague, no owner, no definition of fixed.
 
-- Tier: Medium — needs a sketch, not all five phases in writing.
+- Tier: Full — no agreed definition of done and several teams involved, so all five phases in writing.
 - Purpose: new hires ship a first change in week one without hand-holding.
 - Outcome: a checklist a new hire follows alone, verified by one pilot hire.
 - Brainstorm: buddy system, docs sprint, sample task repo, video walkthrough, FAQ from recent hires.

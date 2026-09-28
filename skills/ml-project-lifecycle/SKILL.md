@@ -14,7 +14,7 @@ Use this skill as a gate to pass through, not a menu to skim: framing the proble
 ## When to use
 
 - Training a model on your own tabular, image, text, or time-series data: scoping the project, picking a model family, handling missing values, or deciding whether it is good enough to ship and when to retrain.
-- Classical ML only — for prompting, RAG, agents, or evals over a foundation model, use `llm-application-engineering` instead.
+- Classical ML only — for prompting, RAG, agents, or evals over a foundation model, use the `ai-ml` skill (llm-application-engineering) instead.
 
 ## Part A — Framing: get the problem right before touching a model
 
@@ -28,7 +28,7 @@ ML metrics such as accuracy or F1 are worthless if they do not move a business m
 
 If a decision cannot be traced to a business metric, treat that as a signal to stop and re-scope, not a detail to fill in later.
 
-Ask early whether a prompted LLM or a plain rule would already meet the business bar — if so, follow `llm-application-engineering` instead of training a model.
+Ask early whether a prompted LLM or a plain rule would already meet the business bar — if so, follow the `ai-ml` skill (llm-application-engineering) instead of training a model.
 
 ### The baseline gate
 
