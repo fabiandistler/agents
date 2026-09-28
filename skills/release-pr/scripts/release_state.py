@@ -318,25 +318,27 @@ def removed_exports(repo: Path, tag: str | None) -> list[str]:
     return [line[1:].strip() for line in diff.splitlines() if line.startswith("-export")]
 
 
-def version_mentions(repo: Path, version: str | None, skip: set[str]) -> list[dict]:
+def version_mentions(repo: Path, version: str | None, skip: set[str]) -> tuple[list[dict], bool]:
     if not version:
-        return []
+        return [], False
     out = subprocess.run(
         ["git", "-C", str(repo), "grep", "-n", "-F", "-e", version, "--", "."],
         capture_output=True,
         text=True,
         check=False,
     ).stdout
+    whole = re.compile(r"(?<![\d.])" + re.escape(version) + r"(?![\d.])")
     hits = []
     for line in out.splitlines():
         path, _, rest = line.partition(":")
         if path in skip or path.endswith((".lock", "renv.lock", "uv.lock")):
             continue
         lineno, _, text = rest.partition(":")
+        if not whole.search(text):
+            continue
         hits.append({"file": path, "line": int(lineno), "text": text.strip()[:120]})
-        if len(hits) >= MAX_MENTIONS:
-            break
-    return hits
+    truncated = len(hits) > MAX_MENTIONS
+    return hits[:MAX_MENTIONS], truncated
 
 
 def forge(repo: Path, remote: str) -> str:
@@ -410,6 +412,9 @@ def main() -> None:
     head_tags = git(repo, "tag", "--points-at", "HEAD").split()
     counts = commits_since(repo, tag)
     exports_gone = removed_exports(repo, tag)
+    mentions, mentions_truncated = version_mentions(
+        repo, version, {pkg["source"], pkg["changelog"], "NEWS.md", "CHANGELOG.md"}
+    )
 
     problems: list[str] = []
     notes: list[str] = []
@@ -492,9 +497,8 @@ def main() -> None:
         "removed_exports": exports_gone,
         "suggested_bump": which,
         "suggested_version": suggested,
-        "version_mentions": version_mentions(
-            repo, version, {pkg["source"], pkg["changelog"], "NEWS.md", "CHANGELOG.md"}
-        ),
+        "version_mentions": mentions,
+        "mentions_truncated": mentions_truncated,
         "problems": problems,
         "notes": notes,
     }

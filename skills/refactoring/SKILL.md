@@ -47,7 +47,9 @@ hard to change safely, and only opening it shows which. For each top hit, open
 it and say concretely what makes it expensive to change, or that nothing does,
 before proposing any work. Pair the history signal with a structural one where
 it matters: `coupling-cohesion` measures how tangled a module is, and a file
-that scores high on both is the strongest candidate.
+that scores high on both is the strongest candidate. For each top hit, list its co-changers with the same `--since` window (`--name-only` with a path shows only that path, so expand the commits first):
+`for c in $(git log --since '<window>' --pretty=%H -- <file>); do git show --name-only --pretty=format: $c; done | grep . | sort | uniq -c | sort -rn | head`
+Files that co-change are one change, not two: refactor them together, or say why not.
 
 ## When the ranking lies
 

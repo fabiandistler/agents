@@ -41,9 +41,9 @@ baselines live in SKILL.md — cross-reference, don't duplicate._
 _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
 (<https://github.com/responsibleai/ASSERT>), not from Huyen._
 
-- **Write the evaluation guideline before building** — including out-of-scope
+- **Write the evaluation guideline as a first draft before building, then revise it after error analysis** — including out-of-scope
   inputs and the required refusal behavior. "Correct" ≠ "good"; define good per
-  application. (Ch. 4)
+  application, and expect the first definition to move once traces are read. (Ch. 4)
 - **Record refusals as their own outcome class, by category — never let the
   retry path absorb them.** A refusal is a result, not a transient error; a
   harness that retries until the output parses silently deletes the safety
@@ -177,6 +177,19 @@ _Extends SKILL.md Part B (the five-step build order)._
   quantization, replica parallelism, tensor parallelism, and attention/KV-cache
   optimization. (Ch. 9)
 
+## Context engineering
+
+_Extends SKILL.md Part B step 1. Minimize first, then enhance._
+
+- **Keep the smallest high-signal context that solves the task — never fill the window because it fits.** Context rot degrades quality well below documented limits.
+  - ❌ dumping the corpus into the window because the model accepts it   ← likely-default
+- **Budget operating context well below the documented window**, with headroom for tool outputs and multi-turn growth.
+- **Set compaction and clearing thresholds for long agent loops** — compact or clear at a fixed turn or token count, not when the window errors.
+- **Keep structured notes outside the window** for persistent state across turns and sessions.
+- **Isolate sub-agent context: sub-agents return condensed summaries, never full transcripts.**
+  - ❌ forwarding full conversation history between agents   ← likely-default
+- **Load identifiers first and fetch content on demand** — just-in-time retrieval over preloaded documents.
+
 ## Result surface
 
 _How a model result is shown to the person who acts on it. Source: Apple HIG
@@ -230,6 +243,7 @@ obvious — the cost of guessing wrong is high._
 _SKILL.md places finetuning on the ladder; these are the mechanics once you're
 actually on that rung._
 
+- **Choose SFT for format and style with demonstrations, DPO when pairwise preferences are cheaper than demonstrations, RFT when outputs are verifiable and a grader exists.** RFT works with scarce labels, often after an SFT cold start; the grader must first pass the judge-calibration rule in Evaluation above.
 - **Start with LoRA/PEFT; attempt full finetuning only with thousands of
   examples or more** — with a few hundred, full finetuning won't beat LoRA.
   (Ch. 7)
@@ -239,7 +253,7 @@ actually on that rung._
 - **After finetuning for one task, re-evaluate every other task type the model
   serves** — single-task finetuning degrades the rest. If irreconcilable, use
   separate models or merge. (Ch. 7)
-- **Hyperparameter starting points:** LR = 0.1–1× the model's final
+- **Hyperparameter starting points (self-hosted training only; hosted finetuning APIs manage these):** LR = 0.1–1× the model's final
   pre-training LR (search 1e-7–1e-3); effective batch ≥ 8 (use gradient
   accumulation); 1–2 epochs for millions of examples, 4–10 for thousands;
   prompt-loss weight ~10%. (Ch. 7)

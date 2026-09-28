@@ -42,6 +42,7 @@ LCOM can and cannot tell you ("why is more important than how").
 
 Usage:
     python lcom.py <path...> [--lang auto|python|r|bash] [--json]
+        [--top N] [--output FILE]
 
 Stdlib only; runs on any Python 3.8+.
 """
@@ -57,21 +58,21 @@ from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Result model
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class ModuleReport:
-    """Cohesion numbers for one analyzed module (a class or a file)."""
+    """Cohesion numbers for one analyzed module (a class or a file).
+
+    kind is "class" or "file"; node_label is "method" or "function";
+    edge_label is "field" or "shared symbol". touches maps each node to the
+    set of elements it touches (fields, or shared symbols plus callee tokens).
+    """
 
     name: str
-    kind: str  # "class" or "file"
-    node_label: str  # "method" or "function"
-    edge_label: str  # "field" or "shared symbol"
+    kind: str
+    node_label: str
+    edge_label: str
     nodes: list[str]
-    # node -> set of elements it touches (fields, or shared symbols + callees)
     touches: dict[str, set[str]]
 
     @property
@@ -123,11 +124,6 @@ class ModuleReport:
         )
 
 
-# ---------------------------------------------------------------------------
-# Python backend (precise, via ast)
-# ---------------------------------------------------------------------------
-
-
 def analyze_python(path: Path, source: str) -> list[ModuleReport]:
     try:
         tree = ast.parse(source, filename=str(path))
@@ -149,13 +145,16 @@ def analyze_python(path: Path, source: str) -> list[ModuleReport]:
     return reports
 
 
-# Constructors conventionally touch every field, which bridges otherwise
-# unrelated method clusters and masks a real lack of cohesion. Standard LCOM
-# tooling excludes them for the same reason.
 _PY_EXCLUDED_METHODS = {"__init__", "__new__"}
 
 
 def _python_class(node: ast.ClassDef) -> ModuleReport | None:
+    """Collect self.<attr> touches per method, excluding constructors.
+
+    Constructors conventionally touch every field, which bridges otherwise
+    unrelated method clusters and masks a real lack of cohesion, so they are
+    left out like standard LCOM tooling does.
+    """
     methods: dict[str, set[str]] = {}
     for item in node.body:
         if (
@@ -189,6 +188,11 @@ def _self_attrs(func: ast.AST) -> set[str]:
 
 
 def _python_file(path: Path, tree: ast.Module) -> ModuleReport | None:
+    """Treat module-level functions as nodes linked by shared globals and calls.
+
+    Each function owns an identity token so a caller that references a sibling
+    connects to the callee holding that same token.
+    """
     funcs = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     if len(funcs) < 2:
         return None
@@ -198,15 +202,13 @@ def _python_file(path: Path, tree: ast.Module) -> ModuleReport | None:
 
     touches: dict[str, set[str]] = {}
     for f in funcs:
-        # Each function owns its identity token so a caller that references
-        # "f:<callee>" connects to the callee (which owns that same token).
         used: set[str] = {"f:" + f.name}
         for sub in ast.walk(f):
             if isinstance(sub, ast.Name):
                 if sub.id in module_globals:
                     used.add("g:" + sub.id)
                 if sub.id in func_names and sub.id != f.name:
-                    used.add("f:" + sub.id)  # call/reference to a sibling
+                    used.add("f:" + sub.id)
         touches[f.name] = used
 
     return ModuleReport(
@@ -229,11 +231,6 @@ def _module_globals(tree: ast.Module) -> set[str]:
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             names.add(node.target.id)
     return names
-
-
-# ---------------------------------------------------------------------------
-# Heuristic regex backends (R and Bash)
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -269,12 +266,12 @@ def _slice_body(source: str, open_idx: int) -> str:
 def _build_file_report(
     path: Path, defs: list[_FuncDef], top_symbols: set[str]
 ) -> ModuleReport | None:
+    """Link functions by shared module symbols and calls via identity tokens."""
     if len(defs) < 2:
         return None
     func_names = {d.name for d in defs}
     touches: dict[str, set[str]] = {}
     for d in defs:
-        # Own identity token, so callers linking via "f:<callee>" connect.
         used: set[str] = {"f:" + d.name}
         for ref in d.refs:
             if ref in top_symbols:
@@ -299,14 +296,17 @@ _R6_FIELD = re.compile(r"(?:self|private)\$([A-Za-z.][\w.]*)")
 
 
 def analyze_r(path: Path, source: str) -> list[ModuleReport]:
+    """Report OO classes plus top-level functions, skipping class internals.
+
+    Methods defined inside an R6Class / setRefClass block are covered by OO
+    mode already, so file mode only sees functions outside those spans.
+    """
     src = _strip_comments(source, "#")
     reports: list[ModuleReport] = []
 
     oo_spans: list[tuple[int, int]] = []
     reports.extend(_r_oo_report(src, oo_spans))
 
-    # File mode: top-level `name <- function(...)`, excluding methods that
-    # live inside an R6Class / setRefClass block (already covered by OO mode).
     defs: list[_FuncDef] = []
     for m in _R_FUNC.finditer(src):
         if any(start <= m.start() < end for start, end in oo_spans):
@@ -393,17 +393,21 @@ _BASH_WORD = re.compile(r"[A-Za-z_][\w-]*")
 
 
 def analyze_bash(path: Path, source: str) -> list[ModuleReport]:
+    """Report top-level functions linked by globals and calls.
+
+    Bare command words count as callee links; only assignments outside any
+    function body count as module-level symbols.
+    """
     src = _strip_comments(source, "#")
     defs: list[_FuncDef] = []
     for m in _BASH_FUNC.finditer(src):
         brace = src.index("{", m.end() - 1)
         body = _slice_body(src, brace)
         refs = {vm.group("name") for vm in _BASH_VARREF.finditer(body)}
-        refs |= set(_BASH_WORD.findall(body))  # bare command words -> callees
+        refs |= set(_BASH_WORD.findall(body))
         defs.append(_FuncDef(m.group("name"), body, refs))
 
     top_symbols = {m.group("name") for m in _BASH_ASSIGN.finditer(src)}
-    # Only count assignments made outside any function body as module-level.
     top_symbols = {s for s in top_symbols if _assigned_at_top(src, s)}
     report = _build_file_report(path, defs, top_symbols)
     return [report] if report else []
@@ -419,10 +423,6 @@ def _assigned_at_top(src: str, name: str) -> bool:
         depth += line.count("{") - line.count("}")
     return False
 
-
-# ---------------------------------------------------------------------------
-# Dispatch and CLI
-# ---------------------------------------------------------------------------
 
 _BACKENDS = {"python": analyze_python, "r": analyze_r, "bash": analyze_bash}
 _EXT_LANG = {
@@ -455,17 +455,19 @@ def iter_source_files(path: Path, lang: str | None) -> list[tuple[Path, str]]:
     return files
 
 
-def render_text(path: Path, reports: list[ModuleReport]) -> str:
-    lines = [f"# {path}"]
-    if not reports:
-        lines.append("  (no multi-part class or file module found to analyze)")
-        return "\n".join(lines)
-    for r in reports:
+def render_text(items: list[tuple[Path, ModuleReport]], hidden: int, total: int, multi: int) -> str:
+    """Render the worst-first shortlist with a truncation note and a summary line."""
+    lines = []
+    for path, report in items:
+        lines.append(f"# {path}")
         lines.append(
-            f"  {r.kind} {r.name}: {r.node_count} {r.node_label}s, "
-            f"LCOM={r.lcom}, clusters={r.clusters}"
+            f"  {report.kind} {report.name}: {report.node_count} {report.node_label}s, "
+            f"LCOM={report.lcom}, clusters={report.clusters}"
         )
-        lines.append(f"      -> {r.interpretation()}")
+        lines.append(f"      -> {report.interpretation()}")
+    if hidden:
+        lines.append(f"... {hidden} more (raise --top)")
+    lines.append(f"{total} modules, {multi} with 2+ clusters")
     return "\n".join(lines)
 
 
@@ -481,47 +483,72 @@ def report_to_dict(path: Path, r: ModuleReport) -> dict:
     }
 
 
+def emit(payload: str, output: Path | None) -> int:
+    """Write payload to output, or print it; 3 when the output is unwritable."""
+    if output is None:
+        print(payload)
+        return 0
+    try:
+        output.write_text(payload + "\n", encoding="utf-8")
+    except OSError as exc:
+        sys.stderr.write(f"error: cannot write {output}: {exc}\n")
+        return 3
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    """Parse flags, analyze every path, and print or store the worst-first report."""
     parser = argparse.ArgumentParser(
-        description="Estimate module cohesion via LCOM (CK v1) and clusters "
-        "(connected components). Python is precise (ast); R and Bash are "
-        "heuristic. "
-        "Numbers are diagnostic signals, not verdicts.",
+        description="Estimate module cohesion via LCOM (CK v1) and clusters. "
+        "Python is precise (ast); R and Bash are heuristic.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Exit codes: 0 = analysed ok; 3 = no analyzable source files found.",
+        epilog="examples:\n"
+        "  lcom.py src/\n"
+        "  lcom.py mod.py --top 5 --json\n"
+        "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",
     )
     parser.add_argument("paths", nargs="+", type=Path, help="files or directories")
     parser.add_argument(
         "--lang",
         choices=["auto", "python", "r", "bash"],
         default="auto",
-        help="force a language; 'auto' detects by file extension (default)",
+        help="force a language (default: auto)",
     )
     parser.add_argument("--json", action="store_true", help="emit JSON")
+    parser.add_argument("--top", type=int, default=20, help="worst modules shown (default: 20)")
+    parser.add_argument(
+        "--output", metavar="FILE", type=Path, help="write the report here, not stdout"
+    )
     args = parser.parse_args(argv)
+
+    for p in args.paths:
+        if not p.exists():
+            sys.stderr.write(f"error: no such path: {p}\n")
+            return 1
 
     lang = None if args.lang == "auto" else args.lang
     collected: list[tuple[Path, list[ModuleReport]]] = []
     for p in args.paths:
-        if not p.exists():
-            sys.stderr.write(f"warning: no such path: {p}\n")
-            continue
         for f, resolved in iter_source_files(p, lang):
             collected.append((f, analyze_path(f, resolved)))
 
     if not collected:
-        print("No analyzable source files found.", file=sys.stderr)
+        sys.stderr.write("No analyzable source files found.\n")
         if args.json:
-            print(json.dumps([], indent=2))
+            emit("[]", args.output)
         return 3
 
+    items = [(f, r) for f, reports in collected for r in reports]
+    items.sort(key=lambda item: (-item[1].clusters, -item[1].lcom, str(item[0]), item[1].name))
+    shown = items[: max(args.top, 0)]
+    total = len(items)
+    multi = sum(1 for _, r in items if r.clusters >= 2)
+
     if args.json:
-        payload = [report_to_dict(f, r) for f, reports in collected for r in reports]
-        print(json.dumps(payload, indent=2))
+        payload = json.dumps([report_to_dict(f, r) for f, r in shown], indent=2)
     else:
-        for f, reports in collected:
-            print(render_text(f, reports))
-    return 0
+        payload = render_text(shown, total - len(shown), total, multi)
+    return emit(payload, args.output)
 
 
 if __name__ == "__main__":

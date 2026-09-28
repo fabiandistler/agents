@@ -119,7 +119,10 @@ this. Three reasons:
    hard to maintain, test, and deploy, and thus unreliable.
 
 **Red-flag suffixes** that signal the trap: **Manager, Supervisor, Controller,
-Handler, Engine, Processor.**
+Handler, Engine, Processor.** A name passes when its role statement names one
+job — changing the suffix alone is not a fix; the suffixes are only a prompt
+to write the role statement. `Inventory Management` passes because its role
+names a single responsibility: stock levels.
 
 **Escape hatch:** if a system genuinely is just CRUD (create/read/update/delete)
 over entities with no real business logic, it doesn't need an architecture — use
@@ -222,7 +225,9 @@ a component's size.
   differing characteristics argue for splitting them.
 
 This step assumes you already know which architecture characteristics matter most
-to the system — determine those first, then run this pass.
+to the system — ask the user for the top 3, or take them from an existing ADR
+or architecture-pattern-advisor's trade-off analysis, then run this pass. Do
+not assume them.
 
 ---
 
@@ -354,7 +359,8 @@ current loop, not a final artifact.
 
 ## Entity-Trap check
 - Any component named *Manager / Handler / Processor / Engine / Controller /
-  Supervisor? Rename to a role, or split.  [ ] clear
+  Supervisor? Write its role statement: if it names one job the name stands,
+  otherwise rename to a role or split. A suffix change alone is not a fix.  [ ] clear
 
 ## Cohesion pass (roles & responsibilities)
 - Any role statement leaning on and / also / as well as / in addition / commas?
@@ -373,6 +379,14 @@ current loop, not a final artifact.
 - Driving characteristics: <scalability / reliability / availability / ...>
 - Splits they force: <component> → <...> because <characteristic mismatch>
 
+## Pass-complete checklist
+- Every story assigned to a component  [ ] pass
+- Each role statement one sentence, passes the conjunction test  [ ] pass
+- No entity-only or red-flag names  [ ] pass
+- Temporal couplings listed  [ ] pass
+- Top-3 driving characteristics reviewed  [ ] pass
+- After any split or merge, re-ran the checks on the changed components  [ ] pass
+
 ## Next iteration / open questions
-- <requirements still to uncover, decisions to revisit>
+- <unmet checks from above + requirements still to uncover, decisions to revisit>
 ```

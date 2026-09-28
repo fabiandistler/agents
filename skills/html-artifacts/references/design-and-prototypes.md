@@ -46,6 +46,7 @@ For "I want to play with this animation/transition before wiring it in."
 - The live code output. The whole reason this exists is so the user can tune values and copy them back into their real codebase. Without the copy step, this is just a demo.
 - Easing curve visualization (a small graph) is dramatically better than just a dropdown of names. Users tune curves visually.
 - Re-triggerable. One-shot animations are useless for tuning.
+- Reduced-motion safe. Honor `prefers-reduced-motion` in the prototype so the motion has a static fallback before it ships.
 
 **Common mistakes**
 - Building a generic "animation playground" instead of prototyping the specific animation the user asked about. Stay scoped to the one transition.

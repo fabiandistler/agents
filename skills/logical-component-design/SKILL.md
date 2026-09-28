@@ -40,6 +40,17 @@ or choosing system topology and folder layout
 Read it when you need the full examples or the worksheet; this file is the
 workflow.
 
+## Relation to siblings
+
+- **ddd** — aggregates live inside components, and bounded contexts group
+  components. The Entity Trap below is about naming components after nouns,
+  not about modeling domain entities.
+- **architecture-pattern-advisor** — use it for the top-level
+  domain-vs-technical partition; this skill decomposes within that split.
+- **c4-modeling** — render the final component table as a C4 Component view.
+- **microservices-design** — reach for it when components become deployment
+  units.
+
 ## The cycle
 
 Run these five steps in order, then loop. Enter at whatever step matches what the
@@ -62,11 +73,18 @@ generate the initial buckets — and avoid a third that looks tempting.
   components than the Workflow approach. It is the sensible **default** when
   there are no special constraints and you want a good general decomposition.
 - **Entity Trap (antipattern — avoid)** — deriving components from entities
-  (`Customer` → `Customer Manager`, `Order` → `Order Manager`). Avoid it:
+  (`Customer` → `Customer Manager`, `Order` → `Order Manager`). This trap is
+  about naming components after nouns, not about modeling domain entities —
+  a well-modeled entity is fine; a component named after one is the problem.
+  Avoid it:
   entity-noun names describe nothing ("Order Manager manages orders"), and the
   component becomes a dumping ground for every bit of order logic — a god-
   component that is hard to test and deploy. Red-flag suffixes: **Manager,
-  Supervisor, Controller, Handler, Engine, Processor**. Prefer role names that
+  Supervisor, Controller, Handler, Engine, Processor**. A name passes when
+  its role statement names one job — changing the suffix alone is not a fix;
+  the suffixes are only a prompt to write the role statement. `Inventory
+  Management` passes because its role names a single responsibility: stock
+  levels. Prefer role names that
   say what the component *does* — `Validate Order`, not `Order Manager`.
   *(Escape hatch: if the system truly is CRUD over entities with no real logic,
   it doesn't need an architecture at all — reach for a CRUD/low-code framework.)*
@@ -108,8 +126,10 @@ split: in the GGG auction, one `Bid Capture` component handled bids from both
 bidders and the auctioneer, but bidders need high scalability/elasticity
 (thousands of them) while the auctioneer needs high reliability/availability
 (one connection that must not drop) — so it splits into `Bid Capture` and
-`Auctioneer Capture`. This step assumes you already know which characteristics
-matter most; determine those first.
+ `Auctioneer Capture`. This step assumes you already know which characteristics
+matter most; ask the user for the top 3 driving characteristics, or take them
+from an existing ADR or architecture-pattern-advisor's trade-off analysis —
+do not assume them.
 
 ### 5. Restructure and iterate
 
@@ -118,6 +138,13 @@ whole lifecycle — not just on greenfield systems — as edge cases surface and
 and the developers understand the behaviors more deeply. Fold the results back
 into step 1 and go around again. Stopping "because the diagram is done" is the
 mistake; the loop is the method.
+
+**Pass complete when:** every story is assigned to a component; each role
+statement is one sentence and passes the conjunction test; no component has
+an entity-only or red-flag name; temporal couplings are listed; the top-3
+driving characteristics have been reviewed. After any split or merge,
+re-run these checks on the changed components. End the pass when all checks
+pass and record any open questions under "Next iteration" in the output.
 
 ## Refinement lens: coupling
 
@@ -165,7 +192,7 @@ Approach: <Workflow | Actor/Action> — <one-line why>
 | ...       | (single-sentence role, passes the conjunction test) | ... | .. | ... |
 
 Characteristics reviewed: <which -ilities drove any split>
-Next iteration / open questions: <what to revisit as requirements firm up>
+Next iteration / open questions: <unmet checks from above + what to revisit as requirements firm up>
 ```
 
 ## Common mistakes
@@ -187,3 +214,7 @@ Mark Richards & Neal Ford, *Fundamentals of Software Architecture*, 2nd ed.
 (O'Reilly), ch. 8, "Component-Based Thinking" — the component identification and
 refactoring cycle, the Workflow / Actor-Action approaches, the Entity Trap,
 component coupling, and the Law of Demeter.
+
+Raju Gandhi, Mark Richards & Neal Ford, *Head First Software Architecture*
+(O'Reilly, 2024), ch. 4 — deciding which architecture characteristics matter
+and designing for them.
