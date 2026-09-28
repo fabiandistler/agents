@@ -1,33 +1,9 @@
 #!/usr/bin/env python3
 """Compute component-coupling metrics from a dependency-edge list.
 
-Implements the metrics from Robert C. Martin / Richards & Ford
-(*Fundamentals of Software Architecture*, ch. 3):
-
-    Ce = efferent (outgoing) coupling   -> distinct components this one depends on
-    Ca = afferent (incoming) coupling   -> distinct components that depend on it
-    I  = Instability    = Ce / (Ce + Ca)            in [0, 1]
-    A  = Abstractness   = abstract / (abstract + concrete)   in [0, 1]
-    D  = Distance from the Main Sequence = |A + I - 1|        in [0, 1]
-
-A component far from the Main Sequence (large D) sits toward one of two
-trouble corners:
-    A + I < 1  -> Zone of Pain        (concrete + stable -> brittle, hard to change)
-    A + I > 1  -> Zone of Uselessness (abstract + unstable -> over-built, unused)
-
-Input is JSON (see scripts/coupling_metrics.example.json):
-
-    {
-      "components": [
-        {"name": "core", "abstract": 8, "concrete": 2},
-        {"name": "web",  "abstract": 0, "concrete": 12}
-      ],
-      "edges": [["web", "core"], ["web", "db"], ["core", "db"]]
-    }
-
-Each edge [A, B] means "A depends on B" (A has efferent coupling to B; B
-has afferent coupling from A). Abstractness is optional per component; omit
-the counts and the row reports instability only (A and D blank).
+Reports Ca, Ce, I, A, and D per component with its zone. The formulas, the
+zone map, and the principles behind the Main Sequence live in
+references/metrics.md.
 
 Usage:
     python3 coupling_metrics.py input.json
@@ -50,13 +26,20 @@ class InputError(Exception):
 
 
 def load_model(path: Path) -> tuple[dict[str, dict], list[tuple[str, str]]]:
-    """Read the JSON model into a component map and a list of edges."""
+    """Read the JSON model into a component map and a list of edges.
+
+    Each edge [A, B] means "A depends on B". An edge may introduce a
+    component not separately declared, which then carries no abstractness
+    data; self-edges are dropped since they are not coupling.
+    """
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise InputError(f"no such file: {path}") from exc
     except json.JSONDecodeError as exc:
         raise InputError(f"{path}: invalid JSON ({exc})") from exc
+    except OSError as exc:
+        raise InputError(f"{path}: cannot read input ({exc})") from exc
 
     components: dict[str, dict] = {}
     for entry in raw.get("components", []):
@@ -72,11 +55,9 @@ def load_model(path: Path) -> tuple[dict[str, dict], list[tuple[str, str]]]:
         if len(edge) != 2:
             raise InputError(f"edge must be a [source, target] pair: {edge!r}")
         src, dst = edge
-        # An edge can introduce a component not separately declared; that is
-        # fine -- treat it as having no abstractness data.
         components.setdefault(src, {"name": src})
         components.setdefault(dst, {"name": dst})
-        if src != dst:  # self-edges do not count as coupling
+        if src != dst:
             edges.append((src, dst))
 
     if not components:
@@ -101,7 +82,10 @@ def compute(
     edges: list[tuple[str, str]],
     threshold: float,
 ) -> list[dict]:
-    """Return one metrics row per component, sorted by D (desc) then name."""
+    """Return one metrics row per component, sorted by D (desc) then name.
+
+    Rows without abstractness data carry no A/D and sort last.
+    """
     efferent: dict[str, set[str]] = {name: set() for name in components}
     afferent: dict[str, set[str]] = {name: set() for name in components}
     for src, dst in edges:
@@ -127,7 +111,6 @@ def compute(
             }
         )
 
-    # Unmeasurable rows (no abstractness) sort last; otherwise worst D first.
     rows.sort(key=lambda r: (r["D"] is None, -(r["D"] or 0.0), r["name"]))
     return rows
 
@@ -161,25 +144,34 @@ def render_table(rows: list[dict]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Load the JSON model, compute the metrics, and print the table or JSON."""
     parser = argparse.ArgumentParser(
-        description=__doc__,
+        description="Compute Ca/Ce/I/A/D per component with its zone. Formulas "
+        "and the zone map live in references/metrics.md.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n"
+        "  coupling_metrics.py input.json\n"
+        "  coupling_metrics.py input.json --json --threshold 0.4\n"
+        "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",
     )
     parser.add_argument("input", type=Path, help="path to the JSON model")
     parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
-        help="D above which a component is flagged as off the main sequence (default 0.5)",
+        help="flag components with D above this (default: 0.5)",
     )
     parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
     args = parser.parse_args(argv)
 
+    if not args.input.exists():
+        sys.stderr.write(f"error: no such file: {args.input}\n")
+        return 1
     try:
         components, edges = load_model(args.input)
     except InputError as exc:
         sys.stderr.write(f"error: {exc}\n")
-        return 1
+        return 3
 
     rows = compute(components, edges, args.threshold)
 

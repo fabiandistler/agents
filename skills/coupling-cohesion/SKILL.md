@@ -20,22 +20,13 @@ for the question in front of you:
 
 Modes B and C are complementary halves of a coupling audit: the metrics (B) find
 the hotspots, the balance model (C) explains and fixes a specific relationship.
-Mode A is the cohesion half of the same law. For *greenfield* decomposition of a
-system that doesn't exist yet, use `logical-component-design` instead — this
-skill measures what's already there.
+Mode A is the cohesion half of the same law. The per-scale expressions and the
+classic failure shapes live in
+[references/cohesion-taxonomy.md](references/cohesion-taxonomy.md#the-same-law-at-every-scale).
+For *greenfield* decomposition of a system that doesn't exist yet, use
+`logical-component-design` instead — this skill measures what's already there.
 
 ## When to use
-
-Whenever existing code is reviewed for whether its parts belong together or how
-tangled it is — a god-class or `*Utils` grab-bag, "is this class doing too
-much", "should I split this module", "analyze coupling", "which modules are too
-coupled / brittle / tangled", "is this over-abstracted", "is it ok that these
-two services share this model", knowledge leaks, distributed-monolith risk, or
-any mention of LCOM, afferent/efferent coupling, instability, abstractness,
-distance from the main sequence, the Zone of Pain / Uselessness, integration
-strength, or Khononov — even without naming the metric or model. Applies to
-object-oriented code *and* files or namespaces of plain functions (Python, R,
-Bash, and others).
 
 **Not for:** a single function's cyclomatic complexity, choosing an architecture
 from scratch (use `architecture-pattern-advisor`), or greenfield component
@@ -62,22 +53,10 @@ you need precision on a type or on the metric; this section is the workflow.
 
 ## The cohesion scale
 
-Identify the *dominant* relationship binding the parts — the strongest one that
-actually holds. Best to worst:
-
-| Type | The parts are bound by… |
-|------|-------------------------|
-| **Functional cohesion** *(best)* | Everything essential to one job; nothing extra. |
-| **Sequential** | One part's output is the next part's input. |
-| **Communicational** | They operate on the same information / build one output. |
-| **Procedural** | They must run in a particular order. |
-| **Temporal** | *When* they run (e.g. startup init), not what they touch. |
-| **Logical** | A category ("conversions", "string utils") — related in kind, not in function. |
-| **Coincidental** *(worst)* | Nothing but being in the same file. |
-
-Functional and sequential are healthy. Temporal, logical, and coincidental are
-the smells worth flagging. Procedural and communicational sit in between — judge
-them in context.
+Name the dominant relationship binding the parts, best to worst
+(functional, sequential, communicational, procedural, temporal, logical,
+coincidental); definitions and health judgments live in
+[references/cohesion-taxonomy.md](references/cohesion-taxonomy.md#the-seven-types-best-to-worst).
 
 ## Cohesion workflow
 
@@ -96,7 +75,7 @@ and through what.
 
 ### 3. Classify the dominant cohesion type
 
-Using the scale above and the definitions in the reference, name the strongest
+Using the scale and definitions in the reference, name the strongest
 relationship that holds the parts together. Be honest about the *dominant* one:
 a class can have one functional core plus a coincidental straggler.
 
@@ -106,15 +85,12 @@ For anything with the structure of methods-and-fields or functions-and-shared-
 state, get the structural signal from the bundled script:
 
 ```
-python3 scripts/lcom.py <path...> [--lang auto|python|r|bash]
+python3 scripts/lcom.py <path...> [--lang auto|python|r|bash] [--top N] [--output FILE]
 ```
 
-It reports, per class and per file:
-- **clusters** — how many disconnected groups the parts fall into. **This is
-  the actionable number:** 1 means well connected (like the book's Class X);
-  2+ means the module could split into that many (Class Y / Z).
-- **LCOM** — the Chidamber & Kemerer score (`|P| − |Q|`); higher means more
-  pairs of parts share nothing.
+It reports, per class and per file, worst first (capped at `--top`, default
+20, with a summary line): **clusters** (2+ means splittable — the actionable
+number) and **LCOM** (higher means more pairs share nothing).
 
 Read the result as evidence, not a verdict — see step 6 and the reference's
 "What LCOM cannot tell you." Treat the script as optional: skip it for tiny
@@ -123,15 +99,8 @@ modules or where it doesn't fit, and rely on steps 2–3.
 ### 5. Apply the trade-off questions before recommending a split
 
 A multi-cluster result is an *invitation* to split, not an order. Run the
-three questions from the source's Customer/Order Maintenance example
-([reference](references/cohesion-taxonomy.md#worked-example-when-to-split-a-module)):
-
-1. Is the candidate new module just a couple of operations that will never
-   grow? Then collapsing it back may be better than the extra coupling.
-2. Is the current module expected to grow large? Then extracting now prevents a
-   god-module later.
-3. Would the split force so much shared knowledge that the two modules become
-   tightly coupled anyway? Then the parts are genuinely cohesive — leave them.
+three trade-off questions from the source's Customer/Order Maintenance example
+([reference](references/cohesion-taxonomy.md#worked-example-when-to-split-a-module)).
 
 ### 6. Recommend: split, merge, or leave — with the refactor
 
@@ -174,12 +143,7 @@ Keep it proportional: a clean module needs a sentence, not a report.
 # Mode B — Codebase-wide coupling metrics
 
 Judge how coupled — and therefore how brittle or over-abstracted — a codebase
-is, using the component-coupling metrics from Richards & Ford's *Fundamentals
-of Software Architecture* (ch. 3) and Robert C. Martin's package metrics:
-afferent/efferent coupling, **Instability** (`I`), **Abstractness** (`A`), and
-**Distance from the Main Sequence** (`D = |A + I − 1|`). Components far from the
-Main Sequence fall into the **Zone of Pain** (concrete and depended-upon —
-brittle) or the **Zone of Uselessness** (abstract and unused — over-built).
+is, with the Ca/Ce/I/A/D component-coupling metrics and their Main Sequence zones.
 
 An unaided answer tends to eyeball imports and give a vibe. This mode makes
 the analysis reproducible: build the dependency graph, compute the metrics with
@@ -193,8 +157,7 @@ Sequence, and a worked example live in
 
 ## Coupling-metrics workflow
 
-Follow these steps in order. The interpretation step is what separates a useful
-report from a misleading one — do not skip it to hand back a ranked table.
+Follow these steps in order.
 
 ### 1. Choose the unit of analysis
 
@@ -207,13 +170,15 @@ State the level you chose in the report; it frames everything else.
 Extract directed edges where `A → B` means "A depends on B". Use the ecosystem's
 own tool rather than hand-tracing:
 
-| Ecosystem | Tools for the dependency graph |
-|---|---|
-| Python | `pydeps`, `import-linter`, `grimp` |
-| JS / TS | `dependency-cruiser`, `madge` |
-| Java / JVM | JDepend, ArchUnit, `jdeps` |
-| .NET | NDepend, `dotnet` analyzers |
-| Go | `go list -deps`, `goda` |
+| Ecosystem | Tools for the dependency graph | Native metrics? |
+|---|---|---|
+| Python | `grimp`, `import-linter`, `tach`, `pydeps` | — |
+| JS / TS | `dependency-cruiser --metrics`, `madge` | dependency-cruiser: Ca, Ce, I |
+| Java / JVM | ArchUnit `ComponentDependencyMetrics`, `jdeps` | ArchUnit: Ca, Ce, I, A, D |
+| .NET | NDepend | Ca, Ce, I, A, D |
+| Go | `go list -deps`, `goda` | — |
+
+If the tool emits Ca/Ce/I, use it; the script adds A/D and uniform output.
 
 Normalize the output into the script's JSON input (see
 `scripts/coupling_metrics.example.json`): a list of `components` and a list of
@@ -242,9 +207,7 @@ component, sorted worst-`D` first, and flags everything past the threshold
 
 ### 5. Interpret — don't just rank
 
-This is the step that makes the report honest. Per the book's *Limitations of
-Metrics*: these are blunt instruments that **cannot distinguish essential from
-accidental complexity**, so treat a high `D` as a prompt to look, not a verdict.
+Treat a high `D` as a prompt to look, not a verdict.
 
 - For each flagged component, name its zone and explain *why* it landed there
   in terms of its actual edges (what depends on it, what it depends on).
@@ -256,24 +219,15 @@ accidental complexity**, so treat a high `D` as a prompt to look, not a verdict.
 ### 6. Remediate
 
 For each component that is genuinely off the Main Sequence, recommend a fix from
-[references/remediation.md](references/remediation.md):
-
-- **Zone of Pain** → introduce an interface/port over the depended-upon surface,
-  apply Dependency Inversion, split God-modules. Raise abstraction where others
-  depend (Stable Abstractions Principle).
-- **Zone of Uselessness** → delete speculative abstraction, inline
-  single-implementation interfaces, collapse pass-through layers.
-- Move dependencies toward stability (Stable Dependencies Principle).
+[references/remediation.md](references/remediation.md): raise abstraction in the
+Zone of Pain, remove indirection in the Zone of Uselessness, and move
+dependencies toward stability.
 
 ### 7. Record and go deeper
 
-- For significant restructuring, capture the decision (and the metrics baseline
-  that motivated it) with the `adr-workflow` skill.
-- The durable cure for chronic coupling is deeper modules: more functionality
-  behind smaller interfaces. If the topology itself is wrong, escalate to
-  `architecture-pattern-advisor`.
-- Re-run the script after changes to confirm components moved toward the Main
-  Sequence; the same input format makes it a repeatable baseline.
+Record significant restructuring with the `adr-workflow` skill (with the metrics
+baseline); escalate topology problems to `architecture-pattern-advisor`, and
+re-run the script to confirm components moved toward the Main Sequence.
 
 ## Coupling metrics — common mistakes
 
@@ -297,7 +251,10 @@ across the boundary (**integration strength**), how far apart the coupled
 components live (**distance**), and how likely that shared knowledge is to
 change (**volatility**). The model is Vlad Khononov's Balanced Coupling, from
 *Balancing Coupling in Software Design* (Addison-Wesley, 2024) and
-[coupling.dev](https://coupling.dev). Its core rule:
+[coupling.dev](https://coupling.dev). The author also publishes it as the
+`balanced-coupling` skill in the
+[vladikk/modularity](https://github.com/vladikk/modularity) plugin
+(CC BY-NC-SA 4.0), with the same four strength levels and balance rule. Its core rule:
 
 ```
 MODULARITY = STRENGTH XOR DISTANCE
@@ -310,12 +267,6 @@ knowledge should cross large distances (loose coupling). Strong coupling across
 a large distance is a **knowledge leak** heading toward a distributed monolith;
 it is tolerable only when the shared knowledge is stable (low volatility).
 
-This is the qualitative counterpart to Mode B: that mode counts and ranks
-dependencies with Martin's graph metrics; this one weighs a specific
-relationship and tells you whether it is the *kind* of coupling that belongs at
-that boundary. Use both when auditing a whole codebase — the metrics find the
-hotspots, this model explains and fixes them.
-
 Dimension definitions, the strength levels with recognition cues, the distance
 and volatility ladders, and the balance quadrants live in
 [references/balanced-coupling-model.md](references/balanced-coupling-model.md).
@@ -323,21 +274,18 @@ Fixes per imbalance live in [references/rebalancing.md](references/rebalancing.m
 
 ## Balanced-coupling workflow
 
-The model is fractal: the same steps apply between methods, classes, packages,
+The model is fractal: the same steps apply between methods, objects, packages,
 services, or whole systems. Hold the level constant within one assessment.
 
 ### 1. List the dependencies to assess
 
-Name the coupled pairs explicitly: *upstream* (owns the knowledge) and
-*downstream* (depends on it). For a focused question this is one pair; for a
-boundary review, enumerate every relationship that crosses the boundary in
-question. Only cross-boundary relationships need assessing — coupling wholly
-inside one component is that component's own business (Mode A territory).
+Name the coupled pairs explicitly as *upstream* (owns the knowledge) and
+*downstream* (depends on it); assess only relationships crossing the boundary
+in question.
 
 ### 2. Classify integration strength
 
-Identify the *strongest* kind of knowledge the downstream consumes, per the
-four levels in the reference (strongest to weakest):
+Identify the *strongest* kind of knowledge the downstream consumes:
 
 | Level | The downstream depends on… |
 |---|---|
@@ -349,38 +297,26 @@ four levels in the reference (strongest to weakest):
 Functional *coupling* is not Mode A's functional *cohesion*: here it is the
 second-strongest level, a leak when it crosses distance, not the best grade.
 
-Recognition cues per level, and how the classic module-coupling and
-connascence scales map onto them, are in the reference.
-
 ### 3. Assess distance
 
-Place the pair on the distance ladder: same function → same class/file → same
-package → same component/library → same service → different systems owned by
-different teams. Distance is socio-technical: a team boundary adds distance
+Place the pair on the distance ladder: methods → objects → packages →
+services → systems. Distance is socio-technical: a team boundary adds distance
 even between services in one repo, and asynchronous integration adds lifecycle
 slack. Greater distance makes each coordinated change cost more.
 
 ### 4. Assess volatility
 
 How likely is the *shared* knowledge to change? Use the subdomain type as the
-first proxy — core subdomains churn, generic ones don't (classify with the `ddd`
-skill if unclear) — then correct with evidence: commit history of the shared
-surface, roadmap pressure, and whether the upstream is actively evolved or in
-maintenance mode.
+first proxy (classify with the `ddd` skill if unclear), then correct with
+evidence: commit history of the shared surface, roadmap pressure, and whether
+the upstream is actively evolved or in maintenance mode.
 
 ### 5. Apply the balance rule
 
-Reduce strength and distance to high/low for the pair and check the quadrant:
-
-- **High strength, low distance** — high cohesion. Balanced.
-- **Low strength, high distance** — loose coupling. Balanced.
-- **High strength, high distance** — knowledge leak; global complexity.
-  Imbalanced unless volatility is low.
-- **Low strength, low distance** — unrelated neighbors; local complexity.
-  Imbalanced unless volatility is low (mostly a cohesion smell).
-
-For more than a couple of pairs, record the assessments in the checker's JSON
-format and run it — it applies the rule uniformly and sorts the leaks first:
+Reduce strength and distance to high/low for the pair and check the quadrant
+in [references/balanced-coupling-model.md](references/balanced-coupling-model.md#the-balance-rule)
+— or run the pair through `balance_check.py`, which applies the rule uniformly
+and sorts the leaks first:
 
 ```bash
 python3 scripts/balance_check.py <your-input>.json
@@ -392,24 +328,16 @@ for how levels reduce to high/low.
 
 ### 6. Rebalance what's flagged
 
-An imbalance has exactly three exits — pick per pair, using
-[references/rebalancing.md](references/rebalancing.md):
-
-- **Reduce strength**: introduce or harden a contract at the boundary so less
-  knowledge crosses it (intrusive → functional → model → contract).
-- **Reduce distance**: co-locate what genuinely must change together — merge
-  services, move code into one package, put it under one team.
-- **Accept, eyes open**: if the shared knowledge is demonstrably stable,
-  document the imbalance and the stability assumption (an ADR via
-  `adr-workflow`) so it is revisited when volatility returns.
+An imbalance has exactly three exits — pick per pair from
+[references/rebalancing.md](references/rebalancing.md): reduce the strength
+crossing the boundary, reduce the distance, or accept on proven stability with
+a revisit condition (an ADR via `adr-workflow`).
 
 ### 7. Sanity-check the verdicts
 
-Binary high/low is a deliberate simplification — the book grades each
-dimension on finer scales. Before reporting: a "balanced" verdict built on a
-generous distance guess or an optimistic "that model never changes" is worth
-rechecking against git history; and low-volatility acceptances are loans, not
-gifts — they must carry a revisit condition.
+Binary high/low is a deliberate simplification — recheck generous distance
+guesses and optimistic stability claims against git history; low-volatility
+acceptances are loans, not gifts, and need a revisit condition.
 
 ## Balanced coupling — common mistakes
 
@@ -426,42 +354,6 @@ gifts — they must carry a revisit condition.
   don't compare. Fix the level in step 1 and stay there.
 
 ---
-
-# The zeroth law: cohesion and coupling as one meta-principle
-
-"High cohesion, low coupling" is not a design principle alongside the others —
-it is the principle the others reduce to. Whenever a design rule is under
-scrutiny for *why* it is good, the answer traces back to one of two questions:
-
-1. **Does this belong here?** — cohesion (Mode A).
-2. **Could I change this without touching other parts?** — coupling (Modes B/C).
-
-This same pair of questions repeats at every level of scale, just renamed:
-
-| Level | Principle | Cohesion expression | Coupling expression |
-|-------|-----------|----------------------|-----------------------|
-| Function / method | Single Responsibility | One reason to change | Minimal side effects outward |
-| Module | Deep modules | Complete, coherent problem domain | Narrow, simple interface |
-| Architecture | Separation of Concerns | One layer per concern | Layers talk only through defined boundaries |
-| Domain | Bounded Context | Consistent ubiquitous language within the context | Explicit context maps at the edges |
-| Service | Microservices | Self-contained business capability | Loose coupling via defined APIs |
-
-Classic anti-patterns are this law failing in a specific, recognizable shape —
-treat them as symptoms to trace back to a cohesion and/or coupling root cause:
-
-- **God Object** — high external coupling *and* low internal cohesion:
-  unrelated responsibilities crammed into one place, and everything else ends
-  up depending on it.
-- **Shotgun Surgery** — a cohesion failure by distribution: one concern is
-  scattered across many modules instead of held together in one, so a single
-  change ripples everywhere.
-- **Feature Envy** — a cohesion failure by wrong placement: a method cares
-  more about another module's data than its own — it is living in the wrong
-  home.
-
-Use the two diagnostic questions as a fast first pass before reaching for any
-metric: Mode A makes the cohesion half measurable (LCOM), Modes B and C make the
-coupling half measurable (graph metrics) and judgeable (the balance model).
 
 ## Related skills
 
