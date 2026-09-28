@@ -2,6 +2,16 @@
 
 Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact skill can do is producing generic-looking output: gradient cards, emoji headers, four shades of indigo, the default Tailwind aesthetic. Avoid that. Read this reference whenever the artifact will be shared, presented, or kept around for any length of time.
 
+## Contents
+
+- [Three rules of thumb](#three-rules-of-thumb)
+- [The design-system-from-codebase trick](#the-design-system-from-codebase-trick)
+- [When there's no existing system: the safe default](#when-theres-no-existing-system-the-safe-default)
+- [Tools and editors get a different default](#tools-and-editors-get-a-different-default)
+- [External design plugin / skill](#external-design-plugin--skill)
+- [What "AI default look" feels like — avoid](#what-ai-default-look-feels-like--avoid)
+- [What good looks like](#what-good-looks-like)
+
 ## Three rules of thumb
 
 1. **Restraint over decoration.** A calm typographic layout — system serif body, generous spacing, one or two restrained accent colors — beats a busy "dashboard" almost every time. If you're tempted to add a gradient, don't.
@@ -95,9 +105,9 @@ body { font: 14px/1.4 var(--sans); max-width: none;
 
 Editors are tools. Tools should feel responsive and dense, not magazine-airy.
 
-## Frontend-design plugin / skill
+## External design plugin / skill
 
-If the user has a `frontend-design` plugin or skill installed, defer to its conventions. It exists for exactly this purpose. Read it (likely `/mnt/skills/public/frontend-design/SKILL.md` or similar) before defaulting to the baseline above.
+If the user has an external design plugin or skill installed, defer to its conventions. It exists for exactly this purpose. Read it before defaulting to the baseline above.
 
 ## What "AI default look" feels like — avoid
 

@@ -22,10 +22,8 @@ The trigger situations live in this file's frontmatter (`description`, `when_to_
 1. Match the request to a row in the table below.
 2. **Read that sub-skill's `SKILL.md` before acting.** Open the file at the
    path in the last column (relative to this router's directory) with your
-   file-reading tool. The sub-skills are *not* registered skills of their own:
-   invoking one by a namespaced name (for example `<router>:<member>`) fails
-   with "unknown skill" in agents that register only top-level skills, and
-   wastes a turn. Read the file instead; it carries the real
+   file-reading tool. If your agent also lists them as skills, still route
+   through this table. The file carries the real
    workflow, references, and scripts — this router only points the way.
 3. If two rows seem to apply, read both; if none fit, use your general knowledge
    and say the catalogue had no dedicated sub-skill.
