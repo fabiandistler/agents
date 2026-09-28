@@ -3,7 +3,7 @@
   "skills": [
     {
       "name": "adr-workflow",
-      "summary": "Establish and maintain Architecture Decision Records (ADRs) in software repositories.",
+      "summary": "Establish, draft, supersede, and maintain Architecture Decision Records (ADRs) in software repositories.",
       "category": "architecture",
       "path": "skills/adr-workflow/SKILL.md",
       "environments": [

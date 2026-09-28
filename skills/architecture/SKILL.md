@@ -34,7 +34,7 @@ model's trigger surface.
 <!-- BEGIN generated:members -->
 | Sub-skill | When to use | Read before acting |
 |---|---|---|
-| adr-workflow | Establish and maintain Architecture Decision Records (ADRs) in software repositories. | `members/adr-workflow/SKILL.md` |
+| adr-workflow | Establish, draft, supersede, and maintain Architecture Decision Records (ADRs) in software repositories. | `members/adr-workflow/SKILL.md` |
 | architecture-pattern-advisor | Choose a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion), not generic project setup. | `members/architecture-pattern-advisor/SKILL.md` |
 | c4-modeling | Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4). | `members/c4-modeling/SKILL.md` |
 | coupling-cohesion | Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov). | `members/coupling-cohesion/SKILL.md` |
