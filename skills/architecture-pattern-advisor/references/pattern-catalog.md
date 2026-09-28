@@ -4,6 +4,13 @@ Reference for step 3 (candidates + pros/cons) and step 5 (scaffolding trees). Tw
 
 For each pattern: one-line definition, Pros, Cons, When it fits, When to avoid. Code-organization patterns include an annotated example tree.
 
+## Contents
+
+- [Axis 1 — System Topology](#axis-1--system-topology-how-many-deployable-units)
+- [Axis 2 — Code Organization](#axis-2--code-organization-how-one-unit-is-structured)
+- [Advanced — Data & Interaction Patterns](#advanced--data--interaction-patterns-add-on-top-when-justified)
+- [Combinations](#combinations-how-the-axes-compose)
+
 ---
 
 ## Axis 1 — System Topology (how many deployable units)
