@@ -4,7 +4,7 @@ category: refactoring
 environments: coding
 description: Finding where refactoring is worth starting in a codebase nobody knows well — ranks files by git churn (hotspots) and says how to read the ranking. Use when the user asks which code to refactor first or where to begin cleaning up a legacy repo.
 metadata:
-  version: "4.0"
+  version: "4.1"
 ---
 
 # Refactoring targets
@@ -50,6 +50,14 @@ it matters: `coupling-cohesion` measures how tangled a module is, and a file
 that scores high on both is the strongest candidate. For each top hit, list its co-changers with the same `--since` window (`--name-only` with a path shows only that path, so expand the commits first):
 `for c in $(git log --since '<window>' --pretty=%H -- <file>); do git show --name-only --pretty=format: $c; done | grep . | sort | uniq -c | sort -rn | head`
 Files that co-change are one change, not two: refactor them together, or say why not.
+
+**If you can start subagents**, read the top hits in parallel: one subagent per
+hit, given the repo path, the file, the `--since` window, and the two questions
+above (what makes it expensive to change, which files co-change with it). Each
+returns a few lines — its verdict with `path:line` evidence and the top
+co-changers with counts — never the file body. Merge co-changer groups that
+overlap across hits, then rank the candidates yourself; the comparison needs
+all verdicts side by side. Without subagents, read the hits one by one.
 
 ## When the ranking lies
 

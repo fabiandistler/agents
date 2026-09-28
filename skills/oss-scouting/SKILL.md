@@ -8,7 +8,7 @@ compatibility: Requires git and the GitHub CLI (`gh`, read-only). Running a cand
 argument-hint: "<owner>/<repo>"
 description: Scout one third-party open-source repository for open issues that suit a small, clean contribution, and write repro, root-cause analysis, fix diff, test, and a submit checklist to a local folder only.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # OSS Scouting
@@ -157,6 +157,15 @@ themselves.
 demonstrable behavior, missing tests for confirmed behavior, error messages that
 mislead.
 
+**If you can start subagents**, fan the per-issue check out: filter the list
+against `LOG.md` first, then hand each subagent a batch of about 10 issue
+numbers, the repo slug, and the In/Out/Preferred criteria above verbatim. Each
+returns one line per issue — number, in/out, the one-sentence reason — never
+the comment threads. The threads are what fill the context, and the longlist
+needs only the verdicts. Build the longlist and shortlist from the returned
+lines yourself: picking the ≤3 is a comparison across batches. Without
+subagents, check the issues one by one as above.
+
 Longlist (every issue reviewed, with a one-sentence reason) into README.md;
 shortlist ≤3. If nothing survives an honest review, report that — don't relax
 the criteria to fill the list.
@@ -169,6 +178,15 @@ regenerable, so it belongs in cache rather than in the artifact tree — use
 `mktemp -d` or `${XDG_CACHE_HOME:-$HOME/.cache}/oss-scouting/<owner>-<repo>/`.
 Keeping the two apart means deleting the clone never risks the analysis, and the
 upstream repo's own tooling never sees the notes.
+
+The candidates do not depend on each other. **If you can start subagents**,
+give each one candidate: the issue number, its `NN-issue-<nr>/` folder, the
+policy table from phase 1, and steps 1–5 below. Each works in **its own clone**
+(`…/<owner>-<repo>-<nr>/` or its own `mktemp -d`) — a shared clone lets one
+candidate's fix leak into another's red/green test run. Each returns only the
+status (reproduced or dropped, with the finding), the files it wrote, and the
+risk rating. Without subagents, work the candidates up one after another in
+one clone, resetting it between candidates.
 
 1. **repro**: minimal, runnable, with version information, expected vs. actual
    output as a comment. Run it. If it doesn't reproduce → drop the candidate and
