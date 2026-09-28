@@ -52,10 +52,11 @@
     },
     {
       "name": "communication-analysis",
-      "summary": "Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
+      "summary": "Decodes what a message, feedback, or conversation really communicates and rewrites it to be clear and congruent.",
       "category": "communication",
       "path": "skills/communication-analysis/SKILL.md",
       "environments": [
+        "coding",
         "chat"
       ],
       "version": "1.0"
@@ -210,7 +211,8 @@
       "environments": [
         "coding",
         "chat"
-      ]
+      ],
+      "version": "1.0"
     },
     {
       "name": "pypet-snippets",

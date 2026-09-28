@@ -1,8 +1,8 @@
 ---
 name: communication-analysis
 category: communication
-environments: chat
-description: Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening. Decodes the factual, self-revealing, relationship, and appeal levels. Educational, not therapy.
+environments: coding, chat
+description: Decodes what a message, feedback, or conversation really communicates and rewrites it to be clear and congruent. Use when a message landed badly, its meaning is ambiguous, or feedback needs rewording.
 metadata:
   version: "1.0"
 ---
@@ -16,10 +16,9 @@ several levels at once, names contradictions, and suggests clearer rewrites.
 
 ## When to use
 
-Reviewing or rewriting feedback, diagnosing why a message landed badly,
-analyzing a conversation for unstated requests, or drafting a boundary
-statement. Covers the four sides, congruence, the relevance filter,
-disturbances, comprehensibility, hidden appeals, and the solution reflex.
+Rewriting feedback that landed badly, diagnosing why a message misfired,
+analyzing a conversation for unstated requests, drafting a boundary statement,
+or softening review tone without losing the point.
 
 ## Scope and disclaimer
 
