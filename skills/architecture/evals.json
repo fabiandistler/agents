@@ -1,0 +1,12 @@
+{
+  "should_trigger": [
+    "two services write the same Postgres table, ok?",
+    "split our Django monolith?",
+    "make CI fail on import cycles"
+  ],
+  "should_not_trigger": [
+    "which folder for this test fixture?",
+    "add an index to speed up this query"
+  ],
+  "expected_behavior": "Routes shared-table writes to microservices-design, monolith splits to architecture-pattern-advisor, and CI import-cycle enforcement to fitness-functions; stays silent on single-file placement and routine query tuning."
+}
