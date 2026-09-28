@@ -4,15 +4,6 @@ Verified 2026-09-19 against usethis 3.2.2, devtools 2.5.2, r-lib/actions v2,
 rhub 2.0.1. Function names below are stable across those versions; re-check
 `?usethis::use_version` when a newer major appears.
 
-## Contents
-
-- [Set the version](#set-the-version)
-- [NEWS.md house style](#newsmd-house-style-tidyverse)
-- [Checks](#checks)
-- [Other version-bearing files](#other-version-bearing-files)
-- [Tag and GitHub release](#tag-and-github-release)
-- [CRAN](#cran-only-when-the-package-is-on-cran-or-the-user-says-cran)
-
 ## Set the version
 
 ```bash

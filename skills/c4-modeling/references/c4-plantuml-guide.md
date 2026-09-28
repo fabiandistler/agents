@@ -7,14 +7,6 @@ table, mechanical translation, but it needs a renderer: local PlantUML
 audience needs publication-grade visuals; for in-repo docs, Mermaid's
 zero-dependency rendering wins.
 
-## Contents
-
-- [Includes](#includes)
-- [Element and relationship macros](#element-and-relationship-macros)
-- [Layout and legend](#layout-and-legend)
-- [Worked example (Container diagram)](#worked-example-container-diagram)
-- [Rendering (all free)](#rendering-all-free)
-
 ## Includes
 
 One include per diagram type, from the PlantUML standard library (bundled

@@ -53,9 +53,6 @@ jobs:
       - name: Eval coverage
         run: python scripts/check_evals.py
 
-      - name: Reference TOCs
-        run: python scripts/check_reference_tocs.py
-
       - name: Lint (ruff)
         run: ruff check .
 

@@ -6,13 +6,6 @@ Check the CLI is installed and authenticated before step 6 of prepare, not
 after the push. PR title, body order, commit message, and tag name stay as
 `SKILL.md` gives them.
 
-## Contents
-
-- [github — `gh`](#github--gh)
-- [azure — Azure Repos, `az` with the `azure-devops` extension](#azure--azure-repos-az-with-the-azure-devops-extension)
-- [gitlab — `glab`](#gitlab--glab)
-- [unknown or none](#unknown-or-none)
-
 ## github — `gh`
 
 ```bash

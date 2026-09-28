@@ -14,16 +14,8 @@
 > Keep-filter: counter-default, quantitative heuristic, or security-relevant.
 > Generic best practice a competent model already follows is omitted.
 
-## Contents
-
-- [Tool Design](#tool-design)
-- [Orchestration & Context](#orchestration--context)
-- [Agent Evaluation](#agent-evaluation)
-- [Memory & Retrieval](#memory--retrieval)
-- [Deployment & Learning](#deployment--learning)
-- [Monitoring](#monitoring)
-- [Security](#security)
-- [UX](#ux)
+Contents: Tool Design, Orchestration & Context, Agent Evaluation,
+Memory & Retrieval, Deployment & Learning, Monitoring, Security, UX.
 
 ## Tool Design
 
