@@ -2,7 +2,7 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: Guide the engineering of a foundation-model application across three linked decisions. Adapt the model when its output fails, choose what to build next, and monitor it live — plus the craft-level conventions underneath.
+description: "Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning. Adapt the model when its output fails, choose what to build next, and monitor it live."
 metadata:
   version: "1.2"
 ---
@@ -57,18 +57,20 @@ fix the root cause.
 
 | # | Technique | What it is |
 |---|---|---|
-| 1 | **Prompting** | Structured task description, role, output format — with systematic versioning of prompts. |
-| 2 | **Few-shot prompting** | 1–50 examples placed directly in the prompt. Very high leverage for the effort. |
-| 3 | **Basic RAG** | Term-based retrieval (e.g. BM25), used when the failure is missing information. |
-| 4 | **Advanced RAG** | Embedding-based retrieval, reranking, hybrid search — when basic retrieval is not enough. |
-| 5 | **Finetuning** | Used when the problem is *behavior* (irrelevant, malformatted, unsafe responses), not missing knowledge. |
-| 6 | **RAG + finetuning combined** | Largest performance boost available, but the highest combined complexity. |
+| 1 | **Prompting** | Zero-shot task description first on reasoning models, with systematic versioning of prompts. |
+| 2 | **Structured outputs** | Schema-constrained outputs or tool schemas for format failures — fix format without training. |
+| 3 | **Few-shot prompting** | A few diverse canonical examples; on reasoning models try zero-shot first and skip step-by-step scaffolds. |
+| 4 | **Stronger model** | A stronger model or enabled reasoning when the failure is capability, not knowledge. |
+| 5 | **Cached long context** | Whole knowledge base in a cached prompt under about 200k tokens; still prefer retrieval for fact-seeking or freshness-critical data. |
+| 6 | **Retrieval** | Hybrid plus contextual chunks plus rerank as the default, or agentic search, when the failure is missing information. |
+| 7 | **Finetuning** | Used when the problem is *behavior* (irrelevant, unsafe responses), not missing knowledge or format. Largest boost combined with retrieval, at the highest complexity. |
 
 ### The diagnosis that gates every step up
 
 Before moving to a higher rung, ask: **what kind of failure is this?**
 
-- **Information failure** — the model simply did not know something → go to RAG.
+- **Information failure** — the model simply did not know something → go to retrieval or cached long context.
+- **Format failure** — the content is right but the shape is wrong → go to structured outputs.
 - **Behavior failure** — the model knew it, but responded wrongly anyway → go to finetuning.
 
 This distinction blocks the single most expensive wrong turn in LLM projects:
@@ -126,6 +128,17 @@ None of the rungs above should be climbed without evaluation criteria and a
 pipeline already in place. Without eval, every step up is a gamble — there is
 no way to tell whether it helped or introduced a regression.
 
+#### Error analysis first
+
+Start every eval from outputs, not from metrics:
+
+1. Sample about 100 traces from current behavior.
+2. Take free-form notes on each trace (open coding).
+3. Group the notes into a failure taxonomy (axial coding).
+4. Count traces per category.
+5. Fix cheap failures directly; write code checks or binary judges only for persistent categories.
+6. Re-run the set on every change (CI).
+
 ## Part B — Progressive architecture: five build steps
 
 LLM applications grow more complex in a deliberate sequence, not all at once.
@@ -135,7 +148,7 @@ preemptively.
 
 | Step | Name | What it adds | Add it when |
 |---|---|---|---|
-| 1 | **Enhance context** | Retrieval from text/image/tabular sources, tool outputs (web search, APIs) | Always first — poor context is the most common cause of poor output |
+| 1 | **Enhance and minimize context** | Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/ai-engineering-conventions.md` | Always first — poor context is the most common cause of poor output |
 | 2 | **Put in guardrails** | Input protection (prompt-injection detection, PII filtering) and output protection (hallucination/toxicity filters) | As soon as real users can reach the system |
 | 3 | **Add router and gateway** | Router sends each request to the right model (e.g. cheap model for simple queries); gateway unifies the interface across self-hosted models and APIs, centralizing load balancing, logging, caching, guardrails | As soon as more than one model or provider is in use |
 | 4 | **Reduce latency with caches** | Prompt cache for shared prefixes first (hosted APIs, cache reads ~0.1× input price); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable | As soon as requests repeat, or individual calls are expensive |
@@ -207,28 +220,14 @@ opt-out — lost trust costs more than the data is worth.
 
 ### Baseline checklist before calling anything deployment-worthy
 
-Independent of the metric families above, compare a model against five
-baseline types before considering it fit to deploy — this guards against "a
-good model with good metrics that is still not good enough":
-
-1. **Random baseline** — random predictions (the floor).
-2. **Simple heuristic** — a domain rule (e.g. "spam if >5 links").
-3. **Zero-rule baseline** — always predict the most frequent class.
-4. **Human baseline** — expert human performance on the same task.
-5. **Existing solution** — whatever system is currently in production.
-
-The model must clearly beat the random, simple-heuristic, and zero-rule
-baselines, and beat the existing production solution if one exists. The human
-baseline is a reference ceiling rather than a pass/fail gate: measure the gap
-to expert performance and decide whether that gap is acceptable for the use
-case.
+For classifiers, use the five-baseline gate in `ml-project-lifecycle` Part A. For generative apps, compare against these four instead: the current prompt and model version as the regression baseline, the strongest available model as the ceiling, a simple non-LLM heuristic or template, and a human expert. Ship only when the candidate beats the regression baseline and the heuristic, and the gap to the ceiling and the expert is acceptable for the use case.
 
 ## Applying the three parts together
 
 The parts compose: Part A decides *what adaptation to apply* when output
 quality is the problem. Part B decides *what to build next* when the
 application's surrounding system is the problem — and its step 1 (Enhance
-Context) is exactly where basic/advanced RAG from Part A gets implemented
+and minimize context) is exactly where retrieval from Part A gets implemented
 in practice; context construction is the same discipline as feature
 engineering was for classical ML, just with retrieved information standing
 in for engineered columns. Part C decides *how to know* whether either
@@ -249,5 +248,7 @@ back into Part A's diagnosis step.
   quality, security, and drift entirely.
 - Treating explicit feedback (thumbs up/down) as the whole feedback picture
   and ignoring the richer, continuous implicit signals.
-- Declaring a model deployment-worthy without checking it against all five
-  baseline types.
+- Writing generic metrics before reading traces — run error analysis first,
+  then encode persistent failures as checks or judges.
+- Declaring a generative app deployment-worthy without checking it against the
+  regression baseline, strongest-model ceiling, heuristic, and human expert.
