@@ -51,9 +51,6 @@
 _Extends SKILL.md Part A. The sample-size rule and the five deployment
 baselines live in SKILL.md — cross-reference, don't duplicate._
 
-_Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
-(<https://github.com/responsibleai/ASSERT>), not from Huyen._
-
 - **Write the evaluation guideline as a first draft before building, then revise it after error analysis** — including out-of-scope
   inputs and the required refusal behavior. "Correct" ≠ "good"; define good per
   application, and expect the first definition to move once traces are read. (Ch. 4)
@@ -96,17 +93,6 @@ _Rules tagged `(ASSERT)` come from the ASSERT spec-driven eval method
   (Ch. 4)
 - **Map eval metrics to a business metric and set a usefulness threshold before
   shipping.** (Ch. 1, 4)
-- **Derive the eval slices from a behavior taxonomy layered on top of the
-  standard slices.** Name each behavior the spec implies and give it explicit
-  permissible AND impermissible policies; the slices those behaviors need fall
-  out of the taxonomy, while the four slices above stay the floor. (ASSERT)
-  - ❌ treating a fixed slice list as the coverage argument   ← likely-default
-- **Stratify test generation across declared dimensions** (e.g. user type ×
-  request type), so coverage is reportable per taxonomy cell instead of
-  accidental. (ASSERT)
-- **Give the judge the policy text itself as its rubric, not a separately worded
-  one** — that keeps spec → test → score traceable and makes the judge rationale
-  usable as evidence. (ASSERT)
 - **A judge score without a gold reference is a screening signal, not an
   acceptance criterion.** Judge–human agreement degrades as task difficulty
   rises and settles at 77–82% on hard agent tasks when no reference answer is
