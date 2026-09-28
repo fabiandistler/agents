@@ -1,0 +1,12 @@
+{
+  "should_trigger": [
+    "I have trained systematically for 10 years and my back growth stalled for a month — how many sets per muscle per week and how close to failure should I train?",
+    "How do I test whether my plateau is a fatigue problem or a stimulus problem, and when should I deload versus add volume?",
+    "I finished physical therapy for my knee and have medical clearance — how do I progress isolation to compounds and back to normal volume safely?"
+  ],
+  "should_not_trigger": [
+    "I have never lifted before — what is a good first full-body routine?",
+    "What should I eat for breakfast to lose weight?"
+  ],
+  "expected_behavior": "Give experienced-trainee volume and RIR ranges with plateau diagnosis and safety bounds, not beginner programming or medical advice."
+}

@@ -2,19 +2,14 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Evidence-based hypertrophy programming and auto-regulation with stop criteria for experienced trainees. Covers set volume, RIR targets, Stimulus:Fatigue ratio, rest intervals, long muscle lengths, elevated injury risk, and returning after injury.
+description: Evidence-based hypertrophy programming and auto-regulation with plateau diagnosis for experienced trainees. Covers set volume, RIR targets, Stimulus:Fatigue ratio, rest, muscle lengths, elevated injury risk, and returning after injury.
 metadata:
   version: "1.1"
 ---
 
 # Hypertrophy Training
 
-This skill summarizes evidence-based principles for programming resistance
-training for muscle hypertrophy, and a set of auto-regulation protocols for
-applying those principles set-by-set and session-by-session. It is aimed at
-**experienced trainees** (roughly 9+ years of systematic training) — the
-volume and intensity ranges below assume a trainee who has already exhausted
-the large, fast gains available to beginners and intermediates.
+This skill covers evidence-based hypertrophy programming and auto-regulation for **experienced trainees** (roughly 9+ years of systematic training).
 
 ## When to use
 
@@ -24,8 +19,7 @@ why progress has stalled (a two-step plateau diagnosis). Also when the
 question is how to keep training while injury risk is elevated — an irritated
 joint, heavy sleep debt, high life stress, a return after a layoff — or how to
 work back to normal training after an injury and completed physical therapy.
-Draws on meta-analytic sources (Baz-Valle 2022, Schoenfeld 2017, Refalo 2022,
-Robinson 2024, Pelland 2025), an RCT (Aube 2022), and Israetel et al.; not aimed at beginners.
+Draws on recent volume and failure meta-analyses and Israetel et al.; not aimed at beginners.
 
 > **Scope and safety note.** This is an educational summary of
 > strength-training research, not medical, physical-therapy, or
@@ -387,14 +381,13 @@ loosen at once on the first good day.
 
 ## Realistic expectations
 
-For experienced trainees (9+ years), realistic gains are modest by beginner
-standards: roughly **2–5 kg of muscle mass per year** (3–7% of current
-muscle mass), trending toward the lower end (2–3 kg/year) at the high end of
-experience. Independent estimates converge: Alan Aragon (0.25–0.5% body
-weight/month), Lyle McDonald (0.5–1 lb/month), and Eric Helms (~2.3 kg/year
-as a conservative figure). These rates assume optimal training, adequate
-recovery, consistent nutrition in a slight surplus, and no extended layoffs —
-and individual genetics can still shift the outcome by roughly ±50%.
+For very experienced trainees (9+ years), realistic gains are modest:
+roughly **1–3 kg of muscle mass per year**. Independent estimates converge:
+Alan Aragon (0.25–0.5% body weight/month), Lyle McDonald (~2–3 lb/year in
+year 4+), and Eric Helms (~2.3 kg/year as a conservative figure). These rates
+assume optimal training, adequate recovery, consistent nutrition in a slight
+surplus, and no extended layoffs — and individual genetics can still shift
+the outcome by roughly ±50%.
 
 ## Common pitfalls to avoid
 
@@ -422,14 +415,19 @@ and individual genetics can still shift the outcome by roughly ±50%.
 
 ## Sources
 
-Baz-Valle et al. (2022); Schoenfeld et al. (2017); Refalo et al. (2022); Aube
-et al. (2022); Robinson meta-analysis (2024); Alan Aragon, Lyle McDonald, Eric
-Helms (muscle-gain-rate estimates); Remmert et al. (2025, SportRxiv preprint
-537 — PUOS); Pelland et al. (2025 — weekly volume and frequency
-dose-response); Moesgaard et al. (2022 — periodization); Coleman et al.
-(2024, PeerJ 16777 — deload); Singer et al. (2024 — rest intervals); Wolf et
-al. (2025 — lengthened partials versus full range of motion); Halperin et
-al. (2022 — RIR prediction accuracy).
+- Baz-Valle et al. (2022) — https://doi.org/10.2478/hukin-2022-0017
+- Schoenfeld et al. (2017) — https://doi.org/10.1080/02640414.2016.1210197
+- Refalo et al. (2022) — https://doi.org/10.1007/s40279-022-01784-y
+- Aube et al. (2022, RCT) — https://doi.org/10.1519/JSC.0000000000003524
+- Robinson et al. (2024) — https://doi.org/10.1007/s40279-024-02069-2
+- Pelland et al. (2025) — https://doi.org/10.1007/s40279-025-02344-w
+- Moesgaard et al. (2022) — https://doi.org/10.1007/s40279-021-01636-1
+- Coleman et al. (2024) — https://doi.org/10.7717/peerj.16777
+- Singer et al. (2024) — https://doi.org/10.3389/fspor.2024.1429789
+- Halperin et al. (2022) — https://doi.org/10.1007/s40279-021-01559-x
+- Wolf et al. (2025, lengthened partials) — https://pubmed.ncbi.nlm.nih.gov/?term=Wolf+lengthened+partials+full+range+2025
+- Remmert et al. (2025, PUOS preprint) — https://sportrxiv.org/
+- Gain-rate estimates: Aragon — https://alanaragon.com/, McDonald — https://bodyrecomposition.com/muscle-gain/genetic-muscular-potential, Helms — https://www.strongerbyscience.com/mass/
 
 **Part C** (both sections) is distilled from Israetel et al., *Scientific
 Principles of Hypertrophy Training* (Renaissance Periodization), pp. 352–357.
