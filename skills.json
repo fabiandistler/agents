@@ -52,10 +52,11 @@
     },
     {
       "name": "communication-analysis",
-      "summary": "Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
+      "summary": "Decodes what a message, feedback, or conversation really communicates and rewrites it to be clear and congruent.",
       "category": "communication",
       "path": "skills/communication-analysis/SKILL.md",
       "environments": [
+        "coding",
         "chat"
       ],
       "version": "1.0"
@@ -82,7 +83,7 @@
     },
     {
       "name": "documentation",
-      "summary": "Producing technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide.",
+      "summary": "Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, or package docs.",
       "category": "communication",
       "path": "skills/documentation/SKILL.md",
       "environments": [
@@ -210,7 +211,8 @@
       "environments": [
         "coding",
         "chat"
-      ]
+      ],
+      "version": "1.0"
     },
     {
       "name": "pypet-snippets",
@@ -258,7 +260,7 @@
     },
     {
       "name": "stakeholder-update",
-      "summary": "Writing a status update for readers outside the immediate working group — leadership, cross-functional partners, or customers — where the audience and the update type decide the shape.",
+      "summary": "Writing a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.",
       "category": "communication",
       "path": "skills/stakeholder-update/SKILL.md",
       "environments": [
@@ -268,7 +270,7 @@
     },
     {
       "name": "tldr",
-      "summary": "Hand back the cliffs of something too long to read now — the few facts needed to decide or act, plus what was cut.",
+      "summary": "Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread.",
       "category": "communication",
       "path": "skills/tldr/SKILL.md",
       "activation": "command",

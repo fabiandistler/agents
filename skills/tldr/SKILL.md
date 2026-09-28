@@ -5,7 +5,7 @@ activation: command
 disable-model-invocation: true
 environments: coding, chat
 argument-hint: "[file | PR | URL | topic — empty means the last message]"
-description: Hand back the cliffs of something too long to read now — the few facts needed to decide or act, plus what was cut.
+description: Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread.
 metadata:
   version: "1.0"
 ---
@@ -111,6 +111,7 @@ translate back.
 
 ## When it is a different ask
 
+- **Writing a status from activity or for an outside audience.** A standup drafted from recent activity is `repo-status`; a status for readers outside the working group is `stakeholder-update`.
 - **Short, and it still did not land.** The gap is missing premises. Back up and
   re-explain with them.
 - **The reasoning is the point** — a trade-off, a review call. Give the shape of
