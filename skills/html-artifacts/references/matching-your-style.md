@@ -8,7 +8,7 @@ Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact 
 - [The design-system-from-codebase trick](#the-design-system-from-codebase-trick)
 - [When there's no existing system: the safe default](#when-theres-no-existing-system-the-safe-default)
 - [Tools and editors get a different default](#tools-and-editors-get-a-different-default)
-- [Frontend-design plugin / skill](#frontend-design-plugin--skill)
+- [External design plugin / skill](#external-design-plugin--skill)
 - [What "AI default look" feels like — avoid](#what-ai-default-look-feels-like--avoid)
 - [What good looks like](#what-good-looks-like)
 
@@ -105,9 +105,9 @@ body { font: 14px/1.4 var(--sans); max-width: none;
 
 Editors are tools. Tools should feel responsive and dense, not magazine-airy.
 
-## Frontend-design plugin / skill
+## External design plugin / skill
 
-If the user has a `frontend-design` plugin or skill installed, defer to its conventions. It exists for exactly this purpose. Read it before defaulting to the baseline above.
+If the user has an external design plugin or skill installed, defer to its conventions. It exists for exactly this purpose. Read it before defaulting to the baseline above.
 
 ## What "AI default look" feels like — avoid
 

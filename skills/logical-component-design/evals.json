@@ -1,0 +1,12 @@
+{
+  "should_trigger": [
+    "what modules do I need for a clinic booking app",
+    "break these 12 user stories into components",
+    "is OrderManager a smell for a new service"
+  ],
+  "should_not_trigger": [
+    "measure coupling in src/",
+    "monolith or microservices?"
+  ],
+  "expected_behavior": "States the Workflow or Actor/Action approach, delivers the component table, and applies the conjunction test; routes existing-code measurement to coupling-cohesion and topology choice to architecture-pattern-advisor."
+}

@@ -6,6 +6,14 @@ strength, lower the distance, or accept it while volatility stays low. Which
 exit fits depends on *why* the strength is high and on whether the components
 genuinely belong together.
 
+## Contents
+
+- [Knowledge leak: high strength × high distance](#knowledge-leak-high-strength--high-distance-volatile)
+- [Reduce distance: when the knowledge is irreducible](#reduce-distance-when-the-knowledge-is-irreducible)
+- [Low cohesion: low strength × low distance](#low-cohesion-low-strength--low-distance)
+- [Accept, eyes open](#accept-eyes-open-the-not-volatility-exit)
+- [Choosing the exit](#choosing-the-exit)
+
 ## Knowledge leak: high strength × high distance (volatile)
 
 The expensive quadrant — cascading changes across service, repo, or team
@@ -71,7 +79,7 @@ grab-bags, "common" libraries that force lockstep releases of strangers).
 - Split along the actual knowledge boundaries; give each part its own home.
 - For a shared library of strangers, split it so consumers depend only on
   what they use — freeing them from each other's release cadence.
-- This overlaps `analyze-cohesion` territory; use its scale to decide the
+- This overlaps Mode A (cohesion) territory; use its scale to decide the
   split lines.
 
 ## Accept, eyes open: the NOT VOLATILITY exit
@@ -100,4 +108,4 @@ years-long cycle.
 
 After rebalancing, re-run `scripts/balance_check.py` on the updated
 assessments — and where the fix was structural, re-check the quantitative
-picture with `analyze-coupling` to confirm the dependency graph moved too.
+picture with Mode B to confirm the dependency graph moved too.
