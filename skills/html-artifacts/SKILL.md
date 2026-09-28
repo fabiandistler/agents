@@ -34,7 +34,7 @@ Trigger examples — HTML: "compare these three options side by side for the lea
 It decides how a deliverable is rendered. What goes *in* the deliverable is often another skill's job, and the two compose — run the other skill for the substance, then render its output as HTML instead of markdown:
 
 - Weekly/monthly leadership status, launch announcements, risk escalations → `stakeholder-update`.
-- Standup prep or a status update assembled from recent repo activity → `repo-status`.
+- Standup prep or a status update assembled from recent repo activity → suggest the user run `repo-status`, then render its Yesterday / Today / Blockers output as HTML.
 - The internal structure of a technical explanation (problem before solution) → `problem-first-explanation`.
 
 ## When to stay in markdown
@@ -54,12 +54,13 @@ If the artifact is going to be edited by hand by a human afterward, markdown is 
 Every artifact this skill produces must satisfy all of these:
 
 1. **Single self-contained `.html` file.** No build step, no bundler, no `npm install`. CSS goes in a `<style>` tag, JS goes in a `<script>` tag, images are inline SVG or data URIs.
-2. **Works offline.** No required network calls at view time. If a CDN is used (Tailwind, a font, a library), prefer well-known stable CDNs and assume the user might want to swap to inlined later. For a file that may be archived or uploaded to object storage, lean toward fewer external dependencies.
+2. **Works offline, inline-first.** No required network calls at view time: ship CSS, JS, SVG, and fonts inline in the single file with no external CDN dependencies. If a library is needed while drafting, pin the exact version with `integrity` and `crossorigin` from cdnjs or the jsDelivr npm endpoint, then inline it before delivery. Avoid third-party web fonts in shared files; use system stacks.
 3. **Mobile responsive.** Include `<meta name="viewport" content="width=device-width, initial-scale=1">` and a layout that survives a narrow viewport. The reader may open it on a phone.
 4. **Real layout, not stacked headers.** If the content is a comparison, lay it out in columns. If it's a timeline, draw a timeline. If it's a diff, render a diff. Don't translate markdown structure 1:1 into HTML — that's wasted effort.
 5. **Readable on its own.** Title at the top, a one-paragraph TL;DR or framing sentence right below, then the substance. The reader should know what they're looking at within five seconds.
 6. **Tasteful by default.** A neutral but considered design: legible serif or sans body, comfortable line length (60–75ch), generous spacing, restrained color, dark-mode-friendly if cheap. Resist the default-AI aesthetic of "everything is a card with a gradient." See `references/matching-your-style.md` if the user has an existing design system to match.
 7. **Editors export back to text.** This one is non-negotiable for any artifact where the reader manipulates state. The artifact must end with a "copy as markdown" / "copy as JSON" / "copy as prompt" button that turns the UI state into something pasteable. The whole point of a throwaway editor is the round-trip.
+8. **Accessible and safe.** Set `lang`, use semantic landmarks (`header`/`main`/`nav`/`footer`), keep contrast readable, label every control and give every figure `alt` text or a caption. Keep every interaction keyboard-operable with a visible focus style, honor `prefers-reduced-motion`, give each figure unique IDs, offer a keyboard or button alternative to drag and swipe, and redact secrets and personal data before sharing.
 
 ## Category index
 
@@ -92,7 +93,9 @@ If the artifact is a member of a *web* of related files (explorations → mockup
 
 Some runtimes render a document inline next to the conversation instead of writing it to disk. Emit a single `text/html` document — not a component framework, not a bare diagram, not SVG-only — unless the request specifically calls for one of those. It is the closest analog to the file on disk and gives the user the same affordance: open, screenshot, share.
 
-Sandboxed preview panes are stricter than a local file. Assume: no `localStorage`/`sessionStorage` (use in-memory state), no external scripts beyond whatever the host allows, and everything in one file.
+Sandboxed preview panes are stricter than a local file. Guard storage access with try/catch and an in-memory fallback instead of assuming `localStorage`/`sessionStorage` exists, keep everything in one file, and load no external scripts beyond whatever the host allows.
+
+As of 2026-09: ChatGPT code-block Preview and the Codex in-app browser both render a single self-contained file with storage possibly unavailable, so the guarded in-memory fallback above is the portable default.
 
 ## A note on token cost and time
 
