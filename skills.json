@@ -122,7 +122,7 @@
     },
     {
       "name": "llm-application-engineering",
-      "summary": "Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning.",
+      "summary": "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring.",
       "category": "ai-ml",
       "path": "skills/llm-application-engineering/SKILL.md",
       "environments": [
@@ -151,7 +151,7 @@
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining.",
+      "summary": "Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining.",
       "category": "ai-ml",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "environments": [
@@ -241,7 +241,7 @@
       "category": "workflow",
       "path": "skills/release-pr/SKILL.md",
       "activation": "command",
-      "compatibility": "Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only Python 3.11+.",
+      "compatibility": "Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only (tomllib on Python 3.11+, regex fallback below).",
       "environments": [
         "coding"
       ],

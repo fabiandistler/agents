@@ -89,9 +89,9 @@ Never use `exec -e` (edits first) or `edit -f` (opens `$EDITOR`). Before
 ## Proposal sources
 
 In order: the current conversation's command, `~/.bash_history` and
-`~/.zsh_history` (the current session may not be flushed yet — ask for
-`history -a` if a fresh command is missing), `pypet list` for dedup, agent
-memory best-effort — skip silently when the host exposes none.
+`~/.zsh_history` (the current session may not be flushed yet — ask the person
+to run `history -a` in their own shell if a fresh command is missing),
+`pypet list` for dedup.
 
 ## Safety
 
@@ -110,10 +110,21 @@ memory best-effort — skip silently when the host exposes none.
 pypet also honours the legacy single-brace `{name}` syntax, so every brace
 the target program needs for itself — fzf's `{q}`, `awk '{print $1}'` — is
 detected as a phantom required parameter. A command containing at least one
-real `{{name}}` placeholder is exempt: detection stops at the new syntax and
-never falls back. So either add a genuine `{{param=default}}` to the command,
-or keep single braces out of it.
+real `{{name}}` placeholder skips legacy detection — unless a `{{name}}`
+repeats or is not a valid identifier, in which case detection fails and falls
+back to the legacy syntax, matching single-brace fragments of the `{{...}}`
+text as phantom parameters (a repeated `{{port=8080}}` yields `{port=8080`).
+So use each `{{name}}` at most once with valid identifier names, and either
+add a genuine `{{param=default}}` to the command, or keep single braces out
+of it.
 
 Snippets run through a shell, so pipes, `$(...)` and quoting survive — but
 the command is stored verbatim. Check it with `pypet list` after creating it;
 backslash-heavy paths deserve a second look.
+
+## Recall probes
+
+Should trigger: "save this command as a snippet", "this long command keeps
+recurring — snippet it?", "make a shell alias for this via pypet". Should not
+trigger: hinting at snippets when pypet is not installed, creating or editing
+a snippet uninvited.
