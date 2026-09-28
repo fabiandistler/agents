@@ -68,7 +68,7 @@ patterns from the book cover most structural cases:
   legitimate; vibes are not. (To *measure and choose* the threshold on an
   existing codebase, hand off to **`coupling-cohesion`** — its
   `scripts/coupling_metrics.py --threshold --json` reports the per-component
-  numbers to gate on; fail the build when its flagged set is non-empty.)
+  numbers to gate on — parse its `--json` output and treat a non-empty flagged set as a build failure.)
 - **Layer / boundary rules** — declare which layers may access which
   (ArchUnit's `layeredArchitecture()`, NetArchTest's
   `ShouldNot().HaveDependencyOn(...)`) and fail on violations.
