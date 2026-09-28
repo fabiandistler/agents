@@ -88,10 +88,10 @@ default branch, stop and ask for a branch name. Then:
 
 ```bash
 git fetch origin
-python3 <skill>/scripts/release_state.py --repo . > "$(mktemp /tmp/release-state-XXXXXX.json)"
+python3 <skill>/scripts/release_state.py --repo .
 ```
 
-The script detects the language (`DESCRIPTION` → R, `pyproject.toml` →
+The script prints JSON to stdout. It detects the language (`DESCRIPTION` → R, `pyproject.toml` →
 Python), reports the declared version, the top changelog heading and whether it
 has entries, the last version tag, a bump suggestion from the commits since
 that tag (and, for R, exports removed from `NAMESPACE`), places outside the
@@ -181,9 +181,9 @@ message; used for Python too so both languages read the same in `git log`).
 
 Push after confirmation. If the branch already has a PR, edit its body;
 otherwise open one, titled `<package> X.Y.Z`, with the forge's CLI
-(`references/forges.md`). Write the body to a `mktemp` file first
-(`PR_BODY=$(mktemp /tmp/pr-body-XXXXXX.md)`) and pass that path to the CLI.
-The body, in this order:
+(`references/forges.md`). Write the body to `<run>/pr-body.md` first, where
+`<run>` is the directory a fresh `mktemp -d /tmp/release-pr-XXXXXX` printed,
+and pass that path to the CLI. The body, in this order:
 
 ```markdown
 ## Release <package> X.Y.Z
@@ -215,15 +215,22 @@ Then stop. Merging is the user's decision.
 
 Runs on the default branch after the release PR merged.
 
-- [ ] 0 `DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||'); git switch "$DEFAULT_BRANCH" && git pull --ff-only`; working tree clean
+The commands use placeholders: `<default-branch>` from step 0, `<tag>` for
+`<tag_prefix>X.Y.Z`, and `<run>` for the directory a fresh
+`mktemp -d /tmp/release-pr-XXXXXX` printed. Substitute the literal values.
+Each step may run in a new shell, so shell variables do not carry over.
+
+- [ ] 0 `git remote set-head origin --auto && git symbolic-ref --short refs/remotes/origin/HEAD`
+      prints `origin/<default-branch>`; `git switch <default-branch> && git pull --ff-only`;
+      working tree clean
 - [ ] 1 `release_state.py` reports `consistent`; note `version` and `tag_prefix`
 - [ ] 2 CI on `HEAD` is green (`gh run list --commit $(git rev-parse HEAD)`,
       other forges in `references/forges.md`); a red, pending, or missing
       run is not tagged without the user's say-so
-- [ ] 3 `NOTES=$(mktemp /tmp/notes-XXXXXX.md); release_state.py --section X.Y.Z > "$NOTES"`; the file is not empty
-- [ ] 4 Show tag name (`<tag_prefix>X.Y.Z`), commit, and the notes; confirm
-- [ ] 5 `TAG=<tag_prefix>X.Y.Z; git tag -a "$TAG" -m "<package> X.Y.Z" && git push origin "$TAG"`
-- [ ] 6 `gh release create "$TAG" --verify-tag --title "<package> X.Y.Z" --notes-file "$NOTES"`
+- [ ] 3 `release_state.py --section X.Y.Z > <run>/notes.md`; the file is not empty
+- [ ] 4 Show tag name (`<tag>`), commit, and the notes; confirm
+- [ ] 5 `git tag -a <tag> -m "<package> X.Y.Z" && git push origin <tag>`
+- [ ] 6 `gh release create <tag> --verify-tag --title "<package> X.Y.Z" --notes-file <run>/notes.md`
       (`--prerelease` for a Python `a`/`b`/`rc` version). When the release attaches binary assets, create it as a draft first and publish only after the assets are up, so no partial release is ever public. GitLab: `glab
       release create`. Azure Repos and unknown hosts have no release
       object, so steps 5–6 become one annotated tag carrying the notes

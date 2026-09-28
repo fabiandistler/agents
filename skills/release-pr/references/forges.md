@@ -10,10 +10,10 @@ after the push. PR title, body order, commit message, and tag name stay as
 
 ```bash
 gh pr view --json number,url                  # existing PR for this branch?
-gh pr create --title "<pkg> X.Y.Z" --body-file "$PR_BODY"
-gh pr edit --body-file "$PR_BODY"
+gh pr create --title "<pkg> X.Y.Z" --body-file <run>/pr-body.md
+gh pr edit --body-file <run>/pr-body.md
 gh run list --commit "$(git rev-parse HEAD)"  # CI on the tagged commit
-gh release create "$TAG" --verify-tag --title "<pkg> X.Y.Z" --notes-file "$NOTES"
+gh release create <tag> --verify-tag --title "<pkg> X.Y.Z" --notes-file <run>/notes.md
 ```
 
 Issue link in the body: `Closes #<n>`.
@@ -29,15 +29,15 @@ parse, pass `--org https://dev.azure.com/<org> --project <project>`.
 # existing PR for this branch?
 az repos pr list --source-branch "$(git branch --show-current)" --status active \
   --query "[0].pullRequestId" -o tsv
-az repos pr create --title "<pkg> X.Y.Z" --description "$(cat "$PR_BODY")" \
+az repos pr create --title "<pkg> X.Y.Z" --description "$(cat <run>/pr-body.md)" \
   --source-branch "$(git branch --show-current)" --work-items <id>
-az repos pr update --id <id> --description "$(cat "$PR_BODY")"
+az repos pr update --id <id> --description "$(cat <run>/pr-body.md)"
 ```
 
 - Pass the body as **one** argument. `--description` turns each separate
   value into a new line, so the `$(cat …)` must be quoted.
 - **The PR description is capped at 4,000 characters** and the service
-  rejects a longer one. Check with `wc -m "$PR_BODY"` first. If the body
+  rejects a longer one. Check with `wc -m <run>/pr-body.md` first. If the body
   is over, cut `### Changes` to its subheadings with one line each and add a
   link to the changelog on the branch. Leave the other sections as they are.
 - Link work items with `--work-items` (space separated). `Closes #<n>` does
@@ -49,7 +49,7 @@ az repos pr update --id <id> --description "$(cat "$PR_BODY")"
 commit, so filter on the branch and match `sourceVersion`:
 
 ```bash
-az pipelines runs list --branch "$DEFAULT_BRANCH" --top 20 \
+az pipelines runs list --branch <default-branch> --top 20 \
   --query "[?sourceVersion=='$(git rev-parse HEAD)'].{pipeline:definition.name,status:status,result:result}" \
   -o table
 ```
@@ -66,10 +66,9 @@ release. Put the notes in the tag message, and Azure Repos shows them on
 the repository's Tags page:
 
 ```bash
-TAG_MSG=$(mktemp /tmp/tag-msg-XXXXXX.md)
-{ printf '%s X.Y.Z\n\n' "<pkg>"; cat "$NOTES"; } > "$TAG_MSG"
-git tag -a "$TAG" -F "$TAG_MSG"
-git push origin "$TAG"
+{ printf '%s X.Y.Z\n\n' "<pkg>"; cat <run>/notes.md; } > <run>/tag-msg.md
+git tag -a <tag> -F <run>/tag-msg.md
+git push origin <tag>
 ```
 
 This replaces tag steps 5 and 6 of `SKILL.md`. If an Azure Pipeline has a
@@ -87,10 +86,10 @@ repo uses, and do not add a token yourself.
 
 ```bash
 glab mr view                                   # existing MR for this branch?
-glab mr create --title "<pkg> X.Y.Z" --description-file "$PR_BODY" --yes
-glab mr update --description-file "$PR_BODY" --yes
+glab mr create --title "<pkg> X.Y.Z" --description-file <run>/pr-body.md --yes
+glab mr update --description-file <run>/pr-body.md --yes
 glab api "projects/:id/pipelines?sha=$(git rev-parse HEAD)"   # CI on the commit
-glab release create "$TAG" --name "<pkg> X.Y.Z" --notes-file "$NOTES"
+glab release create <tag> --name "<pkg> X.Y.Z" --notes-file <run>/notes.md
 ```
 
 Push the annotated tag first (step 5). `glab release create` on a tag
@@ -102,7 +101,7 @@ is not necessarily the verified commit. Issue link in the body:
 
 For Bitbucket, Gitea, a self-hosted server, or no remote, use git only:
 
-- Prepare: push the branch, write the body to a `mktemp` file, and give
+- Prepare: push the branch, write the body to `<run>/pr-body.md`, and give
   the user the file and the branch name to open the PR in the web UI. Do
   not guess a CLI or a REST endpoint.
 - Tag: use the annotated tag with notes, as for Azure. The user checks CI
