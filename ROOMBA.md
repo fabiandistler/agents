@@ -12,10 +12,10 @@ job IDs, cooldowns and the scoring rule are unchanged.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-09-06 (`perf-quickwins`) |
-| Last job | `perf-quickwins` — 2 findings, 1 candidate measured and rejected |
+| Last run | 2026-09-28 (`deps-audit`) |
+| Last job | `deps-audit` — 6 findings, 0 version bumps; no pin is outdated |
 | Next due job | see *Jobs* table — `score = (today - last run) / cooldown`, highest wins |
-| Baseline status | green, 2026-09-06 (all 10 commands in *Baseline* below) |
+| Baseline status | green, 2026-09-28 (14/14, captured from `ci.yml`, not the block below) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
 ## Rules
@@ -86,7 +86,7 @@ Red or missing baseline → report-only jobs, no code changes.
 
 | # | Job | Pre-stage | Output | Cooldown | Last run |
 |---|---|---|---|---|---|
-| 1 | `deps-audit` | yes | report | 7d | 2026-09-05 |
+| 1 | `deps-audit` | yes | report | 7d | 2026-09-28 |
 | 2 | `doc-drift` | no | PR | 14d | 2026-09-05 |
 | 3 | `dead-exports` | yes | PR | 14d | 2026-09-06 |
 | 4 | `error-edges` | no | report | 14d | 2026-09-06 |
@@ -110,35 +110,61 @@ Residual question per job (details in the skill under `references/jobs.md`):
 
 `scripts/roomba-scan.sh` keys off `DESCRIPTION` (R) and `pyproject.toml` /
 `requirements.txt` (Python) **at the repository root**, where this repository has none of
-them; its tests likewise live under `eval-suite/`, not at the root. All three
-pre-stages therefore return empty here today. Corrected by the 2026-09-05 `deps-audit` run:
-`mcp-wiki-server/pyproject.toml` does exist one level down and declares an `mcp[cli]` bound — the
-gap is the scanner's root-only search, not an absence of package metadata. Until the scanner is adapted (see *Backlog*), the run must treat
-an empty pre-stage as "no tooling coverage", not as "nothing found" — and say so in the
-report rather than inventing findings by hand.
+them. All three pre-stages therefore return empty here. The 2026-09-05 `deps-audit` run
+attributed that to the scanner's root-only search, citing `mcp-wiki-server/pyproject.toml`
+one level down; the 2026-09-28 run retired that reading — `eval-suite/` and
+`mcp-wiki-server/` have both been extracted into their own repositories (PRs #147, #148),
+and no `pyproject.toml` is tracked anywhere, at the root or below it. The root-only search
+remains a general scanner limitation, but it is no longer what makes the pre-stage empty
+here. A run must still treat an empty pre-stage as "no tooling coverage" rather than
+"nothing found", and say so in the report instead of inventing findings by hand.
 
 The catalogue-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | version constraints in `.github/workflows/ci.yml` (`pyyaml>=6`), `mcp-wiki-server/pyproject.toml` (`mcp[cli]>=1.2,<2`), and pinned `rev:` values in any pre-commit config. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
+| `deps-audit` | the pinned `rev:` values, which exist in two places — `.pre-commit-config.yaml` and the fragments under `skills/prek-hooks/references/fragments/` that the skill ships to other repos — plus the unpinned `pip install` lines in `.github/workflows/ci.yml` (`ruff` deliberately, per `ee36b79`; `prek` and `pytest` incidentally) and the `pyyaml>=6` floor. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
-| `test-flakiness` | the eval harness under `eval-suite/` |
+| `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` |
 
 ## Backlog
 
+- **No `--check` keeps the prek pins in sync across their two copies.** From the
+  2026-09-28 `deps-audit` run (finding 3): `pre-commit-hooks`, `ruff-pre-commit` and
+  `ty-pre-commit` are each pinned twice — in the generated `.pre-commit-config.yaml` and in
+  `skills/prek-hooks/references/fragments/`, which is what the skill hands to other repos.
+  The documented update path (`prek update --cooldown-days 7`, per the config header and
+  `setup-hooks.sh:107`) rewrites the generated file only. They agree today. Every other
+  generated surface here has a gate (`build_manifest.py --check`, `build_routers.py
+  --check`, `check_docs.py`, `check_plugins.py`, `check_instructions.py`); this one does
+  not. Stakes: `ty` 0.0.84 exists to close an arbitrary-code-execution advisory
+  (GHSA-vxvm-j4xq-q7m4), so the next advisory moves this repo's pin and leaves the shipped
+  fragment handing new repos the unpatched rev. A new script plus a CI step is a behaviour
+  change, so it was out of scope for a report-only job.
+- **`prek` is unpinned in `ci.yml:66`** and feeds the blocking *Hooks in sync* step, while
+  prek v0.5.0 (2026-08-27) removed `auto-update`, `init-template-dir` and
+  `PREK_MAX_CONCURRENCY`. The 2026-09-28 run confirmed no tracked file uses a removed name,
+  so nothing is broken; unlike ruff's unpinning (`ee36b79`) no decision is recorded for
+  `prek`. Pin it the first time the gate fails for no reproducible reason.
+- **ROOMBA.md's *What does NOT belong in this catalogue* table is false for
+  `security-footguns`.** It routes the job to `roomba-gate → gitleaks`, but
+  `roomba-gate.yml` was deliberately deleted in `58fc561`, so there is no secret scanning
+  on `main`. Either restore a gate or drop the claim — restoring a deliberately removed
+  workflow is a decision, not maintenance. Recorded by the 2026-09-28 run.
+- **ROOMBA.md's *Baseline* block is short of `ci.yml`.** It lists ten commands and omits
+  `check_instructions.py`, `check_evals.py`, the `release-pr` pytest file and `prek run
+  --all-files`. The 2026-09-28 run captured its baseline from `ci.yml` instead. Sync the
+  block or replace it with a pointer to the workflow.
+- **`.pre-commit-config.yaml`'s comment prescribes `select`** for pinning the ruff rule
+  set, where `ruff.toml` correctly uses `extend-select`. Documentation drift, so it belongs
+  to `doc-drift`. Noted by the 2026-09-28 run.
 - **Adapt `scripts/roomba-scan.sh` to this repository.** Add a skills-repo branch to
-  `deps-audit` (pinned CI versions and action tags), to `dead-exports` (catalogued but
-  unrouted skills), and to `test-flakiness` (discover test directories below
-  `skills/*/tests` and `eval-suite/`, not just repo-root `tests/`). Deferred out of the
-  bootstrap PR: it is a change to the scanner, not catalogue setup.
-  Sharpened by the 2026-09-05 `deps-audit` run: the `deps-audit` pre-stage must also search
-  below the root — `mcp-wiki-server/pyproject.toml` was missed, and the dependency it declares
-  turned out to be the run's second-most-severe finding.
-- **`eval-suite/*.R` dependencies are outside the catalogue's scope.** `digest`, `jsonlite`,
-  `lintr`, `testthat`, `withr`, `yaml` — no `renv.lock`, no floors, and absent from the
-  "what `deps-audit` means here" table above. Recorded as a gap by the 2026-09-05 run rather
-  than audited. Decide whether they belong in `deps-audit` before the next run of that job.
+  `deps-audit` (the two-copy `rev:` surface and the unpinned `pip install` lines), to
+  `dead-exports` (catalogued but unrouted skills), and to `test-flakiness` (discover
+  `skills/*/scripts/test_*.py`, not just a repo-root `tests/`). Deferred out of the
+  bootstrap PR: it is a change to the scanner, not catalogue setup. Narrowed by the
+  2026-09-28 run — the earlier "must also search below the root" framing is retired, since
+  no manifest exists below the root either.
 - **Four of the five triage labels in `docs/agents/triage-labels.md` do not exist** in
   `fabiandistler/agents` (`gh label list`: only `wontfix` is there). Recorded by the
   2026-09-05 `doc-drift` run rather than fixed: creating them changes the tracker, and
@@ -149,17 +175,6 @@ The catalogue-relevant analogues in this repository are:
   *What does NOT belong in this catalogue*. The only thing the gate cannot see is an
   untracked leftover under `skills/`, which is what the run did find. Narrow the job to
   that, or drop it.
-- **`check_live.py` silent-CLI-failure fix**, from the 2026-09-06 `error-edges` run: the
-  harness reports a nonzero `claude` exit as a routing miss. A fix changes behaviour, so it
-  is out of scope for a roomba PR — it belongs to issue #95, whose cause 3 is the same
-  failure mode. Fix it before any eval-coverage work relies on those numbers.
-- **`import_vitals.R:8` claims 31 ARE tasks; there are 29.** Counted from the source of
-  truth by the 2026-09-06 `test-flakiness` run. A wrong number in a comment is drift, not
-  nondeterminism, so it was routed to `doc-drift` (job 2) rather than fixed there.
-- **Recall scores are single samples.** `eval-suite/recall/check_recall.py` asks the model
-  once per prompt and reports a bare score; the oracle exposes no seed. Repeating and
-  reporting the spread changes what the harness computes, so it is out of scope for a
-  roomba PR — pair it with the `check_live.py` fix under issue #95.
 - **`lcom.py` analyses git-ignored directories.** Measured by the 2026-09-06
   `perf-quickwins` run: `lcom.py --json .` takes 4.5 s and emits 607 KB / 1921 module
   reports, of which 1271 come from a `.venv` and 517 from a `.worktrees` checkout; a scoped
@@ -168,9 +183,12 @@ The catalogue-relevant analogues in this repository are:
   `cohesion-analyst` subagent's input, so it is worth doing deliberately.
 - **Eval coverage gap** carried over from the 2026-07 skill audit — candidate input for
   `test-flakiness` once that job's pre-stage sees this repo's test locations.
-- **`.serena/` is untracked** and trips precondition 1 ("working tree clean") on every
-  run. Adding it to `.gitignore` is a change to a tracked file unrelated to bootstrap, so
-  it was deliberately left out of this PR.
+
+Retired by the 2026-09-28 `deps-audit` run, because the code they describe was extracted
+into its own repositories (PRs #147, #148) and is no longer tracked here: the `eval-suite/*.R`
+dependency question, the `check_live.py` silent-CLI-failure fix and the `check_recall.py`
+single-sample item (both issue #95), and the `import_vitals.R` ARE-task miscount. The
+`.serena/` item is retired too — the directory no longer exists.
 
 ## Run history
 
@@ -183,6 +201,7 @@ The catalogue-relevant analogues in this repository are:
 | 2026-09-06 | `error-edges` | report, 3 findings, 0 changes | roomba/error-edges-2026-09-06 |
 | 2026-09-06 | `test-flakiness` | 4 findings, 1 fix (pinned ARE ref) | roomba/test-flakiness-2026-09-06 |
 | 2026-09-06 | `perf-quickwins` | report, 2 findings, 0 changes | roomba/perf-quickwins-2026-09-06 |
+| 2026-09-28 | `deps-audit` | report, 6 findings, catalogue map corrected | roomba/deps-audit-2026-09-28 |
 
 ## Teardown condition
 
