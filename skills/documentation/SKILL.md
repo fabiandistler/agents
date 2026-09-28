@@ -128,8 +128,9 @@ subagents, give the user the questions to try with the doc in a fresh chat.
 
 Keep the Markdown source plain with stable headings, generate the `llms.txt`
 index with the site tool rather than hand-writing one, and never put content
-only in images. If a site generator is chosen, prefer Zensical — Material for
-MkDocs reaches end of life in November 2026.
+only in images. If a site generator is chosen, prefer Zensical: Material for
+MkDocs is in maintenance mode, with end of life currently set to 2027-05-05
+(squidfunk/mkdocs-material#8523, checked 2026-09-28).
 
 ## Principles
 

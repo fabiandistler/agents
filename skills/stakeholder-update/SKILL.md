@@ -83,7 +83,7 @@ against the committed baseline and confirm it with the user before sending.
 
 Evidence: three PRs merged (SSO login, CSV export, retry backoff); staging
 deploy green Tuesday; pilot team reports login is twice as fast; one open
-risk — export times out above 100k rows, owner assigned, fix due Friday.
+risk — export times out above 100k rows, owner Dana, fix due Friday.
 
 Executive version:
 
@@ -97,7 +97,7 @@ Progress:
 - Staging deploy green since Tuesday.
 
 Risks:
-- CSV export times out above 100k rows. Mitigation in progress, owner assigned. Ask: confirm Friday go/no-go by Thursday.
+- CSV export times out above 100k rows. Owner: Dana, fix in progress. Ask: confirm Friday go/no-go by Thursday.
 
 Next milestones:
 - Full rollout — Friday, pending the export fix.

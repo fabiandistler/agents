@@ -58,7 +58,7 @@ After (problem-first): "You are putting the winter wheels on. Too loose and a nu
 
 ## Why this order works
 
-Attempting a problem before instruction improves later application of the concept (http://aaalab.stanford.edu/assets/papers/earlier/A_time_for_telling.pdf), with the strongest effects for conceptual material, transfer tasks, and novices (https://journals.sagepub.com/doi/10.3102/00346543211019105).
+The order is consistent with learning research, though that research has learners *attempt* a problem before instruction rather than read about it first: doing so improves later application of the concept (https://aaalab.stanford.edu/assets/papers/earlier/A_time_for_telling.pdf), with the strongest effects for conceptual material, transfer tasks, and novices (https://journals.sagepub.com/doi/10.3102/00346543211019105).
 
 ## Minimum viable check
 
