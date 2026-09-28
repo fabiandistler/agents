@@ -258,7 +258,7 @@
     },
     {
       "name": "stakeholder-update",
-      "summary": "Writing a status update for readers outside the immediate working group — leadership, cross-functional partners, or customers — where the audience and the update type decide the shape.",
+      "summary": "Writing a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.",
       "category": "communication",
       "path": "skills/stakeholder-update/SKILL.md",
       "environments": [
