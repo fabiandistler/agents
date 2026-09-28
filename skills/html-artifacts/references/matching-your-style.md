@@ -2,16 +2,6 @@
 
 Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact skill can do is producing generic-looking output: gradient cards, emoji headers, four shades of indigo, the default Tailwind aesthetic. Avoid that. Read this reference whenever the artifact will be shared, presented, or kept around for any length of time.
 
-## Contents
-
-- [Three rules of thumb](#three-rules-of-thumb)
-- [The design-system-from-codebase trick](#the-design-system-from-codebase-trick)
-- [When there's no existing system: the safe default](#when-theres-no-existing-system-the-safe-default)
-- [Tools and editors get a different default](#tools-and-editors-get-a-different-default)
-- [Frontend-design plugin / skill](#frontend-design-plugin--skill)
-- [What "AI default look" feels like — avoid](#what-ai-default-look-feels-like--avoid)
-- [What good looks like](#what-good-looks-like)
-
 ## Three rules of thumb
 
 1. **Restraint over decoration.** A calm typographic layout — system serif body, generous spacing, one or two restrained accent colors — beats a busy "dashboard" almost every time. If you're tempted to add a gradient, don't.
@@ -24,9 +14,9 @@ When the user has an existing visual identity (a deployed product, a brand, a co
 
 The flow:
 
-1. Point the agent at the user's codebase (Tailwind config, theme file, design tokens, CSS variables, any `theme.ts` / `colors.ts`).
+1. Point Claude at the user's codebase (Tailwind config, theme file, design tokens, CSS variables, any `theme.ts` / `colors.ts`).
 2. Generate `design-system.html` — color swatches with hex/token name, type scale specimens, spacing/radius/shadow examples. (See `design-and-prototypes.md` for the layout.)
-3. Save it somewhere it can be reused: project root, an agent config folder, wherever fits.
+3. Save it somewhere it can be reused: project root, `.claude/` folder, wherever fits.
 4. For every subsequent HTML artifact, read `design-system.html` first, then use those tokens as the artifact's CSS variables.
 
 This is one-time work that pays off across every future artifact. Suggest it the first time the user asks for an HTML artifact in a project that has a real design system.
@@ -107,7 +97,7 @@ Editors are tools. Tools should feel responsive and dense, not magazine-airy.
 
 ## Frontend-design plugin / skill
 
-If the user has a `frontend-design` plugin or skill installed, defer to its conventions. It exists for exactly this purpose. Read it before defaulting to the baseline above.
+If the user has a `frontend-design` plugin or skill installed, defer to its conventions. It exists for exactly this purpose. Read it (likely `/mnt/skills/public/frontend-design/SKILL.md` or similar) before defaulting to the baseline above.
 
 ## What "AI default look" feels like — avoid
 

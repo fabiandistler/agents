@@ -7,11 +7,11 @@ description: Produce a self-contained HTML file for deliverables the reader will
 
 # HTML Artifacts
 
-## When to use
-
 Markdown is the default agent output, but for anything longer than a handful of sentences it's a poor format. It can't show two options side by side, can't render a real diagram, can't be interactive, and can't be shared by link. HTML can do all of those — and when the artifact is the deliverable rather than something you'll skim and forget, the difference between "a document I'd skim" and "a document I'd actually read" is enormous.
 
 The use cases below are not the only places HTML helps, but they cover most of the territory. The pattern in every category is the same: the agent picks a layout that makes the *shape* of the content visible, instead of flattening it into linear prose.
+
+## When to use
 
 Default to a one-line offer and stay in markdown unless the user asked for HTML or the output is clearly a deliverable they will keep, share, or manipulate. Reach for HTML only when that deliverable test holds and one of the following is true.
 
@@ -21,7 +21,7 @@ Default to a one-line offer and stay in markdown unless the user asked for HTML 
 - **Reference material.** A document the reader will navigate non-linearly: tabs, collapsible sections, glossary in the margin, jump links.
 - **Color or hierarchy carries meaning.** Severity tags, status colors, syntax highlighting, design tokens.
 - **One-off editor.** The reader needs to manipulate a thing (drag tickets, toggle flags, tune a prompt) and round-trip the result back into a prompt or a commit.
-- **The reader will share it.** A spec going to leadership, a PR writeup going to reviewers, a status report going to a team. Readers often engage more with an HTML page than a markdown file.
+- **The reader will share it.** A spec going to leadership, a PR writeup going to reviewers, a status report going to a team. People are dramatically more likely to actually read an HTML page than a markdown file.
 
 The heuristic, said another way: if the user is going to *do* something with the document — read it carefully, share it, refer back to it, hand it to an implementer, paste edits back in — offer HTML.
 
@@ -47,7 +47,7 @@ Markdown still wins for:
 - Quick three-bullet summaries the reader will scan once and discard.
 - Files that need to be diffed in version control regularly. HTML diffs are noisy. If the artifact will live in git and be reviewed in PRs over time, markdown is friendlier — though even then, *generating* an HTML view alongside is often worth it for review.
 
-If the artifact is going to be edited by hand by a human afterward, markdown is also friendlier. But increasingly artifacts are edited by re-prompting the agent, which removes that advantage.
+If the artifact is going to be edited by hand by a human afterward, markdown is also friendlier. But increasingly artifacts are edited by re-prompting Claude, which removes that advantage.
 
 ## Universal rules for every HTML artifact
 
@@ -93,7 +93,9 @@ If the artifact is a member of a *web* of related files (explorations → mockup
 
 Some runtimes render a document inline next to the conversation instead of writing it to disk. Emit a single `text/html` document — not a component framework, not a bare diagram, not SVG-only — unless the request specifically calls for one of those. It is the closest analog to the file on disk and gives the user the same affordance: open, screenshot, share.
 
-Sandboxed preview panes are stricter than a local file. Guard storage access with try/catch and an in-memory fallback instead of assuming `localStorage`/`sessionStorage` exists, keep everything in one file, and load no external scripts beyond whatever the host allows. Some runtimes render a single self-contained file with storage possibly unavailable, so the guarded in-memory fallback above is the portable default.
+Sandboxed preview panes are stricter than a local file. Guard storage access with try/catch and an in-memory fallback instead of assuming `localStorage`/`sessionStorage` exists, keep everything in one file, and load no external scripts beyond whatever the host allows.
+
+As of 2026-09: ChatGPT code-block Preview and the Codex in-app browser both render a single self-contained file with storage possibly unavailable, so the guarded in-memory fallback above is the portable default.
 
 ## A note on token cost and time
 

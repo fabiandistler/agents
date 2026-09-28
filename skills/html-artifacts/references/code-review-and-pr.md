@@ -10,7 +10,7 @@ For "review this PR" or "look over this change."
 - Title with the PR/branch name and a one-line summary.
 - A short framing block: motivation, "where to focus the review."
 - The diff itself, rendered with `+`/`-` line styling, syntax highlighting, and **margin annotations** — small numbered notes pinned to specific lines, not interleaved into the code.
-- Severity tags inline: `blocking`, `nit`, `question`, `praise`. Text labels with color-coding.
+- Severity tags inline: `🟥 blocking`, `🟨 nit`, `🟦 question`, `🟩 praise`. Color-coded.
 - Jump links at the top to skip to the annotated regions.
 - File-by-file collapsible sections if the diff spans more than ~3 files.
 
@@ -69,8 +69,8 @@ For "I'm new to this package, walk me through it" or "what does this module do."
     <h1>PR #482: Streaming support for /chat</h1>
     <p>Author: greg · 4 files · +287 −41</p>
     <nav class="jump-links">
-      <a href="#ann-1">#1 backpressure (blocking)</a>
-      <a href="#ann-2">#2 cleanup (nit)</a>
+      <a href="#ann-1">🟥 #1 backpressure</a>
+      <a href="#ann-2">🟨 #2 cleanup</a>
     </nav>
   </header>
 
@@ -83,7 +83,7 @@ For "I'm new to this package, walk me through it" or "what does this module do."
       <div class="line ctx">  }</div>
     </div>
     <aside class="annotation" id="ann-1">
-      <span class="severity blocking">blocking</span>
+      <span class="severity blocking">🟥 blocking</span>
       <p>pipeBackpressure swallows errors silently when the consumer drops. Need to propagate up.</p>
     </aside>
   </section>

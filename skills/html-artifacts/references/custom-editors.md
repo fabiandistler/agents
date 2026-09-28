@@ -2,15 +2,6 @@
 
 The most distinctive use of the format. The user has a one-off task — triage 30 tickets, tune a regex, reorder steps in a flow, curate a dataset, pick exact easing values — and a text-box prompt is the wrong shape for it. Build a throwaway editor: a single HTML file, purpose-built for the one task, that always ends with an export button.
 
-## Contents
-
-- [The non-negotiable rule](#the-non-negotiable-rule)
-- [When to build a custom editor](#when-to-build-a-custom-editor)
-- [Layout](#layout)
-- [What's load-bearing](#whats-load-bearing)
-- [Common mistakes](#common-mistakes)
-- [Three example shapes](#three-example-shapes)
-
 ## The non-negotiable rule
 
 **Every editor must end with an export.** "Copy as markdown," "copy as JSON," "copy as prompt," "download as CSV" — whatever turns the UI state into something the user can paste back into the conversation, into a commit, into an issue comment, into the next prompt. Without the export, the editor is a toy. With it, the editor closes the loop and the user stays in control.

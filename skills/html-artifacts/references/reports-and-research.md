@@ -2,14 +2,6 @@
 
 Recurring documents — status updates, post-mortems, deep dives — benefit most from a bit of structure and color. People read them when they're scannable; they ignore them when they're walls of text.
 
-## Contents
-
-- [Concept explainer (for learning a new topic)](#concept-explainer-for-learning-a-new-topic)
-- [Feature explainer (for understanding code in a repo)](#feature-explainer-for-understanding-code-in-a-repo)
-- [Status report / weekly update](#status-report--weekly-update)
-- [Incident report / post-mortem](#incident-report--post-mortem)
-- [Example sketch — concept explainer with live demo](#example-sketch--concept-explainer-with-live-demo)
-
 ## Concept explainer (for learning a new topic)
 
 For "explain consistent hashing to me" or "how does our rate limiter actually work."
