@@ -7,22 +7,6 @@ description: Automate a CI check that governs an architecture characteristic —
 
 # Fitness Functions
 
-An **architecture fitness function** is *any mechanism* that provides an
-**objective integrity assessment** of one or more architecture characteristics.
-The term comes from evolutionary computing: a fitness function scores how close
-an algorithm's output comes to its aim. Applied to architecture, it scores how
-close the codebase (or the running system) stays to the architect's intent —
-automatically, on every build, forever.
-
-Fitness functions solve the governance problem: architects decide that
-modularity, layering, or security matter, but on real projects **urgency
-dominates importance**. Modularity is important but never urgent, so it erodes
-one auto-import at a time until the system is a Big Ball of Mud. Code reviews
-catch this too late — a week of rampant imports has already done the damage.
-The fix is to encode the rule as an executable check and wire it into
-continuous integration, so the important-but-not-urgent concern is guarded
-without anyone having to remember it.
-
 ## When to use
 
 Whenever someone wants to "enforce architecture rules", "stop devs from
@@ -35,16 +19,7 @@ architecture, or chaos engineering as governance — even without the term
 existing code (→ coupling-cohesion) or choosing an
 architecture in the first place (→ architecture-pattern-advisor).
 
-Two framings to keep in mind, both from the source chapter:
-
-- **Not a new framework** — fitness functions are a *perspective* on tools you
-  already have: unit-test libraries, metrics, monitors, chaos engineering. The
-  verification mechanisms are as varied as the characteristics they verify.
-- **A checklist, not a regime** (the *Checklist Manifesto* view) — developers
-  *know* they shouldn't release insecure or tangled code, but that knowledge
-  competes with a hundred other priorities. A fitness function is a succinct
-  automated reminder built into the substrate of the architecture, not a
-  heavyweight governance process.
+An **architecture fitness function** is any automated check that scores how close the codebase or running system stays to the architect's intent — a perspective on tools you already have (tests, metrics, monitors, chaos), wired into CI so important-but-never-urgent concerns like modularity don't erode one import at a time.
 
 Concrete tool-by-tool implementations live in
 [references/tooling-catalog.md](references/tooling-catalog.md) — read it once
@@ -91,7 +66,9 @@ patterns from the book cover most structural cases:
 - **Threshold on a metric** — e.g. every package's Distance from the Main
   Sequence within a project-dependent tolerance of the ideal. Thresholds are
   legitimate; vibes are not. (To *measure and choose* the threshold on an
-  existing codebase, hand off to **`coupling-cohesion`**.)
+  existing codebase, hand off to **`coupling-cohesion`** — its
+  `scripts/coupling_metrics.py --threshold --json` reports the per-component
+  numbers to gate on; fail the build when its flagged set is non-empty.)
 - **Layer / boundary rules** — declare which layers may access which
   (ArchUnit's `layeredArchitecture()`, NetArchTest's
   `ShouldNot().HaveDependencyOn(...)`) and fail on violations.
@@ -196,7 +173,7 @@ governance suite. Deliver the check ready to commit, not as a proposal.
 ## Source
 
 Mark Richards & Neal Ford, *Fundamentals of Software Architecture*, 2nd ed.
-(O'Reilly), "Governance and Fitness Functions" — definition and evolutionary-
+(O'Reilly), "Measuring and Governing Architecture Characteristics" — definition and evolutionary-
 computing origin of fitness functions, the cyclic-dependency and Distance from
 the Main Sequence examples (JDepend), layer governance (ArchUnit, NetArchTest),
 metric gaming, the Netflix Simian Army as production fitness functions, and the
