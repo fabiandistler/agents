@@ -71,7 +71,7 @@ jobs:
 
       - name: Shell lint (shellcheck)
         # -S warning: gate on real problems; skip advisory info/style notes.
-        run: shellcheck -S warning install.sh scripts/test_install.sh scripts/roomba-scan.sh
+        run: shellcheck -S warning install.sh scripts/test_install.sh scripts/maintenance-scan.sh
 
       - name: install.sh smoke test
         run: bash scripts/test_install.sh

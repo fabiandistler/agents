@@ -1,0 +1,31 @@
+# maintenance-gate - blocks what a tool can decide conclusively, so no agent run
+# spends a rotation slot on it. Paired with MAINTENANCE.md, which lists under
+# "What does NOT belong in this catalog" the jobs these checks replace.
+#
+# Only the secrets job is here. The plugin's template also ships python-lint and
+# r-lint; both are omitted deliberately:
+#   - ci.yml already runs `ruff check .` over this repo's first-party Python.
+#   - both template jobs are gated on hashFiles('pyproject.toml', 'requirements.txt')
+#     or 'DESCRIPTION', and this repo has none of them, so they would never run.
+name: maintenance-gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # gitleaks scans history, not just the tip commit.
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
