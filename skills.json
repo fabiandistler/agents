@@ -214,7 +214,7 @@
     },
     {
       "name": "pypet-snippets",
-      "summary": "Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
+      "summary": "Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
       "category": "workflow",
       "path": "skills/pypet-snippets/SKILL.md",
       "environments": [
