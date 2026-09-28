@@ -2,12 +2,29 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring."
+description: "Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning. Adapt the model when its output fails, choose what to build next, and monitor it live."
 metadata:
   version: "1.2"
 ---
 
 # LLM Application Engineering
+
+Building an LLM application is not one decision but three nested ones: how to
+adapt the model to the task, how to grow the surrounding system, and how to know
+it is still working once users touch it. This skill bundles all three, because
+they are usually needed in the same conversation and each guards against the
+same failure mode — reaching for the most powerful, most complex tool before the
+cheaper one has been ruled out.
+
+For the craft-level rules underneath these three decisions — prompt engineering
+and prompt management, evaluation-harness and LLM-judge configuration,
+guardrails and security gating, how a model result is surfaced to the person
+acting on it (confidence, attribution, corrections), finetuning mechanics, and
+training-data preparation — open
+[`references/ai-engineering-conventions.md`](references/ai-engineering-conventions.md).
+It is a dense, falsifiable conventions sheet meant to be consulted when the
+question is *how to implement* one of these steps well, not *which* step to take
+next.
 
 ## When to use
 
@@ -28,23 +45,6 @@ its agent-specific companion (distilled from Albada, *Building Applications with
 AI Agents*). It carries the tool-design, orchestration, agent-evaluation,
 agent-memory-scoping, and autonomy-UX rules the general sheet does not, and
 defers to the general sheet wherever they overlap.
-
-Building an LLM application is not one decision but three nested ones: how to
-adapt the model to the task, how to grow the surrounding system, and how to know
-it is still working once users touch it. This skill bundles all three, because
-they are usually needed in the same conversation and each guards against the
-same failure mode — reaching for the most powerful, most complex tool before the
-cheaper one has been ruled out.
-
-For the craft-level rules underneath these three decisions — prompt engineering
-and prompt management, evaluation-harness and LLM-judge configuration,
-guardrails and security gating, how a model result is surfaced to the person
-acting on it (confidence, attribution, corrections), finetuning mechanics, and
-training-data preparation — open
-[`references/ai-engineering-conventions.md`](references/ai-engineering-conventions.md).
-It is a dense, falsifiable conventions sheet meant to be consulted when the
-question is *how to implement* one of these steps well, not *which* step to take
-next.
 
 ## Part A — The adaptation ladder
 
@@ -152,8 +152,7 @@ preemptively.
 | 2 | **Put in guardrails** | Input protection (prompt-injection detection, PII filtering) and output protection (hallucination/toxicity filters) | As soon as real users can reach the system |
 | 3 | **Add router and gateway** | Router sends each request to the right model (e.g. cheap model for simple queries); gateway unifies the interface across self-hosted models and APIs, centralizing load balancing, logging, caching, guardrails | As soon as more than one model or provider is in use |
 | 4 | **Reduce latency with caches** | Prompt cache for shared prefixes first (hosted APIs, cache reads ~0.1× input price); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable | As soon as requests repeat, or individual calls are expensive |
-| 5a | **Add predefined workflows** | Chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer — fixed paths where generated output feeds back into the system | When the path through the system can be predefined |
-| 5b | **Add autonomous agents** | The model plans its own path and the system may take write actions | Last, and only when the path cannot be predefined — agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation |
+| 5 | **Add agent patterns** | Generated output feeds back into the system; the system may take write actions | Last, because agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation |
 
 ### Why the order is not optional
 
@@ -167,7 +166,7 @@ Each step assumes the previous one is in place:
 
 ### Anti-pattern: building agents first
 
-The recurring mistake is building autonomous agents (step 5b) before eval, context (step
+The recurring mistake is building agents (step 5) before eval, context (step
 1), and guardrails (step 2) exist. This produces impressive demos and
 unusable products. Treat the pattern as a maturity model: move up only once
 the current step is fully exploited, not because a higher step sounds more

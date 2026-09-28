@@ -14,9 +14,6 @@
 > heuristic, or security-relevant. Generic best practice a competent model
 > already follows is omitted.
 
-Contents: Prompting, Evaluation, Adaptation, Agents, Serving & architecture,
-Context engineering, Result surface, Guardrails & security, Finetuning, Data.
-
 ## Prompting
 
 - **Keep prompts out of application code.** Store them as separate files/objects
