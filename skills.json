@@ -217,6 +217,8 @@
       "summary": "Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
       "category": "workflow",
       "path": "skills/pypet-snippets/SKILL.md",
+      "activation": "command",
+      "compatibility": "Requires pypet-cli 0.9 on PATH (upstream archived Aug 2026, final v0.9.0).",
       "environments": [
         "coding"
       ]
