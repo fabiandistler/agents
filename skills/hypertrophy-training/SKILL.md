@@ -2,7 +2,7 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Evidence-based hypertrophy programming and auto-regulation with precise stop criteria, for experienced trainees. Covers set volume, RIR targets, the Stimulus:Fatigue ratio, training when injury risk is elevated, and returning after an injury.
+description: Evidence-based hypertrophy programming and auto-regulation with stop criteria for experienced trainees. Covers set volume, RIR targets, Stimulus:Fatigue ratio, rest intervals, long muscle lengths, elevated injury risk, and returning after injury.
 metadata:
   version: "1.1"
 ---
