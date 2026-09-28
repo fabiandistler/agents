@@ -82,7 +82,7 @@
     },
     {
       "name": "documentation",
-      "summary": "Producing technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide.",
+      "summary": "Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, or package docs.",
       "category": "communication",
       "path": "skills/documentation/SKILL.md",
       "environments": [
