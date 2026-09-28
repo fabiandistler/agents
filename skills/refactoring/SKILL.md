@@ -76,11 +76,9 @@ under pressure, not missing knowledge.
 - **Refactor or change behavior, never in the same step.** A green suite is
   evidence only while external behavior is meant to stay identical. Mix a fix
   into the restructuring and a red test no longer says which one broke.
-  Finish one, commit, then start the other.
+  Finish one, commit, then start the other — small committed steps.
 - **Characterize before changing untested code.** Tests are the instrument that
   says a refactor preserved behavior. Where coverage is thin, first write tests
-  that pin down what the code *currently* does, bugs included. "This needs
+  that pin down what the code *currently* does, bugs included. Never weaken a
+  failing test to get it green. "This needs
   tests around it first" is a complete answer to "can you refactor this."
-
-Scope history and what was deliberately cut from this skill:
-`docs/adr/0001-refactoring-skill-scope.md`.
