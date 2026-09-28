@@ -14,8 +14,18 @@
 > heuristic, or security-relevant. Generic best practice a competent model
 > already follows is omitted.
 
-Contents: Prompting, Evaluation, Adaptation, Agents, Serving & architecture,
-Context engineering, Result surface, Guardrails & security, Finetuning, Data.
+## Contents
+
+- [Prompting](#prompting)
+- [Evaluation](#evaluation)
+- [Adaptation](#adaptation)
+- [Agents](#agents)
+- [Serving & architecture](#serving--architecture)
+- [Context engineering](#context-engineering)
+- [Result surface](#result-surface)
+- [Guardrails & security](#guardrails--security)
+- [Finetuning](#finetuning)
+- [Data](#data)
 
 ## Prompting
 
