@@ -2,7 +2,7 @@
 name: ml-project-lifecycle
 category: ai-ml
 environments: coding
-description: "Run a classical ML project — training your own model on your own tabular data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining."
+description: "Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining."
 metadata:
   version: "1.0"
 ---
