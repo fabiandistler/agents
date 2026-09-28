@@ -2,19 +2,17 @@
 name: stakeholder-update
 category: communication
 environments: coding, chat
-description: Writing a status update for readers outside the immediate working group — leadership, cross-functional partners, or customers — where the audience and the update type decide the shape.
+description: Writing a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.
 ---
 
 # Stakeholder Update
-
-Generate a stakeholder update tailored to the audience and cadence.
 
 ## When to use
 
 This skill covers periodic and event-driven updates written *for an audience
 outside your immediate working group* — a weekly or monthly status to
 leadership, a launch announcement, a risk escalation, or the same progress
-retold for engineering, partners, or customers. It starts by settling the
+retold for another engineering team, partners, or customers. It starts by settling the
 update type and audience, because both change the shape of the output.
 
 For the daily team-facing version — yesterday / today / blockers, drafted
@@ -29,36 +27,32 @@ is a compression task — suggest the user run the `tldr` command — not a stak
 ### 1. Determine Update Type
 
 Infer the update type from the request; ask only if ambiguous. Default to weekly:
-- **Weekly**: Regular cadence update on progress, blockers, and next steps
-- **Monthly**: Higher-level summary with trends, milestones, and strategic alignment
-- **Launch**: Announcement of a feature or product launch with details and impact
-- **Ad-hoc**: One-off update for a specific situation (escalation, pivot, major decision)
+- **Weekly**: progress, blockers, and next steps
+- **Monthly**: trends, milestones, and strategic alignment
+- **Launch**: what shipped, impact, rollout, and feedback channels
+- **Ad-hoc**: one-off escalation, pivot, or major decision
 
 ### 2. Determine Audience
 
 Infer the audience from the request; ask only if ambiguous. Default to leadership:
-- **Executives / leadership**: High-level, outcome-focused, strategic framing, brief
-- **Engineering team**: Technical detail, implementation context, blockers, decisions needed
-- **Cross-functional partners**: Context-appropriate detail, focus on shared goals and dependencies
-- **Customers / external**: Benefits-focused, clear timelines, no internal jargon
-- **Board**: Metrics-driven, strategic, risk-focused, very concise
+- **Executives / leadership**: outcome-focused, strategic, brief
+- **Another engineering team**: technical detail, blockers, decisions needed
+- **Cross-functional partners**: shared goals, dependencies, deadlines
+- **Customers / external**: benefits, timelines, no internal jargon
+- **Board**: metrics-driven, risk-focused, very concise
 
 ### 3. Gather the evidence
 
 Two things decide how well this step goes.
 
 **Take stock before you ask.** What is reachable differs sharply by where this
-runs, and no environment has all of it. A coding environment usually gives you
-the repository, its history, and the pipeline logs, but no email and no team
-chat. A chat or assistant environment usually gives you email, chat, and
-documents, but no repository. Work out what you can actually read here, use it,
-and only then ask for the rest. Asking for something you could have looked up
-wastes the user's time; asking for something that cannot exist in this
-environment just confuses them.
+runs. A coding environment usually gives you the repository, its history, and
+pipeline logs, but no email and no team chat. A chat environment usually gives
+you email, chat, and documents, but no repository. Use what you can actually
+read here, and only then ask for the rest.
 
 Note that source control is not always a "connector". In a coding environment
-the repository is simply present — read its history directly rather than
-checking whether some integration is configured.
+the repository is simply present — read its history directly.
 
 **Evidence sets the altitude, not the wording.** Commits, pull requests, and
 pipeline runs establish what actually happened. They are input, never output.
@@ -67,60 +61,75 @@ come back in under a second" rather than "merged 14 pull requests".
 
 Sources worth pulling, by kind:
 
-- **Source control — history and merged pull requests.** The most reliable
-  record of what shipped in the period. Work from merge and pull request titles
-  rather than individual commits, and check for reverts: something shipped and
-  then rolled back belongs under risks, not under progress.
-- **CI / CD runs.** What reached which environment, and when. A release date is
-  a fact stakeholders can plan around. A pipeline red for a week, or a long gap
-  since the last successful deployment, is a risk with a date attached — worth
-  far more than "we had some build trouble".
-- **Issue / project tracker.** Roadmap items and milestones, what closed since
-  the last update, what is at risk or blocked, sprint or iteration progress.
-  Carry ticket references through so the reader can follow up.
-- **Chat and email.** Usually the only record of decisions, commitments, and
-  open asks. Source control can tell you what changed but never why something
-  was descoped, what was promised to another team, or who is waiting on whom.
-  Look for decisions reached, commitments made, and threads still unanswered.
-- **Meeting transcripts and knowledge base.** Recent notes, decision documents,
-  design reviews — the reasoning behind what the other sources record as facts.
+- **Source control** — merged pull requests and reverts in the period. Something shipped then rolled back belongs under risks, not progress.
+- **CI / CD runs** — what reached which environment, and when. A release date is plannable; a week-red pipeline is a dated risk.
+- **Issue / project tracker** — what closed, what is at risk or blocked. Carry ticket references through.
+- **Chat and email** — usually the only record of decisions, commitments, and open asks. Source control never says why something was descoped.
+- **Meeting transcripts and knowledge base** — the reasoning behind what the other sources record as facts.
 
 **Then name the gap.** Say which part of the update is thin because a source was
-unreachable, and ask for exactly that rather than for everything: "I can see
-what shipped and when it deployed, but nothing about how the pilot team reacted
-— do you have that?" Never close a gap with plausible-sounding detail. An
-invented metric gets copied into someone else's slides and outlives the update.
+unreachable, and ask for exactly that: "I can see what shipped and when it
+deployed, but nothing about how the pilot team reacted — do you have that?"
+Never close a gap with plausible-sounding detail. An invented metric gets
+copied into someone else's slides and outlives the update.
 
 ### 4. Generate the Update
 
-Structure the update for the target audience using the templates and frameworks below.
+Draft from the template below matching the audience and update type. Keep
+executive versions under 200 words; derive the status color from evidence
+against the committed baseline and confirm it with the user before sending.
 
-**For executives**: TL;DR, status color (G/Y/R), key progress tied to goals, decisions made, risks with mitigation, specific asks, and next milestones. Keep it under 200 words.
+### Worked example
 
-**For engineering**: What shipped (with links), what is in progress (with owners), blockers, decisions needed (with options and recommendation), and what is coming next.
+Evidence: three PRs merged (SSO login, CSV export, retry backoff); staging
+deploy green Tuesday; pilot team reports login is twice as fast; one open
+risk — export times out above 100k rows, owner Dana, fix due Friday.
 
-**For cross-functional partners**: What is coming that affects them, what you need from them (with deadlines), decisions that impact their team, and areas open for input.
+Executive version:
 
-**For customers**: What is new (framed as benefits), what is coming soon, known issues with workarounds, and how to provide feedback. No internal jargon.
+```markdown
+Status: Yellow (was Green): export timeout puts Friday rollout at risk.
 
-**For launch announcements**: What launched, why it matters, key details (scope, availability, limitations), success metrics, rollout plan, and feedback channels.
+TL;DR: SSO pilot succeeds; full rollout waits on the export fix due Friday.
+
+Progress:
+- SSO login live with the pilot team, logins twice as fast.
+- Staging deploy green since Tuesday.
+
+Risks:
+- CSV export times out above 100k rows. Owner: Dana, fix in progress. Ask: confirm Friday go/no-go by Thursday.
+
+Next milestones:
+- Full rollout — Friday, pending the export fix.
+```
+
+Customer version:
+
+```markdown
+What's new:
+- Faster login — sign-in takes half the time it used to.
+
+Coming soon:
+- CSV export for large files — later this week.
+
+Known issues:
+- Very large exports (over 100k rows) may time out. Small exports work; retry or split the file meanwhile.
+
+Feedback:
+- Reply to this thread with anything that looks off.
+```
 
 ### 5. Review and Deliver
 
-After generating the update:
-- Ask if the user wants to adjust tone, detail level, or emphasis
-- Offer to format for the delivery channel (email, chat post, doc, slides).
-  The channel changes the shape: an email needs a subject line carrying the
-  headline and a greeting; a chat post needs to survive being read on a phone
-  with no scrolling; a doc can afford the full structure.
-- Where you can reach the delivery channel yourself, offer to draft the message
-  in place rather than handing back text to copy. Where you cannot, hand back
-  something ready to paste — no placeholders left to fill in.
+After generating the update, ask if the user wants to adjust tone, detail, or
+emphasis, and offer to match the delivery channel: an email needs a subject
+line and greeting, a chat post must survive a phone screen, a doc can carry
+the full structure. Where you can reach the channel yourself, offer to draft
+in place; otherwise hand back text ready to paste, no placeholders left.
 
 ## Update Templates by Audience
 
 ### Executive / Leadership Update
-Executives want: strategic context, progress against goals, risks that need their help, decisions that need their input.
 
 **Format**:
 ```
@@ -144,14 +153,11 @@ Next milestones:
 ```
 
 **Tips for executive updates**:
-- Lead with the conclusion, not the journey. Executives want "we shipped X and it moved Y metric" not "we had 14 standups and resolved 23 tickets."
-- Keep it under 200 words. If they want more, they will ask.
-- Derive the status color from evidence against the committed baseline — milestone slip, red pipeline, reverts, blocked items — not from optimism. State a one-line reason and what changed since the last update, and ask the user to confirm the color before sending. Green without supporting evidence is watermelon reporting.
-- List all known material risks, including ones you are already handling. Mark each with owner and mitigation.
+- Lead with the conclusion, not the journey.
+- Derive the status color from evidence, not optimism. Green without supporting evidence is watermelon reporting.
 - Asks must be specific: "Decision on X by Friday" not "support needed."
 
 ### Engineering Team Update
-Engineers want: clear priorities, technical context, blockers resolved, decisions that affect their work.
 
 **Format**:
 ```
@@ -172,14 +178,7 @@ Coming up:
 - [Next items] — [Context on why these are next]
 ```
 
-**Tips for engineering updates**:
-- Link to specific tickets, PRs, and documents. Engineers want to click through for details.
-- When priorities change, explain why. Engineers are more bought in when they understand the reason.
-- Be explicit about what is blocking them and what you are doing to unblock it.
-- Do not waste their time with information that does not affect their work.
-
 ### Cross-Functional Partner Update
-Partners (design, marketing, sales, support) want: what is coming that affects them, what they need to prepare for, how to give input.
 
 **Format**:
 ```
@@ -197,7 +196,6 @@ Open for input:
 ```
 
 ### Customer / External Update
-Customers want: what is new, what is coming, how it benefits them, how to get started.
 
 **Format**:
 ```
@@ -214,14 +212,11 @@ Feedback:
 - [How to share feedback or request features]
 ```
 
-**Tips for customer updates**:
-- No internal jargon. No ticket numbers. No technical implementation details.
-- Frame everything in terms of what the customer can now DO, not what you built.
-- Be honest about timelines but do not overcommit. "Later this quarter" is better than a date you might miss.
-- Mention customer-impacting issues with status and next-update date even without a fix.
+Frame everything in terms of what the customer can now do, not what was
+built. No internal jargon, no ticket numbers. Mention customer-impacting
+issues with status even without a fix.
 
 ### Risk Escalation
-Escalations need: the ask up front, the situation in SCQA shape, options with a recommendation, and what delay costs.
 
 **Format**:
 ```
@@ -240,7 +235,6 @@ Cost of delay: [What happens if there is no decision by the deadline]
 ```
 
 ### Launch Announcement
-Launches need: what shipped, who gets it and when, what it does not do yet, how it rolls out, and where feedback goes.
 
 **Format**:
 ```
@@ -254,64 +248,21 @@ Feedback: [Channel for feedback or issues]
 
 ## Status Reporting Framework
 
-### Green / Yellow / Red Status
+Derive the color from evidence against the committed baseline: milestone slip,
+red pipeline, reverts, blocked items. State a one-line reason and what changed
+since the last update, and confirm the color with the user before sending.
 
-Derive the color from evidence against the committed baseline: milestone slip, red pipeline, reverts, blocked items. State a one-line reason and what changed since the last update, and confirm the color with the user before sending. A green status alongside red evidence is watermelon reporting.
-
-**Green** (On Track):
-- Progressing as planned
-- No significant risks or blockers
-- On track to meet commitments and deadlines
-- Use Green when things are genuinely going well — not as a default
-
-**Yellow** (At Risk):
-- Progress is slower than planned, or a risk has materialized
-- Mitigation is underway but outcome is uncertain
-- May miss commitments without intervention or scope adjustment
-- Use Yellow proactively — the earlier you flag risk, the more options you have
-
-**Red** (Off Track):
-- Significantly behind plan
-- Major blocker or risk without clear mitigation
-- Will miss commitments without significant intervention (scope cut, resource addition, timeline extension)
-- Use Red when you genuinely need help. Do not wait until it is too late.
-
-### When to Change Status
-- Move to Yellow at the FIRST sign of risk, not when you are sure things are bad
-- Move to Red when you have exhausted your own options and need escalation
-- Move back to Green only when the risk is genuinely resolved, not just paused
-- Document what changed when you change status — "Moved to Yellow because [reason]"
+- **Green** (On Track): progressing as planned, no significant risks. Use Green only when things are genuinely going well.
+- **Yellow** (At Risk): slower than planned or a risk materialized; mitigation underway. Move to Yellow at the first sign of risk.
+- **Red** (Off Track): will miss commitments without intervention. Move to Red when your own options are exhausted; move back to Green only when the risk is genuinely resolved.
 
 ## Risk Communication
 
-### ROAM Framework for Risk Management
-- **Resolved**: Risk is no longer a concern. Document how it was resolved.
-- **Owned**: Risk is acknowledged and someone is actively managing it. State the owner and the mitigation plan.
-- **Accepted**: Risk is known but we are choosing to proceed without mitigation. Document the rationale.
-- **Mitigated**: Actions have reduced the risk to an acceptable level. Document what was done.
-
-### Communicating Risks Effectively
 1. **State the risk clearly**: "There is a risk that [thing] happens because [reason]"
 2. **Quantify the impact**: "If this happens, the consequence is [impact]"
-3. **State the likelihood**: "This is [likely/possible/unlikely] because [evidence]"
-4. **Present the mitigation**: "We are managing this by [actions]"
-5. **Make the ask**: "We need [specific help] to further reduce this risk"
+3. **Present the mitigation**: "We are managing this by [actions]"
+4. **Make the ask**: "We need [specific help] to further reduce this risk"
 
-### Common Mistakes in Risk Communication
-- Burying risks in good news. Lead with risks when they are important.
-- Being vague: "There might be some delays" — specify what, how long, and why.
-- Presenting risks without mitigations. Every risk should come with a plan.
-- Waiting too long. A risk communicated early is a planning input. A risk communicated late is a fire drill.
-
-## Output Format
-
-Keep updates scannable. Use bold for key points, bullets for lists. Executive updates should be under 200 words. Engineering updates can be longer but should still be structured for skimming.
-
-## Tips
-
-- The most common mistake in stakeholder updates is burying the lead. Start with the most important thing.
-- Status colors (Green/Yellow/Red) should reflect reality, not optimism. Yellow is not a failure — it is good risk communication.
-- Asks should be specific and actionable. "We need help" is not an ask. "We need a decision on X by Friday" is.
-- For executives, frame everything in terms of outcomes and goals, not activities and tasks.
-- If there is bad news, lead with it. Do not hide it after good news.
-- Match the length to the audience's attention. Executives get a few bullets. Engineering gets the details they need.
+Common mistakes: burying risks in good news, being vague about what and how
+long, presenting risks without mitigations, and communicating too late — an
+early risk is a planning input, a late one is a fire drill.
