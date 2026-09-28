@@ -25,69 +25,28 @@ finds.
 
 ## Step 2 — deterministic CI checks
 
-Run each check from the repo root, mirroring `.github/workflows/ci.yml`.
-Do not stop at the first failure; collect all output.
+`.github/workflows/ci.yml` is the source of truth; read it and run every
+`run:` step of the `checks` job from the repo root, in order, rather than a
+list copied here (a copied list drifts as CI grows). Skip the
+`pip install` lines. Do not stop at the first failure;
+collect all output.
 
-1. `python3 scripts/build_manifest.py --check` — skills.json in sync,
-   description length, strict-YAML frontmatter, valid category, valid
-   activation.
-2. `python3 scripts/check_descriptions.py` — per-skill description budget
-   and the aggregate auto-skill budget.
-3. `python3 scripts/check_docs.py` — README/AGENTS catalogue tables.
-4. `python3 scripts/check_plugins.py` — marketplace, plugin symlinks,
-   agent frontmatter.
-5. `ruff check .` and `python3 -m compileall -q scripts skills`
-   — Python lint/compile.
-6. `shellcheck -S warning install.sh scripts/test_install.sh
-   scripts/maintenance-scan.sh` — skip with a note if shellcheck (or ruff) is not
-   installed; never install tools yourself.
+- For `ruff`, use `uvx ruff@latest` when available: CI installs the newest
+  ruff, and a stale local copy both misses and invents findings.
+- Skip a step with a note when its tool (shellcheck, prek, pytest, pyyaml)
+  is not installed and cannot be run through `uvx`; never install tools
+  globally yourself.
+- Also run `python3 scripts/check_evals.py --strict` and report its gaps as
+  recommendations (CI runs it warn-only).
 
-## Step 3 — official Agent Skills format audit
+## Step 3 — validator allowlist drift
 
-The CI scripts do not cover the whole official format. Audit every
-`skills/*/SKILL.md` frontmatter by running this from the repo root:
-
-```bash
-python3 - <<'EOF'
-import re, sys
-from pathlib import Path
-
-ALLOWED = {"name", "description", "license", "allowed-tools", "metadata",
-           "compatibility",                            # official fields
-           "argument-hint", "disable-model-invocation", "model",
-           "context", "agent",                         # Claude Code fields
-           "category", "environments"}                 # repo extensions
-NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-problems = []
-for md in sorted(Path("skills").glob("*/SKILL.md")):
-    text = md.read_text(encoding="utf-8")
-    if not text.startswith("---\n") or "\n---" not in text[4:]:
-        problems.append(f"{md}: missing/unclosed '---' frontmatter"); continue
-    block = text[4:].split("\n---", 1)[0]
-    keys = [ln.partition(":")[0].strip() for ln in block.splitlines()
-            if ln and not ln[0] in " \t#" and ":" in ln]
-    fm = dict(ln.partition(":")[0::2] for ln in block.splitlines()
-              if ln and not ln[0] in " \t" and ":" in ln)
-    fm = {k.strip(): v.strip().strip("'\"") for k, v in fm.items()}
-    name = fm.get("name", "")
-    if name != md.parent.name:
-        problems.append(f"{md}: name {name!r} != directory {md.parent.name!r}")
-    if len(name) > 64 or not NAME_RE.match(name):
-        problems.append(f"{md}: name must be <=64 chars of [a-z0-9-], "
-                        "hyphen-separated")
-    for k in keys:
-        if k not in ALLOWED:
-            problems.append(f"{md}: unknown frontmatter field {k!r}")
-    if len(keys) != len(set(keys)):
-        problems.append(f"{md}: duplicate frontmatter fields")
-print("\n".join(problems) or "official-format audit: OK")
-sys.exit(1 if problems else 0)
-EOF
-```
-
-(Description presence, its 1024-char limit, and strict-YAML pitfalls are
-already enforced by `build_manifest.py` in step 2 — do not re-report
-them.)
+`scripts/quick_validate.py` (run by CI in step 2) owns the frontmatter
+allowlist, name rules and vocabularies. Here, check only that its allowlist
+has not drifted from the documented conventions: compare
+`ALLOWED_PROPERTIES` in that script with the field list in AGENTS.md
+(*Conventions for skill authors*) and report any field documented in one and
+missing from the other.
 
 ## Step 4 — qualitative SKILL.md review
 
@@ -114,7 +73,7 @@ Constraints:
 
 Report back in three sections, worst first: **Blocking** (CI would fail —
 include the failing command and its key output lines), **Format
-violations** (official-spec findings from step 3, one line each as
+violations** (allowlist drift from step 3, one line each as
 `path: problem`), and **Recommendations** (steps 4–5). For each finding
 name the exact fix (e.g. "run python3 scripts/build_manifest.py"). If
 everything passes, say so in one line per step. Keep the report under
