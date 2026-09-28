@@ -1,0 +1,12 @@
+{
+  "should_trigger": [
+    "set up ADRs in this repo",
+    "write an ADR for switching to Postgres",
+    "we're reversing the decision in ADR-0004"
+  ],
+  "should_not_trigger": [
+    "write a design doc for feature X",
+    "draw a C4 diagram"
+  ],
+  "expected_behavior": "Set up the ADR workflow, draft a new record, or supersede a reversed decision; route design docs and diagrams elsewhere."
+}

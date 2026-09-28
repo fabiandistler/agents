@@ -3,7 +3,7 @@
   "skills": [
     {
       "name": "adr-workflow",
-      "summary": "Establish and maintain Architecture Decision Records (ADRs) in software repositories.",
+      "summary": "Establish, draft, supersede, and maintain Architecture Decision Records (ADRs) in software repositories.",
       "category": "architecture",
       "path": "skills/adr-workflow/SKILL.md",
       "environments": [
@@ -44,7 +44,7 @@
       "summary": "Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4).",
       "category": "architecture",
       "path": "skills/c4-modeling/SKILL.md",
-      "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, VS Code, and most Markdown tools. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
+      "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, and most Markdown tools, and in VS Code with a Mermaid extension. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
       "environments": [
         "coding",
         "chat"
@@ -73,7 +73,7 @@
     },
     {
       "name": "ddd",
-      "summary": "Domain-Driven Design end to end — strategic subdomain classification and context mapping, tactical pattern choice, and implementation conventions for aggregates, value objects, and events.",
+      "summary": "Domain-Driven Design: subdomain classification, context mapping and legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing.",
       "category": "architecture",
       "path": "skills/ddd/SKILL.md",
       "environments": [
