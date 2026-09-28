@@ -1,0 +1,12 @@
+{
+  "should_trigger": [
+    "monolith or microservices for our 3-person SaaS?",
+    "restructure this Flask app by feature",
+    "hexagonal vs clean for a payments core"
+  ],
+  "should_not_trigger": [
+    "where do I cut the Order service?",
+    "add an import-linter rule for our layers"
+  ],
+  "expected_behavior": "Asks diagnosis questions before recommending; routes service-cut questions to microservices-design and layer-enforcement rules to fitness-functions."
+}
