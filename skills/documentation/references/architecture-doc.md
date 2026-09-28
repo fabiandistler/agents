@@ -26,7 +26,7 @@ scope. Constraints are what make the rest of the design legible.
 **High-level design.** The components and their responsibilities, with a
 diagram. Keep prose and diagram consistent — every box named in one appears in
 the other. For the diagram notation itself (context, container, and component
-views, and when to draw which), use the `architecture` skill (c4-modeling); this document just
+views, and when to draw which), use the `architecture` skill (`c4-modeling`); this document just
 holds the result. One diagram per level of zoom; a single diagram trying to show
 everything shows nothing.
 
@@ -40,7 +40,7 @@ that cannot be recovered by reading the code. Two or three lines each:
 > hard requirement for billing events.
 
 If a decision is significant, contested, or likely to be revisited, it deserves
-its own record — use the `architecture` skill (adr-workflow) and link to it from here rather than
+its own record — use the `architecture` skill (`adr-workflow`) and link to it from here rather than
 inlining a full ADR.
 
 **Data flow.** Follow one or two representative requests end to end, naming

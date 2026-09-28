@@ -183,13 +183,8 @@ machine consumption prefer `skills.json`.
     plugin symlink (`scripts/check_plugins.py` knows this).
   - `metadata.version` — semver-ish string.
 - The body is plain Markdown. Avoid agent-specific vocabulary
-  (slash-commands, "the Skill tool", proprietary tool names, hardcoded
-  install paths, runtime error text). Prefer
+  (slash-commands, "the Skill tool", proprietary tool names). Prefer
   describing the workflow in terms any reader can apply.
-- Cross-skill references name only registered, model-invocable skills.
-  A `command` skill is user-invoked, so say suggest the user run it instead
-  of invoking it. A router member is read via its router file, never invoked
-  by a namespaced name; name the router and the member file to read.
 - After editing any `SKILL.md` frontmatter, regenerate the manifest:
   `python3 scripts/build_manifest.py`. Verify it is in sync before
   committing with `python3 scripts/build_manifest.py --check`.

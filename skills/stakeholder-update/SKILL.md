@@ -20,7 +20,7 @@ immediately from recent activity without a clarifying round — suggest the user
 run the `repo-status` command skill instead.
 
 When the source is simply too long and no outside audience is involved, that
-is a compression task — suggest the user run the `tldr` command — not a stakeholder update.
+is a `tldr` compression, not a stakeholder update.
 
 ## Workflow
 

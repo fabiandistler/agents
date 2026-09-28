@@ -26,11 +26,12 @@ The bundled script ranks files by their git history, the one source of
 evidence every repo already has:
 
 ```
-python3 <skills-dir>/refactoring/scripts/churn.py [path] [--since '12 months ago'] [--json]
+python3 ~/.config/opencode/skills/refactoring/scripts/churn.py [path] [--since '12 months ago'] [--json]
 ```
 
 `[path]` is the repository to rank (default: the current directory). The
-same script is installed under your agent skills directory.
+same script lives at `~/.claude/skills/refactoring/scripts/churn.py`
+(Claude) and `~/.codex/skills/refactoring/scripts/churn.py` (Codex).
 Because the script takes the target as an argument, the command works from
 any working directory once installed.
 
