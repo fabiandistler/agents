@@ -4,7 +4,7 @@ category: workflow
 activation: command
 disable-model-invocation: true
 environments: coding
-compatibility: Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only Python 3.11+.
+compatibility: Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only (tomllib on Python 3.11+, regex fallback below).
 argument-hint: "[major | minor | patch | X.Y.Z | tag]"
 description: Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written. After merge, tag and publish the release.
 metadata:
@@ -15,7 +15,7 @@ metadata:
 
 One run = one package, one version. The default mode makes the current branch's
 pull request *the* release of that version: version set, changelog finalized,
-checks run, PR body written. The `tag` mode runs on `main` after that PR merged
+checks run, PR body written. The `tag` mode runs on the default branch after that PR merged
 and turns the merge commit into a tag and a release — a GitHub or GitLab
 release, or on Azure Repos an annotated tag carrying the notes. Publishing to CRAN
 or PyPI is never this skill's job; the reference pages say where it belongs.
@@ -33,12 +33,12 @@ submitting to CRAN or uploading to PyPI.
 
 Every pull request that changes behavior sets the version it delivers and
 writes its entries under exactly that heading. Nothing runs ahead: no `.9000`
-development suffix on `main`, no empty next-version heading opened "for the next
-PR". So on `main`:
+development suffix on the default branch, no empty next-version heading opened "for the next
+PR". So on the default branch:
 
 - `DESCRIPTION` / `pyproject.toml` version == the top heading of `NEWS.md` /
   `CHANGELOG.md`, and that heading has entries.
-- A tag `vX.Y.Z` points at a commit whose declared version is `X.Y.Z`.
+- A tag `<tag_prefix>X.Y.Z` points at a commit whose declared version is `X.Y.Z`.
 - Every merge of a release PR is followed by exactly one `tag` run.
 
 A repository still on the development-suffix model (`0.3.1.9000`, a
@@ -88,10 +88,10 @@ default branch, stop and ask for a branch name. Then:
 
 ```bash
 git fetch origin
-python3 <skill>/scripts/release_state.py --repo . > /tmp/release-state.json
+python3 <skill>/scripts/release_state.py --repo .
 ```
 
-The script detects the language (`DESCRIPTION` → R, `pyproject.toml` →
+The script prints JSON to stdout. It detects the language (`DESCRIPTION` → R, `pyproject.toml` →
 Python), reports the declared version, the top changelog heading and whether it
 has entries, the last version tag, a bump suggestion from the commits since
 that tag (and, for R, exports removed from `NAMESPACE`), places outside the
@@ -138,7 +138,7 @@ tag. Wait for confirmation.
 Run the language's tool, never a text edit — the exact commands are on the
 language page. Order matters: **bump first, then write the entries** under
 the heading the bump created. That is the correction to a bump-last habit,
-which leaves an empty heading on `main` and a tag that disagrees with the
+which leaves an empty heading on the default branch and a tag that disagrees with the
 declared version.
 
 ### 3 Write or finalize the changelog section
@@ -181,8 +181,9 @@ message; used for Python too so both languages read the same in `git log`).
 
 Push after confirmation. If the branch already has a PR, edit its body;
 otherwise open one, titled `<package> X.Y.Z`, with the forge's CLI
-(`references/forges.md`). Write the body to `/tmp/pr-body.md` first. The
-body, in this order:
+(`references/forges.md`). Write the body to `<run>/pr-body.md` first, where
+`<run>` is the directory a fresh `mktemp -d /tmp/release-pr-XXXXXX` printed,
+and pass that path to the CLI. The body, in this order:
 
 ```markdown
 ## Release <package> X.Y.Z
@@ -202,7 +203,7 @@ NEWS carries a "New features" section.
 - CRAN incoming checks: package is not on CRAN
 
 ### After merge
-Run the `tag` step on `main`: tags `vX.Y.Z` at the merge commit and
+Run the `tag` step on the default branch: tags `<tag_prefix>X.Y.Z` at the merge commit and
 publishes the release from the section above.
 
 Closes #<n>   (Azure Repos: link work items instead, see forges.md)
@@ -214,16 +215,23 @@ Then stop. Merging is the user's decision.
 
 Runs on the default branch after the release PR merged.
 
-- [ ] 0 `git switch main && git pull --ff-only`; working tree clean
+The commands use placeholders: `<default-branch>` from step 0, `<tag>` for
+`<tag_prefix>X.Y.Z`, and `<run>` for the directory a fresh
+`mktemp -d /tmp/release-pr-XXXXXX` printed. Substitute the literal values.
+Each step may run in a new shell, so shell variables do not carry over.
+
+- [ ] 0 `git remote set-head origin --auto && git symbolic-ref --short refs/remotes/origin/HEAD`
+      prints `origin/<default-branch>`; `git switch <default-branch> && git pull --ff-only`;
+      working tree clean
 - [ ] 1 `release_state.py` reports `consistent`; note `version` and `tag_prefix`
 - [ ] 2 CI on `HEAD` is green (`gh run list --commit $(git rev-parse HEAD)`,
       other forges in `references/forges.md`); a red, pending, or missing
       run is not tagged without the user's say-so
-- [ ] 3 `release_state.py --section X.Y.Z > /tmp/notes.md`; the file is not empty
-- [ ] 4 Show tag name, commit, and the notes; confirm
-- [ ] 5 `git tag -a vX.Y.Z -m "<package> X.Y.Z" && git push origin vX.Y.Z`
-- [ ] 6 `gh release create vX.Y.Z --verify-tag --title "<package> X.Y.Z" --notes-file /tmp/notes.md`
-      (`--prerelease` for a Python `a`/`b`/`rc` version). GitLab: `glab
+- [ ] 3 `release_state.py --section X.Y.Z > <run>/notes.md`; the file is not empty
+- [ ] 4 Show tag name (`<tag>`), commit, and the notes; confirm
+- [ ] 5 `git tag -a <tag> -m "<package> X.Y.Z" && git push origin <tag>`
+- [ ] 6 `gh release create <tag> --verify-tag --title "<package> X.Y.Z" --notes-file <run>/notes.md`
+      (`--prerelease` for a Python `a`/`b`/`rc` version). When the release attaches binary assets, create it as a draft first and publish only after the assets are up, so no partial release is ever public. GitLab: `glab
       release create`. Azure Repos and unknown hosts have no release
       object, so steps 5–6 become one annotated tag carrying the notes
       (`references/forges.md`)
@@ -231,8 +239,8 @@ Runs on the default branch after the release PR merged.
       (r-universe rebuild, a tag-triggered PyPI workflow, or nothing)
 
 If `release_state.py` says `released`, the version is already tagged: stop,
-nothing to do. If it says anything else, the merge did not leave `main`
-consistent; report the `problems` line and stop — fixing `main` is a new PR,
+nothing to do. If it says anything else, the merge did not leave the default branch
+consistent; report the `problems` line and stop — fixing the default branch is a new PR,
 not a tag.
 
 ## References

@@ -34,7 +34,8 @@ job.
    the run ends with a report — without reviewing a single issue.
 3. **Quality over count.** At most 3 candidates. Zero candidates is a valid
    result and is reported as one. The `good first issue` label is neutral, not
-   a filter.
+   a filter. Respect reservations: where the project assigns such issues on
+   request, ask to be assigned before working one up.
 4. **The repro must run.** A candidate without a reproduction confirmed on
    the current default branch is not worked up. No "probably reproducible".
 5. **Invent nothing.** Unclear cause → mark it open, don't fill it in
@@ -86,11 +87,11 @@ layout under the resolved root:
     test.<ext>           test case in the project's own test framework
     submit-checklist.md  filled in per project
   02-issue-<nr>/ …
-<root>/LOG.md            every run: date, repo, issue numbers reviewed, outcome
+<root>/LOG.md            every run: date, repo, and per reviewed issue its number, its updatedAt at review time, and the outcome
 ```
 
-Read `LOG.md` before reviewing: an issue already checked is only revisited if it
-has changed since.
+Read `LOG.md` before reviewing: an issue already checked is only revisited if
+its current `updatedAt` is newer than the logged one.
 
 ### 1 Policy gate
 
@@ -204,13 +205,9 @@ one clone, resetting it between candidates.
    surface, performance, edge behavior (NA/NULL/None, empty inputs, encoding,
    platform), backward compatibility. Rate low/medium/high with a reason.
 
-Known project quirks (verify in the repo when in doubt rather than adopting
-blindly): data.table tests through its own `test()` mechanism in
-`inst/tests/tests.Rraw` (numbered tests, not testthat) and requires a NEWS
-entry; polars has a Rust core — only take candidates whose cause sits in the
-Python layer, the docs, or the tests, unless the user explicitly wants Rust;
-plumber and most R packages use testthat + NEWS.md; FastAPI uses pytest and its
-docs are multilingual (translations follow their own process).
+Known project quirks live in
+[`references/project-quirks.md`](references/project-quirks.md) — verify in the
+repo when in doubt rather than adopting blindly.
 
 ### 4 Ranking
 
@@ -255,6 +252,14 @@ Do not offer to submit.
 ## Provenance and teardown
 
 Written 2026-09-02. The guardrails come from the 2026 AI-slop debate in open
-source (curl, Ghostty, tldraw; GitHub's PR throttle): unreviewed
+source — curl shut its paid bug bounty
+(<https://daniel.haxx.se/blog/2026/01/26/the-end-of-the-curl-bug-bounty/>), Ghostty gated first-time contributors behind vouching
+(<https://github.com/ghostty-org/ghostty/blob/main/CONTRIBUTING.md>), tldraw
+auto-closed external pull requests
+(<https://github.com/tldraw/tldraw/issues/7695>): unreviewed
 machine-generated contributions cost maintainers more than they give, so this
 skill produces material for the user to verify and submit, never a submission.
+
+Teardown: delete the read-only clone when the run ends (`rm -rf` the cache
+path from step 3). The artifact tree under
+`<root>/<owner>-<repo>/<YYYY-MM-DD>/` and `LOG.md` are the only things kept.

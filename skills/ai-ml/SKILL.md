@@ -13,6 +13,10 @@ This is a **router**. The ai-ml category ships several deep sub-skills; this
 entry keeps one broad trigger on the surface and hands off to the specific one.
 Do not answer an AI or ML engineering question from this file alone.
 
+## When to use
+
+The trigger situations live in this file's frontmatter (`description`, `when_to_use`) — match the request there, then follow How to use below.
+
 ## How to use
 
 1. Match the request to a row in the table below.
@@ -31,9 +35,12 @@ model's trigger surface.
 <!-- BEGIN generated:members -->
 | Sub-skill | When to use | Read before acting |
 |---|---|---|
-| llm-application-engineering | Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning. | `members/llm-application-engineering/SKILL.md` |
-| ml-project-lifecycle | Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining. | `members/ml-project-lifecycle/SKILL.md` |
+| llm-application-engineering | Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring. | `members/llm-application-engineering/SKILL.md` |
+| ml-project-lifecycle | Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining. | `members/ml-project-lifecycle/SKILL.md` |
 <!-- END generated:members -->
 
 The table above is generated from `skills.json` by
 `scripts/build_routers.py`; edit the manifest, not this region.
+
+Scope: this router covers design and architecture decisions for AI systems,
+not SDK/API syntax or MCP server implementation — those go to general knowledge or a dedicated tool skill.

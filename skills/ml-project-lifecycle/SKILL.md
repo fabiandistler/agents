@@ -2,31 +2,25 @@
 name: ml-project-lifecycle
 category: ai-ml
 environments: coding
-description: "Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining."
+description: "Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining."
 metadata:
   version: "1.0"
 ---
 
 # ML Project Lifecycle
 
-A machine learning project fails or succeeds long before anyone tunes a hyperparameter. This skill bundles three checkpoints from the lifecycle where that failure is most often locked in early and invisibly: framing the problem, choosing the model, and shipping it safely. Use it as a gate to pass through, not a menu to skim — each part below exists because skipping it produces a specific, recognizable failure mode.
+Use this skill as a gate to pass through, not a menu to skim: framing the problem, choosing the model, and shipping it safely.
 
 ## When to use
 
-Whenever someone is scoping an ML project, picking a model architecture, deciding how to handle missing data, evaluating whether a model is good enough to ship, designing a feature-engineering pipeline, or planning how to deploy and retrain a model in production. Bundles a business-objectives-first checklist, a five-baseline deployment gate, a missing-values default for prediction versus inference, a data-type-to-model decision table, and a staged rollout checklist.
+- Training a model on your own tabular, image, text, or time-series data: scoping the project, picking a model family, handling missing values, or deciding whether it is good enough to ship and when to retrain.
+- Classical ML only — for prompting, RAG, agents, or evals over a foundation model, use the `ai-ml` skill (llm-application-engineering) instead.
 
 ## Part A — Framing: get the problem right before touching a model
 
 ### Business-objectives-first
 
-The real problem in a data-science project is never technical. It is always a business problem. ML metrics such as accuracy or F1 are worthless if they do not move a business metric — a model at 94.2% accuracy is not better than one at 94% if both produce the same conversion rate. Organizations optimize for revenue, cost, or customer satisfaction, not for accuracy.
-
-The job of the practitioner is to translate systematically between the two:
-
-- "Each additional percentage point of accuracy has historically raised purchase-through rate by 0.5%."
-- "A false-negative rate above 5% raises support tickets by €X/month."
-
-Without this translation, technical excellence is wasted effort. Before any ML decision — model choice, feature engineering, evaluation — answer three questions:
+ML metrics such as accuracy or F1 are worthless if they do not move a business metric (revenue, cost, customer satisfaction). Before any ML decision — model choice, feature engineering, evaluation — answer three questions:
 
 1. Which business problem does this decision address?
 2. Which business metric does it move?
@@ -34,11 +28,11 @@ Without this translation, technical excellence is wasted effort. Before any ML d
 
 If a decision cannot be traced to a business metric, treat that as a signal to stop and re-scope, not a detail to fill in later.
 
-Ask early whether a prompted LLM or a plain rule would already meet the business bar — if so, follow `llm-application-engineering` instead of training a model.
+Ask early whether a prompted LLM or a plain rule would already meet the business bar — if so, follow the `ai-ml` skill (llm-application-engineering) instead of training a model.
 
 ### The baseline gate
 
-A model's absolute metric score is meaningless without a baseline. Climb this ladder before calling anything deployment-worthy:
+Climb this ladder before calling anything deployment-worthy:
 
 | # | Baseline | What it is |
 |---|----------|------------|
@@ -49,7 +43,7 @@ A model's absolute metric score is meaningless without a baseline. Climb this la
 | 5 | Zero-shot LLM | Optional comparator for text and label tasks |
 | 6 | Incumbent | The current production system, if one exists, with human expert performance as the reference ceiling |
 
-This gate exists to catch "a bad model with good-looking metrics" — a model can post an impressive accuracy number and still lose to a one-line heuristic or to the system it is meant to replace. Beat means the candidate's cost-weighted metric clears the baseline's cross-validation spread or bootstrap confidence interval — a point win inside the noise does not count. The human baseline is a reference ceiling rather than a pass/fail gate — measure the gap to expert performance and judge whether it is acceptable for the use case.
+Beat means the candidate's cost-weighted metric clears the baseline's cross-validation spread or bootstrap confidence interval — a point win inside the noise does not count.
 
 ### Missing values: prediction default first, mechanism only for inference
 
@@ -78,21 +72,6 @@ Pick the model family from the shape of the data first, and prefer the boring, w
 
 Treat the specific model names as illustrative of the *category* to reach for, not a permanent ranking — this table will date faster than the decision process itself.
 
-### Layer-design rules of thumb
-
-For the 80% case, a small pyramid-shaped feed-forward network is enough:
-
-```
-Dense(128, relu) -> Dropout(0.3) -> Dense(64, relu) -> Dropout(0.3) -> Dense(32, relu) -> Dense(output)
-```
-
-- Start layer widths at powers of two (64, 128, 256).
-- Shape the network as a pyramid: each layer roughly half the width of the one before it.
-- Overfitting -> remove a layer or increase dropout.
-- Underfitting -> add a layer or widen the existing ones.
-
-Must-have working knowledge before tuning anything further: data preprocessing (normalization, encoding, train/val/test split), recognizing overfitting (validation loss rising while training loss falls), the basic hyperparameters (learning rate, batch size, epochs), and the fact that raw accuracy is often misleading on imbalanced data. Optimizer choice, advanced regularization, custom losses, and architecture search are nice-to-have, not must-have.
-
 ### AutoML notes
 
 AutoML (AutoGluon, H2O AutoML, FLAML; workflowsets in R) is a legitimate way to get a fast baseline and a proof-of-concept, and it bundles hyperparameter tuning. It is not a substitute for a considered model.
@@ -116,10 +95,9 @@ A workable default workflow: start with a simple model (e.g. XGBoost) as the rea
 
 1. **Missing values** — native NaN handling or simple imputation plus a missingness indicator, per the prediction default above.
 2. **Scaling** — normalization (0–1) or standardization (mean 0, std 1).
-3. **Discretization** — continuous to categorical; optional, and often does not help.
-4. **Encoding categoricals** — see the hashing trick below for categories that are not fixed in advance.
-5. **Feature crossing** — model non-linear relationships between features explicitly.
-6. **Positional embeddings** — for sequence-based data.
+3. **Encoding categoricals** — see the hashing trick below for categories that are not fixed in advance.
+4. **Feature crossing** — model non-linear relationships between features explicitly.
+5. **Positional embeddings** — for sequence-based data.
 
 **Ordering constraint that matters most: every fitted step — impute, scale, encode, select, tune — is fit on training folds only, inside CV.** Fitting any statistic on the full dataset before splitting leaks test-set information into training and inflates validation performance in a way that will not hold in production.
 
@@ -191,8 +169,6 @@ Online: shadow, then canary with pre-declared rollback metrics, then full rollou
 
 Batch: backtest on historical windows, then parallel run alongside the incumbent, then switch. Switch only after the parallel run matches the backtest within the pre-declared tolerance.
 
-Skipping shadow or canary (online) or backtest or parallel run (batch) reintroduces the risk the sequence was built to remove.
-
 ### Retraining triggers
 
 Retrain on any of these signals, not on a schedule alone:
@@ -202,17 +178,6 @@ Retrain on any of these signals, not on a schedule alone:
 - **Data-distribution shift** — PSI above 0.25 signals major shift, above 0.1 minor shift; investigate major shifts and monitor minor ones. Use a proxy metric such as prediction distribution or feature means when labels arrive late.
 - **Business event** — a product launch, a seasonal change, or another event known to shift the underlying data-generating process.
 
-## Common pitfalls
-
-- Optimizing a technical metric (accuracy, F1) that was never tied back to a business metric — this is the single most common way "successful" ML projects fail to matter.
-- Comparing a new model only to its own past runs, never to the baseline ladder — a model can look good in isolation and still lose to a domain heuristic.
-- Treating every missing-value column the same way (blanket drop or blanket impute) instead of using native NaN handling or imputation plus a missingness indicator — this silently discards signal, especially where the missingness itself carries information.
-- Reaching for deep learning on structured/tabular data by default, when a gradient-boosted tree model is usually both simpler and stronger there.
-- Fitting any preprocessing step (imputation, scaling, encoding, selection, tuning) outside cross-validation — a data-leakage bug that inflates offline metrics and does not survive contact with production.
-- Hard-coding a fixed category vocabulary for categorical features, so the first unseen category in production crashes or silently mis-encodes.
-- Skipping a deployment stage (e.g. shadow or canary) to ship faster, which removes the exact safety net staged deployment is designed to provide.
-- Treating retraining as purely calendar-based and missing distribution-shift or business-event triggers that matter more than the clock.
-
 ## Source
 
-This skill distills notes sourced from Chip Huyen, *Designing Machine Learning Systems*, with layer-design and data-type guidance additionally informed by general deep-learning practice notes. Treat specific library and model names as a snapshot of common practice at the time of writing, not a permanent recommendation.
+This skill distills Chip Huyen, *Designing Machine Learning Systems* (2022); the tabular defaults reflect tabular-foundation-model practice (2024–2026). Treat specific library and model names as a snapshot of common practice at the time of writing, not a permanent recommendation.
