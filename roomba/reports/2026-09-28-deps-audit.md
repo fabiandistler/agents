@@ -23,13 +23,15 @@ Green, 14/14, captured before the run from the `ci.yml` step sequence
 | `python -m compileall -q scripts skills` | pass |
 | `pytest skills/release-pr/scripts/test_release_state.py` | pass (16 passed) |
 | `shellcheck -S warning` | pass |
+| `prek run --all-files` | pass (9 hooks) |
 | `bash scripts/test_install.sh` | pass |
 
 Two notes on the baseline itself:
 
 - ROOMBA.md's *Baseline* block lists ten commands and is now short of `ci.yml`, which
   also runs `check_instructions.py`, `check_evals.py`, the `release-pr` pytest file and
-  `prek run --all-files`. The block was used as a starting point, not as the authority.
+  `prek run --all-files`. All four were run here: the block was used as a starting point,
+  not as the authority.
 - Per the standing WSL caveat this run does **not** claim "ruff is clean": on this host
   ruff reports none of the `flake8-executable` rules (`EXE001`–`EXE003`) whatever the
   file's real mode. CI decides those alone.
@@ -190,9 +192,11 @@ Surfaced while establishing the findings above; each is outside `deps-audit` and
 as a single Backlog line without further work.
 
 - `roomba-gate.yml` was deliberately deleted (`58fc561`). ROOMBA.md still claims
-  `security-footguns` runs in CI as `roomba-gate → gitleaks`, so that row is now false and
-  the repository has no secret scanning on `main`. Not re-added here: restoring a
-  deliberately removed gate is a decision, not maintenance.
+  `security-footguns` runs in CI as `roomba-gate → gitleaks`, so that row is now false:
+  gitleaks appears in no tracked file, and no CI workflow runs it. That rules out a
+  gitleaks gate; it says nothing about GitHub's own secret scanning or push protection,
+  which were not checked. Not re-added here: restoring a deliberately removed gate is a
+  decision, not maintenance.
 - The `.serena/` Backlog item is resolved — the directory is gone and the tree is clean.
 - `.pre-commit-config.yaml`'s comment advises pinning the rule set with `select`, where
   `ruff.toml` correctly uses `extend-select`. Documentation drift, so `doc-drift`'s to take.

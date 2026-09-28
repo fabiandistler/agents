@@ -15,7 +15,7 @@ job IDs, cooldowns and the scoring rule are unchanged.
 | Last run | 2026-09-28 (`deps-audit`) |
 | Last job | `deps-audit` — 6 findings, 0 version bumps; no pin is outdated |
 | Next due job | see *Jobs* table — `score = (today - last run) / cooldown`, highest wins |
-| Baseline status | green, 2026-09-28 (14/14, captured from `ci.yml`, not the block below) |
+| Baseline status | green, 2026-09-28 (14/14, captured from `ci.yml`, which the block below no longer matches) |
 | Open roomba PRs | see `gh pr list --state open --search "head:roomba/"` |
 
 ## Rules
@@ -148,9 +148,10 @@ The catalogue-relevant analogues in this repository are:
   `prek`. Pin it the first time the gate fails for no reproducible reason.
 - **ROOMBA.md's *What does NOT belong in this catalogue* table is false for
   `security-footguns`.** It routes the job to `roomba-gate → gitleaks`, but
-  `roomba-gate.yml` was deliberately deleted in `58fc561`, so there is no secret scanning
-  on `main`. Either restore a gate or drop the claim — restoring a deliberately removed
-  workflow is a decision, not maintenance. Recorded by the 2026-09-28 run.
+  `roomba-gate.yml` was deliberately deleted in `58fc561`, and gitleaks appears in no
+  tracked file, so no CI workflow runs it. (GitHub's own secret scanning was not checked.)
+  Either restore a gate or drop the claim — restoring a deliberately removed workflow is a
+  decision, not maintenance. Recorded by the 2026-09-28 run.
 - **ROOMBA.md's *Baseline* block is short of `ci.yml`.** It lists ten commands and omits
   `check_instructions.py`, `check_evals.py`, the `release-pr` pytest file and `prek run
   --all-files`. The 2026-09-28 run captured its baseline from `ci.yml` instead. Sync the
