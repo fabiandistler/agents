@@ -10,8 +10,10 @@ description: Generate a standup / status update from recent development activity
 
 # Repo Status
 
-Turn recent activity into a short async standup update for a team channel.
-Draft first; ask afterwards.
+Turn recent development activity into a short, shareable async standup update —
+the kind people paste into a team channel instead of reading out at a meeting.
+Bias toward producing a usable draft quickly rather than interrogating the user
+for details. Draft first; ask afterwards.
 
 ## When to use
 
@@ -25,7 +27,10 @@ skill instead, which settles audience and update type before drafting.
 
 ## Get the raw material
 
-**Pull it from connected tools** instead of asking the user to recall it:
+There are two ways to gather what happened; prefer the first.
+
+**Pull it from connected tools.** If the user has development tools connected,
+gather the activity yourself instead of asking them to recall it:
 
 - **Source control** — commits, and pull requests opened, reviewed, or merged in
   the window. Summarize the *change*, not the commit text.
@@ -43,8 +48,8 @@ there.
 ### Reporting window
 
 Default to the last working day's start → now (on Monday, start Friday 00:00).
-The user can override the window — name the actual window under the header so
-the reader knows what "Yesterday" covers.
+The user can override the window — put the actual window in the header so the
+reader knows what "Yesterday" covers.
 
 ### In a repository
 
@@ -57,7 +62,8 @@ the author with `gh api user --jq .login` or the user's stated email — never
 - PRs reviewed: `gh search prs --reviewed-by=@me --updated=">=<date>" --json number,title,state,repository`
 - CI status: `gh run list --limit 5`
 
-Without `gh`, fall back to git-only and structure what the user tells you.
+If `gh` is missing or unauthenticated, fall back to git-only and structure
+what the user tells you for PRs and CI.
 
 **Or structure what the user tells you.** If nothing is connected, or the user just narrates, organize those notes into the format below.
 
@@ -66,10 +72,9 @@ Without `gh`, fall back to git-only and structure what the user tells you.
 Produce this structure:
 
 ```markdown
-## Standup — [<date>]
+## Repo Status — [<start date> → <end date>]
 
 **Focus:** [one-line goal this update serves — omit when there is none]
-**Window:** [<start date> → <end date>]
 
 ### Yesterday
 - [Outcome reached, with a ticket/PR reference where there is one]
@@ -83,13 +88,12 @@ Produce this structure:
 
 Write outcomes, not activity: the result ("auth migration live behind its flag")
 rather than the motion ("worked on auth"). Each blocker names who can unblock
-it and what is needed. With no blockers, write "None".
+it and what is needed from them. With no blockers, write "None" below the heading.
 
 ### Scoping with the argument
 
-With `yesterday`, `today`, or `blockers`, produce only that section. With
-free-text scope, filter all three sections to that topic. With no argument,
-produce all three.
+With `yesterday`, `today`, or `blockers`, produce only that section. With no
+argument, produce all three.
 
 ## Formatting for where it's going
 

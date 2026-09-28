@@ -2,7 +2,7 @@
 name: documentation
 category: communication
 environments: coding, chat
-description: Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, or package docs. Covers per-type skeletons, audience targeting, and keeping docs current instead of stale.
+description: Producing technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. Covers per-type skeletons, audience targeting, and keeping docs current instead of stale.
 ---
 
 # Technical Documentation
@@ -23,9 +23,9 @@ drafting, and say out loud where the doc will rot.
 Do **not** use for:
 
 - **Decision records** — a doc whose subject is *why we chose X over Y* is an
-  ADR. Use the `architecture` skill (`adr-workflow`).
+  ADR. Use `adr-workflow`.
 - **Architecture diagrams** — for the notation itself (context/container/
-  component views) use the `architecture` skill (`c4-modeling`); this skill only says where a diagram goes
+  component views) use `c4-modeling`; this skill only says where a diagram goes
   in the surrounding document.
 - **Rules files for coding agents** (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`) —
   those are distilled constraints kept short in the repo root; no skill governs
@@ -33,10 +33,6 @@ Do **not** use for:
 - **The shape of an explanatory passage** — when a section has to explain a
   concept, `problem-first-explanation` governs its structure (problem before
   solution). It composes with this skill rather than replacing it.
-- **Status updates for outside readers** — a weekly status, launch
-  announcement, or escalation is `stakeholder-update`, not a document.
-- **Self-contained HTML deliverables** — a comparison, timeline, or
-  interactive page the reader keeps or shares is `html-artifacts`.
 
 ## Workflow
 
@@ -105,8 +101,6 @@ doc wrong, and what would catch it:
 - Which values will drift (versions, endpoints, env vars, owners, screenshots).
 - What keeps them honest: a doctest, a CI check that greps the README's
   commands, a link to the generated reference instead of a hand-copied table.
-  Default checks: lychee for links, Vale with the Google package for prose,
-  doctests or R CMD check for runnable examples, Sphinx linkcheck for built sites.
 - Who owns the doc, if the project tracks that.
 
 A doc with no rot story is a doc that will silently become misinformation.
@@ -128,12 +122,11 @@ subagents, give the user the questions to try with the doc in a fresh chat.
 
 Keep the Markdown source plain with stable headings, generate the `llms.txt`
 index with the site tool rather than hand-writing one, and never put content
-only in images. If a site generator is chosen, prefer Zensical — Material for
-MkDocs reaches end of life in November 2026.
+only in images.
 
 ## Principles
 
-Five checks, each with the tell that you violated it:
+Upstream's five, each with the tell that you violated it:
 
 1. **Write for the reader.** *Tell:* you cannot say who would be annoyed if a
    section were deleted.
