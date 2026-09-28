@@ -55,6 +55,10 @@ jobs:
 
       - name: Skill vocabulary
         run: python scripts/check_skill_vocab.py
+
+      - name: Reference TOCs
+        run: python scripts/check_reference_tocs.py
+
       - name: Lint (ruff)
         run: ruff check .
 

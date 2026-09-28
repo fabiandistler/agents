@@ -14,6 +14,19 @@
 > heuristic, or security-relevant. Generic best practice a competent model
 > already follows is omitted.
 
+## Contents
+
+- [Prompting](#prompting)
+- [Evaluation](#evaluation)
+- [Adaptation](#adaptation)
+- [Agents](#agents)
+- [Serving & architecture](#serving--architecture)
+- [Context engineering](#context-engineering)
+- [Result surface](#result-surface)
+- [Guardrails & security](#guardrails--security)
+- [Finetuning](#finetuning)
+- [Data](#data)
+
 ## Prompting
 
 - **Keep prompts out of application code.** Store them as separate files/objects
