@@ -121,7 +121,7 @@
     },
     {
       "name": "llm-application-engineering",
-      "summary": "Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning.",
+      "summary": "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring.",
       "category": "ai-ml",
       "path": "skills/llm-application-engineering/SKILL.md",
       "environments": [

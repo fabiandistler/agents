@@ -14,6 +14,9 @@
 > Keep-filter: counter-default, quantitative heuristic, or security-relevant.
 > Generic best practice a competent model already follows is omitted.
 
+Contents: Tool Design, Orchestration & Context, Agent Evaluation,
+Memory & Retrieval, Deployment & Learning, Monitoring, Security, UX.
+
 ## Tool Design
 
 _Net-new vs. the Huyen sheet, which covers guardrails and code-sandboxing but
@@ -132,9 +135,11 @@ integration and drift triage._
   ≥80% failure rate = systematic bug for engineering; otherwise check drift
   statistically (PSI > 0.25 major / > 0.1 minor, KS > 0.1)** instead of chasing
   single-sample noise. (Ch. 10)
-- **Escalate to a human on low model certainty (self-reported score < ~0.7 or
-  >20% divergence across an ensemble of runs) or high consequence;** tune
-  thresholds so < ~10% of cases escalate. (Ch. 11)
+- **Escalate to a human on low model certainty (>20% divergence across an
+  ensemble of runs, or low mean token logprobs) or high consequence;** a
+  self-reported confidence score is a weak tiebreaker only, since verbalized
+  confidence is poorly calibrated. Tune thresholds so < ~10% of cases
+  escalate. (Ch. 11)
 
 ## Security
 
