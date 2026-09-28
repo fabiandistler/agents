@@ -35,6 +35,9 @@ jobs:
       - name: Instruction fragments valid
         run: python scripts/check_instructions.py
 
+      - name: coding-conventions skill in sync with instructions/
+        run: python scripts/build_conventions_skill.py --check
+
       - name: Skill frontmatter valid
         # compileall proves the validator parses; only running it proves its
         # allowlist still matches the frontmatter this repo actually ships.

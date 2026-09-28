@@ -26,6 +26,11 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   Content outside the markers is never touched. A fragment with a `paths:`
   field goes to Claude as a path-scoped rule in `~/.claude/rules/` instead
   (codex and opencode keep it in their block).
+  Chat surfaces without a global instruction file (Claude Desktop,
+  claude.ai, Cowork, Langdock) get the same fragments as the
+  `coding-conventions` skill: `scripts/build_conventions_skill.py`
+  regenerates its body from `instructions/` (CI checks it for drift), so
+  after editing a fragment, run it and commit the result.
 - `plugins/` packages the same skills as Claude plugins, one plugin per
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
@@ -93,6 +98,7 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
+| [coding-conventions](skills/coding-conventions/SKILL.md) | Applying the standing coding conventions from `instructions/` on chat surfaces without a global instruction file — Claude Desktop, claude.ai, Cowork, and Langdock. |
 | [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
 | [oss-scouting](skills/oss-scouting/SKILL.md) | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
 | [poc-spec-loop](skills/poc-spec-loop/SKILL.md) | Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request. |

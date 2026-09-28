@@ -1,0 +1,13 @@
+{
+  "should_trigger": [
+    "Write me an R function that reads a CSV and aggregates sales by region.",
+    "Set up a new Python package with uv and a test setup.",
+    "Review this Python module before I open a pull request.",
+    "My third fix for this bug broke something else again — what now?"
+  ],
+  "should_not_trigger": [
+    "Plan my week around three deadlines and a dentist appointment.",
+    "Summarize this article about the history of the printing press."
+  ],
+  "expected_behavior": "Applies the repo's standing conventions: uv and ruff for Python, data.table and package::fun() for R, no new code comments, English in code, branch-before-main and tests-with-change for PR work, and a stop after the third failed fix."
+}

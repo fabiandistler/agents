@@ -25,7 +25,7 @@
     {
       "name": "workflow",
       "source": "./plugins/workflow",
-      "description": "Planning and workflow skills: natural planning, repo status updates, release PRs for R and Python packages, and open-source contribution scouting."
+      "description": "Planning and workflow skills: natural planning, repo status updates, release PRs for R and Python packages, open-source contribution scouting, and the standing coding conventions for chat surfaces."
     },
     {
       "name": "communication",

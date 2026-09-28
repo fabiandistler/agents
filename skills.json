@@ -12,7 +12,7 @@
     },
     {
       "name": "ai-ml",
-      "summary": "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill. - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting.",
+      "summary": "Building AI/ML systems — engineering an LLM or foundation-model application (prompts, tool calling, evals) or running a machine-learning project from framing to deployment. Routes to the right sub-skill.",
       "category": "ai-ml",
       "path": "skills/ai-ml/SKILL.md",
       "activation": "router",
@@ -49,6 +49,19 @@
         "coding",
         "chat"
       ]
+    },
+    {
+      "name": "coding-conventions",
+      "summary": "Standing coding conventions — Python (uv, ruff), R (data.table, namespacing), PRs, comments, bug-fix limits, agent pipelines — for chats without a global instruction file.",
+      "category": "workflow",
+      "path": "skills/coding-conventions/SKILL.md",
+      "environments": [
+        "chat"
+      ],
+      "targets": [
+        "claude"
+      ],
+      "version": "1.0"
     },
     {
       "name": "communication-analysis",
@@ -121,7 +134,7 @@
     },
     {
       "name": "llm-application-engineering",
-      "summary": "Build, debug, or evaluate an application on top of an LLM: prompts, RAG, agents/tools, evals, guardrails, finetuning.",
+      "summary": "Guide the engineering of a foundation-model application across three linked decisions.",
       "category": "ai-ml",
       "path": "skills/llm-application-engineering/SKILL.md",
       "environments": [
@@ -150,7 +163,7 @@
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Run a classical ML project (training your own model on your own data): framing, baselines, model choice, missing data, deployment, retraining.",
+      "summary": "Guide a machine learning project from problem framing through model selection to production deployment.",
       "category": "ai-ml",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "environments": [
@@ -214,7 +227,7 @@
     },
     {
       "name": "pypet-snippets",
-      "summary": "Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
+      "summary": "Curate pypet command snippets — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
       "category": "workflow",
       "path": "skills/pypet-snippets/SKILL.md",
       "environments": [
