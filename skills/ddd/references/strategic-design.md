@@ -40,7 +40,7 @@ not a technical one.
 | **Business complexity** | High | Low | Moderate |
 | **Value** | Primary source of competitive advantage | No room for differentiation | Necessary for operations, not differentiating |
 | **Resourcing rule** | Best engineers, continuous investment, custom build | Buy, do not build | Pragmatic in-house, minimal investment |
-| **Examples** | Amazon's recommendation engine and logistics optimization; Google's search ranking and ad placement; Netflix's content recommendation and streaming tech | Auth (Auth0, Okta, AWS Cognito); payments (Stripe, PayPal, Square); email (SendGrid, Mailgun); monitoring (DataDog, New Relic); base CRM (Salesforce, HubSpot) | Company-specific user/role management, internal reporting/dashboards, integration between internal systems, company-specific ETL |
+| **Examples** | Recommendation engine; logistics optimization | Auth; payments; email delivery | Internal reporting dashboards; company-specific ETL |
 | **Common failure mode** | Treating it as commodity, buying/outsourcing it, losing the differentiator | Building it in-house anyway — burns developer time, creates tech debt, produces a worse result than the market offers | Over-engineering it with full DDD tactical patterns (wasted effort) *or* neglecting it entirely (tech debt, maintenance pain) |
 
 **Resource-allocation rule of thumb:** Core subdomains never get bought or
