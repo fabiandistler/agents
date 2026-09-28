@@ -35,6 +35,9 @@ Accepted values (aliases for high/low are reduced as shown):
 use those to override an alias near a threshold (e.g. a supporting subdomain
 under roadmap pressure is better stated as volatility "high").
 
+Saved inputs using the retired distance values function, class, or component
+are rejected; use method, object, or service instead.
+
 Verdicts, worst first:
 
     knowledge leak   strength AND distance AND volatility   (imbalanced)
@@ -91,6 +94,7 @@ VOLATILITY = {
 }
 
 
+# (strength, distance, volatility) -> (rank, verdict, balance label)
 VERDICTS = {
     (True, True, True): (0, "knowledge leak", "IMBALANCED"),
     (False, False, True): (1, "low cohesion", "IMBALANCED"),

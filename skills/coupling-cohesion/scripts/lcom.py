@@ -127,7 +127,7 @@ class ModuleReport:
 def analyze_python(path: Path, source: str) -> list[ModuleReport]:
     try:
         tree = ast.parse(source, filename=str(path))
-    except SyntaxError as exc:
+    except SyntaxError as exc:  # pragma: no cover - reported, not fatal
         sys.stderr.write(f"warning: skipping {path}: {exc}\n")
         return []
 
