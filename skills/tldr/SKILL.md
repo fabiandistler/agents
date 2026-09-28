@@ -111,7 +111,10 @@ translate back.
 
 ## When it is a different ask
 
-- **Writing a status from activity or for an outside audience.** A standup drafted from recent activity is `repo-status`; a status for readers outside the working group is `stakeholder-update`.
+- **Writing a status from activity or for an outside audience.** A standup
+  drafted from recent activity is a `repo-status` task (suggest the user run
+  the command); a status for readers outside the working group is
+  `stakeholder-update`.
 - **Short, and it still did not land.** The gap is missing premises. Back up and
   re-explain with them.
 - **The reasoning is the point** — a trade-off, a review call. Give the shape of

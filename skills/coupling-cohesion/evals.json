@@ -1,0 +1,12 @@
+{
+  "should_trigger": [
+    "is this utils.py a grab-bag?",
+    "which packages are in the Zone of Pain?",
+    "is it OK that orders and inventory share the Stock entity?"
+  ],
+  "should_not_trigger": [
+    "reduce cyclomatic complexity of this function",
+    "design components for a new app"
+  ],
+  "expected_behavior": "Routes grab-bag questions to Mode A cohesion, Pain-zone questions to Mode B metrics, and shared-entity questions to Mode C balanced coupling; stays silent on single-function complexity and greenfield decomposition (logical-component-design)."
+}
