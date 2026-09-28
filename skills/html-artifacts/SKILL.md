@@ -101,7 +101,7 @@ HTML artifacts cost roughly 2–4× the tokens of a markdown equivalent and take
 
 ## A note on taste
 
-Bad-looking HTML is worse than good markdown. If the artifact would render as a wall of generic Tailwind cards with emoji headers, slow down. Read `references/matching-your-style.md` first. If the user has a `frontend-design` skill or design system file in the repo, lean on it. If not, default to a calm typographic layout — system serif body, restrained palette, real structure — rather than a busy "dashboard" look.
+Bad-looking HTML is worse than good markdown. If the artifact would render as a wall of generic Tailwind cards with emoji headers, slow down. Read `references/matching-your-style.md` first. If the user has a design-system skill or design system file in the repo, lean on it. If not, default to a calm typographic layout — system serif body, restrained palette, real structure — rather than a busy "dashboard" look.
 
 ## A note on what this skill is not
 
