@@ -240,6 +240,14 @@ change.
   --script` to edit, `uv lock --script` when the run must reproduce.
 - A one-off command in SKILL.md (`uvx`, `npx`) is version-pinned, or it
   is not a convention.
+- Reference bundled skill scripts relative to the skill directory
+  (`python3 scripts/tool.py <repo-path>`), never via a repo-root path
+  (`skills/<name>/scripts/`, `members/<name>/scripts/`). The skill is
+  installed elsewhere, so the target repo is always passed as an argument.
+- Per-skill eval prompts live in `skills/<name>/evals.json` (>=3
+  `should_trigger`, >=1 `should_not_trigger`, optional `expected_behavior`;
+  see `docs/adr/0006-skill-eval-prompts.md`). CI's `scripts/check_evals.py`
+  reports coverage warn-only until content lands.
 
 ## Agent skills
 
