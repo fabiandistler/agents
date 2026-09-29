@@ -72,6 +72,27 @@ what you may leave out.
 One document, one job. If two rows apply, write two documents and link them —
 a README that also tries to be an architecture doc serves neither reader.
 
+**Pick the source format.** Plain Markdown is the default. Switch to an
+executable document — Quarto (`.qmd`), R Markdown (`.Rmd`), or a Jupyter
+notebook — when the doc shows output computed from code: a tutorial that prints
+results, a package vignette or article, a README with example output, an
+analysis write-up with plots or tables. Rendering reruns the code, so the
+output shown cannot drift from what the code produces.
+
+- New work: Quarto; it runs R (knitr) and Python (Jupyter) from one format. R
+  Markdown stays maintained but gets no major features — keep it where a
+  project already uses it rather than migrating unasked.
+- R package vignettes: `%\VignetteEngine{quarto::html}` from the quarto R
+  package, or `knitr::rmarkdown` for existing `.Rmd` vignettes. A README with
+  output: author `README.qmd`/`README.Rmd` and commit the rendered
+  `README.md`, since GitHub shows only the rendered file.
+- Add interactivity (htmlwidgets, Observable JS, Shiny) only when the reader's
+  job is to explore the data — a filterable table, a zoomable plot. A doc read
+  top to bottom gains nothing from it and loses its plain-text diff.
+- Do not use an executable format when nothing in the doc is computed, or when
+  the render toolchain (Quarto CLI, R, a kernel) is absent from the project and
+  its CI — then the output is pasted once and rots like any copied value.
+
 ### 3. Revise what exists before drafting
 
 When revising rather than starting fresh: audit each section against the
@@ -106,7 +127,8 @@ doc wrong, and what would catch it:
 - What keeps them honest: a doctest, a CI check that greps the README's
   commands, a link to the generated reference instead of a hand-copied table.
   Default checks: lychee for links, Vale with the Google package for prose,
-  doctests or R CMD check for runnable examples, Sphinx linkcheck for built sites.
+  doctests or R CMD check for runnable examples, Sphinx linkcheck for built sites,
+  a CI render (`quarto render`) for executable documents.
 - Who owns the doc, if the project tracks that.
 
 A doc with no rot story is a doc that will silently become misinformation.
