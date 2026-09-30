@@ -145,3 +145,27 @@ so there it is the router that carries the namespace
 
 In Claude Code, use either the plugins **or** the symlinks — with both at once
 every skill appears twice.
+
+## Cloud sessions (`.claude/` in this repo)
+
+Claude Code cloud sessions start from a fresh clone: they never see
+`~/.claude/`, and they do not install plugins a repository enables in
+`.claude/settings.json`. So this repo commits what a cloud session in it
+should have:
+
+| Path | Contents | Maintained by |
+| --- | --- | --- |
+| `.claude/skills/<name>` | symlinks to this repo's `coding` skills (routers, unrouted skills, command skills) | `scripts/build_project_claude.py` |
+| `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
+| `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
+| `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
+
+After changing a skill's frontmatter or an instruction fragment, regenerate
+the manifest and then run `python3 scripts/build_project_claude.py`; CI fails
+on drift (`--check`). Refresh the vendored skills with
+`python3 scripts/vendor_mattpocock_skills.py` (optionally `--ref <sha>`).
+
+Locally the same project skills would duplicate the marketplace plugins, so
+`.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
+off for sessions inside this repo only. The vendored `code-review` shadows
+Claude Code's built-in skill of that name in this repo.

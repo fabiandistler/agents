@@ -1,0 +1,15 @@
+---
+managed-by: fabiandistler/agents build_project_claude.py
+---
+
+## Scripts an agent runs
+
+Applies to any executable an agent invokes: skill or plugin scripts, hook commands, CI helpers.
+
+- Never read from an interactive prompt. Agents run non-interactive shells; a TTY prompt hangs the session until timeout. Take every input as a flag, env var, or stdin. On a missing required input, exit non-zero naming the flag and its allowed values.
+- `--help` is the agent's only interface documentation — one usage line, the flags, two examples. It is also context cost: keep it under ~25 lines.
+- Distinct exit code per failure class, documented in `--help`, so the caller can branch without parsing prose. Data to stdout, diagnostics to stderr.
+- One named verb per write, narrowest stable ID, `--dry-run` first; never hide writes in `fix`/`auto`/raw.
+- Secrets from env or config, never a flag (shell history, `ps`); never echo them, not in `--json` errors.
+- Smoke-test the installed command from `/tmp`, not the source folder.
+- Bound the output. Harness output is truncated past roughly 10–30k characters, silently. Default to a summary; offer `--output FILE` and `--offset` for the rest.

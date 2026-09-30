@@ -1,0 +1,1 @@
+../../plugins/architecture/agents/cohesion-analyst.md
