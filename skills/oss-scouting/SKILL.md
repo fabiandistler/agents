@@ -8,7 +8,7 @@ compatibility: Requires git and the GitHub CLI (`gh`, read-only). Running a cand
 argument-hint: "<owner>/<repo>"
 description: Scout one third-party open-source repository for open issues that suit a small, clean contribution, and write repro, root-cause analysis, fix diff, test, and a submit checklist to a local folder only.
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # OSS Scouting
@@ -102,6 +102,10 @@ for policies hosted off-repo (for example llvm.org, devguide.python.org, docs.ke
 Additionally search the repo and the docs
 for `AI`, `LLM`, `generative`, `Copilot`, `ChatGPT`, `Claude`,
 `machine-generated`, `disclosure`, `Assisted-by`, `vouch`, `provenance`.
+Then cross-check the project against
+<https://github.com/melissawm/open-source-ai-contribution-policies>, a curated
+list of per-project AI contribution policies. Still verify every finding in the
+repo — the list can lag, and its own classification is only a rough guide.
 
 Summarize in README.md as a table:
 
@@ -110,6 +114,7 @@ Summarize in README.md as a table:
 | AI-assisted contributions | allowed / allowed with disclosure / rejected / no explicit policy | file/URL |
 | Who may open PRs | open / issue-approved-only / vouched-only / collaborators-only / closed | file/URL |
 | Disclosure format and wording | trailer / PR-template field / free text; quote exact wording | |
+| AI in communication (PR description, issue/discussion comments) | allowed / disclosure required / own words only / no explicit policy | file/URL |
 | DCO / CLA | sign-off needed? CLA bot? | |
 | Tests | framework, mandatory?, how to invoke | |
 | NEWS/changelog | entry required? format? | |
@@ -232,6 +237,7 @@ their own work.
 - [ ] DCO sign-off / CLA: <left for the user on submission, never in drafts>
 - [ ] AI disclosure in the recorded format: <e.g. `Assisted-by: <agent>:<model> [tools]` trailer>
 - [ ] PR template fields: <list>
+- [ ] PR description and issue comments in the recorded form: <own words only / disclosure / free>
 - [ ] Scope: this fix only, no side changes
 ```
 
