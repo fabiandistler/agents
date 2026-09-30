@@ -46,6 +46,8 @@ PLUGINS_DIR = REPO_ROOT / "plugins"
 CLAUDE_DIR = REPO_ROOT / ".claude"
 ENVIRONMENT = "coding"
 RULE_MARKER = "managed-by: fabiandistler/agents build_project_claude.py"
+# Fragments that do not apply to work on this repo.
+SKIPPED_FRAGMENTS = frozenset({"60-code-comments.md"})
 FIELD = re.compile(r"^([a-z]+):[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 
 
@@ -94,6 +96,8 @@ def wanted_rules() -> dict[Path, str]:
     rules: dict[Path, str] = {}
     files = tracked_files()
     for fragment in sorted(INSTRUCTIONS_DIR.glob("*.md")):
+        if fragment.name in SKIPPED_FRAGMENTS:
+            continue
         fields, body = split_fragment(fragment.read_text(encoding="utf-8"))
         targets = [t.strip() for t in fields.get("targets", "all").split(",")]
         if "all" not in targets and "claude" not in targets:
