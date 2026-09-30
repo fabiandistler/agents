@@ -169,6 +169,11 @@ def validate_skill(skill_path):
         # Check name length (max 64 characters per spec)
         if len(name) > 64:
             return False, f"Name is too long ({len(name)} characters). Maximum is 64 characters."
+        # The Agent Skills format requires the name to match the parent
+        # directory; install.sh links by directory, the manifest keys by name.
+        dir_name = skill_path.absolute().name
+        if name != dir_name:
+            return False, f"Name '{name}' must match the skill directory '{dir_name}'"
 
     # Extract and validate description
     description = frontmatter.get("description", "")
@@ -189,16 +194,8 @@ def validate_skill(skill_path):
                 False,
                 f"Description is too long ({len(description)} characters). Maximum is 1024 characters.",
             )
-        # This repo budgets descriptions far tighter than the spec (≤250 chars,
-        # ≤400 for the allowlist in scripts/check_descriptions.py). Warn rather
-        # than fail here — CI's check_descriptions.py is the hard gate — so the
-        # validator stays usable for skills outside this repo.
-        if len(description) > 250:
-            print(
-                f"WARNING: description is {len(description)} chars; this repo's budget is "
-                "≤250 (≤400 for the high-traffic allowlist). Move trigger lists into a "
-                "'## When to use' body section."
-            )
+        # This repo's tighter per-skill budgets (default, allowlist, router)
+        # live only in scripts/check_descriptions.py, the CI gate for them.
 
     # Claude Code appends 'when_to_use' to the description in the skill listing,
     # so it reaches the system prompt the same way and carries the same '<'
