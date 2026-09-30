@@ -19,7 +19,8 @@ as a local install:
   2. `.claude/agents/<name>.md` -> the plugins' subagents.
   3. `.claude/rules/agents-<fragment>.md` rendered from `instructions/`: always
      loaded, or path-scoped when the fragment has `paths:` (same rendering as
-     install.sh).
+     install.sh). A path-scoped fragment is skipped while no tracked file
+     matches its globs (the R rules in this Python/Markdown repo).
 
 It owns only symlinks pointing into this repo and rule files carrying the
 `managed-by:` marker; anything else in `.claude/` (hand-written subagents, the
@@ -33,7 +34,9 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -76,8 +79,20 @@ def split_fragment(text: str) -> tuple[dict[str, str], str]:
     return fields, text[end + 5 :]
 
 
+def tracked_files() -> list[str]:
+    return subprocess.run(
+        ["git", "ls-files"], cwd=REPO_ROOT, check=True, capture_output=True, text=True
+    ).stdout.splitlines()
+
+
+def matches_any(globs: list[str], files: list[str]) -> bool:
+    patterns = globs + [g.removeprefix("**/") for g in globs if g.startswith("**/")]
+    return any(fnmatchcase(f, p) for f in files for p in patterns)
+
+
 def wanted_rules() -> dict[Path, str]:
     rules: dict[Path, str] = {}
+    files = tracked_files()
     for fragment in sorted(INSTRUCTIONS_DIR.glob("*.md")):
         fields, body = split_fragment(fragment.read_text(encoding="utf-8"))
         targets = [t.strip() for t in fields.get("targets", "all").split(",")]
@@ -87,6 +102,8 @@ def wanted_rules() -> dict[Path, str]:
         # loads a rule whose frontmatter does not parse unconditionally.
         header = "---\n"
         globs = [g.strip() for g in fields.get("paths", "").split(",") if g.strip()]
+        if globs and not matches_any(globs, files):
+            continue  # path-scoped to files this repo does not have
         if globs:
             header += "paths:\n" + "".join(f'  - "{g}"\n' for g in globs)
         header += f"{RULE_MARKER}\n---\n\n"
