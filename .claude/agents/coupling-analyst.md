@@ -1,0 +1,1 @@
+../../plugins/architecture/agents/coupling-analyst.md

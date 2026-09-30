@@ -1,0 +1,11 @@
+{
+  "enabledPlugins": {
+    "architecture@fabiandistler-agents": false,
+    "refactoring@fabiandistler-agents": false,
+    "ai-ml@fabiandistler-agents": false,
+    "workflow@fabiandistler-agents": false,
+    "communication@fabiandistler-agents": false,
+    "personal@fabiandistler-agents": false,
+    "mattpocock-skills@mattpocock": false
+  }
+}
