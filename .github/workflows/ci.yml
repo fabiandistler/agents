@@ -65,10 +65,12 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
-      - name: release-pr fixture tests
+      - name: Script tests
+        # Collects every test_*.py under scripts/ and skills/; naming one file
+        # here left the other skills' tests unrun.
         run: |
-          pip install pytest
-          pytest skills/release-pr/scripts/test_release_state.py
+          pip install pytest "pyyaml>=6"
+          pytest scripts skills
 
       - name: Hooks in sync (prek)
         run: |

@@ -58,7 +58,7 @@ rather than applying it ad hoc.
   feedback loop before any irreversible or quality-critical step. (warn)
 - **B4** One default per decision, with an escape hatch — not a menu of
   equivalent options. (warn)
-- **B5** Consistent terminology within the skill; uses `CONTEXT.md` terms
+- **B5** Consistent terminology within the skill; uses `GLOSSARY.md` terms
   where the concept exists there. (nit)
 - **B6** Degree of freedom fits the task: fragile sequences are exact
   commands, judgement tasks are heuristics. (warn)

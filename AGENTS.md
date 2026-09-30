@@ -132,7 +132,7 @@ machine consumption prefer `skills.json`.
 
 - A skill lives in `skills/<skill-name>/` and has a `SKILL.md` at its root.
 - `SKILL.md` starts with YAML frontmatter providing at minimum:
-  - `name` — must match the directory name.
+  - `name` — must match the directory name (`scripts/quick_validate.py` enforces it).
   - `category` — one of `architecture`, `refactoring`,
     `ai-ml`, `workflow`, `communication`, `personal` (the fixed list in
     `scripts/build_manifest.py`). Determines the catalogue section, the
@@ -275,7 +275,7 @@ The five canonical triage roles use their default label strings (`needs-triage`,
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ### Weekly skill audit
 

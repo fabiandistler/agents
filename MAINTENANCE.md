@@ -69,7 +69,7 @@ python scripts/check_evals.py
 for d in skills/*/; do [ -f "$d/SKILL.md" ] && python3 scripts/quick_validate.py "$d"; done
 uvx ruff@latest check .
 python -m compileall -q scripts skills
-uvx --with pytest pytest skills/release-pr/scripts/test_release_state.py
+uvx --with pyyaml pytest scripts skills
 uvx --from shellcheck-py shellcheck -S warning \
   install.sh scripts/test_install.sh scripts/maintenance-scan.sh
 uvx prek run --all-files

@@ -105,7 +105,7 @@ Three things stay load-bearing however long the source is:
 Prose follows the conversation, terms follow the source. The cliffs are written
 in the language the chat is in — an English PR summarised into a German thread
 comes back German. What stays in the source's own words are the terms
-themselves: identifiers, error strings, and a repo's `CONTEXT.md` ubiquitous
+themselves: identifiers, error strings, and a repo's `GLOSSARY.md` ubiquitous
 language. Translating those, or inventing a cleaner label, makes the reader
 translate back.
 
