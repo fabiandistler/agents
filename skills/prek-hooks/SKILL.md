@@ -4,7 +4,7 @@ category: workflow
 description: Set up prek git hooks in Python/R repos — detects project type and assembles a pinned pre-commit config from fragments.
 environments: coding
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Prek Hooks
@@ -15,7 +15,7 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
 
 - A Python repo, an R repo, or a mixed repo needs Git hooks from scratch.
 - An existing `.pre-commit-config.yaml` should be rebuilt from pinned fragments after drift.
-- Commits need formatting and linting on every commit: ruff and ty for Python, air and lintr for R, plus generic whitespace and file checks.
+- Commits need formatting and linting on every commit: ruff and ty for Python, air and jarl for R (lintr on push), plus generic whitespace and file checks.
 - A pure R repo should avoid a Python virtualenv just for whitespace checks.
 
 ## Workflow
@@ -28,7 +28,7 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
     references/setup-hooks.sh --builtin
     references/setup-hooks.sh --force
     ```
-4. **Let the script assemble and install.** It concatenates the base fragment with `references/fragments/python.yaml` and/or `references/fragments/r.yaml` into `.pre-commit-config.yaml` with a date header, then runs `prek update --cooldown-days 7` and `prek install`.
+4. **Let the script assemble and install.** It concatenates the base fragment with `references/fragments/python.yaml` and/or `references/fragments/r.yaml` into `.pre-commit-config.yaml` with a date header, then runs `prek update --cooldown-days 7` and `prek install` (in R repos for both the pre-commit and pre-push hook types).
 5. **Format once in its own commit.** The script intentionally does not run the first pass. Run it manually; it reformats the whole repo and produces a large diff that does not belong in the next feature commit.
     ```bash
     prek run --all-files
@@ -39,7 +39,7 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
 | Decision | Reason |
 |---|---|
 | air for R formatting, not styler | air is a binary and needs neither R nor `renv`; the styler path via `lorenzwalthert/precommit` runs through a renv environment |
-| lintr in addition to air | linting stays R-bound, there is no binary replacement |
+| jarl on commit, lintr on pre-push | jarl is a Rust binary and lints in milliseconds without R; lintr still covers the rules jarl lacks (semantic analysis, e.g. unreachable code) |
 | ruff-check before ruff-format | `--fix` results still get formatted |
 | ty as typechecker, not mypy | uv-native and fast |
 | Compat path as default | the config also runs under original pre-commit; prek still uses its native implementations |
@@ -50,7 +50,8 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
 - ty is at 0.0.x. Breaking changes between patch versions are expected. A mypy replacement block is included in `references/fragments/python.yaml`.
 - `lorenzwalthert/precommit` publishes only development tags (`v0.4.3.90xx`). The pin is the newest one as of 2026-09-26; `prek update` during setup moves it forward.
 - ruff ≥ 0.16 enables 413 rules by default (up from 59). In a repo without its own rule selection the first `prek run --all-files` floods it with findings; the setup script warns when it finds no ruff config. Pin e.g. `[tool.ruff.lint] select = ["E", "F", "I", "B", "UP"]`.
-- lintr is the expensive hook. renv restore on the first run, and an R version change invalidates the cache. `stages: [pre-push]` is prepared in the fragment when the commit path is too slow.
+- lintr is the expensive hook. renv restore on the first run, and an R version change invalidates the cache. That is why it runs on `pre-push`; the setup script installs that hook type for R repos (`prek install --hook-type pre-push`), plain `prek install` would skip it.
+- jarl covers a subset of lintr's rules (55+ as of 0.6.0) and deliberately no formatting rules. Its hook is `language: python`: no R needed, but prek creates a small venv on first run. It also checks `.Rmd`/`.qmd`. Rule selection goes in a `jarl.toml` at the repo root.
 - The compat path is not setup-free. prek clones `pre-commit-hooks` and creates a venv fallback even when execution runs natively.
 
 ## References
@@ -59,4 +60,4 @@ Set up Git hooks with [prek](https://prek.j178.dev/) as the runner, a single-bin
 - `references/fragments/base-compat.yaml` — generic hooks, pre-commit compatible (pinned `v6.0.0`).
 - `references/fragments/base-builtin.yaml` — same hooks as prek builtins, prek-only.
 - `references/fragments/python.yaml` — ruff-check `--fix`, ruff-format, ty (pinned `v0.16.9`, `v0.0.84`, verified 2026-09-26).
-- `references/fragments/r.yaml` — air-format, lintr (pinned `0.11.0`, `v0.4.3.9032`, verified 2026-09-26).
+- `references/fragments/r.yaml` — air-format, jarl-check, lintr on pre-push (pinned `0.11.0`, `0.6.0`, `v0.4.3.9032`; jarl verified 2026-10-01).

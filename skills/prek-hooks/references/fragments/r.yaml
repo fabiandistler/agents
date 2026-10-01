@@ -7,12 +7,22 @@
     hooks:
       - id: air-format
 
-  # R-Linting ueber lintr. Braucht System-Rscript und stellt eine
-  # renv-Umgebung her — das ist der langsame Teil des Setups, vor allem
-  # beim ersten Lauf und nach jedem Wechsel der R-Version.
-  # Wenn das im Commit-Pfad stoert: stages auf pre-push umstellen.
+  # Schnelles R-Linting ueber jarl im Commit-Pfad. Rust-Binary auf Basis von
+  # air, braucht kein R und kein renv. Der Hook ist language: python und
+  # installiert jarl einmalig in einen Hook-venv. Prueft auch .Rmd/.qmd.
+  # Deckt nur einen Teil der lintr-Regeln ab (keine semantische Analyse,
+  # keine Formatierungsregeln, die macht air).
+  - repo: https://github.com/etiennebacher/jarl-pre-commit
+    rev: 0.6.0
+    hooks:
+      - id: jarl-check
+
+  # Volles R-Linting ueber lintr, erst beim Push: braucht System-Rscript und
+  # stellt eine renv-Umgebung her, der langsame Teil des Setups. Faengt, was
+  # jarl (noch) nicht abdeckt. Fuer lintr im Commit-Pfad die Zeile stages
+  # entfernen.
   - repo: https://github.com/lorenzwalthert/precommit
     rev: v0.4.3.9032
     hooks:
       - id: lintr
-        # stages: [pre-push]
+        stages: [pre-push]
