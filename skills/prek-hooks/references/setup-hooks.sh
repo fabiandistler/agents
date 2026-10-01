@@ -17,7 +17,7 @@
 #   Anpassung: kein Fund -> Hookset kuerzen. Skript nie ein zweites Mal
 #              benutzt -> auf reine Templates zurueckstufen. jarl findet
 #              nichts, was lintr nicht auch findet -> jarl wieder entfernen.
-#   Review:    07.10.2026
+#   Review:    21.10.2026 (Todoist 6hg5rRMj8fX3qc28, inkl. jarl)
 
 set -euo pipefail
 
