@@ -4,8 +4,10 @@
 # Aufruf, Flags und Exit-Codes: usage() unten bzw. --help.
 #
 # Herkunft: Forge-Durchgang 09.09.2026, Rohmaterial https://prek.j178.dev/
-# Entscheidungen: air statt styler (Formatierung ohne R-Runtime), lintr
-# zusaetzlich (braucht System-R), ruff + ty auf der Python-Seite.
+# Entscheidungen: air statt styler (Formatierung ohne R-Runtime), jarl im
+# Commit-Pfad, lintr auf pre-push (braucht System-R), ruff + ty auf der
+# Python-Seite. jarl ergaenzt am 01.10.2026 (Forge-Durchgang,
+# Rohmaterial https://jarl.etiennebacher.com/howto/precommit).
 #
 # Closed loop:
 #   Messung:   Existiert .git/hooks/pre-commit in den Repos, und meldet prek
@@ -13,8 +15,8 @@
 #   Latenz:    sofort, bei jedem Commit.
 #   Kriterium: nach 4 Wochen in >=2 Repos aktiv, mindestens 1 realer Fund.
 #   Anpassung: kein Fund -> Hookset kuerzen. Skript nie ein zweites Mal
-#              benutzt -> auf reine Templates zurueckstufen. lintr zu langsam
-#              -> stages: [pre-push].
+#              benutzt -> auf reine Templates zurueckstufen. jarl findet
+#              nichts, was lintr nicht auch findet -> jarl wieder entfernen.
 #   Review:    07.10.2026
 
 set -euo pipefail
@@ -83,7 +85,7 @@ if [[ $has_python -eq 0 && $has_r -eq 0 ]]; then
 fi
 
 if [[ $has_r -eq 1 ]] && ! command -v Rscript >/dev/null 2>&1; then
-  echo "WARNING: Rscript missing; the lintr hook will fail at run time." >&2
+  echo "WARNING: Rscript missing; the lintr pre-push hook will fail at run time." >&2
 fi
 
 # ruff >= 0.16 aktiviert 413 statt 59 Default-Regeln. Ohne eigene
@@ -109,7 +111,13 @@ if ! prek update --cooldown-days 7; then
   echo "         and may be outdated." >&2
 fi
 
-prek install
+# lintr laeuft auf pre-push; prek install legt ohne --hook-type nur den
+# pre-commit-Hook an, dann wuerde lintr nie feuern.
+if [[ $has_r -eq 1 ]]; then
+  prek install --hook-type pre-commit --hook-type pre-push
+else
+  prek install
+fi
 
 cat <<'EOF'
 
