@@ -25,6 +25,9 @@ Pin in `pyproject.toml`. Use `extend-select`, never `select`: since ruff 0.16 th
 ```
 [tool.ruff.lint]
 extend-select = ["S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # pytest asserts
 ```
 `ty` is the baseline gate (same checker the prek hooks run). `pyright` with `typeCheckingMode = "strict"` or Pyrefly are alternatives — pick exactly one, never two.
 
@@ -37,7 +40,7 @@ extend-select = ["S", "PL", "ANN"]
 allow-star-arg-any = true  # Any on *args/**kwargs only; ANN401 still flags it elsewhere
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "PLR2004"]
+"tests/**" = ["S101", "ANN", "PLR2004"]
 # [tool.ruff]
 # line-length = 100        # only if team standard (ruff default is 88)
 # target-version = "py312" # only if the repo pins the interpreter
