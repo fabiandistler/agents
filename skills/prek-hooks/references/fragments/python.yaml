@@ -1,9 +1,9 @@
 
   # Python: formatting and linting.
   # ruff-check runs before ruff-format so --fix results still get formatted.
-  # Since ruff 0.16, 413 rules (not 59) are default: pin the rule selection
-  # in the project ([tool.ruff.lint] extend-select, never select — select
-  # replaces the default), otherwise the first run floods the repo.
+  # Since ruff 0.16, 413 rules (not 59) are default, so the first run in an
+  # existing repo reports many findings. Keep the default: configure
+  # [tool.ruff.lint] extend-select, never select (select replaces it).
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.9
     hooks:

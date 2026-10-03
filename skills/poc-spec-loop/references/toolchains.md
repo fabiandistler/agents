@@ -21,7 +21,7 @@ uv init --package <name> && cd <name>
 uv add --dev pytest ruff ty
 uv lock && uv sync
 ```
-Pin in `pyproject.toml` — ruff 0.16 expanded the default rule set from 59 to 413. Use `extend-select` (never `select`): `select` replaces the default and silently loses `UP`/`DTZ`/`B`; see `instructions/30-python.md` rationale:
+Pin in `pyproject.toml`. Use `extend-select`, never `select`: since ruff 0.16 the default set (413 rules, up from 59) covers `UP`/`DTZ`/`B`, and `select` would replace it. `extend-select` adds to the default, so the scaffold's first lint may report findings on the generated code; fix them in item 1, do not narrow the rule set:
 ```
 [tool.ruff.lint]
 extend-select = ["S"]
@@ -32,7 +32,9 @@ Strict opt-in (only if the team asks for it; noisy on throwaway PoC code):
 ```
 [tool.ruff.lint]
 extend-select = ["S", "PL", "ANN"]
-ignore = ["ANN401"]  # Any in **kwargs allowed
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true  # Any on *args/**kwargs only; ANN401 still flags it elsewhere
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN", "PLR2004"]
@@ -41,7 +43,7 @@ ignore = ["ANN401"]  # Any in **kwargs allowed
 # target-version = "py312" # only if the repo pins the interpreter
 ```
 
-Dep/secret hygiene (opt-in, not baseline): `uv add --dev deptry && uv run deptry .` finds unused, missing and transitive imports — run manually or in CI, never as a `local` pre-commit hook (slow, needs a venv). `gitleaks` belongs in the pre-commit hook (last point before a secret lands in history, never CI-only); no pinned fragment exists yet — add it via the prek-hooks skill and set `rev` via `pre-commit autoupdate`, never guessed.
+Dependency hygiene (opt-in, not baseline): `uv add --dev deptry && uv run deptry .` finds unused, missing and transitive imports. Run it in the full gate or CI rather than on every commit: it needs the project environment installed. Secret scanning belongs in the commit hook, not this loop; see the prek-hooks skill.
 
 ### R — renv 1.2 · testthat 3e · lintr 3.4 · air 0.11 · devtools
 

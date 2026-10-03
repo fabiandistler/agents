@@ -88,12 +88,13 @@ if [[ $has_r -eq 1 ]] && ! command -v Rscript >/dev/null 2>&1; then
   echo "WARNING: Rscript missing; the lintr pre-push hook will fail at run time." >&2
 fi
 
-# ruff >= 0.16 enables 413 default rules instead of 59. Without its own
-# rule selection the first run floods the repo with findings.
+# ruff >= 0.16 enables 413 default rules instead of 59, so the first run
+# reports many findings. extend-select keeps that default; it adds rules.
 if [[ $has_python -eq 1 && ! -e ruff.toml && ! -e .ruff.toml ]] \
   && ! grep -qs '^\[tool\.ruff' pyproject.toml; then
-  echo "WARNING: no ruff config found; ruff >= 0.16 enables 413 rules by default." >&2
-  echo '         Pin e.g. [tool.ruff.lint] extend-select = ["S"] in pyproject.toml.' >&2
+  echo "WARNING: no ruff config found; ruff >= 0.16 enables 413 rules by default," >&2
+  echo "         so expect many findings on the first prek run --all-files." >&2
+  echo '         Add [tool.ruff.lint] extend-select = ["S"] (never select) to pyproject.toml.' >&2
 fi
 
 {
