@@ -178,7 +178,8 @@ Open only the page for the type you are writing.
 - `references/api-reference.md` — HTTP endpoints, auth, errors, pagination,
   rate limits, SDK examples.
 - `references/package-docs.md` — exported functions, parameters, return
-  values, reference index, runnable examples.
+  values, reference index, runnable examples (R: also live in the browser
+  via webR).
 - `references/runbook.md` — trigger, prerequisites, procedure, verification,
   rollback, escalation.
 - `references/architecture-doc.md` — context and goals, design, trade-offs,
