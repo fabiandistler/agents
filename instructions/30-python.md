@@ -31,3 +31,4 @@ targets: all
   - `pip-audit` finds known vulnerabilities in dependencies.
   - `exclude-newer = "7 days"` is a dependency cooldown: the resolver ignores uploads younger than a week, so a malicious release is usually yanked before it can land. It lives in `pyproject.toml` because cloud sessions never read a user-level `uv.toml`. Relative durations need uv ≥ 0.9.17; check `uv --version` first and leave the line out on an older uv, which fails to parse it. When a fix needs a package newer than that, opt that one package out: `uv lock --exclude-newer-package "<package>=false"`.
   - `ty`: same checker the prek hooks run. It is still beta. If it breaks on a library it does not support yet, fall back to `mypy` with `[tool.mypy] strict = true`.
+  - For stricter lint (`PL`/`ANN`) or secret/dep hygiene (`gitleaks`/`deptry`), see `poc-spec-loop` `references/toolchains.md` (opt-in, not baseline).

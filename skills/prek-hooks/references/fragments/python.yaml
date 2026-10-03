@@ -1,8 +1,9 @@
 
-  # Python: Formatierung und Linting.
-  # ruff-check laeuft vor ruff-format, damit --fix-Ergebnisse formatiert werden.
-  # Ab ruff 0.16 sind 413 statt 59 Regeln Default: Regelauswahl im Projekt
-  # pinnen ([tool.ruff.lint] select), sonst flutet der erste Lauf das Repo.
+  # Python: formatting and linting.
+  # ruff-check runs before ruff-format so --fix results still get formatted.
+  # Since ruff 0.16, 413 rules (not 59) are default: pin the rule selection
+  # in the project ([tool.ruff.lint] extend-select, never select — select
+  # replaces the default), otherwise the first run floods the repo.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.9
     hooks:
@@ -10,12 +11,12 @@
         args: [--fix]
       - id: ruff-format
 
-  # Typechecker. ty steht bei 0.0.x — bewusst frueh gewaehlt (uv-nativ, schnell).
-  # Konservative Alternative: diesen Block ersetzen durch
+  # Typechecker. ty is at 0.0.x — chosen deliberately early (uv-native, fast).
+  # Conservative alternative: replace this block with
   #   - repo: https://github.com/pre-commit/mirrors-mypy
   #     hooks: [{ id: mypy }]
-  # mypy braucht additional_dependencies fuer Projekt-Abhaengigkeiten,
-  # ty loest sie ueber uv aus der pyproject.toml auf.
+  # mypy needs additional_dependencies for project dependencies,
+  # ty resolves them via uv from pyproject.toml.
   - repo: https://github.com/astral-sh/ty-pre-commit
     rev: v0.0.84
     hooks:
