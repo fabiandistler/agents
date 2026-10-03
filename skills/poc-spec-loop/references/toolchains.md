@@ -18,18 +18,24 @@ Greenfield: nothing matches → Phase 1 asks once.
 
 ```
 uv init --package <name> && cd <name>
-uv add --dev pytest ruff ty
+uv add --dev ruff ty pytest pytest-cov pip-audit
 uv lock && uv sync
 ```
-Pin in `pyproject.toml`. Use `extend-select`, never `select`: since ruff 0.16 the default set (413 rules, up from 59) covers `UP`/`DTZ`/`B`, and `select` would replace it. `extend-select` adds to the default, so the scaffold's first lint may report findings on the generated code; fix them in item 1, do not narrow the rule set:
+Pin in `pyproject.toml`. Use `extend-select`, never `select`: since ruff 0.16 the default set (413 rules, up from 59) covers `UP`/`DTZ`/`B`, and `select` would replace it. A fresh `uv init --package` passes this set; keep it passing rather than narrowing the rules. `exclude-newer` needs uv ≥ 0.9.17 — on an older uv leave the line out:
 ```
 [tool.ruff.lint]
 extend-select = ["S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]  # pytest asserts
+
+[tool.coverage.run]
+branch = true
+
+[tool.uv]
+exclude-newer = "7 days"
 ```
-`ty` is the baseline gate (same checker the prek hooks run). `pyright` with `typeCheckingMode = "strict"` or Pyrefly are alternatives — pick exactly one, never two.
+`ty` is the single type-check gate (same checker the prek hooks run). It is still beta; if it breaks on a library, swap it for `mypy` with `[tool.mypy] strict = true` — one checker, never two.
 
 Strict opt-in (only if the team asks for it; noisy on throwaway PoC code):
 ```
@@ -41,9 +47,6 @@ allow-star-arg-any = true  # Any on *args/**kwargs only; ANN401 still flags it e
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "ANN", "PLR2004"]
-# [tool.ruff]
-# line-length = 100        # only if team standard (ruff default is 88)
-# target-version = "py312" # only if the repo pins the interpreter
 ```
 
 Dependency hygiene (opt-in, not baseline): `uv add --dev deptry && uv run deptry .` finds unused, missing and transitive imports. Run it in the full gate or CI rather than on every commit: it needs the project environment installed. Secret scanning belongs in the commit hook, not this loop; see the prek-hooks skill.

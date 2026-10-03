@@ -94,7 +94,8 @@ if [[ $has_python -eq 1 && ! -e ruff.toml && ! -e .ruff.toml ]] \
   && ! grep -qs '^\[tool\.ruff' pyproject.toml; then
   echo "WARNING: no ruff config found; ruff >= 0.16 enables 413 rules by default," >&2
   echo "         so expect many findings on the first prek run --all-files." >&2
-  echo '         Add [tool.ruff.lint] extend-select = ["S"] (never select) to pyproject.toml.' >&2
+  echo "         Clear them with ruff check --fix, then ruff check --add-noqa." >&2
+  echo '         Add rules with [tool.ruff.lint] extend-select = ["S"]; never select.' >&2
 fi
 
 {
