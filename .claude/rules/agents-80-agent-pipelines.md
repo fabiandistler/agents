@@ -18,3 +18,11 @@ managed-by: fabiandistler/agents build_project_claude.py
   - An unattended LLM step never holds a write credential; it emits a patch artifact, a separate model-free step validates and publishes it.
   - Enforce scope outside the prompt: check every changed path against an anchored allowlist, including untracked files (`git ls-files --others --exclude-standard`), and stage only that list.
   - Agent self-edits (prompt, workflow, references) pass the same allowlist and human PR; an edit loosening tools, tokens or permissions is reported, never applied.
+- **Handing off work for review (showboat)**:
+  - Before handing off a feature or fix, build `demo.md` with `uvx showboat@0.6.1` (read `--help` first): `note` for intent, `exec` per claim, `pop` failed tries.
+  - Never edit `demo.md` directly; only showboat commands write to it.
+  - Finish with `showboat verify demo.md`; hand off only on exit 0.
+  - R: `exec` runs `<lang> -c`, which Rscript lacks. Use `exec demo.md bash "Rscript -e '…'"`.
+  - Keep outputs deterministic (seeds, no timestamps, no live DB) or verify breaks.
+  - Never exec against real client or HR data: demo.md is committed verbatim. Never set SHOWBOAT_REMOTE_URL.
+  <!-- Source: forge 2026-09-30, simonw/showboat v0.6.1. Review: Todoist "Abbau-Review Showboat-Block" (2027-06-07). -->
