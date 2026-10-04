@@ -20,7 +20,7 @@ targets: all
   - Enforce scope outside the prompt: check every changed path against an anchored allowlist, including untracked files (`git ls-files --others --exclude-standard`), and stage only that list.
   - Agent self-edits (prompt, workflow, references) pass the same allowlist and human PR; an edit loosening tools, tokens or permissions is reported, never applied.
 - **Handing off work for review (showboat)**:
-  - Before handing off a feature or fix, build `demo.md` with `uvx showboat@0.6.1` (read `--help` first): `note` for intent, `exec` per claim, `pop` failed tries.
+  - Before handing off a feature or fix, build `demo.md` with `uvx showboat@0.6.1` (every `showboat` below means that; read `--help` first): `note` for intent, `exec` per claim, `pop` failed tries.
   - Never edit `demo.md` directly; only showboat commands write to it.
   - Finish with `showboat verify demo.md`; hand off only on exit 0.
   - R: `exec` runs `<lang> -c`, which Rscript lacks. Use `exec demo.md bash "Rscript -e '…'"`.
