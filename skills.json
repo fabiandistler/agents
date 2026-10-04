@@ -194,7 +194,7 @@
     },
     {
       "name": "prek-hooks",
-      "summary": "Set up prek git hooks in Python/R repos — detects project type and assembles a pinned pre-commit config from fragments.",
+      "summary": "Set up prek git hooks in Python/R/shell repos — detects project type and assembles a pinned pre-commit config from fragments.",
       "category": "workflow",
       "path": "skills/prek-hooks/SKILL.md",
       "environments": [
