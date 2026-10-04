@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# setup-hooks.sh — richtet prek-Hooks in einem Repo ein (Python und/oder R).
+# setup-hooks.sh — richtet prek-Hooks in einem Repo ein (Python, R und/oder Shell).
 #
 # Aufruf, Flags und Exit-Codes: usage() unten bzw. --help.
 #
 # Herkunft: Forge-Durchgang 09.09.2026, Rohmaterial https://prek.j178.dev/
 # Entscheidungen: air statt styler (Formatierung ohne R-Runtime), jarl im
 # Commit-Pfad, lintr auf pre-push (braucht System-R), ruff + ty auf der
-# Python-Seite. jarl ergaenzt am 01.10.2026 (Forge-Durchgang,
+# Python-Seite, shellcheck-py + scop/shfmt auf der Shell-Seite
+# (kein Docker; Flags -S warning / -i 2 -ci aus CI- und Toolchain-Konventionen).
+# jarl ergaenzt am 01.10.2026 (Forge-Durchgang,
 # Rohmaterial https://jarl.etiennebacher.com/howto/precommit).
 #
 # Closed loop:
@@ -30,7 +32,7 @@ usage() {
   cat <<'EOF'
 Usage: setup-hooks.sh [--builtin] [--force]
 Assembles .pre-commit-config.yaml from fragments/ for the detected project
-type (Python and/or R), then runs `prek update --cooldown-days 7` and
+type (Python, R and/or Shell), then runs `prek update --cooldown-days 7` and
 `prek install`. Run from anywhere inside the target Git repo.
   --builtin   generic hooks as prek builtins (no clone, no Python env; prek-only)
   --force     overwrite an existing .pre-commit-config.yaml / prek.toml
@@ -43,7 +45,7 @@ Exit codes:
   2  unknown argument
   3  environment: fragments missing, not a Git repo, or prek not on PATH
   4  .pre-commit-config.yaml or prek.toml already exists (use --force)
-  5  neither Python nor R detected
+  5  neither Python, R nor shell detected
 EOF
 }
 
@@ -75,13 +77,15 @@ fi
 
 has_python=0
 has_r=0
+has_shell=0
 [[ -f pyproject.toml || -f setup.py ]] && has_python=1
 [[ -n "$(git ls-files -- '*.py' | head -n1)" ]] && has_python=1
 [[ -f DESCRIPTION ]] && has_r=1
 [[ -n "$(git ls-files -- '*.R' '*.r' | head -n1)" ]] && has_r=1
+[[ -n "$(git ls-files -- '*.sh' '*.bash' | head -n1)" ]] && has_shell=1
 
-if [[ $has_python -eq 0 && $has_r -eq 0 ]]; then
-  echo "Neither Python nor R files found. Nothing to set up." >&2; exit 5
+if [[ $has_python -eq 0 && $has_r -eq 0 && $has_shell -eq 0 ]]; then
+  echo "Neither Python, R nor shell files found. Nothing to set up." >&2; exit 5
 fi
 
 if [[ $has_r -eq 1 ]] && ! command -v Rscript >/dev/null 2>&1; then
@@ -104,9 +108,10 @@ fi
   cat "${FRAGMENTS}/${BASE}"
   [[ $has_python -eq 1 ]] && cat "${FRAGMENTS}/python.yaml"
   [[ $has_r -eq 1 ]] && cat "${FRAGMENTS}/r.yaml"
+  [[ $has_shell -eq 1 ]] && cat "${FRAGMENTS}/shell.yaml"
 } > "$CONFIG"
 
-echo "Written: ${ROOT}/${CONFIG} (python=${has_python}, r=${has_r}, base=${BASE})"
+echo "Written: ${ROOT}/${CONFIG} (python=${has_python}, r=${has_r}, shell=${has_shell}, base=${BASE})"
 
 if ! prek update --cooldown-days 7; then
   echo "WARNING: 'prek update' failed; revs stay at the fragment pins" >&2
