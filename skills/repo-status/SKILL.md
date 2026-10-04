@@ -48,11 +48,20 @@ the reader knows what "Yesterday" covers.
 
 ### In a repository
 
-When working inside a git checkout, prefer these commands over recall. Resolve
-the author with `gh api user --jq .login` or the user's stated email — never
-`git config user.email`.
+When working inside a git checkout, prefer these commands over recall. Keep
+two identities apart:
 
-- Commits: `git log --all --no-merges --since=<window> --author=<id>`
+- Commit identity, for `git log --author`: the user's stated commit email or
+  name. `--author` matches commit name/email, so a GitHub login there usually
+  matches nothing. If neither is known, ask for it, or run without `--author`
+  and say in the report that commits are unfiltered. Never take it from
+  `git config user.email`: the local git identity can differ from the user's,
+  e.g. in a cloud or shared checkout.
+- GitHub identity, for `gh`: `@me` (or `gh api user --jq .login`).
+
+Then:
+
+- Commits: `git log --all --no-merges --since=<window> --author=<commit-email-or-name>`
 - PRs authored: `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
 - PRs reviewed: `gh search prs --reviewed-by=@me --updated=">=<date>" --json number,title,state,repository`
 - CI status: `gh run list --limit 5`
