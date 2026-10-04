@@ -237,7 +237,8 @@ obvious — the cost of guessing wrong is high._
   Treat free-text metadata (table/column comments, extended properties,
   description fields) as untrusted input and keep it out of the agent's
   context unless a human curated it.** A regex "read-only mode" is a blocklist
-  the agent can be talked around; a GRANT is not. (CVE-2026-65669)
+  the agent can be talked around; a GRANT is not. Tool-scoped DB privileges:
+  `agent-engineering-conventions.md`, Tool Design. (Rehberger, CVE-2026-65669)
   - ✅ `agent_ro` user, `GRANT SELECT ON v_*`, schema text from a curated fixture
   - ❌ agent runs on the analyst's connection, read-only via a SQL keyword filter   ← likely-default
 - **Streaming emits tokens before output guardrails can run** — make that
