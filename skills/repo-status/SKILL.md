@@ -53,11 +53,11 @@ two identities apart:
 
 - Commit identity, for `git log --author`: the user's stated commit email or
   name. `--author` matches commit name/email, so a GitHub login there usually
-  matches nothing. If neither is known, ask for it, or run without `--author`
-  and say in the report that commits are unfiltered. Never take it from
+  matches nothing. If neither is known, run without `--author`, say in the
+  report that commits are unfiltered, and ask for it afterwards. Never take it from
   `git config user.email`: the local git identity can differ from the user's,
   e.g. in a cloud or shared checkout.
-- GitHub identity, for `gh`: `@me` (or `gh api user --jq .login`).
+- GitHub identity, for `gh`: `@me`.
 
 Then:
 
