@@ -42,6 +42,15 @@ not tool-as-interface design._
   of tool misselection. (Ch. 4–5)
   - ✅ `calculate_sum — Returns the sum of two integers x, y in [0, 1000]. E.g. calculate_sum(2, 3) -> 5`
   - ❌ `process_numbers — Handles number operations`   ← likely-default
+- **Generate any data-schema text in a tool description — table/field names,
+  enum values, example queries — from the live schema or from a fixture
+  generated from it and checked in; never hand-write it or copy it from a
+  mock. Stamp the fixture with its schema revision, and make every example
+  query in the description execute against it.** A wrong name in the
+  description reaches the model with the authority of a spec; a runtime guess
+  at least looks like a guess.
+  - ✅ `description` built from `schema_fixture.json` (rev `2026-10-02`); example queries run in tests
+  - ❌ field list hand-typed into the description from a mock schema   ← likely-default
 - **Define a machine-readable schema (JSON Schema / Pydantic / Zod) for every
   tool and validate every proposed call against it before executing; on
   mismatch, prompt the model to correct only the broken portion, then fall back
