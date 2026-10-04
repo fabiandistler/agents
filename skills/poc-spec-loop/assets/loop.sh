@@ -5,7 +5,7 @@
 # fresh-context invocation, check execution, attempts/BLOCKED bookkeeping,
 # checkpoints, stop conditions, PR.
 #
-# Preconditions (checked below): git, jq, gh, claude on PATH; clean tree;
+# Preconditions (checked below): git, jq, gh, claude, uvx on PATH; clean tree;
 # plans/prd.json with approved:true.
 #
 # VERIFY BEFORE FIRST RUN: the exact non-interactive flags of `claude -p`
@@ -41,7 +41,7 @@ Examples:
   skills/poc-spec-loop/assets/loop.sh
   CLAUDE_FLAGS="--allowedTools Bash,Read" skills/poc-spec-loop/assets/loop.sh
 Exit codes:
-  0  success (ready PR, or draft PR when blocked/unreachable items remain)
+  0  success (ready PR, or draft PR when blocked/unreachable items remain or demo.md fails verify)
   2  usage or preconditions failed (bad flag; missing tool; dirty tree; prd.json missing or not approved)
   3  blocked stop (3 consecutive blocked items, or prd-01/prd-02 blocked)
 EOF
@@ -50,7 +50,7 @@ fi
 if [[ $# -gt 0 ]]; then echo "unknown argument: $1 (see --help)" >&2; exit 2; fi
 
 # ---------- preconditions ----------
-for bin in git jq gh claude timeout; do command -v "$bin" >/dev/null || { echo "missing: $bin (timeout: GNU coreutils)" >&2; exit 2; }; done
+for bin in git jq gh claude timeout uvx; do command -v "$bin" >/dev/null || { echo "missing: $bin (timeout: GNU coreutils)" >&2; exit 2; }; done
 [[ -z "$(git status --porcelain)" ]] || { echo "working tree not clean" >&2; exit 2; }
 [[ -f $PRD ]] || { echo "$PRD missing — run Phase 1" >&2; exit 2; }
 [[ "$(jq -r .approved "$PRD")" == "true" ]] || { echo "prd.json not approved" >&2; exit 2; }
@@ -121,6 +121,20 @@ unreachable_items() {   # open items with a check that were never passed; at end
   jq -r --argjson m "$MAX_ATTEMPTS" \
     '.items[] | select(.passes==false and .check!=null and .attempts<$m) | "- \(.id) \(.title) (deps: \(.deps|join(", ")))"' "$PRD"
 }
+build_demo() {   # a model builds demo.md, a model-free verify gates it; sets DEMO for the PR body
+  claude -p "Build demo.md at the repo root with showboat (run \`uvx showboat@0.6.1 --help\` first; every showboat call goes through \`uvx showboat@0.6.1\`). \
+Delete any existing demo.md, then init it, \`note\` the intent from plans/SPEC.md, and \`exec\` one command per claim that shows the Goal and Definition of Done hold; \`pop\` failed tries. \
+Never edit demo.md directly. R: exec via bash \"Rscript -e '…'\". Keep outputs deterministic (seeds, no timestamps, no live DB); never touch real client or HR data. \
+Finish with \`uvx showboat@0.6.1 verify demo.md\`; commit demo.md and any images it references as 'docs(demo): showboat walkthrough'." "${CLAUDE_FLAGS[@]}" \
+    || echo "WARN: demo run failed" >&2
+  discard_uncommitted
+  local ok=0
+  [[ -f demo.md ]] && timeout "$CHECK_TIMEOUT" uvx showboat@0.6.1 verify demo.md > "$LOGDIR/demo_verify.log" 2>&1 || ok=1
+  discard_uncommitted   # verify re-runs every exec block; drop what they left behind
+  if (( ok == 0 )); then DEMO="[demo.md]($(gh repo view --json url -q .url)/blob/$BRANCH/demo.md) passes \`showboat verify\`."
+  else DEMO="demo.md missing or failing \`showboat verify\` (log: .git/poc-loop/demo_verify.log)."; fi
+  return "$ok"
+}
 open_pr() {
   local kind=$1 open_heading=${2:-"Unreachable (a dependency is blocked)"}   # draft|ready
   git push -u origin "$BRANCH"
@@ -129,6 +143,7 @@ open_pr() {
   [[ -f plans/REVIEW.md ]] && body+=$'\n\n## Standards findings\n'"$(tail -c 8000 plans/REVIEW.md)"
   local unreach; unreach=$(unreachable_items)
   [[ -n $unreach ]] && body+=$'\n\n## '"$open_heading"$'\n'"$unreach"
+  [[ -n ${DEMO:-} ]] && body+=$'\n\n## Demo\n'"$DEMO"
   body+=$'\n\n## Deployment\n'"$(awk '/^## Definition of Done/{f=1;next} /^## /{f=0} f' "$SPEC")"
   local extra=(); [[ $kind == draft ]] && extra=(--draft)
   gh pr create --base main --head "$BRANCH" --title "PoC loop $BRANCH" --body "$body" "${extra[@]}"
@@ -160,8 +175,11 @@ while id=$(next_item) && [[ -n $id ]]; do
 done
 
 # ---------- end of run ----------
+demo_ok=true; build_demo || demo_ok=false
 if [[ -n $(unreachable_items) ]] || [[ -s $BLOCKED ]]; then
   echo "END: blocked or unreachable items remain" >&2; open_pr draft
+elif ! $demo_ok; then
+  echo "END: demo.md missing or failing showboat verify" >&2; open_pr draft
 else
   open_pr ready
 fi

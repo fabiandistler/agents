@@ -186,7 +186,7 @@
       "category": "workflow",
       "path": "skills/poc-spec-loop/SKILL.md",
       "activation": "command",
-      "compatibility": "Requires claude, gh, and jq on PATH, a single github.com remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).",
+      "compatibility": "Requires claude, gh, jq, and uvx on PATH, a single github.com remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).",
       "environments": [
         "coding"
       ],

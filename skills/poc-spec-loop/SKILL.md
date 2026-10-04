@@ -4,7 +4,7 @@ category: workflow
 activation: command
 disable-model-invocation: true
 environments: coding
-compatibility: Requires claude, gh, and jq on PATH, a single github.com remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).
+compatibility: Requires claude, gh, jq, and uvx on PATH, a single github.com remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).
 description: Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request.
 metadata:
   version: "1.0"
@@ -90,7 +90,7 @@ bash <skill-dir>/assets/loop.sh
 - **Checkpoint** every 5 passed items: a separate `claude -p` run of `mattpocock-skills:code-review` since the branch start. Spec findings become new prd items (`origin: checkpoint`, `deps` on the causing item); standards findings go to `plans/REVIEW.md` and from there into the PR body. Checkpoint items may push the list past the Phase 1 range, up to the schema cap of 40; findings beyond the cap go to `REVIEW.md` instead of `prd.json`.
 - **Stop the whole run** when 3 consecutive items land in BLOCKED, or when item 1 or 2 (toolchain, CI) blocks → **draft** PR immediately, listing the open items under `## Not reached (run stopped early)`.
 - **Unreachable items**: when no item is selectable but some with a `check` are still open (their `deps` include a blocked item), the run ends with a **draft** PR that lists them under `## Unreachable`.
-- **End of run**: PR `poc/<date>` → `main` with item checklist, open `manual_reason` items, BLOCKED.md contents, standards findings and the `## Definition of Done` section of `SPEC.md` as deployment instructions. Ready PR only if nothing is blocked or unreachable. Before creating the PR, hand off per the `Handing off work for review (showboat)` instruction block and link `demo.md` in the PR body.
+- **End of run**: PR `poc/<date>` → `main` with item checklist, open `manual_reason` items, BLOCKED.md contents, standards findings and the `## Definition of Done` section of `SPEC.md` as deployment instructions. Before it, a fresh `claude -p` run builds and commits `demo.md` with showboat; the script then runs `showboat verify demo.md` itself and links the file under `## Demo`. Ready PR only if nothing is blocked or unreachable and `demo.md` passes verify.
 
 **Requested in the task prompt** (model discipline, not checked by the script):
 
