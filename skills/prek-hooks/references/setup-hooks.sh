@@ -51,28 +51,49 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --builtin) BASE="base-builtin.yaml"; shift ;;
-    --force)   FORCE=1; shift ;;
-    -h|--help) usage; exit 0 ;;
-    *) echo "Unknown argument: $1 (see --help)" >&2; exit 2 ;;
+    --builtin)
+      BASE="base-builtin.yaml"
+      shift
+      ;;
+    --force)
+      FORCE=1
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1 (see --help)" >&2
+      exit 2
+      ;;
   esac
 done
 
-[[ -d "$FRAGMENTS" ]] || { echo "Fragments not found: $FRAGMENTS" >&2; exit 3; }
+[[ -d "$FRAGMENTS" ]] || {
+  echo "Fragments not found: $FRAGMENTS" >&2
+  exit 3
+}
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-  echo "Not a Git repository." >&2; exit 3; }
+  echo "Not a Git repository." >&2
+  exit 3
+}
 cd "$ROOT"
 
 command -v prek >/dev/null 2>&1 || {
-  echo "prek not on PATH. Install e.g.: uv tool install prek" >&2; exit 3; }
+  echo "prek not on PATH. Install e.g.: uv tool install prek" >&2
+  exit 3
+}
 
 CONFIG=".pre-commit-config.yaml"
 if [[ -e "$CONFIG" && $FORCE -eq 0 ]]; then
-  echo "$CONFIG already exists. Overwrite with --force." >&2; exit 4
+  echo "$CONFIG already exists. Overwrite with --force." >&2
+  exit 4
 fi
 if [[ -e "prek.toml" && $FORCE -eq 0 ]]; then
-  echo "prek.toml already exists; prek would ignore the YAML. Overwrite with --force." >&2; exit 4
+  echo "prek.toml already exists; prek would ignore the YAML. Overwrite with --force." >&2
+  exit 4
 fi
 
 has_python=0
@@ -85,7 +106,8 @@ has_shell=0
 [[ -n "$(git ls-files -- '*.sh' '*.bash' | head -n1)" ]] && has_shell=1
 
 if [[ $has_python -eq 0 && $has_r -eq 0 && $has_shell -eq 0 ]]; then
-  echo "Neither Python, R nor shell files found. Nothing to set up." >&2; exit 5
+  echo "Neither Python, R nor shell files found. Nothing to set up." >&2
+  exit 5
 fi
 
 if [[ $has_r -eq 1 ]] && ! command -v Rscript >/dev/null 2>&1; then
@@ -94,8 +116,8 @@ fi
 
 # ruff >= 0.16 enables 413 default rules instead of 59, so the first run
 # reports many findings. extend-select keeps that default; it adds rules.
-if [[ $has_python -eq 1 && ! -e ruff.toml && ! -e .ruff.toml ]] \
-  && ! grep -qs '^\[tool\.ruff' pyproject.toml; then
+if [[ $has_python -eq 1 && ! -e ruff.toml && ! -e .ruff.toml ]] &&
+  ! grep -qs '^\[tool\.ruff' pyproject.toml; then
   echo "WARNING: no ruff config found; ruff >= 0.16 enables 413 rules by default," >&2
   echo "         so expect many findings on the first prek run --all-files." >&2
   echo "         Clear them with ruff check --fix, then ruff check --add-noqa." >&2
@@ -109,7 +131,7 @@ fi
   [[ $has_python -eq 1 ]] && cat "${FRAGMENTS}/python.yaml"
   [[ $has_r -eq 1 ]] && cat "${FRAGMENTS}/r.yaml"
   [[ $has_shell -eq 1 ]] && cat "${FRAGMENTS}/shell.yaml"
-} > "$CONFIG"
+} >"$CONFIG"
 
 echo "Written: ${ROOT}/${CONFIG} (python=${has_python}, r=${has_r}, shell=${has_shell}, base=${BASE})"
 

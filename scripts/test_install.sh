@@ -8,13 +8,19 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL="$REPO_ROOT/install.sh"
 
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
 pass() { echo "ok: $*"; }
 
 count_links() {
   # POSIX-portable: -L returns 0 only for symlinks.
   local dir="$1" n=0
-  [[ -d "$dir" ]] || { echo 0; return; }
+  [[ -d "$dir" ]] || {
+    echo 0
+    return
+  }
   for f in "$dir"/*; do
     [[ -L "$f" ]] && n=$((n + 1))
   done
@@ -172,19 +178,19 @@ HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
 got="$(count_links "$HOME_A/.claude/skills")"
 [[ "$got" -eq "$EXPECTED" ]] || fail "all install: .claude/skills has $got links, expected $EXPECTED"
 got="$(count_links "$HOME_A/.config/opencode/skills")"
-[[ "$got" -eq "$OPENCODE_EXPECTED" ]] \
-  || fail "all install: opencode skills has $got links, expected $OPENCODE_EXPECTED"
+[[ "$got" -eq "$OPENCODE_EXPECTED" ]] ||
+  fail "all install: opencode skills has $got links, expected $OPENCODE_EXPECTED"
 got="$(count_links "$HOME_A/.codex/skills")"
-[[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] \
-  || fail "all install: .codex/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
+[[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] ||
+  fail "all install: .codex/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
 got="$(count_links "$HOME_A/.claude/commands")"
 [[ "$got" -eq "$CMD_EXPECTED" ]] || fail "all install: claude commands has $got links, expected $CMD_EXPECTED"
 got="$(count_links "$HOME_A/.config/opencode/command")"
-[[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] \
-  || fail "all install: opencode command has $got links, expected $OPENCODE_CMD_EXPECTED"
+[[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] ||
+  fail "all install: opencode command has $got links, expected $OPENCODE_CMD_EXPECTED"
 [[ -L "$HOME_A/.codex/skills/repo-status" ]] || fail "codex: command skill repo-status not linked into skills/"
-[[ -f "$HOME_A/.codex/skills/repo-status/agents/openai.yaml" ]] \
-  || fail "codex: command skill repo-status missing its openai.yaml sidecar"
+[[ -f "$HOME_A/.codex/skills/repo-status/agents/openai.yaml" ]] ||
+  fail "codex: command skill repo-status missing its openai.yaml sidecar"
 [[ ! -e "$HOME_A/.codex/prompts/repo-status.md" ]] || fail "codex: command skill repo-status leaked into deprecated prompts/"
 pass "all install populates claude, codex, opencode (codex commands as skills)"
 
@@ -212,7 +218,7 @@ done
 [[ -n "$first_command" ]] || fail "no command skill found for codex prompts migration test"
 ln -s "$REPO_ROOT/skills/$first_command/SKILL.md" "$legacy_prompts/$first_command.md"
 foreign_prompt_src="$(mktemp -d)/foreign-prompt.md"
-: > "$foreign_prompt_src"
+: >"$foreign_prompt_src"
 ln -s "$foreign_prompt_src" "$legacy_prompts/foreign-prompt.md"
 HOME="$HOME_CX" "$INSTALL" --target=codex >/dev/null
 [[ ! -L "$legacy_prompts/$first_command.md" ]] || fail "deprecated codex prompt for $first_command not migrated"
@@ -261,8 +267,8 @@ got="$(count_links "$HOME_CODE/.claude/skills")"
 pass "env=coding links only the $CODING_EXPECTED coding skills"
 
 # 9. coding + chat cover at least every skill (skills in both are counted twice).
-[[ $((CODING_EXPECTED + CHAT_EXPECTED)) -ge "$EXPECTED" ]] \
-  || fail "coding ($CODING_EXPECTED) + chat ($CHAT_EXPECTED) < all ($EXPECTED)"
+[[ $((CODING_EXPECTED + CHAT_EXPECTED)) -ge "$EXPECTED" ]] ||
+  fail "coding ($CODING_EXPECTED) + chat ($CHAT_EXPECTED) < all ($EXPECTED)"
 pass "coding + chat subsets cover all skills"
 
 # 10. dry-run with a filter creates nothing.
@@ -321,8 +327,8 @@ pass "invalid --category is rejected"
 #     ships no router, so nothing managed is written to config.toml).
 HOME_NOMCP="$(mktemp -d)"
 HOME="$HOME_NOMCP" "$INSTALL" --target=codex --category=communication >/dev/null
-[[ ! -f "$HOME_NOMCP/.codex/config.toml" ]] \
-  || fail "category=communication created config.toml"
+[[ ! -f "$HOME_NOMCP/.codex/config.toml" ]] ||
+  fail "category=communication created config.toml"
 pass "category without a router leaves config.toml alone"
 
 # 21. unbalanced markers (hand-deleted end markers) leave the file untouched.
@@ -331,16 +337,16 @@ pass "category without a router leaves config.toml alone"
 HOME_UNBAL="$(mktemp -d)"
 HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null
 CONFIG_UNBAL="$HOME_UNBAL/.codex/config.toml"
-grep -vE '^# <<< agents' "$CONFIG_UNBAL" > "$CONFIG_UNBAL.tmp"
-printf '\n[precious]\nkeep = true\n' >> "$CONFIG_UNBAL.tmp"
+grep -vE '^# <<< agents' "$CONFIG_UNBAL" >"$CONFIG_UNBAL.tmp"
+printf '\n[precious]\nkeep = true\n' >>"$CONFIG_UNBAL.tmp"
 mv "$CONFIG_UNBAL.tmp" "$CONFIG_UNBAL"
 before="$(cat "$CONFIG_UNBAL")"
 HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] \
-  || fail "install modified a config with unbalanced markers"
+[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] ||
+  fail "install modified a config with unbalanced markers"
 HOME="$HOME_UNBAL" "$INSTALL" --target=codex --category=architecture --uninstall >/dev/null 2>&1
-[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] \
-  || fail "uninstall modified a config with unbalanced markers"
+[[ "$(cat "$CONFIG_UNBAL")" == "$before" ]] ||
+  fail "uninstall modified a config with unbalanced markers"
 pass "unbalanced markers leave config.toml untouched"
 
 # 21a. codex install disables every nested router member via [[skills.config]].
@@ -386,19 +392,19 @@ HOME_OV2="$(mktemp -d)"
 HOME="$HOME_OV2" "$INSTALL" --target=codex --category=ai-ml >/dev/null
 CONFIG_OV2="$HOME_OV2/.codex/config.toml"
 [[ -f "$CONFIG_OV2" ]] || fail "routed category=ai-ml created no config.toml"
-grep -q '^\[mcp_servers\.' "$CONFIG_OV2" \
-  && fail "install wrote mcp_servers into config.toml"
+grep -q '^\[mcp_servers\.' "$CONFIG_OV2" &&
+  fail "install wrote mcp_servers into config.toml"
 before="$(cat "$CONFIG_OV2")"
 HOME="$HOME_OV2" "$INSTALL" --target=codex --category=ai-ml >/dev/null
 [[ "$(cat "$CONFIG_OV2")" == "$before" ]] || fail "override registration is not idempotent"
 pass "override-only config is written and idempotent"
 
 # 21c. uninstall removes the override block but keeps foreign config.
-printf '\n[foreign]\nkeep = true\n' >> "$CONFIG_OV2"
+printf '\n[foreign]\nkeep = true\n' >>"$CONFIG_OV2"
 HOME="$HOME_OV2" "$INSTALL" --target=codex --category=ai-ml --uninstall >/dev/null
 grep -Fxq '[foreign]' "$CONFIG_OV2" || fail "override uninstall dropped foreign config"
-grep -q 'skills\.config\|routed-member skill overrides' "$CONFIG_OV2" \
-  && fail "override uninstall left our block behind"
+grep -q 'skills\.config\|routed-member skill overrides' "$CONFIG_OV2" &&
+  fail "override uninstall left our block behind"
 pass "override uninstall removes only our block"
 
 # 21d. a config left behind by a version that still registered the
@@ -420,17 +426,17 @@ make_legacy_mcp_home() {
     '[mcp_servers.refactoring-kb]' \
     'command = "/gone/bin/python"' \
     '# <<< agents:refactoring MCP servers <<<' \
-    > "$home/.codex/config.toml"
+    >"$home/.codex/config.toml"
   mkdir -p "$home/.codex/agents-mcp-runtime/bin"
-  : > "$home/.codex/agents-mcp-runtime/bin/python"
+  : >"$home/.codex/agents-mcp-runtime/bin/python"
 }
 
 assert_legacy_mcp_gone() {
   local config="$1" what="$2"
-  grep -Fxq '[mcp_servers.foreign]' "$config" \
-    || fail "$what dropped a foreign MCP server"
-  grep -Fxq 'command = "keep-me"' "$config" \
-    || fail "$what dropped the foreign server's body"
+  grep -Fxq '[mcp_servers.foreign]' "$config" ||
+    fail "$what dropped a foreign MCP server"
+  grep -Fxq 'command = "keep-me"' "$config" ||
+    fail "$what dropped the foreign server's body"
   if grep -q 'MCP servers\|mcp_servers\.\(architecture\|refactoring\)-kb' "$config"; then
     fail "$what left a legacy managed MCP block behind"
   fi
@@ -442,8 +448,8 @@ make_legacy_mcp_home "$HOME_LEGACY"
 CONFIG_LEGACY="$HOME_LEGACY/.codex/config.toml"
 HOME="$HOME_LEGACY" "$INSTALL" --target=codex --category=ai-ml >/dev/null
 assert_legacy_mcp_gone "$CONFIG_LEGACY" "install"
-[[ -d "$HOME_LEGACY/.codex/agents-mcp-runtime" ]] \
-  && fail "install left the legacy MCP runtime venv behind"
+[[ -d "$HOME_LEGACY/.codex/agents-mcp-runtime" ]] &&
+  fail "install left the legacy MCP runtime venv behind"
 python3 - "$CONFIG_LEGACY" <<'PY' || fail "legacy cleanup left invalid TOML"
 import sys, tomllib
 with open(sys.argv[1], "rb") as f:
@@ -460,18 +466,18 @@ make_legacy_mcp_home "$HOME_LEGACY_UN"
 CONFIG_LEGACY_UN="$HOME_LEGACY_UN/.codex/config.toml"
 before="$(cat "$CONFIG_LEGACY_UN")"
 dry_output="$(HOME="$HOME_LEGACY_UN" "$INSTALL" --target=codex --dry-run 2>&1)"
-[[ "$(cat "$CONFIG_LEGACY_UN")" == "$before" ]] \
-  || fail "dry-run modified the legacy config"
-[[ -d "$HOME_LEGACY_UN/.codex/agents-mcp-runtime" ]] \
-  || fail "dry-run removed the legacy runtime venv"
-[[ "$dry_output" == *"remove legacy architecture MCP servers"* ]] \
-  || fail "dry-run did not plan legacy block removal"
-[[ "$dry_output" == *"remove legacy MCP runtime venv"* ]] \
-  || fail "dry-run did not plan legacy venv removal"
+[[ "$(cat "$CONFIG_LEGACY_UN")" == "$before" ]] ||
+  fail "dry-run modified the legacy config"
+[[ -d "$HOME_LEGACY_UN/.codex/agents-mcp-runtime" ]] ||
+  fail "dry-run removed the legacy runtime venv"
+[[ "$dry_output" == *"remove legacy architecture MCP servers"* ]] ||
+  fail "dry-run did not plan legacy block removal"
+[[ "$dry_output" == *"remove legacy MCP runtime venv"* ]] ||
+  fail "dry-run did not plan legacy venv removal"
 HOME="$HOME_LEGACY_UN" "$INSTALL" --target=codex --uninstall >/dev/null
 assert_legacy_mcp_gone "$CONFIG_LEGACY_UN" "uninstall"
-[[ -d "$HOME_LEGACY_UN/.codex/agents-mcp-runtime" ]] \
-  && fail "uninstall left the legacy MCP runtime venv behind"
+[[ -d "$HOME_LEGACY_UN/.codex/agents-mcp-runtime" ]] &&
+  fail "uninstall left the legacy MCP runtime venv behind"
 pass "uninstall strips legacy MCP blocks; dry-run only reports them"
 
 # 22. codex install converts plugin subagents to valid custom-agent TOML.
@@ -497,27 +503,27 @@ pass "codex install converts subagents to valid agent TOML"
 # 23. re-running leaves the agent files identical; foreign files survive.
 before="$(cat "$AGENTS_DIR/coupling-analyst.toml")"
 HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null
-[[ "$(cat "$AGENTS_DIR/coupling-analyst.toml")" == "$before" ]] \
-  || fail "agent conversion is not idempotent"
-printf 'name = "mine"\n' > "$AGENTS_DIR/cohesion-analyst.toml"
+[[ "$(cat "$AGENTS_DIR/coupling-analyst.toml")" == "$before" ]] ||
+  fail "agent conversion is not idempotent"
+printf 'name = "mine"\n' >"$AGENTS_DIR/cohesion-analyst.toml"
 HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
-grep -Fxq 'name = "mine"' "$AGENTS_DIR/cohesion-analyst.toml" \
-  || fail "foreign agent file was overwritten"
+grep -Fxq 'name = "mine"' "$AGENTS_DIR/cohesion-analyst.toml" ||
+  fail "foreign agent file was overwritten"
 pass "agent conversion is idempotent and preserves foreign files"
 
 # 24. uninstall removes generated agents only; foreign files stay.
 HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture --uninstall >/dev/null 2>&1
-[[ ! -f "$AGENTS_DIR/coupling-analyst.toml" ]] \
-  || fail "uninstall left a generated agent file"
-[[ -f "$AGENTS_DIR/cohesion-analyst.toml" ]] \
-  || fail "uninstall removed a foreign agent file"
+[[ ! -f "$AGENTS_DIR/coupling-analyst.toml" ]] ||
+  fail "uninstall left a generated agent file"
+[[ -f "$AGENTS_DIR/cohesion-analyst.toml" ]] ||
+  fail "uninstall removed a foreign agent file"
 pass "uninstall removes only generated agent files"
 
 # 25. a category without agents creates no agents directory.
 HOME_NOAG="$(mktemp -d)"
 HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=workflow >/dev/null
-[[ ! -d "$HOME_NOAG/.codex/agents" ]] \
-  || fail "category=workflow created an agents directory"
+[[ ! -d "$HOME_NOAG/.codex/agents" ]] ||
+  fail "category=workflow created an agents directory"
 pass "category without subagents leaves agents directory alone"
 
 # 36. A routed category links only its router at top level; the auto members
@@ -528,15 +534,15 @@ HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture >/dev/nul
 ROUTED_SKILLS="$HOME_ROUTED/.claude/skills"
 [[ -L "$ROUTED_SKILLS/architecture" ]] || fail "router 'architecture' not linked"
 [[ -f "$ROUTED_SKILLS/architecture/SKILL.md" ]] || fail "router SKILL.md not readable"
-[[ "$(count_links "$ROUTED_SKILLS")" -eq 1 ]] \
-  || fail "routed category linked more than the router at top level"
+[[ "$(count_links "$ROUTED_SKILLS")" -eq 1 ]] ||
+  fail "routed category linked more than the router at top level"
 # A representative member resolves through the router's members/ dir ...
-[[ -f "$ROUTED_SKILLS/architecture/members/coupling-cohesion/SKILL.md" ]] \
-  || fail "nested member coupling-cohesion not readable via the router"
+[[ -f "$ROUTED_SKILLS/architecture/members/coupling-cohesion/SKILL.md" ]] ||
+  fail "nested member coupling-cohesion not readable via the router"
 # ... but is never registered as its own top-level skill.
 for member in adr-workflow coupling-cohesion ddd; do
-  [[ ! -e "$ROUTED_SKILLS/$member" ]] \
-    || fail "routed member $member leaked into the skills directory"
+  [[ ! -e "$ROUTED_SKILLS/$member" ]] ||
+    fail "routed member $member leaked into the skills directory"
 done
 HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture --uninstall >/dev/null
 [[ ! -e "$ROUTED_SKILLS/architecture" ]] || fail "uninstall left the router behind"
@@ -565,9 +571,9 @@ ln -s "$mig_foreign" "$MIG_SKILLS/foreign-skill"
 HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture >/dev/null
 while IFS= read -r name; do
   [[ -n "$name" ]] || continue
-  [[ ! -e "$MIG_SKILLS/$name" ]] \
-    || fail "pre-router flat link for $name survived the upgrade"
-done <<< "$mig_members"
+  [[ ! -e "$MIG_SKILLS/$name" ]] ||
+    fail "pre-router flat link for $name survived the upgrade"
+done <<<"$mig_members"
 [[ -L "$MIG_SKILLS/architecture" ]] || fail "migration did not link the router"
 [[ -L "$MIG_SKILLS/foreign-skill" ]] || fail "migration removed a foreign symlink"
 # ... and --uninstall clears the flat links too, not just the router.
@@ -575,12 +581,12 @@ HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture >/dev/null
 while IFS= read -r name; do
   [[ -n "$name" ]] || continue
   ln -s "$REPO_ROOT/skills/$name" "$MIG_SKILLS/$name"
-done <<< "$mig_members"
+done <<<"$mig_members"
 HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture --uninstall >/dev/null
 while IFS= read -r name; do
   [[ -n "$name" ]] || continue
   [[ ! -e "$MIG_SKILLS/$name" ]] || fail "uninstall left the pre-router flat link for $name"
-done <<< "$mig_members"
+done <<<"$mig_members"
 [[ -L "$MIG_SKILLS/foreign-skill" ]] || fail "uninstall removed a foreign symlink"
 pass "pre-router flat member links are cleaned up on install and uninstall"
 
@@ -607,15 +613,15 @@ HOME_TGT="$(mktemp -d)"
 mkdir -p "$HOME_TGT/.claude/skills"
 ln -s "$TGT_FIXTURE" "$HOME_TGT/.claude/skills/zz-targets-fixture"
 HOME="$HOME_TGT" "$INSTALL" --target=all --category=communication >/dev/null
-[[ ! -e "$HOME_TGT/.claude/skills/zz-targets-fixture" ]] \
-  || fail "targets: fixture installed for claude"
-[[ -f "$HOME_TGT/.codex/skills/zz-targets-fixture/scripts/bundled.txt" ]] \
-  || fail "targets: fixture missing (or incomplete) under codex"
-[[ -f "$HOME_TGT/.config/opencode/skills/zz-targets-fixture/scripts/bundled.txt" ]] \
-  || fail "targets: fixture missing (or incomplete) under opencode"
+[[ ! -e "$HOME_TGT/.claude/skills/zz-targets-fixture" ]] ||
+  fail "targets: fixture installed for claude"
+[[ -f "$HOME_TGT/.codex/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
+  fail "targets: fixture missing (or incomplete) under codex"
+[[ -f "$HOME_TGT/.config/opencode/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
+  fail "targets: fixture missing (or incomplete) under opencode"
 # Its category-mates are unaffected and keep their bundled files.
-[[ -f "$HOME_TGT/.claude/skills/documentation/SKILL.md" ]] \
-  || fail "documentation not installed as a whole directory for claude"
+[[ -f "$HOME_TGT/.claude/skills/documentation/SKILL.md" ]] ||
+  fail "documentation not installed as a whole directory for claude"
 rm_tgt_fixture
 trap - EXIT
 pass "targets: skips excluded agents and prunes a stale link"
@@ -641,8 +647,8 @@ mkdir -p "$HOME_INS/.claude" "$HOME_INS/.codex"
 printf 'my own notes\n\n@RTK.md\n' >"$HOME_INS/.claude/CLAUDE.md"
 cp "$HOME_INS/.claude/CLAUDE.md" "$HOME_INS/claude-before.md"
 HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication >/dev/null
-diff -q "$HOME_INS/claude-before.md" "$HOME_INS/.claude/CLAUDE.md" >/dev/null \
-  || fail "instructions written without --instructions"
+diff -q "$HOME_INS/claude-before.md" "$HOME_INS/.claude/CLAUDE.md" >/dev/null ||
+  fail "instructions written without --instructions"
 pass "instructions are not touched without --instructions"
 
 # 40. With the flag the block lands, hand-written content survives, and a
@@ -656,14 +662,14 @@ grep -q '<!-- <<< agents instructions <<< -->' "$CLAUDE_MD" || fail "end marker 
 grep -q 'Use uv for Python package development' "$CLAUDE_MD" || fail "fragment body missing"
 cp "$CLAUDE_MD" "$HOME_INS/claude-once.md"
 HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions >/dev/null
-diff -q "$HOME_INS/claude-once.md" "$CLAUDE_MD" >/dev/null \
-  || fail "second --instructions run changed the file"
+diff -q "$HOME_INS/claude-once.md" "$CLAUDE_MD" >/dev/null ||
+  fail "second --instructions run changed the file"
 pass "instructions block installs once and is idempotent"
 
 # 41. --uninstall strips only our block, restoring the file byte for byte.
 HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null
-diff -q "$HOME_INS/claude-before.md" "$CLAUDE_MD" >/dev/null \
-  || fail "uninstall did not restore the original instruction file"
+diff -q "$HOME_INS/claude-before.md" "$CLAUDE_MD" >/dev/null ||
+  fail "uninstall did not restore the original instruction file"
 pass "instructions uninstall removes only the managed block"
 
 # 42. codex and opencode each get their own file created from nothing
@@ -673,12 +679,12 @@ HOME_INS2="$(mktemp -d)"
 HOME="$HOME_INS2" "$INSTALL" --target=all --category=communication --instructions >/dev/null
 for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
   [[ -f "$HOME_INS2/$f" ]] || fail "$f was not created"
-  grep -q 'Use uv for Python package development' "$HOME_INS2/$f" \
-    || fail "$f has no fragment body"
+  grep -q 'Use uv for Python package development' "$HOME_INS2/$f" ||
+    fail "$f has no fragment body"
 done
 HOME="$HOME_INS2" "$INSTALL" --target=opencode --category=communication --instructions --uninstall >/dev/null
-! grep -q 'agents instructions' "$HOME_INS2/.config/opencode/AGENTS.md" \
-  || fail "opencode uninstall left the instructions block"
+! grep -q 'agents instructions' "$HOME_INS2/.config/opencode/AGENTS.md" ||
+  fail "opencode uninstall left the instructions block"
 pass "instructions create codex's and opencode's own files"
 
 # 43. Unbalanced markers (a hand edit) leave the file completely alone, and
@@ -689,8 +695,8 @@ printf 'notes\n\n<!-- >>> agents instructions (managed by install.sh, do not edi
   >"$HOME_INS3/.claude/CLAUDE.md"
 cp "$HOME_INS3/.claude/CLAUDE.md" "$HOME_INS3/unbalanced-before.md"
 HOME="$HOME_INS3" "$INSTALL" --target=claude --category=communication --instructions >/dev/null 2>&1
-diff -q "$HOME_INS3/unbalanced-before.md" "$HOME_INS3/.claude/CLAUDE.md" >/dev/null \
-  || fail "unbalanced markers did not protect the file"
+diff -q "$HOME_INS3/unbalanced-before.md" "$HOME_INS3/.claude/CLAUDE.md" >/dev/null ||
+  fail "unbalanced markers did not protect the file"
 HOME_INS4="$(mktemp -d)"
 HOME="$HOME_INS4" "$INSTALL" --target=codex --category=communication --instructions --dry-run >/dev/null
 [[ ! -e "$HOME_INS4/.codex/AGENTS.md" ]] || fail "dry-run wrote an instruction file"
@@ -707,8 +713,8 @@ R_RULE="$HOME_RULES/.claude/rules/agents-40-r.md"
 [[ -f "$R_RULE" ]] || fail "path-scoped R rule was not written"
 grep -qxF '  - "**/*.R"' "$R_RULE" || fail "R rule lacks its quoted paths glob"
 grep -q 'Namespace' "$R_RULE" || fail "R rule has no fragment body"
-! grep -q 'Namespace' "$HOME_RULES/.claude/CLAUDE.md" \
-  || fail "path-scoped fragment still inside Claude's block"
+! grep -q 'Namespace' "$HOME_RULES/.claude/CLAUDE.md" ||
+  fail "path-scoped fragment still inside Claude's block"
 for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
   grep -q 'Namespace' "$HOME_RULES/$f" || fail "$f lost the path-scoped fragment"
 done
