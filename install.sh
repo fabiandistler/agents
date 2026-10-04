@@ -112,14 +112,21 @@ usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
 
 for arg in "$@"; do
   case "$arg" in
-    --target=*)   TARGET="${arg#--target=}" ;;
-    --env=*)      ENV="${arg#--env=}" ;;
+    --target=*) TARGET="${arg#--target=}" ;;
+    --env=*) ENV="${arg#--env=}" ;;
     --category=*) CATEGORY="${arg#--category=}" ;;
-    --dry-run)    DRY_RUN=1 ;;
+    --dry-run) DRY_RUN=1 ;;
     --instructions) INSTRUCTIONS=1 ;;
-    --uninstall)  UNINSTALL=1 ;;
-    -h|--help)    usage; exit 0 ;;
-    *)            echo "unknown arg: $arg" >&2; usage >&2; exit 2 ;;
+    --uninstall) UNINSTALL=1 ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "unknown arg: $arg" >&2
+      usage >&2
+      exit 2
+      ;;
   esac
 done
 
@@ -130,12 +137,16 @@ if [[ -z "$TARGET" ]]; then
 fi
 
 case "$ENV" in
-  all|coding|chat) ;;
-  *) echo "invalid --env=$ENV (expected coding|chat|all)" >&2; usage >&2; exit 2 ;;
+  all | coding | chat) ;;
+  *)
+    echo "invalid --env=$ENV (expected coding|chat|all)" >&2
+    usage >&2
+    exit 2
+    ;;
 esac
 
 if [[ "$CATEGORY" != "all" ]]; then
-  IFS=',' read -ra _cats <<< "$CATEGORY"
+  IFS=',' read -ra _cats <<<"$CATEGORY"
   for c in "${_cats[@]}"; do
     c="${c//[[:space:]]/}"
     [[ -n "$c" ]] || continue
@@ -149,10 +160,13 @@ fi
 
 target_dir_for() {
   case "$1" in
-    claude)   printf '%s/.claude/skills\n'        "$HOME" ;;
-    codex)    printf '%s/.codex/skills\n'         "$HOME" ;;
+    claude) printf '%s/.claude/skills\n' "$HOME" ;;
+    codex) printf '%s/.codex/skills\n' "$HOME" ;;
     opencode) printf '%s/.config/opencode/skills\n' "$HOME" ;;
-    *) echo "unknown target: $1" >&2; return 1 ;;
+    *)
+      echo "unknown target: $1" >&2
+      return 1
+      ;;
   esac
 }
 
@@ -160,9 +174,12 @@ target_dir_for() {
 # skills go here (as <name>.md) instead of the skills directory.
 target_command_dir_for() {
   case "$1" in
-    claude)   printf '%s/.claude/commands\n'         "$HOME" ;;
+    claude) printf '%s/.claude/commands\n' "$HOME" ;;
     opencode) printf '%s/.config/opencode/command\n' "$HOME" ;;
-    *) echo "unknown target: $1" >&2; return 1 ;;
+    *)
+      echo "unknown target: $1" >&2
+      return 1
+      ;;
   esac
 }
 
@@ -229,8 +246,8 @@ skill_activation() {
   act="${act//[[:space:]]/}"
   case "$act" in
     command) printf 'command' ;;
-    router)  printf 'router' ;;
-    *)       printf 'auto' ;;
+    router) printf 'router' ;;
+    *) printf 'auto' ;;
   esac
 }
 
@@ -271,7 +288,8 @@ skill_matches_category() {
 list_skills() {
   # A directory under skills/ is a skill iff it contains SKILL.md.
   for d in "$REPO_ROOT"/skills/*/; do
-    local name; name="$(basename "$d")"
+    local name
+    name="$(basename "$d")"
     [[ -f "$d/SKILL.md" ]] || continue
     skill_matches_env "$d/SKILL.md" "$ENV" || continue
     skill_matches_category "$d/SKILL.md" "$CATEGORY" || continue
@@ -298,9 +316,9 @@ write_codex_config() {
   local config="$1" content="$2"
   local tmp="$config.tmp.$$"
   if [[ -n "$content" ]]; then
-    printf '%s\n' "$content" > "$tmp"
+    printf '%s\n' "$content" >"$tmp"
   else
-    : > "$tmp"
+    : >"$tmp"
   fi
   mv "$tmp" "$config"
 }
@@ -350,19 +368,20 @@ strip_mcp_block() {
 # it provisioned. Foreign [mcp_servers.*] tables live outside our markers and
 # are never touched; a hand-edited unbalanced marker pair leaves the file alone.
 remove_legacy_codex_mcp() {
-  local config; config="$(codex_config_path)"
+  local config
+  config="$(codex_config_path)"
   local cat before after
   if [[ -f "$config" ]]; then
     for cat in $LEGACY_MCP_CATEGORIES; do
       before="$(cat "$config")"
-      if ! mcp_markers_balanced "$cat" <<< "$before"; then
+      if ! mcp_markers_balanced "$cat" <<<"$before"; then
         printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
           "$cat" "$config" >&2
         continue
       fi
-      after="$(strip_mcp_block "$cat" <<< "$before")"
+      after="$(strip_mcp_block "$cat" <<<"$before")"
       [[ "$after" != "$before" ]] || continue
-      if (( DRY_RUN )); then
+      if ((DRY_RUN)); then
         printf '[dry-run] remove legacy %s MCP servers from %s\n' "$cat" "$config"
         continue
       fi
@@ -371,9 +390,10 @@ remove_legacy_codex_mcp() {
     done
   fi
 
-  local venv; venv="$(codex_mcp_runtime_dir)"
+  local venv
+  venv="$(codex_mcp_runtime_dir)"
   if [[ -d "$venv" ]]; then
-    if (( DRY_RUN )); then
+    if ((DRY_RUN)); then
       printf '[dry-run] remove legacy MCP runtime venv %s\n' "$venv"
     else
       rm -rf "$venv"
@@ -434,7 +454,7 @@ render_skill_override_toml() {
         "$name" >&2
       continue
     fi
-    (( first )) || printf '\n'
+    ((first)) || printf '\n'
     first=0
     printf '[[skills.config]]\nname = "%s"\nenabled = false\n' "$name"
   done
@@ -442,18 +462,19 @@ render_skill_override_toml() {
 
 # Strip our override block from ~/.codex/config.toml (leaving foreign config).
 remove_codex_member_overrides() {
-  local config; config="$(codex_config_path)"
+  local config
+  config="$(codex_config_path)"
   [[ -f "$config" ]] || return 0
   local before after
   before="$(cat "$config")"
-  if ! skill_override_markers_balanced <<< "$before"; then
+  if ! skill_override_markers_balanced <<<"$before"; then
     printf '  WARN      unbalanced skill-override marker lines in %s (leaving it untouched)\n' \
       "$config" >&2
     return 0
   fi
-  after="$(strip_skill_override_block <<< "$before")"
+  after="$(strip_skill_override_block <<<"$before")"
   [[ "$after" != "$before" ]] || return 0
-  if (( DRY_RUN )); then
+  if ((DRY_RUN)); then
     printf '[dry-run] remove routed-member skill overrides from %s\n' "$config"
     return 0
   fi
@@ -466,7 +487,8 @@ remove_codex_member_overrides() {
 # Uses only shell built-ins and the same core tools as the rest of install.sh
 # (no sort/wc/tr) so it works under the minimal sandboxed PATH.
 install_codex_member_overrides() {
-  local config; config="$(codex_config_path)"
+  local config
+  config="$(codex_config_path)"
   local members="" count=0 name
   while IFS= read -r name; do
     [[ -n "${name//[[:space:]]/}" ]] || continue
@@ -477,27 +499,29 @@ install_codex_member_overrides() {
     remove_codex_member_overrides
     return 0
   fi
-  if (( DRY_RUN )); then
+  if ((DRY_RUN)); then
     remove_codex_member_overrides
     printf '[dry-run] disable %s routed member skills in %s\n' "$count" "$config"
     return 0
   fi
   mkdir -p "$(dirname "$config")"
-  [[ -f "$config" ]] || : > "$config"
-  if ! skill_override_markers_balanced < "$config"; then
+  [[ -f "$config" ]] || : >"$config"
+  if ! skill_override_markers_balanced <"$config"; then
     printf '  WARN      unbalanced skill-override marker lines in %s (leaving it untouched)\n' \
       "$config" >&2
     return 0
   fi
   local rest toml
-  rest="$(strip_skill_override_block < "$config")"
+  rest="$(strip_skill_override_block <"$config")"
   toml="$(printf '%s' "$members" | render_skill_override_toml)"
   {
     if [[ -n "$rest" ]]; then printf '%s\n\n' "$rest"; fi
-    skill_override_begin_marker; printf '\n'
+    skill_override_begin_marker
+    printf '\n'
     printf '%s\n' "$toml"
-    skill_override_end_marker; printf '\n'
-  } > "$config.tmp.$$"
+    skill_override_end_marker
+    printf '\n'
+  } >"$config.tmp.$$"
   mv "$config.tmp.$$" "$config"
   printf '  skills    %s routed members disabled in %s\n' "$count" "$config"
 }
@@ -590,8 +614,10 @@ PY
 }
 
 install_codex_agents() {
-  local agents_dir; agents_dir="$(codex_agents_dir)"
-  local cats; cats="$(agent_categories)"
+  local agents_dir
+  agents_dir="$(codex_agents_dir)"
+  local cats
+  cats="$(agent_categories)"
   [[ -n "$cats" ]] || return 0
   if ! command -v python3 >/dev/null 2>&1; then
     printf '  WARN      python3 not found; cannot install agents in %s\n' \
@@ -608,7 +634,7 @@ install_codex_agents() {
         printf '  WARN      failed to convert %s (skipping)\n' "$md" >&2
         continue
       fi
-      if (( DRY_RUN )); then
+      if ((DRY_RUN)); then
         printf '[dry-run] write agent %s\n' "$dest"
         continue
       fi
@@ -618,15 +644,16 @@ install_codex_agents() {
         continue
       fi
       mkdir -p "$agents_dir"
-      printf '%s\n' "$toml" > "$dest.tmp.$$"
+      printf '%s\n' "$toml" >"$dest.tmp.$$"
       mv "$dest.tmp.$$" "$dest"
       printf '  agent     %s -> %s\n' "$name" "$dest"
     done
-  done <<< "$cats"
+  done <<<"$cats"
 }
 
 uninstall_codex_agents() {
-  local agents_dir; agents_dir="$(codex_agents_dir)"
+  local agents_dir
+  agents_dir="$(codex_agents_dir)"
   local cat md name dest
   while IFS= read -r cat; do
     [[ -n "$cat" ]] || continue
@@ -638,7 +665,7 @@ uninstall_codex_agents() {
         printf '  WARN      %s was not generated by us (skipping)\n' "$dest" >&2
         continue
       fi
-      if (( DRY_RUN )); then
+      if ((DRY_RUN)); then
         printf '[dry-run] remove agent %s\n' "$dest"
         continue
       fi
@@ -674,10 +701,13 @@ instructions_dir() { printf '%s/instructions' "$REPO_ROOT"; }
 # Global instruction file for a target. Unknown targets are an error.
 instruction_file_for() {
   case "$1" in
-    claude)   printf '%s/.claude/CLAUDE.md' "$HOME" ;;
-    codex)    printf '%s/.codex/AGENTS.md'  "$HOME" ;;
+    claude) printf '%s/.claude/CLAUDE.md' "$HOME" ;;
+    codex) printf '%s/.codex/AGENTS.md' "$HOME" ;;
     opencode) printf '%s/.config/opencode/AGENTS.md' "$HOME" ;;
-    *) echo "unknown target: $1" >&2; return 1 ;;
+    *)
+      echo "unknown target: $1" >&2
+      return 1
+      ;;
   esac
 }
 
@@ -743,7 +773,7 @@ render_instructions() {
   local file first=1
   while IFS= read -r file; do
     [[ -n "$file" ]] || continue
-    (( first )) || printf '\n'
+    ((first)) || printf '\n'
     first=0
     fragment_body "$file"
   done
@@ -786,9 +816,9 @@ write_text_file() {
   local path="$1" content="$2"
   local tmp="$path.tmp.$$"
   if [[ -n "$content" ]]; then
-    printf '%s\n' "$content" > "$tmp"
+    printf '%s\n' "$content" >"$tmp"
   else
-    : > "$tmp"
+    : >"$tmp"
   fi
   mv "$tmp" "$path"
 }
@@ -805,21 +835,22 @@ install_instructions() {
     if [[ -n "$file" ]]; then
       count=$((count + 1))
     fi
-  done <<< "$fragments"
-  if (( count == 0 )); then
+  done <<<"$fragments"
+  if ((count == 0)); then
     printf '  WARN      no instruction fragments match target %s (skipping %s)\n' \
       "$target" "$dest" >&2
     return 0
   fi
-  local body; body="$(render_instructions <<< "$fragments")"
+  local body
+  body="$(render_instructions <<<"$fragments")"
   local before="" after block
   [[ -f "$dest" ]] && before="$(cat "$dest")"
-  if ! instructions_markers_balanced <<< "$before"; then
+  if ! instructions_markers_balanced <<<"$before"; then
     printf '  WARN      unbalanced instruction marker lines in %s (leaving it untouched)\n' \
       "$dest" >&2
     return 0
   fi
-  after="$(strip_instructions_block <<< "$before")"
+  after="$(strip_instructions_block <<<"$before")"
   block="$(instructions_begin_marker)"$'\n'"$body"$'\n'"$(instructions_end_marker)"
   if [[ -n "$after" ]]; then
     after="$after"$'\n\n'"$block"
@@ -830,7 +861,7 @@ install_instructions() {
     printf '  ok        %s (%s instruction fragments)\n' "$dest" "$count"
     return 0
   fi
-  if (( DRY_RUN )); then
+  if ((DRY_RUN)); then
     printf '[dry-run] write %s instruction fragments into %s\n' "$count" "$dest"
     return 0
   fi
@@ -863,7 +894,7 @@ render_claude_rule() {
   paths="$(instruction_field "$file" paths)"
   printf -- '---\npaths:\n'
   # read -a, not an unquoted for-loop: the globs must not expand against $PWD.
-  IFS=',' read -ra globs <<< "$paths"
+  IFS=',' read -ra globs <<<"$paths"
   for glob in "${globs[@]}"; do
     glob="${glob#"${glob%%[![:space:]]*}"}"
     glob="${glob%"${glob##*[![:space:]]}"}"
@@ -883,7 +914,7 @@ list_managed_claude_rules() {
 }
 
 remove_claude_rule() {
-  if (( DRY_RUN )); then
+  if ((DRY_RUN)); then
     printf '[dry-run] remove rule %s\n' "$1"
     return 0
   fi
@@ -912,7 +943,7 @@ install_claude_rules() {
       printf '  ok        %s\n' "$dest"
       continue
     fi
-    if (( DRY_RUN )); then
+    if ((DRY_RUN)); then
       printf '[dry-run] write rule %s\n' "$dest"
       continue
     fi
@@ -922,7 +953,7 @@ install_claude_rules() {
   done
   while IFS= read -r file; do
     [[ -n "$file" ]] || continue
-    grep -qxF "$file" <<< "$wanted" || remove_claude_rule "$file"
+    grep -qxF "$file" <<<"$wanted" || remove_claude_rule "$file"
   done < <(list_managed_claude_rules)
 }
 
@@ -940,14 +971,14 @@ remove_instructions() {
   [[ -f "$dest" ]] || return 0
   local before after
   before="$(cat "$dest")"
-  if ! instructions_markers_balanced <<< "$before"; then
+  if ! instructions_markers_balanced <<<"$before"; then
     printf '  WARN      unbalanced instruction marker lines in %s (leaving it untouched)\n' \
       "$dest" >&2
     return 0
   fi
-  after="$(strip_instructions_block <<< "$before")"
+  after="$(strip_instructions_block <<<"$before")"
   [[ "$after" != "$before" ]] || return 0
-  if (( DRY_RUN )); then
+  if ((DRY_RUN)); then
     printf '[dry-run] remove instructions block from %s\n' "$dest"
     return 0
   fi
@@ -956,7 +987,7 @@ remove_instructions() {
 }
 
 run() {
-  if (( DRY_RUN )); then
+  if ((DRY_RUN)); then
     printf '[dry-run] %s\n' "$*"
   else
     "$@"
@@ -973,7 +1004,8 @@ ensure_parent() {
 link_one() {
   local src="$1" dest="$2"
   if [[ -L "$dest" ]]; then
-    local current; current="$(readlink "$dest")"
+    local current
+    current="$(readlink "$dest")"
     if [[ "$current" == "$src" ]]; then
       printf '  ok        %s -> %s\n' "$dest" "$src"
       return 0
@@ -997,7 +1029,8 @@ unlink_one() {
     fi
     return 0
   fi
-  local current; current="$(readlink "$dest")"
+  local current
+  current="$(readlink "$dest")"
   if [[ "$current" != "$src" ]]; then
     printf '  WARN      %s points to %s (not ours, skipping)\n' "$dest" "$current" >&2
     return 0
@@ -1041,7 +1074,7 @@ cleanup_opencode_legacy() {
     [[ "$(readlink "$dest")" == "$src" ]] || continue
     run rm "$dest"
     printf '  removed   %s (legacy opencode location)\n' "$dest"
-  done <<< "$skills"
+  done <<<"$skills"
 }
 
 cleanup_codex_prompts_legacy() {
@@ -1056,16 +1089,18 @@ cleanup_codex_prompts_legacy() {
     [[ "$(readlink "$dest")" == "$src" ]] || continue
     run rm "$dest"
     printf '  removed   %s (deprecated codex prompt)\n' "$dest"
-  done <<< "$skills"
+  done <<<"$skills"
 }
 
 main() {
-  local skills; skills="$(list_skills)"
+  local skills
+  skills="$(list_skills)"
   if [[ -z "$skills" ]]; then
     echo "no skills found under $REPO_ROOT (env=$ENV, category=$CATEGORY)" >&2
     exit 1
   fi
-  local routed; routed="$(routed_categories)"
+  local routed
+  routed="$(routed_categories)"
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
   [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
 
@@ -1075,7 +1110,7 @@ main() {
     dest_dir="$(target_dir_for "$target")"
     [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
     printf '%s: %s\n' "$target" "$dest_dir"
-    if (( UNINSTALL == 0 )); then
+    if ((UNINSTALL == 0)); then
       ensure_parent "$dest_dir"
     fi
     while IFS= read -r skill; do
@@ -1086,7 +1121,7 @@ main() {
         # User-invoked: link the single SKILL.md into the command directory.
         src="$REPO_ROOT/skills/$skill/SKILL.md"
         dest="$cmd_dir/$skill.md"
-        if (( UNINSTALL == 0 )) && (( cmd_dir_ready == 0 )); then
+        if ((UNINSTALL == 0)) && ((cmd_dir_ready == 0)); then
           ensure_parent "$cmd_dir"
           cmd_dir_ready=1
         fi
@@ -1115,12 +1150,12 @@ main() {
       # A skill whose `targets:` field excludes this agent is never linked
       # here; unlinking instead keeps the tree self-healing when the field is
       # added to a skill that was already installed.
-      if (( UNINSTALL )) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
+      if ((UNINSTALL)) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
         unlink_one "$src" "$dest"
       else
         link_one "$src" "$dest"
       fi
-    done <<< "$skills"
+    done <<<"$skills"
     prune_stale_skill_links "$dest_dir"
     [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
     if [[ "$target" == "codex" ]]; then
@@ -1128,7 +1163,7 @@ main() {
       # Runs on both paths: an upgrade must drop a managed block left by a
       # version that still registered the knowledge-base MCP servers.
       remove_legacy_codex_mcp
-      if (( UNINSTALL )); then
+      if ((UNINSTALL)); then
         uninstall_codex_agents
         remove_codex_member_overrides
       else
@@ -1139,8 +1174,8 @@ main() {
     if [[ "$target" == "opencode" ]]; then
       cleanup_opencode_legacy "$skills"
     fi
-    if (( INSTRUCTIONS )); then
-      if (( UNINSTALL )); then
+    if ((INSTRUCTIONS)); then
+      if ((UNINSTALL)); then
         remove_instructions "$target"
         if [[ "$target" == "claude" ]]; then remove_claude_rules; fi
       else
