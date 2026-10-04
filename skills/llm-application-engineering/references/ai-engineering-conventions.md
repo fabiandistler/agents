@@ -231,6 +231,16 @@ obvious — the cost of guessing wrong is high._
 - **Execute generated code only in an isolated sandbox/VM.** (Ch. 5)
 - **Gate all mutating actions (UPDATE/DELETE/DROP, sending messages,
   transactions) behind explicit human approval.** (Ch. 5, 10)
+- **Enforce an agent's database scope with database grants, never with the
+  prompt or a query filter: connect it as a dedicated user with SELECT on
+  approved views only — never through the developer's or an admin connection.
+  Treat free-text metadata (table/column comments, extended properties,
+  description fields) as untrusted input and keep it out of the agent's
+  context unless a human curated it.** A regex "read-only mode" is a blocklist
+  the agent can be talked around; a GRANT is not. Tool-scoped DB privileges:
+  `agent-engineering-conventions.md`, Tool Design. (Rehberger, CVE-2026-65669)
+  - ✅ `agent_ro` user, `GRANT SELECT ON v_*`, schema text from a curated fixture
+  - ❌ agent runs on the analyst's connection, read-only via a SQL keyword filter   ← likely-default
 - **Streaming emits tokens before output guardrails can run** — make that
   trade-off an explicit decision, not an inherited default. (Ch. 10)
 - **Audit third-party default prompt templates for missing safety instructions
