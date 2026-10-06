@@ -165,6 +165,16 @@ _Extends SKILL.md Part B (the five-step build order)._
 - **Access all models through a gateway** (unified interface, key custody,
   per-app access control, fallbacks, usage limits). **Never distribute raw
   provider keys to applications.** (Ch. 10)
+- **Before an unattended job calls a paid model API, give it a hard stop at
+  the provider, not an alert:** a per-project or per-key spend cap where the
+  provider has one; on Azure, where budgets only notify, the deployment's TPM
+  quota plus a job timeout. TPM caps the rate, not the total, so write the
+  worst case next to the job config: TPM × max run minutes × price. Treat a
+  spend-cap 429 as final — retrying cannot restore access. Caps enforce
+  late; size them with headroom. (Willison 05.10.2026; Microsoft Learn,
+  Azure OpenAI quota)
+  - ✅ nightly eval job on its own deployment at 20k TPM, 30-min timeout, max cost in the README
+  - ❌ subscription budget alert at 100 %, shared deployment at default TPM   ← likely-default
 - **When latency matters, fire redundant parallel calls and take the first
   acceptable response** instead of sequential retries. (Ch. 10)
 - **Never cache user-specific or time-sensitive responses** — cached
