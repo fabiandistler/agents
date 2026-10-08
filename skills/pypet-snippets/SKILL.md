@@ -96,7 +96,7 @@ to run `history -a` in their own shell if a fresh command is missing),
 ## Safety
 
 - Never store literal tokens, passwords or keys — replace them with a
-  `{{param}}` with no default or an `$ENV_VAR` (see step 2). Snippets are
+  `{{param}}` with no default or an `$ENV_VAR` (see step 3). Snippets are
   plaintext TOML that can be pushed to Git with `pypet sync`.
 - Never hand-edit `~/.config/pypet/snippets.toml`; always go through
   `pypet new` / `pypet edit`.
