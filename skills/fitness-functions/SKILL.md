@@ -67,8 +67,9 @@ patterns from the book cover most structural cases:
   Sequence within a project-dependent tolerance of the ideal. Thresholds are
   legitimate; vibes are not. (To *measure and choose* the threshold on an
   existing codebase, hand off to **`coupling-cohesion`** — its
-  `scripts/coupling_metrics.py --threshold --json` reports the per-component
-  numbers to gate on — parse its `--json` output and treat a non-empty flagged set as a build failure.)
+  `scripts/coupling_metrics.py <model.json> --json --threshold <D>` reports the
+  per-component numbers to gate on — parse its `--json` output and fail the
+  build if any row's `zone` starts with `Zone`.)
 - **Layer / boundary rules** — declare which layers may access which
   (ArchUnit's `layeredArchitecture()`, NetArchTest's
   `ShouldNot().HaveDependencyOn(...)`) and fail on violations.
