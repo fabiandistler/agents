@@ -16,8 +16,8 @@ PR #412. Two findings were carried forward into *Backlog* below.
 | Field | Value |
 |---|---|
 | Last run | 2026-10-08 |
-| Last job | `deps-audit` (report, PR pending merge) |
-| Next due job | `doc-drift` (no run yet -> catalog order) |
+| Last job | `doc-drift` (PR pending merge) |
+| Next due job | `dead-exports` (no run yet -> catalog order) |
 | Baseline status | green, 2026-10-08, 14/14 (see *Baseline*) |
 | Open maintenance PRs | see `gh pr list --state open --search "head:maintenance/"` |
 
@@ -92,7 +92,7 @@ Fourteen checks. Two standing caveats:
 | # | Job | Scanner | Output | Cooldown | Last run |
 |---|---|---|---|---|---|
 | 1 | `deps-audit` | yes | Report | 7d | 2026-10-08 |
-| 2 | `doc-drift` | no | PR | 14d | - |
+| 2 | `doc-drift` | no | PR | 14d | 2026-10-08 |
 | 3 | `dead-exports` | yes | PR | 14d | - |
 | 4 | `error-edges` | no | Report | 14d | - |
 | 5 | `test-flakiness` | yes | PR | 30d | - |
@@ -157,6 +157,7 @@ and is recoverable from git history.
 |---|---|---|---|
 | 2026-09-28 | *(bootstrap)* | catalog + scanner + gitleaks gate; `ROOMBA.md` and its history removed | maintenance/init-2026-09-28 |
 | 2026-10-08 | `deps-audit` | report: `maintenance/reports/2026-10-08-deps-audit.md` | maintenance/deps-audit-2026-10-08 |
+| 2026-10-08 | `doc-drift` | PR: README Contributing list and layout table | maintenance/doc-drift-2026-10-08 |
 
 ## Sunset condition
 
