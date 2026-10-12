@@ -168,8 +168,6 @@ governance suite. Deliver the check ready to commit, not as a proposal.
   verdicts for individual modules.
 - **`architecture-pattern-advisor`** — choosing the architecture whose rules
   fitness functions will guard.
-- **`adr-workflow`** — record the governed decision as an ADR and link the
-  fitness function as its enforcement.
 
 ## Source
 

@@ -540,7 +540,7 @@ ROUTED_SKILLS="$HOME_ROUTED/.claude/skills"
 [[ -f "$ROUTED_SKILLS/architecture/members/coupling-cohesion/SKILL.md" ]] ||
   fail "nested member coupling-cohesion not readable via the router"
 # ... but is never registered as its own top-level skill.
-for member in adr-workflow coupling-cohesion ddd; do
+for member in c4-modeling coupling-cohesion ddd; do
   [[ ! -e "$ROUTED_SKILLS/$member" ]] ||
     fail "routed member $member leaked into the skills directory"
 done

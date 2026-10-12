@@ -106,8 +106,7 @@ three trade-off questions from the source's Customer/Order Maintenance example
 
 Give a concrete recommendation:
 - **Split** — name the cluster to extract and the module it becomes; show the
-  seam. (If this is a significant structural decision, record it with the
-  `adr-workflow` skill.)
+  seam. (If this is a significant structural decision, record it in an ADR.)
 - **Merge** — when an over-extracted module just re-couples; fold it back.
 - **Leave** — when cohesion is fine or the split would cost more than it buys.
   Saying "leave it" is a real, valuable outcome.
@@ -225,7 +224,7 @@ dependencies toward stability.
 
 ### 7. Record and go deeper
 
-Record significant restructuring with the `adr-workflow` skill (with the metrics
+Record significant restructuring in an ADR (with the metrics
 baseline); escalate topology problems to `architecture-pattern-advisor`, and
 re-run the script to confirm components moved toward the Main Sequence.
 
@@ -331,7 +330,7 @@ for how levels reduce to high/low.
 An imbalance has exactly three exits — pick per pair from
 [references/rebalancing.md](references/rebalancing.md): reduce the strength
 crossing the boundary, reduce the distance, or accept on proven stability with
-a revisit condition (an ADR via `adr-workflow`).
+a revisit condition (an ADR).
 
 ### 7. Sanity-check the verdicts
 
@@ -363,5 +362,3 @@ acceptances are loans, not gifts, and need a revisit condition.
   one module or dependency.
 - **ddd** — subdomain classification feeds the volatility judgment in Mode C;
   aggregates are, among other things, a cohesion boundary.
-- **adr-workflow** — record significant split/merge/rebalance decisions, and the
-  metrics baseline that motivated them.

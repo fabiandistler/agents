@@ -3,8 +3,8 @@ name: architecture
 category: architecture
 activation: router
 environments: coding
-description: "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, ADRs, coupling/cohesion analysis, CI architecture rules, and SQL schemas as stable consumer interfaces."
-when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, keep a record of past decisions, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors."
+description: "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, coupling/cohesion analysis, CI architecture rules, and SQL schemas as stable consumer interfaces."
+when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors."
 ---
 
 # Architecture & design
@@ -34,7 +34,6 @@ model's trigger surface.
 <!-- BEGIN generated:members -->
 | Sub-skill | When to use | Read before acting |
 |---|---|---|
-| adr-workflow | Establish, draft, supersede, and maintain Architecture Decision Records (ADRs) in software repositories. | `members/adr-workflow/SKILL.md` |
 | architecture-pattern-advisor | Choose a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion), not generic project setup. | `members/architecture-pattern-advisor/SKILL.md` |
 | c4-modeling | Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4). | `members/c4-modeling/SKILL.md` |
 | coupling-cohesion | Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov). | `members/coupling-cohesion/SKILL.md` |
