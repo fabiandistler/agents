@@ -123,7 +123,7 @@ The catalog-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | the pinned `rev:` values, which exist in two places - `.pre-commit-config.yaml` and the fragments under `skills/prek-hooks/references/fragments/` that the skill ships to other repos - plus the unpinned `pip install` lines in `.github/workflows/ci.yml` (`ruff` deliberately, per `ee36b79`; `prek` and `pytest` incidentally) and the `pyyaml>=6` floor. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
+| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml`, plus the unpinned `pip install` lines in `.github/workflows/ci.yml` (`ruff` deliberately, per `ee36b79`; `prek` and `pytest` incidentally) and the `pyyaml>=6` floor. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` |
 
@@ -133,18 +133,6 @@ Carried over from the 2026-09-28 `deps-audit` run (closed PR #412) when this cat
 replaced `ROOMBA.md`. Everything else from that catalog's backlog was discarded on purpose
 and is recoverable from git history.
 
-- **No `--check` keeps the prek pins in sync across their two copies.**
-  `pre-commit-hooks`, `ruff-pre-commit` and `ty-pre-commit` are each pinned twice: in the
-  generated `.pre-commit-config.yaml` and in `skills/prek-hooks/references/fragments/`,
-  which is what the `prek-hooks` skill hands to other repos. The documented update path
-  (`prek update --cooldown-days 7`, per the config header and `setup-hooks.sh:107`)
-  rewrites the generated file only. They agree today. Every other generated surface here
-  has a gate behind it (`build_manifest.py --check`, `build_routers.py --check`,
-  `check_docs.py`, `check_plugins.py`, `check_instructions.py`); this one does not. Stakes:
-  `ty` 0.0.84 exists to close an arbitrary-code-execution advisory (GHSA-vxvm-j4xq-q7m4),
-  so the next advisory moves this repo's pin and leaves the shipped fragment handing new
-  repos the unpatched rev. A new script plus a CI step is a behavior change, so it was out
-  of scope for a report-only job.
 - **`prek` is unpinned in `ci.yml`** and feeds the blocking *Hooks in sync* step, while
   prek v0.5.0 (2026-08-27) removed `auto-update`, `init-template-dir` and
   `PREK_MAX_CONCURRENCY`. The 2026-09-28 run confirmed no tracked file uses a removed name,

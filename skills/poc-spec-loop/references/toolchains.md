@@ -49,7 +49,7 @@ allow-star-arg-any = true  # Any on *args/**kwargs only; ANN401 still flags it e
 "tests/**" = ["S101", "ANN", "PLR2004"]
 ```
 
-Dependency hygiene (opt-in, not baseline): `uv add --dev deptry && uv run deptry .` finds unused, missing and transitive imports. Run it in the full gate or CI rather than on every commit: it needs the project environment installed. Secret scanning belongs in the commit hook, not this loop; see the prek-hooks skill.
+Dependency hygiene (opt-in, not baseline): `uv add --dev deptry && uv run deptry .` finds unused, missing and transitive imports. Run it in the full gate or CI rather than on every commit: it needs the project environment installed. Secret scanning belongs in the commit hook, not this loop; see the `prek-hooks` skill in the [repo-maintenance plugin](https://github.com/fabiandistler/repo-maintenance).
 
 ### R — renv 1.2 · testthat 3e · lintr 3.4 · air 0.11 · devtools
 
