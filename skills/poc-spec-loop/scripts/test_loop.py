@@ -73,6 +73,9 @@ def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
         d.mkdir()
     subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
     git(repo, "init", "-q", "-b", "main")
+    # Per-repo identity: CI runners have no global one, and loop.sh commits too.
+    git(repo, "config", "user.name", "t")
+    git(repo, "config", "user.email", "t@example.com")
     git(repo, "remote", "add", "origin", origin_url)
     git(repo, "config", f"url.{origin}.insteadOf", origin_url)
     (repo / "plans").mkdir()
@@ -94,10 +97,6 @@ def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
         **os.environ,
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "STUB_LOG": str(log_dir),
-        "GIT_AUTHOR_NAME": "t",
-        "GIT_AUTHOR_EMAIL": "t@example.com",
-        "GIT_COMMITTER_NAME": "t",
-        "GIT_COMMITTER_EMAIL": "t@example.com",
     }
     env.pop("POC_AGENT", None)
     env.pop("POC_AGENT_FLAGS", None)
