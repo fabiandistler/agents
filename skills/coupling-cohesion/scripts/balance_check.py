@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Apply the Balanced Coupling rule to a list of assessed dependencies.
+"""Judge whether each dependency shares the right amount of knowledge.
 
-Implements the binary form of Vlad Khononov's balance rule (*Balancing
-Coupling in Software Design*, Addison-Wesley 2024; coupling.dev):
+Plain language first: how much is shared (strength), how far apart the
+sides live (distance), how likely the shared knowledge is to change
+(volatility). Implements the binary form of Vlad Khononov's balance rule
+(*Balancing Coupling in Software Design*, Addison-Wesley 2024;
+coupling.dev):
 
     MODULARITY = STRENGTH XOR DISTANCE
     BALANCE    = (STRENGTH XOR DISTANCE) OR NOT VOLATILITY
@@ -197,9 +200,18 @@ def render_table(rows: list[dict]) -> str:
 def main(argv: list[str]) -> int:
     """Assess every edge with the balance rule and print the table or JSON."""
     parser = argparse.ArgumentParser(
-        description="Apply the Balanced Coupling rule to assessed dependencies.",
+        description="Judge whether each dependency shares the right amount of "
+        "knowledge for its distance: how much is shared (strength), how far "
+        "apart the sides live (distance), how likely the shared knowledge is "
+        "to change (volatility).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n"
+        epilog="meanings:\n"
+        "  strength (how much is shared): intrusive, deepest, private internals | functional, same business rules in lockstep | model, shared domain entities | contract, integration-only surface, the only light kind that should cross distance.\n"
+        "  distance (how far apart the sides live): method | object | package (close) | service | system (far).\n"
+        "  volatility (how likely the shared knowledge is to change): core, changes often | supporting | generic | low, changes rarely; low-volatility acceptances need a revisit condition.\n"
+        "balance rule: heavy sharing is fine up close; only light contract knowledge across distance unless proven stable with a revisit condition.\n"
+        "verdicts, worst first: knowledge leak (imbalanced) | low cohesion (imbalanced) | stable leak (tolerated) | stable clutter (tolerated) | high cohesion (balanced) | loose coupling (balanced).\n"
+        "examples:\n"
         "  balance_check.py input.json\n"
         "  balance_check.py input.json --json\n"
         "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",

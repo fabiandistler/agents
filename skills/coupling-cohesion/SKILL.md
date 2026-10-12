@@ -134,6 +134,9 @@ Next step: <split with seam | merge with fold-back target | leave with reason> �
 
 Keep it proportional: a clean module needs a sentence, not a report.
 
+Report at most the top 3 findings with seam and fix; summarize the remainder
+in one line.
+
 ## Cohesion — worked repo contrast
 
 Groups decide, scores only bracketed. From this repo's `scripts/` directory
@@ -168,7 +171,35 @@ Trust the group count, not the raw score.
 # Mode B — Codebase-wide coupling metrics
 
 Judge how coupled — and therefore how brittle or over-abstracted — a codebase
-is, with the Ca/Ce/I/A/D component-coupling metrics and their Main Sequence zones.
+is, with five per-component numbers (plain language first, historical
+abbreviation in brackets) and their Main Sequence zones.
+
+## What the numbers mean
+
+- incoming dependencies (Ca) — how many components depend on this one; high
+  means a change here ripples outward to many others.
+- outgoing dependencies (Ce) — how many components this one depends on; high
+  means outside changes ripple inward into this one.
+- instability (I) — share of outgoing among all dependencies; 0 means fully
+  stable, 1 means fully unstable.
+- abstractness (A) — share of abstract artifacts (interfaces, abstract
+  classes, protocols) among all artifacts; 0 means fully concrete, 1 means
+  fully abstract.
+- distance from the ideal (D) — how far the component sits from the balanced
+  Main Sequence; above the threshold (default 0.5) means off-sequence, look
+  closer rather than concluding.
+
+## What the zones mean
+
+One sentence each:
+
+- Zone of Pain — concrete yet much depended-upon, so every change ripples
+  outward: brittle; raise abstraction or stabilize the component.
+- Zone of Uselessness — abstract yet used by nobody, so flexibility nobody
+  exercises: remove indirection, don't add more abstraction.
+- near main sequence — balanced for its stability: leave alone.
+- unknown (no abstractness data) — abstractness wasn't gathered, so only
+  instability is reported: gather the counts or judge by the edges.
 
 An unaided answer tends to eyeball imports and give a vibe. This mode makes
 the analysis reproducible: build the dependency graph, compute the metrics with
@@ -203,7 +234,8 @@ own tool rather than hand-tracing:
 | .NET | NDepend | Ca, Ce, I, A, D |
 | Go | `go list -deps`, `goda` | — |
 
-If the tool emits Ca/Ce/I, use it; the script adds A/D and uniform output.
+If the tool emits incoming (Ca) / outgoing (Ce) / instability (I) counts, use
+them; the script adds abstractness (A) / distance (D) and uniform output.
 
 Normalize the output into the script's JSON input (see
 `scripts/coupling_metrics.example.json`): a list of `components` and a list of
@@ -225,19 +257,23 @@ Run the bundled script:
 python3 scripts/coupling_metrics.py <your-input>.json
 ```
 
-It prints a markdown table of `Cᵃ`, `Cᵉ`, `I`, `A`, `D` and a zone label per
-component, sorted worst-`D` first, and flags everything past the threshold
-(`--threshold`, default 0.5). Use `--json` to pipe the numbers elsewhere. See
+It prints a markdown table of incoming dependencies (Ca), outgoing
+dependencies (Ce), instability (I), abstractness (A), distance from the ideal
+(D) and a zone label per component, sorted worst-distance first, and flags
+everything past the threshold (`--threshold`, default 0.5). Use `--json` to
+pipe the numbers elsewhere. See
 [references/metrics.md](references/metrics.md) for how each number is derived.
 
 ### 5. Interpret — don't just rank
 
-Treat a high `D` as a prompt to look, not a verdict.
+Treat a high distance from the ideal (D) as a prompt to look, not a verdict.
 
 - For each flagged component, name its zone and explain *why* it landed there
-  in terms of its actual edges (what depends on it, what it depends on).
-- Separate real problems from earned stability: a finished, stable, concrete
-  utility everyone imports can sit in the Pain corner and be perfectly fine.
+  in terms of its actual edges (what depends on it, what it depends on) —
+  numbers never stand as verdicts on their own.
+- Separate real pain from earned stability: a finished, stable, concrete
+  utility everyone imports can sit in the Zone of Pain corner and be perfectly
+  fine — leaving it is then the right call, with the reason stated.
 - Sanity-check the graph itself — a surprising result is often a missing or
   spurious edge, not a real coupling problem.
 
@@ -254,6 +290,21 @@ Record significant restructuring in an ADR (with the metrics
 baseline); escalate topology problems to `architecture-pattern-advisor`, and
 re-run the script to confirm components moved toward the Main Sequence.
 
+## Coupling-metrics output format
+
+Every answer uses the same shape — verdict first, evidence second, concrete
+next step third:
+
+```
+Verdict: <pain | useless | balanced | leave> — <one line>
+Evidence: <incoming (Ca)=<n>, outgoing (Ce)=<n>, instability (I)=<n>, abstractness (A)=<n>, distance (D)=<n>, zone> — <what that means here, via the actual edges>
+Next step: <fix with seam | leave with reason> — <concrete action>
+```
+
+Report at most the top 3 findings with seam and fix; summarize the remainder
+in one line. Leave with reason is a first-class, valuable verdict — saying
+"leave it" with the reason is success, not a non-answer.
+
 ## Coupling metrics — common mistakes
 
 - **Mixing levels.** Counting class edges and package edges in one graph makes
@@ -261,7 +312,7 @@ re-run the script to confirm components moved toward the Main Sequence.
 - **Reporting numbers as verdicts.** The metrics flag *where to look*; they
   can't tell essential from accidental complexity. Always interpret (step 5).
 - **Condemning earned stability.** A stable, concrete, finished utility in the
-  Pain corner may need no change. High `D` ≠ defect.
+  Zone of Pain corner may need no change. High distance from the ideal (D) ≠ defect.
 - **Fixing Uselessness by adding abstraction.** It's already too abstract —
   remove indirection, don't add it.
 - **Trusting a bad graph.** Garbage edges in, garbage metrics out. Verify the
@@ -309,31 +360,39 @@ in question.
 
 ### 2. Classify integration strength
 
-Identify the *strongest* kind of knowledge the downstream consumes:
+Identify the *strongest* kind of knowledge the downstream consumes
+(plain language first, established term in brackets):
 
-| Level | The downstream depends on… |
+| Sharing | The downstream depends on… |
 |---|---|
-| **Intrusive** | private implementation details — internals, another component's database, undocumented behavior |
-| **Functional coupling** | the same business rules — duplicated or interleaved logic that must change in lockstep |
-| **Model** | the upstream's model of the domain — its entities and concepts, but not its logic |
-| **Contract** | an integration-specific contract that hides implementation, logic, and model |
+| **deepest sharing (Intrusive)** | private implementation details — internals, another component's database, undocumented behavior; any upstream change can break the downstream |
+| **lockstep rules (Functional coupling)** | the same business rules — duplicated or interleaved logic that must change in lockstep on both sides |
+| **shared concepts (Model)** | the upstream's model of the domain — its entities and concepts, but not its logic; changes to the entity shape propagate |
+| **surface only (Contract)** | an integration-specific contract that hides implementation, logic, and model — the only light kind that should cross distance |
 
 Functional *coupling* is not Mode A's functional *cohesion*: here it is the
 second-strongest level, a leak when it crosses distance, not the best grade.
 
 ### 3. Assess distance
 
-Place the pair on the distance ladder: methods → objects → packages →
-services → systems. Distance is socio-technical: a team boundary adds distance
-even between services in one repo, and asynchronous integration adds lifecycle
-slack. Greater distance makes each coordinated change cost more.
+Place the pair on the distance ladder (plain language first, established
+term in brackets): within one method (method) → between objects in one
+package (object) → across packages in one repo (package) → across services
+(service) → across systems (system). Distance is socio-technical: a team
+boundary adds distance even between services in one repo, and asynchronous
+integration adds lifecycle slack. Greater distance makes each coordinated
+change cost more — so only surface-only (Contract) knowledge should travel
+far.
 
 ### 4. Assess volatility
 
-How likely is the *shared* knowledge to change? Use the subdomain type as the
-first proxy (classify with the `ddd` skill if unclear), then correct with
-evidence: commit history of the shared surface, roadmap pressure, and whether
-the upstream is actively evolved or in maintenance mode.
+How likely is the *shared* knowledge to change? Read plain language first,
+established term in brackets: changes often (core) versus changes rarely
+(supporting, generic, low). Use the subdomain type as the first proxy
+(classify with the `ddd` skill if unclear), then correct with evidence:
+commit history of the shared surface, roadmap pressure, and whether the
+upstream is actively evolved or in maintenance mode. A low-volatility
+acceptance is a loan, not a gift — it needs a revisit condition.
 
 ### 5. Apply the balance rule
 
@@ -362,6 +421,21 @@ a revisit condition (an ADR).
 Binary high/low is a deliberate simplification — recheck generous distance
 guesses and optimistic stability claims against git history; low-volatility
 acceptances are loans, not gifts, and need a revisit condition.
+
+## Balanced-coupling output format
+
+Every answer uses the same shape — verdict first, evidence second, concrete
+next step third:
+
+```
+Verdict: <knowledge leak | low cohesion | stable leak | stable clutter | high cohesion | loose coupling | leave> — <one line>
+Evidence: <sharing (strength)=<level>, distance=<level>, volatility=<level>> — <what that means here, e.g. shared domain entities across services that change often>
+Next step: <fix with seam | leave with reason> — <concrete action>
+```
+
+Report at most the top 3 findings with seam and fix; summarize the remainder
+in one line. Leave with reason is a first-class, valuable verdict — saying
+"leave it" with the reason is success, not a non-answer.
 
 ## Balanced coupling — common mistakes
 
