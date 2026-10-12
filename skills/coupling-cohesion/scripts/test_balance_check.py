@@ -65,5 +65,14 @@ class TestExitCodes(unittest.TestCase):
         self.assertEqual(proc.stderr, "")
 
 
+class TestHelp(unittest.TestCase):
+    def test_help_is_short_and_narrow(self):
+        proc = run("--help")
+        self.assertEqual(proc.returncode, 0)
+        lines = proc.stdout.splitlines()
+        self.assertLessEqual(len(lines), 25)
+        self.assertLessEqual(max(len(line) for line in lines), 100)
+
+
 if __name__ == "__main__":
     unittest.main()

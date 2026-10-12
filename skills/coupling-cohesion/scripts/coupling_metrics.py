@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Compute component-coupling metrics from a dependency-edge list.
+"""Measure codebase brittleness per component, plain language first.
 
-Reports Ca, Ce, I, A, and D per component with its zone. The formulas, the
-zone map, and the principles behind the Main Sequence live in
-references/metrics.md.
+Reports incoming dependencies (Ca), outgoing dependencies (Ce),
+instability (I), abstractness (A), and distance from the ideal (D) per
+component with its zone. The formulas, the zone map, and the principles
+behind the Main Sequence live in references/metrics.md.
 
 Usage:
     python3 coupling_metrics.py input.json
@@ -146,10 +147,15 @@ def render_table(rows: list[dict]) -> str:
 def main(argv: list[str] | None = None) -> int:
     """Load the JSON model, compute the metrics, and print the table or JSON."""
     parser = argparse.ArgumentParser(
-        description="Compute Ca/Ce/I/A/D per component with its zone. Formulas "
-        "and the zone map live in references/metrics.md.",
+        description="Measure codebase brittleness per component, with its zone.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n"
+        epilog="meanings (details: references/metrics.md):\n"
+        "  incoming (Ca) / outgoing (Ce) dependencies; instability (I) 0 stable..1 unstable;\n"
+        "  abstractness (A) 0 concrete..1 abstract; distance (D) from the Main Sequence.\n"
+        "zones: Zone of Pain = concrete, much depended-upon (brittle) |\n"
+        "  Zone of Uselessness = abstract, used by nobody | near main sequence |\n"
+        "  unknown = no abstractness data\n"
+        "examples:\n"
         "  coupling_metrics.py input.json\n"
         "  coupling_metrics.py input.json --json --threshold 0.4\n"
         "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",

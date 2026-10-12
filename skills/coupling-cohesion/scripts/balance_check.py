@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Apply the Balanced Coupling rule to a list of assessed dependencies.
+"""Judge whether each dependency shares the right amount of knowledge.
 
-Implements the binary form of Vlad Khononov's balance rule (*Balancing
-Coupling in Software Design*, Addison-Wesley 2024; coupling.dev):
+Plain language first: how much is shared (strength), how far apart the
+sides live (distance), how likely the shared knowledge is to change
+(volatility). Implements the binary form of Vlad Khononov's balance rule
+(*Balancing Coupling in Software Design*, Addison-Wesley 2024;
+coupling.dev):
 
     MODULARITY = STRENGTH XOR DISTANCE
     BALANCE    = (STRENGTH XOR DISTANCE) OR NOT VOLATILITY
@@ -197,9 +200,17 @@ def render_table(rows: list[dict]) -> str:
 def main(argv: list[str]) -> int:
     """Assess every edge with the balance rule and print the table or JSON."""
     parser = argparse.ArgumentParser(
-        description="Apply the Balanced Coupling rule to assessed dependencies.",
+        description="Judge whether each dependency shares the right amount of knowledge.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n"
+        epilog="levels (high/low aliases):\n"
+        "  strength, how much is shared: intrusive | functional | model (high) |\n"
+        "    contract (low, the only light kind that should cross distance)\n"
+        "  distance, how far apart: method | object | package (low) | service | system (high)\n"
+        "  volatility, how likely to change: core (high) | supporting | generic (low)\n"
+        "  all three also take literal high/low to override an alias\n"
+        "rule: heavy sharing is fine up close; only light contract knowledge crosses\n"
+        "  distance unless proven stable, with a revisit condition.\n"
+        "examples:\n"
         "  balance_check.py input.json\n"
         "  balance_check.py input.json --json\n"
         "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",
