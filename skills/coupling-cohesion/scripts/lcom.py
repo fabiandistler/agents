@@ -116,10 +116,10 @@ class ModuleReport:
             return "only one " + self.node_label + " -- cohesion is trivially fine"
         comp = self.clusters
         if comp <= 1:
-            return "1 group (1 cluster, well connected) -- cohesive"
+            return "1 group, well connected -- cohesive"
         plural = "classes" if self.kind == "class" else "files"
         return (
-            f"{comp} groups ({comp} disjoint clusters) -- this {self.kind} could split into "
+            f"{comp} disjoint groups -- this {self.kind} could split into "
             f"{comp} {plural}; inspect whether the groups truly belong apart"
         )
 
@@ -462,12 +462,12 @@ def render_text(items: list[tuple[Path, ModuleReport]], hidden: int, total: int,
         lines.append(f"# {path}")
         lines.append(
             f"  {report.kind} {report.name}: {report.node_count} {report.node_label}s, "
-            f"groups={report.clusters} (clusters={report.clusters}) [LCOM={report.lcom}]"
+            f"groups={report.clusters} [LCOM={report.lcom}]"
         )
         lines.append(f"      -> {report.interpretation()}")
     if hidden:
         lines.append(f"... {hidden} more (raise --top)")
-    lines.append(f"{total} modules, {multi} with 2+ clusters")
+    lines.append(f"{total} modules, {multi} with 2+ groups")
     return "\n".join(lines)
 
 
@@ -499,11 +499,12 @@ def emit(payload: str, output: Path | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Parse flags, analyze every path, and print or store the worst-first report."""
     parser = argparse.ArgumentParser(
-        description="Estimate module cohesion via independent groups (clusters lead, "
-        "raw LCOM score bracketed secondary). "
+        description="Estimate module cohesion via independent groups, raw LCOM bracketed.\n"
         "Python is precise (ast); R and Bash are heuristic.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="meanings: groups (clusters): independent groups -- 1 = cohesive, 2+ = split candidate; LCOM bracketed secondary.\n"
+        epilog="meanings:\n"
+        "  groups: independent groups over shared fields or calls; 1 = cohesive,\n"
+        "  2+ = split candidate. [LCOM=n] is the raw score, secondary.\n"
         "examples:\n"
         "  lcom.py src/\n"
         "  lcom.py mod.py --top 5 --json\n"

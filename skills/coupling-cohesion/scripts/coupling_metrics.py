@@ -147,22 +147,14 @@ def render_table(rows: list[dict]) -> str:
 def main(argv: list[str] | None = None) -> int:
     """Load the JSON model, compute the metrics, and print the table or JSON."""
     parser = argparse.ArgumentParser(
-        description="Measure codebase brittleness per component: incoming "
-        "dependencies (Ca), outgoing dependencies (Ce), instability (I), "
-        "abstractness (A), and distance from the ideal (D), with its zone. "
-        "Formulas and the zone map live in references/metrics.md.",
+        description="Measure codebase brittleness per component, with its zone.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="metric meanings:\n"
-        "  incoming dependencies (Ca): how many depend on this; high means a change here ripples outward.\n"
-        "  outgoing dependencies (Ce): how many this depends on; high means outside changes ripple inward.\n"
-        "  instability (I): share of outgoing; 0 fully stable, 1 fully unstable.\n"
-        "  abstractness (A): share of abstract artifacts; 0 fully concrete, 1 fully abstract.\n"
-        "  distance from the ideal (D): how far from the balanced Main Sequence; above --threshold means off-sequence, look closer.\n"
-        "zones:\n"
-        "  Zone of Pain: concrete yet much depended-upon, so brittle.\n"
-        "  Zone of Uselessness: abstract yet used by nobody, so remove indirection.\n"
-        "  near main sequence: balanced for its stability.\n"
-        "  unknown (no abstractness data): only instability reported.\n"
+        epilog="meanings (details: references/metrics.md):\n"
+        "  incoming (Ca) / outgoing (Ce) dependencies; instability (I) 0 stable..1 unstable;\n"
+        "  abstractness (A) 0 concrete..1 abstract; distance (D) from the Main Sequence.\n"
+        "zones: Zone of Pain = concrete, much depended-upon (brittle) |\n"
+        "  Zone of Uselessness = abstract, used by nobody | near main sequence |\n"
+        "  unknown = no abstractness data\n"
         "examples:\n"
         "  coupling_metrics.py input.json\n"
         "  coupling_metrics.py input.json --json --threshold 0.4\n"

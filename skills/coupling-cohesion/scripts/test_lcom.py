@@ -56,7 +56,8 @@ class TestEmptyScan(unittest.TestCase):
             )
             proc = run(str(target))
         self.assertEqual(proc.returncode, 0)
-        self.assertIn("clusters=", proc.stdout)
+        self.assertIn("groups=1 [LCOM=", proc.stdout)
+        self.assertNotIn("clusters=", proc.stdout)
 
 
 class TestBoundedOutput(unittest.TestCase):
@@ -65,7 +66,7 @@ class TestBoundedOutput(unittest.TestCase):
             target = write_mod(tmp, "mod.py", ["alpha", "beta"])
             proc = run(str(target))
         self.assertEqual(proc.returncode, 0)
-        self.assertIn("1 modules, 1 with 2+ clusters", proc.stdout)
+        self.assertIn("1 modules, 1 with 2+ groups", proc.stdout)
 
     def test_top_caps_text_output(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -75,7 +76,7 @@ class TestBoundedOutput(unittest.TestCase):
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(proc.stdout.count("# "), 1)
         self.assertIn("2 more (raise --top)", proc.stdout)
-        self.assertIn("3 modules, 3 with 2+ clusters", proc.stdout)
+        self.assertIn("3 modules, 3 with 2+ groups", proc.stdout)
 
     def test_top_caps_json_output(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -93,7 +94,17 @@ class TestBoundedOutput(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
             self.assertEqual(proc.stdout, "")
             body = out.read_text()
-        self.assertIn("1 modules, 1 with 2+ clusters", body)
+        self.assertIn("1 modules, 1 with 2+ groups", body)
+
+
+class TestGroupsFirstText(unittest.TestCase):
+    def test_split_candidate_leads_with_groups(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = write_mod(tmp, "mod.py", ["alpha", "beta"])
+            proc = run(str(target))
+        self.assertEqual(proc.returncode, 0)
+        self.assertIn("groups=2 [LCOM=", proc.stdout)
+        self.assertIn("-> 2 disjoint groups --", proc.stdout)
 
 
 class TestLcomFloorQuirk(unittest.TestCase):
@@ -104,6 +115,15 @@ class TestLcomFloorQuirk(unittest.TestCase):
         self.assertEqual(entry["lcom"], 0)
         self.assertEqual(entry["clusters"], 2)
         self.assertIn("could split", entry["interpretation"])
+
+
+class TestHelp(unittest.TestCase):
+    def test_help_is_short_and_narrow(self):
+        proc = run("--help")
+        self.assertEqual(proc.returncode, 0)
+        lines = proc.stdout.splitlines()
+        self.assertLessEqual(len(lines), 25)
+        self.assertLessEqual(max(len(line) for line in lines), 100)
 
 
 if __name__ == "__main__":

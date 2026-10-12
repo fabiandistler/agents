@@ -200,17 +200,16 @@ def render_table(rows: list[dict]) -> str:
 def main(argv: list[str]) -> int:
     """Assess every edge with the balance rule and print the table or JSON."""
     parser = argparse.ArgumentParser(
-        description="Judge whether each dependency shares the right amount of "
-        "knowledge for its distance: how much is shared (strength), how far "
-        "apart the sides live (distance), how likely the shared knowledge is "
-        "to change (volatility).",
+        description="Judge whether each dependency shares the right amount of knowledge.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="meanings:\n"
-        "  strength (how much is shared): intrusive, deepest, private internals | functional, same business rules in lockstep | model, shared domain entities | contract, integration-only surface, the only light kind that should cross distance.\n"
-        "  distance (how far apart the sides live): method | object | package (close) | service | system (far).\n"
-        "  volatility (how likely the shared knowledge is to change): core, changes often | supporting | generic | low, changes rarely; low-volatility acceptances need a revisit condition.\n"
-        "balance rule: heavy sharing is fine up close; only light contract knowledge across distance unless proven stable with a revisit condition.\n"
-        "verdicts, worst first: knowledge leak (imbalanced) | low cohesion (imbalanced) | stable leak (tolerated) | stable clutter (tolerated) | high cohesion (balanced) | loose coupling (balanced).\n"
+        epilog="levels (high/low aliases):\n"
+        "  strength, how much is shared: intrusive | functional | model (high) |\n"
+        "    contract (low, the only light kind that should cross distance)\n"
+        "  distance, how far apart: method | object | package (low) | service | system (high)\n"
+        "  volatility, how likely to change: core (high) | supporting | generic (low)\n"
+        "  all three also take literal high/low to override an alias\n"
+        "rule: heavy sharing is fine up close; only light contract knowledge crosses\n"
+        "  distance unless proven stable, with a revisit condition.\n"
         "examples:\n"
         "  balance_check.py input.json\n"
         "  balance_check.py input.json --json\n"
