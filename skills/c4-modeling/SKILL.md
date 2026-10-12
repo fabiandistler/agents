@@ -137,7 +137,7 @@ table makes this a mechanical translation. If the model outgrows one table
 one to one onto that source.
 
 If architectural decisions surfaced during drafting ("why is search its own
-container?"), suggest recording them with `adr-workflow` rather than burying
+container?"), suggest recording them as ADRs rather than burying
 the rationale in a diagram caption.
 
 ### 5. Review against the checklist

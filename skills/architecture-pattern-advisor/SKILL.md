@@ -49,7 +49,7 @@ Let the user choose. If they pick against the recommendation, accept it and note
 
 ### 4. Record the decision as an ADR
 
-Once chosen, document it. Use the `adr-workflow` skill to write an ADR capturing context, the decision drivers from step 2, the considered options from step 3 (the real candidates, not strawmen), and the consequences — including the downsides of the chosen option.
+Once chosen, document it. Write an ADR capturing context, the decision drivers from step 2, the considered options from step 3 (the real candidates, not strawmen), and the consequences — including the downsides of the chosen option.
 
 ### 5. Implement — scaffold or migrate
 
@@ -64,7 +64,7 @@ Sanity-check the result: the project's build/test command passes and the boundar
 
 ## Trade-off Analysis
 
-When step 3's candidates are close or the choice is contentious, weigh the real alternatives (two is fine; for an existing repo always include the status quo) against the 3–7 characteristics that actually matter, separating short-term effects from long-run ones. Use a weighted matrix as a discussion aid, not a verdict, and record the choice with a review date via the `adr-workflow` skill (step 4).
+When step 3's candidates are close or the choice is contentious, weigh the real alternatives (two is fine; for an existing repo always include the status quo) against the 3–7 characteristics that actually matter, separating short-term effects from long-run ones. Use a weighted matrix as a discussion aid, not a verdict, and record the choice with a review date in the ADR (step 4).
 
 ## Once topology lands on microservices
 
@@ -78,7 +78,6 @@ Stop here for boundary work: find bounded contexts with `ddd`, then cut and wire
 - `fitness-functions` — use when a chosen boundary must be enforced by a check that fails CI.
 - `c4-modeling` — use when the chosen architecture must be drawn as Context, Container, or Component diagrams.
 - `coupling-cohesion` — use when measuring whether an existing decomposition is sound.
-- `adr-workflow` — use when recording the chosen topology or code organization as a decision.
 
 ## Common Mistakes
 

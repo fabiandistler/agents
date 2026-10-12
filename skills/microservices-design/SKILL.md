@@ -42,8 +42,7 @@ service. Not for deciding whether to use microservices at all
 3. **Flag violations with the rule, not just an opinion.** Quote the rule and
    its `❌` example when the code matches the likely-default anti-pattern.
 4. **Record consequential design calls** (e.g. choreography vs orchestration,
-   breaking-change migration strategy) as an ADR via the `adr-workflow`
-   skill.
+   breaking-change migration strategy) as an ADR.
 
 ## Cluster map
 
@@ -74,8 +73,6 @@ For modules in a modular monolith, Coupling / Contracts / Code Reuse apply; Resi
 - **coupling-cohesion** — when a specific inter-service dependency flagged by
   the Coupling cluster needs a deeper verdict (integration strength ×
   distance × volatility), hand it to that skill's balanced-coupling mode.
-- **adr-workflow** — record saga orchestration choices, versioning
-  strategies, and boundary decisions as ADRs.
 
 ## Source
 

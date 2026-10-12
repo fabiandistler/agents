@@ -113,4 +113,4 @@ Adapted from c4model.com's review checklist. Run it on every finished diagram:
 - **Prefer fewer diagrams, updated,** over many diagrams, abandoned. Delete
   diagrams that no longer answer anyone's question.
 - **Record the "why" elsewhere.** Diagrams show structure; decisions and
-  their rationale belong in ADRs (see the `adr-workflow` skill).
+  their rationale belong in ADRs.

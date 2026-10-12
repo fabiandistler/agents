@@ -40,8 +40,7 @@ that cannot be recovered by reading the code. Two or three lines each:
 > hard requirement for billing events.
 
 If a decision is significant, contested, or likely to be revisited, it deserves
-its own record — use the `architecture` skill (adr-workflow) and link to it from here rather than
-inlining a full ADR.
+its own record — an ADR — linked from here rather than inlined.
 
 **Data flow.** Follow one or two representative requests end to end, naming
 each hop and what it does. Include the failure path, not only the happy one:

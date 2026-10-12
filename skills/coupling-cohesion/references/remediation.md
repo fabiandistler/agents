@@ -62,5 +62,5 @@ it usually reflects shallow modules with wide interfaces. The durable remedy is
 simply fewer edges to couple on. If the coupling is structural — the wrong
 components exist at all, or the topology is wrong — escalate to
 `architecture-pattern-advisor`. And record any significant restructuring
-decision with `adr-workflow` so the rationale (and the metrics baseline that
+decision in an ADR so the rationale (and the metrics baseline that
 motivated it) survives.

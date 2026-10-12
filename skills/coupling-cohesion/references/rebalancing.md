@@ -88,7 +88,7 @@ Legitimate when the shared knowledge is demonstrably stable: a frozen legacy
 system, a finished generic subdomain, a standard that changes on a
 years-long cycle.
 
-- Record it — an ADR (`adr-workflow`) naming the imbalance, the stability
+- Record it — an ADR naming the imbalance, the stability
   evidence, and the **revisit condition**: the event that voids the
   acceptance (upstream back under active development, subdomain reclassified
   toward core, first cascading change actually observed).
