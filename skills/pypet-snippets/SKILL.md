@@ -2,7 +2,6 @@
 name: pypet-snippets
 category: workflow
 activation: command
-disable-model-invocation: true
 environments: coding
 compatibility: Requires pypet-cli 0.9 on PATH (upstream archived Aug 2026, final v0.9.0).
 description: Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.
