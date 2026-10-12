@@ -25,7 +25,7 @@ cohesion type on the skill's scale, then get the structural signal with:
    python3 <skill>/scripts/lcom.py <paths...> [--lang auto|python|r|bash]
 
 Apply the skill's Mode A step-5 trade-off questions before recommending any split —
-a multi-cluster result is an invitation, not an order, and "leave it" is a
+a multi-group result is an invitation, not an order, and "leave it" is a
 real outcome.
 
 Pull background from <skill>/references/ only when you actually need it:
@@ -40,8 +40,11 @@ Constraints:
 
 Report back per analyzed module, in the skill's output format:
 
-   Cohesion: <type> (<one-line why>)
-   Structure: LCOM=<n>, clusters=<n> — <what that means here>
-   Recommendation: <split / merge / leave> — <concrete next step>
+   Verdict: <split | merge | leave> — <cohesion type in one line>
+   Evidence: <N> group(s) [LCOM=<n>] — <what that means here>
+   Trade-offs: <one line per step-5 question>
+   Next step: <seam to extract | fold-back target | reason to leave> — <concrete action>
+
+Report at most the top 3 findings; summarize the remainder in one line.
 
 Keep it proportional: a clean module needs a sentence, not a report.
