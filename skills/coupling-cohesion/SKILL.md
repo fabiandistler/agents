@@ -141,7 +141,7 @@ in one line.
 
 Groups decide, scores only bracketed. Worked contrast from this repo's `scripts/`
 directory (run the bundled `scripts/lcom.py` with the target files as arguments):
-`python3 scripts/lcom.py <repo>/scripts/build_manifest.py <repo>/scripts/catalogue.py`):
+`python3 scripts/lcom.py <repo>/scripts/build_manifest.py <repo>/scripts/catalogue.py`:
 
 - Cohesive despite a high score: `scripts/build_manifest.py` — file, 12
   functions, 1 group (clusters=1) [LCOM=42] — well connected, cohesive. Do

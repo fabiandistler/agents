@@ -503,7 +503,8 @@ def main(argv: list[str] | None = None) -> int:
         "raw LCOM score bracketed secondary). "
         "Python is precise (ast); R and Bash are heuristic.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n"
+        epilog="meanings: groups (clusters): independent groups -- 1 = cohesive, 2+ = split candidate; LCOM bracketed secondary.\n"
+        "examples:\n"
         "  lcom.py src/\n"
         "  lcom.py mod.py --top 5 --json\n"
         "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",
