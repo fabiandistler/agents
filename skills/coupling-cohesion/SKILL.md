@@ -36,6 +36,15 @@ For *greenfield* decomposition of a system that doesn't exist yet, use
 from scratch (use `architecture-pattern-advisor`), or greenfield component
 decomposition (use `logical-component-design`).
 
+## Output contract (all modes)
+
+Every answer uses the same shape — verdict first, evidence second, concrete
+next step third — with a per-mode template below. Report at most the top 3
+findings with seam and fix; summarize the remainder in one line. Leave with
+reason is a first-class, valuable verdict — saying "leave it" with the reason
+is success, not a non-answer. Keep it proportional: a clean module needs a
+sentence, not a report.
+
 ---
 
 # Mode A — Cohesion of a module
@@ -104,9 +113,16 @@ modules or where it doesn't fit, and rely on steps 2–3.
 
 ### 5. Apply the trade-off questions before recommending a split
 
-A multi-cluster result is an *invitation* to split, not an order. Run the
+A multi-group result is an *invitation* to split, not an order. Ask the
 three trade-off questions from the source's Customer/Order Maintenance example
-([reference](references/cohesion-taxonomy.md#worked-example-when-to-split-a-module)).
+([reference](references/cohesion-taxonomy.md#worked-example-when-to-split-a-module)):
+
+1. **Too small to stand alone?** If the group to extract is a couple of
+   operations that will never grow, fold it back instead.
+2. **Is the remaining module growing?** If it is heading toward a god-module,
+   extract before it gets there.
+3. **Would the pieces re-couple?** If the extracted group needs so much of the
+   other's knowledge that the split creates heavy coupling, leave it.
 
 ### 6. Recommend: split, merge, or leave — with the refactor
 
@@ -123,32 +139,30 @@ concrete outcome:
 
 ## Cohesion output format
 
-Every answer uses the same shape — verdict first, evidence second, concrete
-next step third:
+Follows the [output contract](#output-contract-all-modes):
 
 ```
-Verdict: <cohesive | split candidate | merged back | leave> — <type in one line, e.g. functional>
+Verdict: <split | merge | leave> — <cohesion type in one line, e.g. functional>
 Evidence: <N> group(s) [LCOM=<n>] — <what that means here, e.g. 1 group hangs together despite a high score>
-Next step: <split with seam | merge with fold-back target | leave with reason> — <concrete action>
+Trade-offs: <one line per step-5 question: too small? remaining module growing? would re-couple?>
+Next step: <seam to extract | fold-back target | reason to leave> — <concrete action>
 ```
-
-Keep it proportional: a clean module needs a sentence, not a report.
-
-Report at most the top 3 findings with seam and fix; summarize the remainder
-in one line.
 
 ## Cohesion — worked repo contrast
 
-Groups decide, scores only bracketed. Worked contrast from this repo's `scripts/`
-directory (run the bundled `scripts/lcom.py` with the target files as arguments):
-`python3 scripts/lcom.py <repo>/scripts/build_manifest.py <repo>/scripts/catalogue.py`:
+Groups decide, scores only bracketed. A snapshot (October 2026) from the
+skill catalogue repo this skill ships in, file level only; the files live in
+that repo, not in the installed skill, and the numbers drift as they change:
 
-- Cohesive despite a high score: `scripts/build_manifest.py` — file, 12
-  functions, 1 group (clusters=1) [LCOM=42] — well connected, cohesive. Do
-  not split.
-- Split candidate despite a low score: `scripts/catalogue.py` — file, 2
-  functions, 2 groups (clusters=2) [LCOM=1] — two disjoint groups sharing
-  nothing, split candidate pending the step-5 trade-off questions.
+- Cohesive despite a high score: `scripts/build_manifest.py` — 12 functions,
+  `groups=1 [LCOM=42]` — well connected. Trade-offs: nothing to extract, so
+  no split question arises. Leave.
+- Split candidate despite a low score: `scripts/catalogue.py` — 2 functions,
+  `groups=2 [LCOM=1]` — two disjoint groups sharing no symbol, so a real
+  split candidate. Trade-offs: each group is one small function over the same
+  `SkillEntry` catalogue (question 1), so splitting buys a module and nothing
+  else. Leave, with that reason — the groups flag *where* to ask, the
+  questions decide.
 
 Trust the group count, not the raw score.
 
@@ -292,18 +306,13 @@ re-run the script to confirm components moved toward the Main Sequence.
 
 ## Coupling-metrics output format
 
-Every answer uses the same shape — verdict first, evidence second, concrete
-next step third:
+Follows the [output contract](#output-contract-all-modes):
 
 ```
-Verdict: <pain | useless | balanced | leave> — <one line>
-Evidence: <incoming (Ca)=<n>, outgoing (Ce)=<n>, instability (I)=<n>, abstractness (A)=<n>, distance (D)=<n>, zone> — <what that means here, via the actual edges>
-Next step: <fix with seam | leave with reason> — <concrete action>
+Verdict: <fix | leave | gather data> — <zone: Zone of Pain | Zone of Uselessness | near main sequence | unknown>
+Evidence: <incoming (Ca)=<n>, outgoing (Ce)=<n>, instability (I)=<n>, abstractness (A)=<n>, distance (D)=<n>> — <what that means here, via the actual edges>
+Next step: <fix with seam | reason to leave, e.g. earned stability | abstractness counts to gather> — <concrete action>
 ```
-
-Report at most the top 3 findings with seam and fix; summarize the remainder
-in one line. Leave with reason is a first-class, valuable verdict — saying
-"leave it" with the reason is success, not a non-answer.
 
 ## Coupling metrics — common mistakes
 
@@ -424,18 +433,13 @@ acceptances are loans, not gifts, and need a revisit condition.
 
 ## Balanced-coupling output format
 
-Every answer uses the same shape — verdict first, evidence second, concrete
-next step third:
+Follows the [output contract](#output-contract-all-modes):
 
 ```
-Verdict: <knowledge leak | low cohesion | stable leak | stable clutter | high cohesion | loose coupling | leave> — <one line>
+Verdict: <fix | leave> — <balance verdict: knowledge leak | low cohesion | stable leak | stable clutter | high cohesion | loose coupling>
 Evidence: <sharing (strength)=<level>, distance=<level>, volatility=<level>> — <what that means here, e.g. shared domain entities across services that change often>
-Next step: <fix with seam | leave with reason> — <concrete action>
+Next step: <fix with seam | reason to leave, e.g. stable with revisit condition> — <concrete action>
 ```
-
-Report at most the top 3 findings with seam and fix; summarize the remainder
-in one line. Leave with reason is a first-class, valuable verdict — saying
-"leave it" with the reason is success, not a non-answer.
 
 ## Balanced coupling — common mistakes
 
