@@ -80,6 +80,17 @@ git submodule add https://github.com/bats-core/bats-assert  test/test_helper/bat
 
 `testthat::LlmReporter` (3.3+) emits agent-readable failure output — use it in the loop, not the default reporter. Select it by its short name `"llm"`: testthat appends `Reporter` itself, so `"LlmReporter"` aborts with "Cannot find test reporter".
 
-## CI (prd item 2) — GitHub Actions
+## CI (prd item 2) — `ci.sh` plus one forge file
 
-One workflow `.github/workflows/ci.yml`, triggered on `pull_request` and `push` to `main`, with `paths-ignore: ["plans/**"]`, running the language's **full gate** row. Python: `astral-sh/setup-uv`; R: `r-lib/actions/setup-r` + `setup-renv`; bash: `apt install` line from Detect.
+`ci.sh` at the repo root holds everything CI runs, so it runs the same locally; item 2's `check` is `bash ci.sh`. It starts with `set -euo pipefail`, then:
+
+| Language | Setup | Then |
+|---|---|---|
+| Python | `uv sync --locked` | the **full gate** row |
+| R | `Rscript -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", repos = "https://cloud.r-project.org"); renv::restore(prompt = FALSE)'` | the **full gate** row |
+| bash | — | the **full gate** row |
+
+The forge file (forge detected from `origin`, see `SKILL.md`) only provides the interpreter, then runs `bash ci.sh`. Runs on push to `main` and on pull requests; changes under `plans/` alone trigger nothing.
+
+- **GitHub** — `.github/workflows/ci.yml`, `on: pull_request` + `push` to `main`, `paths-ignore: ["plans/**"]`. Python: `astral-sh/setup-uv`; R: `r-lib/actions/setup-r`; bash: `apt install` line from Detect.
+- **Azure DevOps** — `azure-pipelines.yml`, `pool: vmImage: ubuntu-latest`, `trigger: branches: include: [main]`, `paths: exclude: [plans/*]`. Python: `UsePythonVersion@0` then `pip install uv`; R: `sudo apt-get install -y r-base` (no cache); bash: `apt install` line from Detect. A `pr:` block has no effect on Azure Repos: PR validation is a branch policy. Creating the pipeline from the file and adding *Build validation* to `main`'s branch policy are human steps: Phase 1 writes both into `SPEC.md`'s `## Definition of Done`, which the loop copies into the PR body.

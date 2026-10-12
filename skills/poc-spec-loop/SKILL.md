@@ -4,7 +4,7 @@ category: workflow
 activation: command
 disable-model-invocation: true
 environments: coding
-compatibility: Requires gh, jq, and one loop runner CLI (claude, codex, or opencode) on PATH, a single github.com remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).
+compatibility: Requires jq, one loop runner CLI (claude, codex, or opencode), and the forge CLI (gh, or az with the azure-devops extension) on PATH, a single GitHub or Azure DevOps Services remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).
 description: Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request.
 metadata:
   version: "1.0"
@@ -31,7 +31,7 @@ Not for existing codebases, not for a single bugfix or TDD without the loop (use
 
 Common to both phases:
 
-1. `git remote -v` shows exactly one `github.com` remote. Repo creation is a human step (`gh repo create`), out of scope.
+1. `git remote -v` shows exactly one remote, on a supported **forge**: `github.com` (GitHub) or `dev.azure.com` / `*.visualstudio.com` (Azure DevOps Services). Azure DevOps Server and other hosts are out of scope. Repo creation is a human step, out of scope.
 2. Working tree clean.
 3. Language toolchain for the detected/asked language is installed per [references/toolchains.md](references/toolchains.md) `## Detect`. Missing tool → stop with the install line from that file.
 
@@ -66,8 +66,8 @@ The human releases the loop by editing the flag and committing — the marker li
    - Non-goals
    - Data sources, secrets, external access
    - What "done" means beyond the deployment target's smoke command
-4. **Write `plans/SPEC.md`**: frontmatter (`language`, `target`, `created`), `## Goal`, `## Users`, `## Non-goals`, `## Assumptions` (answers quoted verbatim), `## Definition of Done` (the target's three lines from [references/deploy-targets.md](references/deploy-targets.md) plus the user's "done" answer).
-5. **Write `plans/prd.json`** against [assets/prd.schema.json](assets/prd.schema.json): 15–30 items with `origin: spec`, dependency-ordered. Item 1 is always toolchain scaffold (minimal layout from toolchains.md `## Scaffold`), item 2 is always the GitHub Actions workflow running test + lint. A Dockerfile item exists only when the target's DoD requires it. Every item carries `check` as a literal shell command whose exit code is the verdict, or `check: null` with `manual_reason` set. No item may list a `check: null` item in `deps` — the loop never passes manual items, so such a dependent could never run. `approved: false`. An item whose code other items call ends its `detail` with `Produces: <exact name(params) -> type>`. Its dependents end theirs with `Consumes: <same signature>`. Before committing, check that every Consumes matches a Produces in its `deps` verbatim.
+4. **Write `plans/SPEC.md`**: frontmatter (`language`, `target`, `created`), `## Goal`, `## Users`, `## Non-goals`, `## Assumptions` (answers quoted verbatim), `## Definition of Done` (the target's three lines from [references/deploy-targets.md](references/deploy-targets.md), the user's "done" answer, and on Azure DevOps the two human CI steps from toolchains.md `## CI`).
+5. **Write `plans/prd.json`** against [assets/prd.schema.json](assets/prd.schema.json): 15–30 items with `origin: spec`, dependency-ordered. Item 1 is always toolchain scaffold (minimal layout from toolchains.md `## Scaffold`), item 2 is always CI: `ci.sh` plus the forge's CI file, per toolchains.md `## CI`, with `check: bash ci.sh`. A Dockerfile item exists only when the target's DoD requires it. Every item carries `check` as a literal shell command whose exit code is the verdict, or `check: null` with `manual_reason` set. No item may list a `check: null` item in `deps` — the loop never passes manual items, so such a dependent could never run. `approved: false`. An item whose code other items call ends its `detail` with `Produces: <exact name(params) -> type>`. Its dependents end theirs with `Consumes: <same signature>`. Before committing, check that every Consumes matches a Produces in its `deps` verbatim.
 6. Commit both files on `main` as `chore(plans): spec and prd for <project>`. Stop. Completion criterion: both files committed, every prd item has a non-empty `check` or a `manual_reason`, no `deps` on manual items.
 
 ## Phase 2 — Loop (autonomous)
@@ -107,14 +107,14 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 |---|---|---|
 | Branch | `poc/<YYYY-MM-DD>` | `loop.sh` |
 | Loop runner | `POC_AGENT=claude\|codex\|opencode`, required; one runner for tasks and checkpoints | `loop.sh` |
-| State | `plans/SPEC.md`, `plans/prd.json`, `plans/BLOCKED.md`, `plans/REVIEW.md` — committed, CI ignores `plans/**` | this file |
+| State | `plans/SPEC.md`, `plans/prd.json`, `plans/BLOCKED.md`, `plans/REVIEW.md`, `plans/PR.md` (full PR body) — committed, CI ignores `plans/**` | this file |
 | Toolchain per language | detect / scaffold / test / lint / typecheck commands | `references/toolchains.md` |
 | Definition of Done per target | smoke command, required artefact, non-goal | `references/deploy-targets.md` |
-| Remote | GitHub only; PR via `gh pr create` | `loop.sh` |
+| Forge | detected from `origin`: GitHub → `gh pr create`; Azure DevOps Services → `az repos pr create`, description cut to the checklist plus a pointer to `plans/PR.md` (4,000-character cap) | `loop.sh` |
 | No placeholders, no mocks in production code | hard rule (prompt-level) | `assets/task-prompt.md` |
 
 ## Provenance
 
 - Toolchain versions in `references/toolchains.md` were last verified 2026-09-07; re-verify before each real run.
-- `assets/loop.sh` has not yet run against a real PoC with any runner; its tests use stub CLIs. Verify the runner's flags first; the script header records which CLI versions they were checked against.
+- `assets/loop.sh` has not yet run against a real PoC with any runner; its tests use stub CLIs. Verify the runner's flags first; the script header records which CLI versions they were checked against. The Azure DevOps path (push, `az repos pr create`, `azure-pipelines.yml`) has not run against a real organization either; `az` flags were checked against the Microsoft Learn reference on 2026-10-12.
 - Sunset: delete this skill on 2027-03-01 if no second real run has happened by then.

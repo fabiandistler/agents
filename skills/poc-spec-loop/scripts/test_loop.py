@@ -1,4 +1,4 @@
-"""Drive assets/loop.sh end to end against stub runner and gh CLIs.
+"""Drive assets/loop.sh end to end against stub runner and forge CLIs.
 
 Each stub records its argv; the runner stub commits the file the item's check
 looks for, so one item passes and the loop ends with a ready PR.
@@ -24,36 +24,46 @@ GH_STUB = """#!/usr/bin/env bash
 printf '%s\\0' "$@" > "$STUB_LOG/gh.argv"
 """
 
+# `az extension show` must succeed for the precondition; only `az repos` is logged.
+AZ_STUB = """#!/usr/bin/env bash
+[[ $1 == repos ]] && printf '%s\\0' "$@" > "$STUB_LOG/az.argv"
+exit 0
+"""
+
+FORGE_URLS = {
+    "github": "https://github.com/o/r.git",
+    "azure": "https://dev.azure.com/o/p/_git/r",
+}
+
 EXPECTED_ARGV_HEAD = {
     "claude": ["-p"],
     "codex": ["exec", "--sandbox", "danger-full-access"],
     "opencode": ["run", "--auto"],
 }
 
-PRD = {
-    "approved": True,
-    "language": "bash",
-    "target": "cli",
-    "items": [
-        {
-            "id": "prd-01",
-            "title": "Create the done marker",
-            "deps": [],
-            "check": "test -f done.txt",
-            "passes": False,
-            "attempts": 0,
-            "origin": "spec",
-        }
-    ],
+OPEN_ITEM = {
+    "id": "prd-01",
+    "title": "Create the done marker",
+    "deps": [],
+    "check": "test -f done.txt",
+    "passes": False,
+    "attempts": 0,
+    "origin": "spec",
 }
+
+PRD = {"approved": True, "language": "bash", "target": "cli"}
 
 
 def git(repo, *args):
     subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
 
-def make_poc(parent):
-    """A greenfield repo released for Phase 2, with a bare origin and stubs on PATH."""
+def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
+    """A greenfield repo released for Phase 2, with a bare origin and stubs on PATH.
+
+    origin carries a forge-looking URL; an insteadOf rewrite sends the push to
+    the local bare repo. done_items are prepended as already-passed items.
+    """
     parent = Path(parent)
     origin = parent / "origin.git"
     repo = parent / "repo"
@@ -66,18 +76,21 @@ def make_poc(parent):
     # Per-repo identity: CI runners have no global one, and loop.sh commits too.
     git(repo, "config", "user.name", "t")
     git(repo, "config", "user.email", "t@example.com")
-    git(repo, "remote", "add", "origin", str(origin))
+    git(repo, "remote", "add", "origin", origin_url)
+    git(repo, "config", f"url.{origin}.insteadOf", origin_url)
     (repo / "plans").mkdir()
     (repo / "plans" / "SPEC.md").write_text(
         "---\nlanguage: bash\ntarget: cli\n---\n## Goal\nA marker.\n"
         "## Definition of Done\n- done.txt exists\n"
     )
-    (repo / "plans" / "prd.json").write_text(json.dumps(PRD, indent=2))
+    prd = {**PRD, "items": [*done_items, OPEN_ITEM]}
+    (repo / "plans" / "prd.json").write_text(json.dumps(prd, indent=2))
     git(repo, "add", ".")
     git(repo, "commit", "-qm", "chore(plans): spec and prd")
     for name in EXPECTED_ARGV_HEAD:
         (bin_dir / name).write_text(RUNNER_STUB)
     (bin_dir / "gh").write_text(GH_STUB)
+    (bin_dir / "az").write_text(AZ_STUB)
     for stub in bin_dir.iterdir():
         stub.chmod(0o755)
     env = {
@@ -96,15 +109,21 @@ def run_loop(repo, env):
     )
 
 
+def committed(repo, path):
+    return subprocess.run(
+        ["git", "-C", str(repo), "show", f"HEAD:{path}"], check=True, capture_output=True, text=True
+    ).stdout
+
+
 def read_argv(log_dir, name):
     return (log_dir / f"{name}.argv").read_text().split("\0")[:-1]
 
 
 class LoopRunnerTest(unittest.TestCase):
-    def poc(self):
+    def poc(self, **kwargs):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        return make_poc(tmp.name)
+        return make_poc(tmp.name, **kwargs)
 
     def test_missing_or_unknown_runner_exits_2(self):
         for agent in (None, "", "gpt"):
@@ -140,6 +159,8 @@ class LoopRunnerTest(unittest.TestCase):
                 gh = read_argv(log_dir, "gh")
                 self.assertEqual(gh[:2], ["pr", "create"])
                 self.assertNotIn("--draft", gh)
+                self.assertEqual(gh[gh.index("--body-file") + 1], "plans/PR.md")
+                self.assertIn("- [x] prd-01", committed(repo, "plans/PR.md"))
 
     def test_flags_override_replaces_defaults(self):
         repo, log_dir, env = self.poc()
@@ -147,6 +168,61 @@ class LoopRunnerTest(unittest.TestCase):
         env["POC_AGENT_FLAGS"] = "--sandbox workspace-write"
         self.assertEqual(run_loop(repo, env).returncode, 0)
         self.assertEqual(read_argv(log_dir, "codex")[:3], ["exec", "--sandbox", "workspace-write"])
+
+
+class LoopForgeTest(unittest.TestCase):
+    def poc(self, **kwargs):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        repo, log_dir, env = make_poc(tmp.name, **kwargs)
+        env["POC_AGENT"] = "claude"
+        return repo, log_dir, env
+
+    def test_unsupported_forge_exits_2(self):
+        for url in ("https://gitlab.com/o/r.git", "/srv/git/r.git"):
+            with self.subTest(url=url):
+                repo, log_dir, env = self.poc(origin_url=url)
+                result = run_loop(repo, env)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("github.com or dev.azure.com", result.stderr)
+                self.assertEqual(list(log_dir.iterdir()), [])
+
+    def test_azure_opens_pr_with_az_repos(self):
+        for url in (FORGE_URLS["azure"], "https://o.visualstudio.com/p/_git/r"):
+            with self.subTest(url=url):
+                repo, log_dir, env = self.poc(origin_url=url)
+                result = run_loop(repo, env)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertFalse((log_dir / "gh.argv").exists())
+                az = read_argv(log_dir, "az")
+                self.assertEqual(az[:3], ["repos", "pr", "create"])
+                self.assertEqual(az[az.index("--target-branch") + 1], "main")
+                self.assertEqual(az[az.index("--draft") + 1], "false")
+                description = az[az.index("--description") + 1]
+                self.assertIn("- [x] prd-01", description)
+                self.assertIn("plans/PR.md", description)
+                self.assertIn("## Deployment", committed(repo, "plans/PR.md"))
+
+    def test_azure_description_stays_under_cap(self):
+        done = [
+            {
+                "id": f"prd-{n:02d}",
+                "title": "Long finished item — " + "x" * 300,
+                "deps": [],
+                "check": "true",
+                "passes": True,
+                "attempts": 0,
+                "origin": "spec",
+            }
+            for n in range(2, 40)
+        ]
+        repo, log_dir, env = self.poc(origin_url=FORGE_URLS["azure"], done_items=done)
+        self.assertEqual(run_loop(repo, env).returncode, 0)
+        az = read_argv(log_dir, "az")
+        description = az[az.index("--description") + 1]
+        self.assertLessEqual(len(description), 4000)
+        self.assertIn("plans/PR.md", description)
+        self.assertGreater(len(committed(repo, "plans/PR.md")), 4000)
 
 
 if __name__ == "__main__":
