@@ -116,11 +116,11 @@ class ModuleReport:
             return "only one " + self.node_label + " -- cohesion is trivially fine"
         comp = self.clusters
         if comp <= 1:
-            return "well connected (1 cluster) -- cohesive"
+            return "1 group (1 cluster, well connected) -- cohesive"
         plural = "classes" if self.kind == "class" else "files"
         return (
-            f"{comp} disjoint clusters -- this {self.kind} could split into "
-            f"{comp} {plural}; inspect whether the clusters truly belong apart"
+            f"{comp} groups ({comp} disjoint clusters) -- this {self.kind} could split into "
+            f"{comp} {plural}; inspect whether the groups truly belong apart"
         )
 
 
@@ -462,7 +462,7 @@ def render_text(items: list[tuple[Path, ModuleReport]], hidden: int, total: int,
         lines.append(f"# {path}")
         lines.append(
             f"  {report.kind} {report.name}: {report.node_count} {report.node_label}s, "
-            f"LCOM={report.lcom}, clusters={report.clusters}"
+            f"groups={report.clusters} (clusters={report.clusters}) [LCOM={report.lcom}]"
         )
         lines.append(f"      -> {report.interpretation()}")
     if hidden:
@@ -499,7 +499,8 @@ def emit(payload: str, output: Path | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Parse flags, analyze every path, and print or store the worst-first report."""
     parser = argparse.ArgumentParser(
-        description="Estimate module cohesion via LCOM (CK v1) and clusters. "
+        description="Estimate module cohesion via independent groups (clusters lead, "
+        "raw LCOM score bracketed secondary). "
         "Python is precise (ast); R and Bash are heuristic.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="examples:\n"

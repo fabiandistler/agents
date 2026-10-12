@@ -12,6 +12,10 @@ compatibility: The bundled scripts are stdlib-only Python 3.8+. LCOM analyzes Py
 This skill **measures existing code** along both axes and picks the right lens
 for the question in front of you:
 
+> Start here — what are you judging: one module's togetherness, whole
+> codebase brittleness, or one dependency's balance? Togetherness → Mode A,
+> brittleness → Mode B, one dependency's balance → Mode C.
+
 | Mode | The question | Jump to |
 |---|---|---|
 | **A. Cohesion** | Do this module/class/file's parts belong together — split, merge, or leave? | [Mode A](#mode-a--cohesion-of-a-module) |
@@ -89,8 +93,10 @@ python3 scripts/lcom.py <path...> [--lang auto|python|r|bash] [--top N] [--outpu
 ```
 
 It reports, per class and per file, worst first (capped at `--top`, default
-20, with a summary line): **clusters** (2+ means splittable — the actionable
-number) and **LCOM** (higher means more pairs share nothing).
+20, with a summary line): **groups** (independent clusters over shared fields
+or calls — 1 group hangs together regardless of score, 2+ groups is a split
+candidate with a named seam; the raw lack-of-cohesion score appears only
+bracketed as `[LCOM=<n>]`).
 
 Read the result as evidence, not a verdict — see step 6 and the reference's
 "What LCOM cannot tell you." Treat the script as optional: skip it for tiny
@@ -104,24 +110,44 @@ three trade-off questions from the source's Customer/Order Maintenance example
 
 ### 6. Recommend: split, merge, or leave — with the refactor
 
-Give a concrete recommendation:
-- **Split** — name the cluster to extract and the module it becomes; show the
-  seam. (If this is a significant structural decision, record it in an ADR.)
-- **Merge** — when an over-extracted module just re-couples; fold it back.
-- **Leave** — when cohesion is fine or the split would cost more than it buys.
-  Saying "leave it" is a real, valuable outcome.
+Close every recommendation with the step-5 trade-off questions, then give one
+concrete outcome:
+- **Split with seam** — name the group to extract and the module it becomes;
+  show the seam. (If this is a significant structural decision, record it in
+  an ADR.)
+- **Merge with fold-back target** — when an over-extracted module just
+  re-couples; name what it folds back into.
+- **Leave with reason** — when cohesion is fine or the split would cost more
+  than it buys. Saying "leave it" is a real, valuable outcome — always give
+  the reason.
 
 ## Cohesion output format
 
-Lead with the verdict, then the evidence, then the recommendation:
+Every answer uses the same shape — verdict first, evidence second, concrete
+next step third:
 
 ```
-Cohesion: <type> (<one-line why>)
-Structure: LCOM=<n>, clusters=<n> — <what that means here>
-Recommendation: <split / merge / leave> — <concrete next step>
+Verdict: <cohesive | split candidate | merged back | leave> — <type in one line, e.g. functional>
+Evidence: <N> group(s) [LCOM=<n>] — <what that means here, e.g. 1 group hangs together despite a high score>
+Next step: <split with seam | merge with fold-back target | leave with reason> — <concrete action>
 ```
 
 Keep it proportional: a clean module needs a sentence, not a report.
+
+## Cohesion — worked repo contrast
+
+Groups decide, scores only bracketed. From this repo's `scripts/` directory
+(run at the repo root:
+`python3 skills/coupling-cohesion/scripts/lcom.py scripts/build_manifest.py scripts/catalogue.py`):
+
+- Cohesive despite a high score: `scripts/build_manifest.py` — file, 12
+  functions, 1 group (clusters=1) [LCOM=42] — well connected, cohesive. Do
+  not split.
+- Split candidate despite a low score: `scripts/catalogue.py` — file, 2
+  functions, 2 groups (clusters=2) [LCOM=1] — two disjoint groups sharing
+  nothing, split candidate pending the step-5 trade-off questions.
+
+Trust the group count, not the raw score.
 
 ## Cohesion — common mistakes
 
@@ -253,12 +279,11 @@ change (**volatility**). The model is Vlad Khononov's Balanced Coupling, from
 [coupling.dev](https://coupling.dev). The author also publishes it as the
 `balanced-coupling` skill in the
 [vladikk/modularity](https://github.com/vladikk/modularity) plugin
-(CC BY-NC-SA 4.0), with the same four strength levels and balance rule. Its core rule:
-
-```
-MODULARITY = STRENGTH XOR DISTANCE
-BALANCE    = (STRENGTH XOR DISTANCE) OR NOT VOLATILITY
-```
+(CC BY-NC-SA 4.0), with the same four strength levels and balance rule. Its core rule
+in plain language: heavy sharing is fine up close; only light contract
+knowledge across distance unless proven stable with a revisit condition. The
+binary form lives in
+[references/balanced-coupling-model.md](references/balanced-coupling-model.md).
 
 A dependency is balanced when strength and distance offset each other — heavy
 knowledge-sharing is fine up close (cohesion), and only light, contract-level
