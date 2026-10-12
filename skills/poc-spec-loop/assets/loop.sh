@@ -30,6 +30,7 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PRD=plans/prd.json
 SPEC=plans/SPEC.md
 BLOCKED=plans/BLOCKED.md
+PR_MD=plans/PR.md
 CHECKPOINT_EVERY=5
 MAX_ATTEMPTS=3
 MAX_CONSECUTIVE_BLOCKED=3
@@ -177,10 +178,8 @@ unreachable_items() { # open items with a check that were never passed; at end o
   jq -r --argjson m "$MAX_ATTEMPTS" \
     '.items[] | select(.passes==false and .check!=null and .attempts<$m) | "- \(.id) \(.title) (deps: \(.deps|join(", ")))"' "$PRD"
 }
-open_pr() {
-  local kind=$1 open_heading=${2:-"Unreachable (a dependency is blocked)"} # draft|ready
-  git push -u origin "$BRANCH"
-  local body
+pr_body() { # full PR body, committed as plans/PR.md so no forge length limit loses it
+  local open_heading=$1 body
   body=$(jq -r '.items[] | "- [\(if .passes then "x" else " " end)] \(.id) \(.title)\(if .manual_reason then " — MANUAL: " + .manual_reason else "" end)"' "$PRD")
   [[ -f $BLOCKED ]] && body+=$'\n\n## Blocked\n'"$(tail -c 8000 "$BLOCKED")"
   [[ -f plans/REVIEW.md ]] && body+=$'\n\n## Standards findings\n'"$(tail -c 8000 plans/REVIEW.md)"
@@ -188,9 +187,17 @@ open_pr() {
   unreach=$(unreachable_items)
   [[ -n $unreach ]] && body+=$'\n\n## '"$open_heading"$'\n'"$unreach"
   body+=$'\n\n## Deployment\n'"$(awk '/^## Definition of Done/{f=1;next} /^## /{f=0} f' "$SPEC")"
+  printf '%s\n' "$body" >"$PR_MD"
+  git add "$PR_MD"
+  git diff --cached --quiet || git commit -qm "chore(plans): pr body"
+}
+open_pr() {
+  local kind=$1 open_heading=${2:-"Unreachable (a dependency is blocked)"} # draft|ready
+  pr_body "$open_heading"
+  git push -u origin "$BRANCH"
   local extra=()
   [[ $kind == draft ]] && extra=(--draft)
-  gh pr create --base main --head "$BRANCH" --title "PoC loop $BRANCH" --body "$body" "${extra[@]}"
+  gh pr create --base main --head "$BRANCH" --title "PoC loop $BRANCH" --body-file "$PR_MD" "${extra[@]}"
 }
 
 # ---------- loop ----------

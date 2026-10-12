@@ -107,7 +107,7 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 |---|---|---|
 | Branch | `poc/<YYYY-MM-DD>` | `loop.sh` |
 | Loop runner | `POC_AGENT=claude\|codex\|opencode`, required; one runner for tasks and checkpoints | `loop.sh` |
-| State | `plans/SPEC.md`, `plans/prd.json`, `plans/BLOCKED.md`, `plans/REVIEW.md` — committed, CI ignores `plans/**` | this file |
+| State | `plans/SPEC.md`, `plans/prd.json`, `plans/BLOCKED.md`, `plans/REVIEW.md`, `plans/PR.md` (full PR body) — committed, CI ignores `plans/**` | this file |
 | Toolchain per language | detect / scaffold / test / lint / typecheck commands | `references/toolchains.md` |
 | Definition of Done per target | smoke command, required artefact, non-goal | `references/deploy-targets.md` |
 | Remote | GitHub only; PR via `gh pr create` | `loop.sh` |

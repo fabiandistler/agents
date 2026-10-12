@@ -97,6 +97,12 @@ def run_loop(repo, env):
     )
 
 
+def committed(repo, path):
+    return subprocess.run(
+        ["git", "-C", str(repo), "show", f"HEAD:{path}"], check=True, capture_output=True, text=True
+    ).stdout
+
+
 def read_argv(log_dir, name):
     return (log_dir / f"{name}.argv").read_text().split("\0")[:-1]
 
@@ -141,6 +147,8 @@ class LoopRunnerTest(unittest.TestCase):
                 gh = read_argv(log_dir, "gh")
                 self.assertEqual(gh[:2], ["pr", "create"])
                 self.assertNotIn("--draft", gh)
+                self.assertEqual(gh[gh.index("--body-file") + 1], "plans/PR.md")
+                self.assertIn("- [x] prd-01", committed(repo, "plans/PR.md"))
 
     def test_flags_override_replaces_defaults(self):
         repo, log_dir, env = self.poc()
