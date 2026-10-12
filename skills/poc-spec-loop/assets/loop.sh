@@ -94,6 +94,9 @@ fi
 BASE=$(git merge-base main "$BRANCH")
 
 # ---------- helpers ----------
+run_agent() { # one fresh, headless agent context per call
+  claude -p "$1" "${CLAUDE_FLAGS[@]}"
+}
 next_item() { # first item: not passed, attempts<MAX, all deps passed, check != null
   jq -r --argjson m "$MAX_ATTEMPTS" '
     .items as $all
@@ -143,11 +146,11 @@ block_item() {
 checkpoint() { # every CHECKPOINT_EVERY passed items: code-review since BASE
   local room
   room=$((MAX_ITEMS - $(jq '.items|length' "$PRD")))
-  claude -p "Use the mattpocock-skills:code-review skill if available in this session; otherwise review the diff yourself. \
+  run_agent "Use the mattpocock-skills:code-review skill if available in this session; otherwise review the diff yourself. \
 Review changes since $BASE against plans/SPEC.md (Spec) and the repo's lint/test conventions (Standards). \
 For each Spec finding, append a new item to plans/prd.json (next free prd-NN id, origin:checkpoint, deps on the causing id, check command, passes:false, attempts:0), \
 but at most $room new items (schema cap $MAX_ITEMS); put any further Spec findings into plans/REVIEW.md under 'Spec (over cap)'. \
-Write Standards findings to plans/REVIEW.md only. Commit as 'chore(plans): checkpoint findings'." "${CLAUDE_FLAGS[@]}" ||
+Write Standards findings to plans/REVIEW.md only. Commit as 'chore(plans): checkpoint findings'." ||
     echo "WARN: checkpoint run failed; continuing without its findings" >&2
   discard_uncommitted
 }
@@ -176,7 +179,7 @@ consecutive_blocked=0
 passed_since_checkpoint=0
 while id=$(next_item) && [[ -n $id ]]; do
   echo "== $id"
-  out=$(claude -p "$(render_prompt "$id")" "${CLAUDE_FLAGS[@]}" 2>&1 | tee "$LOGDIR/run_$id.log") || true
+  out=$(run_agent "$(render_prompt "$id")" 2>&1 | tee "$LOGDIR/run_$id.log") || true
   discard_uncommitted
   if grep -q '^BLOCKED:' <<<"$out"; then
     set_field "$id" attempts "$MAX_ATTEMPTS"
