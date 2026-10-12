@@ -86,3 +86,19 @@ jobs:
 
       - name: install.sh smoke test
         run: bash scripts/test_install.sh
+
+  mermaid:
+    # Browserless syntax check over every tracked Markdown file: parses each
+    # fenced mermaid block with Mermaid's own parser (jsdom, no browser
+    # download) and fails the run on the first invalid diagram.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate Mermaid diagrams (browserless)
+        run: |
+          git ls-files -z '*.md' '*.markdown' | xargs -0 -r npx -y @sysid/mmdlint@0.1.1
