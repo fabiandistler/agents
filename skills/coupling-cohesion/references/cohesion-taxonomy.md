@@ -186,10 +186,11 @@ as squares):
 - **Class Z** — **mixed**: most methods are connected, but one field/method
   combination stands apart and could be refactored into its own class.
 
-The bundled `scripts/lcom.py` reports exactly this picture: a **clusters**
-count (connected components of the method/field graph) is the number of
-"Class Y" style groups a module breaks into (1 = like Class X; 2+ = a Class-Y/Z split candidate), alongside the
-Chidamber & Kemerer LCOM score.
+The bundled `scripts/lcom.py` reports exactly this picture: the **groups**
+count (connected components of the method/field graph; `clusters` in `--json`)
+is the number of "Class Y" style groups a module breaks into (1 = like Class X;
+2+ = a Class-Y/Z split candidate), with the Chidamber & Kemerer LCOM score
+bracketed.
 
 ## What LCOM cannot tell you
 

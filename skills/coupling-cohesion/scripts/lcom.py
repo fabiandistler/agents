@@ -499,8 +499,7 @@ def emit(payload: str, output: Path | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Parse flags, analyze every path, and print or store the worst-first report."""
     parser = argparse.ArgumentParser(
-        description="Estimate module cohesion via independent groups, raw LCOM bracketed.\n"
-        "Python is precise (ast); R and Bash are heuristic.",
+        description="Estimate module cohesion via independent groups; Python precise, R/Bash heuristic.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="meanings:\n"
         "  groups: independent groups over shared fields or calls; 1 = cohesive,\n"

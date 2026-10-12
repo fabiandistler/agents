@@ -118,7 +118,8 @@ three trade-off questions from the source's Customer/Order Maintenance example
 ([reference](references/cohesion-taxonomy.md#worked-example-when-to-split-a-module)):
 
 1. **Too small to stand alone?** If the group to extract is a couple of
-   operations that will never grow, fold it back instead.
+   operations that will never grow, keep it where it is (or, for a module
+   already extracted, merge it back into its fold-back target).
 2. **Is the remaining module growing?** If it is heading toward a god-module,
    extract before it gets there.
 3. **Would the pieces re-couple?** If the extracted group needs so much of the
