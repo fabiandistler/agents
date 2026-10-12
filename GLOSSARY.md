@@ -13,6 +13,15 @@ there.
 Not a synonym for "target". `--target=` is one installer's flag; the surface
 exists whether or not that installer does.
 
+## Forge
+
+The git host that serves a project's remote and its pull requests: GitHub or
+Azure DevOps. A skill that opens pull requests detects the forge from the
+remote URL and uses its CLI.
+
+Not the distribution channel (how skills reach a runtime) and not the install
+surface (the runtime they reach).
+
 ## Loop runner
 
 The agent CLI that executes a skill's autonomous loop headlessly, one fresh

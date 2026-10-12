@@ -186,7 +186,7 @@
       "category": "workflow",
       "path": "skills/poc-spec-loop/SKILL.md",
       "activation": "command",
-      "compatibility": "Requires gh, jq, and one loop runner CLI (claude, codex, or opencode) on PATH, a single github.com remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).",
+      "compatibility": "Requires jq, one loop runner CLI (claude, codex, or opencode), and the forge CLI (gh, or az with the azure-devops extension) on PATH, a single GitHub or Azure DevOps Services remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).",
       "environments": [
         "coding"
       ],
