@@ -13,6 +13,14 @@ there.
 Not a synonym for "target". `--target=` is one installer's flag; the surface
 exists whether or not that installer does.
 
+## Loop runner
+
+The agent CLI that executes a skill's autonomous loop headlessly, one fresh
+context per task (`claude`, `codex`, or `opencode`). It is chosen per run and
+need not match the install surface the skill was invoked from.
+
+Not a synonym for "install surface" or "agent".
+
 ## Distribution channel
 
 The mechanism carrying skills from this repo to an install surface. Two exist:

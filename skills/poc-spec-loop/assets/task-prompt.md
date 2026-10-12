@@ -17,7 +17,7 @@ previous failure output:
 {{/LAST_FAILURE}}
 
 ## How to work
-Use the `mattpocock-skills:tdd` skill if it is available in this session; if not, follow the same red-green-refactor cycle as described here: write the failing test first, commit it as `test({{ID}}): …`; make it pass, commit as `feat({{ID}}): …`; refactor only if there is something to refactor, commit as `refactor({{ID}}): …`. Language commands are in `{{TOOLCHAINS_MD}}` — use those, do not invent alternatives.
+Use the `tdd` skill if it is available in this session; if not, follow the same red-green-refactor cycle as described here: write the failing test first, commit it as `test({{ID}}): …`; make it pass, commit as `feat({{ID}}): …`; refactor only if there is something to refactor, commit as `refactor({{ID}}): …`. Language commands are in `{{TOOLCHAINS_MD}}` — use those, do not invent alternatives.
 
 Hard rules:
 - Production code contains no placeholders, no `TODO`, no mocks or fakes. Mocks live in tests only.

@@ -5,13 +5,19 @@
 # fresh-context invocation, check execution, attempts/BLOCKED bookkeeping,
 # checkpoints, stop conditions, PR.
 #
-# Preconditions (checked below): git, jq, gh, claude on PATH; clean tree;
-# plans/prd.json with approved:true.
+# Preconditions (checked below): POC_AGENT set; git, jq, gh, timeout and the
+# runner's CLI on PATH; clean tree; plans/prd.json with approved:true.
 #
-# VERIFY BEFORE FIRST RUN: the exact non-interactive flags of `claude -p`
-# (allowed tools / permission mode) for the installed Claude Code version —
-# `claude --help`. Without them headless tool calls are denied and every task
-# fails its check.
+# VERIFY BEFORE FIRST RUN: the non-interactive flags of the chosen runner for
+# the installed version (`claude --help`, `codex exec --help`,
+# `opencode run --help`). Without them headless tool calls are denied and every
+# task fails its check. Defaults; codex and opencode flags checked against
+# `--help` of codex 0.162.1 and opencode 1.19.0 on 2026-10-12:
+#   claude    claude -p <prompt> --allowedTools Bash,Read,Edit,Write,Glob,Grep
+#   codex     codex exec --sandbox danger-full-access <prompt>
+#             (workspace-write mounts .git read-only on Linux, openai/codex#15505,
+#             but each task commits; so: run codex in a container or VM)
+#   opencode  opencode run --auto <prompt>
 #
 # Run logs and last-failure output live under $(git rev-parse --git-dir)/poc-loop,
 # never in the working tree, so a stopped run can be restarted as is.
@@ -29,21 +35,20 @@ MAX_ATTEMPTS=3
 MAX_CONSECUTIVE_BLOCKED=3
 MAX_ITEMS=40                        # hard cap from assets/prd.schema.json
 CHECK_TIMEOUT=${CHECK_TIMEOUT:-900} # seconds per check run
-if [[ -n ${CLAUDE_FLAGS:-} ]]; then
-  read -ra CLAUDE_FLAGS <<<"$CLAUDE_FLAGS"                              # override via env, space-separated
-else CLAUDE_FLAGS=(--allowedTools "Bash,Read,Edit,Write,Glob,Grep"); fi # VERIFY
 
 if [[ ${1:-} == -h || ${1:-} == --help ]]; then
   cat <<'EOF'
-Usage: loop.sh [-h|--help]
-Env: CLAUDE_FLAGS="..." overrides default claude flags (space-separated).
-     CHECK_TIMEOUT=<s>  per-check timeout in seconds (default 900).
+Usage: POC_AGENT=claude|codex|opencode loop.sh [-h|--help]
+Env: POC_AGENT=<runner>   required: agent CLI that runs each task and checkpoint.
+     POC_AGENT_FLAGS="..." replaces the runner's default flags (space-separated).
+     CHECK_TIMEOUT=<s>    per-check timeout in seconds (default 900).
 Examples:
-  skills/poc-spec-loop/assets/loop.sh
-  CLAUDE_FLAGS="--allowedTools Bash,Read" skills/poc-spec-loop/assets/loop.sh
+  POC_AGENT=codex bash <skill-dir>/assets/loop.sh
+  POC_AGENT=claude POC_AGENT_FLAGS="--allowedTools Bash,Read" bash <skill-dir>/assets/loop.sh
 Exit codes:
   0  success (ready PR, or draft PR when blocked/unreachable items remain)
-  2  usage or preconditions failed (bad flag; missing tool; dirty tree; prd.json missing or not approved)
+  2  usage or preconditions failed (bad flag; POC_AGENT missing or unknown; missing tool;
+     dirty tree; prd.json missing or not approved)
   3  blocked stop (3 consecutive blocked items, or prd-01/prd-02 blocked)
 EOF
   exit 0
@@ -54,7 +59,17 @@ if [[ $# -gt 0 ]]; then
 fi
 
 # ---------- preconditions ----------
-for bin in git jq gh claude timeout; do command -v "$bin" >/dev/null || {
+case ${POC_AGENT:-} in
+  claude) AGENT_FLAGS=(--allowedTools "Bash,Read,Edit,Write,Glob,Grep") ;;
+  codex) AGENT_FLAGS=(--sandbox danger-full-access) ;;
+  opencode) AGENT_FLAGS=(--auto) ;;
+  *)
+    echo "POC_AGENT must be one of: claude, codex, opencode (got: '${POC_AGENT:-}')" >&2
+    exit 2
+    ;;
+esac
+[[ -z ${POC_AGENT_FLAGS:-} ]] || read -ra AGENT_FLAGS <<<"$POC_AGENT_FLAGS"
+for bin in git jq gh "$POC_AGENT" timeout; do command -v "$bin" >/dev/null || {
   echo "missing: $bin (timeout: GNU coreutils)" >&2
   exit 2
 }; done
@@ -94,6 +109,13 @@ fi
 BASE=$(git merge-base main "$BRANCH")
 
 # ---------- helpers ----------
+run_agent() { # one fresh, headless agent context per call
+  case $POC_AGENT in
+    claude) claude -p "$1" "${AGENT_FLAGS[@]}" ;;
+    codex) codex exec "${AGENT_FLAGS[@]}" "$1" ;;
+    opencode) opencode run "${AGENT_FLAGS[@]}" "$1" ;;
+  esac
+}
 next_item() { # first item: not passed, attempts<MAX, all deps passed, check != null
   jq -r --argjson m "$MAX_ATTEMPTS" '
     .items as $all
@@ -143,11 +165,11 @@ block_item() {
 checkpoint() { # every CHECKPOINT_EVERY passed items: code-review since BASE
   local room
   room=$((MAX_ITEMS - $(jq '.items|length' "$PRD")))
-  claude -p "Use the mattpocock-skills:code-review skill if available in this session; otherwise review the diff yourself. \
+  run_agent "Use the code-review skill if available in this session; otherwise review the diff yourself. \
 Review changes since $BASE against plans/SPEC.md (Spec) and the repo's lint/test conventions (Standards). \
 For each Spec finding, append a new item to plans/prd.json (next free prd-NN id, origin:checkpoint, deps on the causing id, check command, passes:false, attempts:0), \
 but at most $room new items (schema cap $MAX_ITEMS); put any further Spec findings into plans/REVIEW.md under 'Spec (over cap)'. \
-Write Standards findings to plans/REVIEW.md only. Commit as 'chore(plans): checkpoint findings'." "${CLAUDE_FLAGS[@]}" ||
+Write Standards findings to plans/REVIEW.md only. Commit as 'chore(plans): checkpoint findings'." ||
     echo "WARN: checkpoint run failed; continuing without its findings" >&2
   discard_uncommitted
 }
@@ -176,7 +198,7 @@ consecutive_blocked=0
 passed_since_checkpoint=0
 while id=$(next_item) && [[ -n $id ]]; do
   echo "== $id"
-  out=$(claude -p "$(render_prompt "$id")" "${CLAUDE_FLAGS[@]}" 2>&1 | tee "$LOGDIR/run_$id.log") || true
+  out=$(run_agent "$(render_prompt "$id")" 2>&1 | tee "$LOGDIR/run_$id.log") || true
   discard_uncommitted
   if grep -q '^BLOCKED:' <<<"$out"; then
     set_field "$id" attempts "$MAX_ATTEMPTS"
