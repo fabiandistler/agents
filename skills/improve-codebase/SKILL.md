@@ -52,11 +52,15 @@ extra weight on the parts of the codebase that change. Decide *where* to look
 before looking:
 
 - If the user named a direction (a module, a subsystem, a pain point), take it
-  and skip the inference below.
-- Otherwise, walk back a good stretch of commit history (`git log --oneline
-  --name-only`) and note the files and areas that keep coming up. Let those
-  paths pull attention first. If the changes are scattered with no clear hot
-  spot, widen the net.
+  and skip the ranking below.
+- Otherwise, follow the `refactoring` skill's workflow: rank files by git
+  churn with its bundled script, then list the co-changers of each top hit in
+  the same window. Treat each group of co-changing files as one candidate
+  area, not several. Its "when the ranking lies" cases (young repo, bulk
+  reformat, shallow clone) apply here too; if the ranking is flat, widen the
+  window.
+
+Keep the churn and co-change counts: they become evidence on the cards.
 
 Read `GLOSSARY.md` and any ADRs covering the area before going further.
 
@@ -80,7 +84,35 @@ Apply the **deletion test** to anything suspected of being shallow: would
 deleting it concentrate complexity, or just move it? "Concentrates" is the
 signal to look for.
 
-Record evidence for every finding as `path:line`, so the user can verify it.
+Back the two structural suspicions with `coupling-cohesion`, read via the
+`architecture` router (`members/coupling-cohesion/SKILL.md`):
+
+- **"This module is shallow" or "these parts are only colocated"**: Mode A
+  (cohesion, LCOM) on that module, alongside the deletion test. Run it on the
+  suspected modules only, not the whole tree.
+- **"This leaks across the seam"**: Mode C (balanced coupling) on that one
+  dependency, naming the module behind the seam and its caller.
+- **Not Mode B.** Codebase-wide coupling metrics and zones answer "how
+  brittle is the whole codebase", not "where does deepening pay off"; they
+  would be noise in the report.
+
+If the agent can start subagents, give Mode A to `cohesion-analyst` and
+Mode C to `coupling-analyst`, telling the latter to assess the one named
+dependency with Mode C and not to run its codebase-wide metrics. Each returns
+its verdict and evidence lines, never file bodies. Without those subagents,
+follow the member file's Mode A or C workflow directly and run its bundled
+scripts (`scripts/lcom.py`, `scripts/balance_check.py`, relative to the
+`coupling-cohesion` skill directory) inline, writing any input JSON to the OS
+temp directory.
+
+Translate the result before it reaches a card: `coupling-cohesion` speaks of
+boundaries, integration strength and distance; the report speaks only the
+vocabulary file's terms. `references/evidence-translation.md` maps one to the
+other. A "leave" verdict drops the finding unless other evidence carries it.
+
+Record evidence for every finding as `path:line` or a metric value (churn
+count, group count, sharing level), so the user can verify it. A finding with
+neither does not go in the report.
 
 ### 3. Present candidates as an HTML report
 
@@ -93,7 +125,9 @@ Windows) and give the absolute path.
 
 For each candidate, render a card with:
 
-- **Files**: the files and modules involved, with `path:line` evidence.
+- **Files**: the files and modules involved.
+- **Evidence**: one line per finding, each with `path:line` or a metric value
+  as the instrument printed it.
 - **Problem**: why the current shape causes friction.
 - **Solution**: in plain English, what would change.
 - **Benefits**: in terms of locality and leverage, and how tests would improve.
@@ -167,3 +201,11 @@ a batch at the end. Create files lazily, only when there is something to write.
 ADR only when the decision is hard to reverse, surprising without context, and
 the result of a real trade-off. `references/glossary-and-adr.md` has both
 formats and the numbering rule.
+
+### 6. Lock the seam into CI
+
+Once the user confirms the deepened module's shape, point at locking its seam
+so it does not erode back: `fitness-functions`, read via the `architecture`
+router (`members/fitness-functions/SKILL.md`), designs a CI check for it, for
+example an import rule that lets callers reach the module only through its
+interface. Offer it; do not write the check unless the user asks.

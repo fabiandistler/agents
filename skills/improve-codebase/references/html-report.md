@@ -70,7 +70,14 @@ Each candidate is one `<article>`:
   `Worth exploring` = amber, `Speculative` = slate), plus a tag for the
   dependency category (`in-process`, `local-substitutable`,
   `ports & adapters`, `mock`).
-- **Files**: monospaced list (`font-mono text-sm`), with `path:line` evidence.
+- **Files**: monospaced list (`font-mono text-sm`) of the modules involved.
+- **Evidence**: required. One monospaced line per finding behind the
+  candidate, each carrying a `path:line` or a metric value quoted as the
+  instrument printed it (`commits=41 in 12 months`, `groups=2 [LCOM=7]`,
+  `sharing=intrusive, distance=package`), followed by a few words in
+  vocabulary terms (`evidence-translation.md` maps the metric terms). A
+  finding without either is cut, and a candidate left with no evidence line is
+  not rendered.
 - **Before / After diagram**: the centrepiece. Two columns, side by side. See
   the patterns below.
 - **Problem**: one sentence. What hurts.
