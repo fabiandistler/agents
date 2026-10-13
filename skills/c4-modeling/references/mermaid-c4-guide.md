@@ -193,13 +193,13 @@ checklist-compliant.
 
 ## Validating diagrams
 
-Before committing, validate every diagram with the same browserless parser
-CI runs. Options, cheapest first:
+Before committing, validate every diagram with a browserless parser. Options,
+cheapest first:
 
-1. `npx -y @sysid/mmdlint@0.1.1 <file.md> [...]` — parses every fenced
-   `mermaid` block with Mermaid's own parser (via jsdom, no browser
-   download); it exits non-zero on syntax errors, reporting `file:line`.
-   This is the command the CI `mermaid` job runs.
+1. `npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint <file.md> [...]`
+   — parses every fenced `mermaid` block with Mermaid's own parser (via
+   jsdom, no browser download); it exits non-zero on syntax errors,
+   reporting `file:line`. Run the same command in CI to enforce it.
 2. Paste into the target renderer (GitHub preview, mermaid.live).
 3. `npx -y @mermaid-js/mermaid-cli@11.17.0 -i diagram.md -o /tmp/out.svg`
    (`mmdc`) — legacy batch rendering; it requires a browser binary
