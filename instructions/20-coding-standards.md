@@ -12,3 +12,4 @@ targets: all
 - [rule] Before adding a dependency, confirm in the index (PyPI, CRAN) that it exists and is the intended package. Never add one from memory, because hallucinated names get squatted.
 - [rule] Name variables and functions by domain meaning, not `data`, `result`, `tmp`, `process()`, `handle()`.
 - [rule] No option, parameter, or strategy hook until a caller passes it.
+- [rule] External or user input enters a template only as a variable, never as template source: no `Template(user_input)`, no `env.from_string(user_input)`. Rendering untrusted text as a template is code execution, and a sandboxed environment is not a defense (GitLab AI Gateway, CVE-2026-90970, was a prompt-template sandbox escape).

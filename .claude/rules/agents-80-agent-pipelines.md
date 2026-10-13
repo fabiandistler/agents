@@ -11,6 +11,7 @@ managed-by: fabiandistler/agents build_project_claude.py
 - The false-positive catalogue belongs in the finder prompt, not the grader's. It enumerates what is never reported: pre-existing issues, anything a linter, typechecker or compiler already catches, nitpicks, anything outside the change.
 - Split parallel finders by evidence source, not by topic. Two agents on the same source produce correlated errors, not coverage.
 - Run classification and grading on the cheap model, the actual analysis on the strong one.
+- Untrusted text (CVs, emails, web pages, tool output) is stripped of HTML comments, CSS-hidden text, zero-width characters and embedded Base64 blobs before it reaches the prompt. Stripping only narrows the injection surface; the model's output on such input is a recommendation, never the decision.
 - **Writing into external systems**:
   - Re-check the entry condition immediately before the write, not only at the start. The pipeline runtime sits between the first check and the write, and the state can have changed since.
   - A state file and a re-check cover different failure modes: the file prevents repetition across runs, the re-check catches a state change within a run. Both are needed.
