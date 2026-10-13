@@ -13,6 +13,10 @@ not part of it). The pinned commit, the vendored names and upstream's MIT
 license live in `.claude/vendor/mattpocock-skills/`. A re-run replaces exactly
 the previously vendored directories, so a skill upstream dropped disappears.
 
+EXCLUDED names upstream skills that are never vendored: improve-codebase-architecture
+(forked into this catalogue as `improve-codebase`, #492). An excluded name is
+neither copied nor reported as a collision.
+
 Exit codes: 0 ok, 1 git clone/checkout failed, 2 a name collides with a
 directory this script does not own. Needs git; stdlib-only.
 """
@@ -32,6 +36,8 @@ SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 VENDOR_DIR = REPO_ROOT / ".claude" / "vendor" / "mattpocock-skills"
 LOCK_PATH = VENDOR_DIR / "lock.json"
 UPSTREAM = "https://github.com/mattpocock/skills.git"
+# Upstream skills never vendored; a previously vendored copy is removed on re-run.
+EXCLUDED = frozenset({"improve-codebase-architecture"})
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -41,7 +47,10 @@ def git(*args: str, cwd: Path) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog=f"Never vendored (EXCLUDED): {', '.join(sorted(EXCLUDED))}.",
+    )
     parser.add_argument(
         "--ref", default="main", help="upstream branch, tag or commit (default main)"
     )
@@ -62,7 +71,9 @@ def main() -> int:
             return 1
         commit = git("rev-parse", "HEAD", cwd=clone)
         plugin = json.loads((clone / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-        sources = {Path(p).name: clone / p for p in plugin["skills"]}
+        sources = {
+            Path(p).name: clone / p for p in plugin["skills"] if Path(p).name not in EXCLUDED
+        }
 
         collisions = [
             name
@@ -81,6 +92,7 @@ def main() -> int:
         )
         for name in sorted(set(previous) - set(sources)):
             print(f"  remove {name}")
+        print("  exclude " + ", ".join(sorted(EXCLUDED)))
         if args.dry_run:
             print("  add/refresh " + ", ".join(sorted(sources)))
             return 0
