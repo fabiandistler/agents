@@ -193,10 +193,17 @@ checklist-compliant.
 
 ## Validating diagrams
 
-Before committing, render every diagram once. Options, cheapest first:
+Before committing, validate every diagram with a browserless parser. Options,
+cheapest first:
 
-1. Paste into the target renderer (GitHub preview, mermaid.live).
-2. `npx -y @mermaid-js/mermaid-cli@11.17.0 -i diagram.md -o /tmp/out.svg` — batch
-   validation; it exits non-zero on syntax errors.
+1. `npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint <file.md> [...]`
+   — parses every fenced `mermaid` block with Mermaid's own parser (via
+   jsdom, no browser download); it exits non-zero on syntax errors,
+   reporting `file:line`. Run the same command in CI to enforce it.
+2. Paste into the target renderer (GitHub preview, mermaid.live).
+3. `npx -y @mermaid-js/mermaid-cli@11.17.0 -i diagram.md -o /tmp/out.svg`
+   (`mmdc`) — legacy batch rendering; it requires a browser binary
+   (Chrome/Chromium downloaded via Puppeteer) and exits non-zero on syntax
+   errors.
 
-A diagram that has never been rendered is a diagram with a syntax error.
+A diagram that has never been validated is a diagram with a syntax error.

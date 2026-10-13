@@ -86,3 +86,32 @@ jobs:
 
       - name: install.sh smoke test
         run: bash scripts/test_install.sh
+
+  mermaid:
+    # Browserless syntax check over every tracked Markdown file: parses each
+    # fenced mermaid block with Mermaid's own parser (jsdom, no browser
+    # download). mermaid is pinned next to mmdlint because mmdlint itself
+    # only asks for ^11, which would float to every new 11.x release.
+    runs-on: ubuntu-latest
+    env:
+      MMDLINT: npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validator rejects a broken diagram
+        # Proves the guard can go red; without it a validator that parses
+        # nothing would pass forever.
+        run: |
+          $MMDLINT scripts/fixtures/mermaid/valid.md
+          if $MMDLINT scripts/fixtures/mermaid/broken.md; then
+            echo "::error::mmdlint accepted scripts/fixtures/mermaid/broken.md"
+            exit 1
+          fi
+
+      - name: Validate Mermaid diagrams (browserless)
+        run: |
+          git ls-files -z '*.md' '*.markdown' ':!:scripts/fixtures/' | xargs -0 -r $MMDLINT
