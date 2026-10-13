@@ -164,6 +164,9 @@ After changing a skill's frontmatter or an instruction fragment, regenerate
 the manifest and then run `python3 scripts/build_project_claude.py`; CI fails
 on drift (`--check`). Refresh the vendored skills with
 `python3 scripts/vendor_mattpocock_skills.py` (optionally `--ref <sha>`).
+Upstream skills named in the script's `EXCLUDED` set are never vendored:
+`improve-codebase-architecture` is left out because this catalogue forks it
+as `improve-codebase` (#492), so cloud sessions offer one such command, not two.
 
 Locally the same project skills would duplicate the marketplace plugins, so
 `.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
