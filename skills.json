@@ -111,6 +111,18 @@
       "version": "1.1"
     },
     {
+      "name": "improve-codebase",
+      "summary": "Scan a codebase for deepening opportunities, present them as a visual HTML report with before/after diagrams, then interview the user round by round about the candidate they pick.",
+      "category": "refactoring",
+      "path": "skills/improve-codebase/SKILL.md",
+      "activation": "command",
+      "compatibility": "Requires git and a browser to view the HTML report. Writes only to the OS temp directory, plus the repo's GLOSSARY.md and ADRs when the user agrees.",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "llm-application-engineering",
       "summary": "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring.",
       "category": "ai-ml",

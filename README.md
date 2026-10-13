@@ -122,6 +122,7 @@ still listed here.
 
 | Skill | When to use |
 |---|---|
+| `skills/improve-codebase/` | Reviewing a repository's architecture for deepening opportunities — a visual HTML report of candidates with before/after diagrams and a top recommendation, then a round-by-round interview on the one you pick, keeping the glossary and ADRs current. |
 | `skills/refactoring/` | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
 
 ### AI & ML (`ai-ml`)
