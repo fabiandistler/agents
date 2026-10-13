@@ -15,10 +15,10 @@ PR #412. Two findings were carried forward into *Backlog* below.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-10-10 |
-| Last job | `dead-exports` (report-only, PR pending merge) |
-| Next due job | `error-edges` (no run yet -> catalog order) |
-| Baseline status | partial, 2026-10-10: 7 of 14 checks run, all green (report-only run) |
+| Last run | 2026-10-13 |
+| Last job | `error-edges` (report-only, 6 findings, PR pending merge) |
+| Next due job | `test-flakiness` (no run yet -> catalog order) |
+| Baseline status | 2026-10-13: 13 of 14 checks green (ruff 0.16.10); `prek run --all-files` not run |
 | Open maintenance PRs | see `gh pr list --state open --search "head:maintenance/"` |
 
 ## Rules
@@ -94,7 +94,7 @@ Fourteen checks. Two standing caveats:
 | 1 | `deps-audit` | yes | Report | 7d | 2026-10-08 |
 | 2 | `doc-drift` | no | PR | 14d | 2026-10-08 |
 | 3 | `dead-exports` | yes | PR | 14d | 2026-10-10 |
-| 4 | `error-edges` | no | Report | 14d | - |
+| 4 | `error-edges` | no | Report | 14d | 2026-10-13 |
 | 5 | `test-flakiness` | yes | PR | 30d | - |
 | 6 | `perf-quickwins` | no | Report | 30d | - |
 
@@ -147,6 +147,7 @@ and is recoverable from git history.
 | 2026-10-08 | `deps-audit` | report: `maintenance/reports/2026-10-08-deps-audit.md` | maintenance/deps-audit-2026-10-08 |
 | 2026-10-08 | `doc-drift` | PR: README Contributing list and layout table | maintenance/doc-drift-2026-10-08 |
 | 2026-10-10 | `dead-exports` | report: `maintenance/reports/2026-10-10-dead-exports.md` (0 findings) | maintenance/dead-exports-2026-10-10 |
+| 2026-10-13 | `error-edges` | report: `maintenance/reports/2026-10-13-error-edges.md` (6 findings) | maintenance/error-edges-2026-10-13 |
 
 ## Sunset condition
 
