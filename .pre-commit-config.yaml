@@ -53,12 +53,15 @@ repos:
     hooks:
       - id: shellcheck
         args: [-S, warning]
+        # Vendored upstream skills: re-vendoring overwrites any local fix.
+        exclude: ^\.claude/skills/
 
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
     hooks:
       - id: shfmt
         args: [-i, '2', '-ci', --write]
+        exclude: ^\.claude/skills/
 
   # Secret scanning, included for every project type: the commit hook is the
   # last point before a secret lands in history. Mirrors the gitleaks job of
