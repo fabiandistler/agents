@@ -39,12 +39,17 @@ appears in a card except inside a quoted metric value.
 | volatility (changes often / rarely) | how often the leaked knowledge changes; back it with the churn count |
 | knowledge leak | leaks across the seam (the headline finding) |
 | low cohesion (low strength, low distance) | shallow modules side by side that share nothing; candidates to merge |
-| high cohesion | belongs inside one deep module; not a finding |
+| high cohesion (strength without distance) | the two sides belong inside one deep module. Already behind one interface: not a finding. Living in separate modules: supports merging them behind one interface, which is the deepening finding |
 | loose coupling | a healthy seam; not a finding |
 | contract in name only | interface mirrors the implementation: shallow |
 | exit: reduce strength | shrink the interface |
 | exit: reduce distance | pull both sides behind one seam: deepen |
 | exit: accept on stability | leave, with the revisit condition as an ADR candidate |
+
+"Balanced" is not "leave". Inside one package distance is low everywhere, so
+Mode C tends to report every dependency as balanced (high cohesion). That
+verdict neither confirms nor kills a finding that `path:line` evidence
+carries: quote it on the card, do not let it decide.
 
 ## Churn and co-change
 

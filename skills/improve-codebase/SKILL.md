@@ -54,11 +54,19 @@ before looking:
 - If the user named a direction (a module, a subsystem, a pain point), take it
   and skip the ranking below.
 - Otherwise, follow the `refactoring` skill's workflow: rank files by git
-  churn with its bundled script, then list the co-changers of each top hit in
-  the same window. Treat each group of co-changing files as one candidate
-  area, not several. Its "when the ranking lies" cases (young repo, bulk
-  reformat, shallow clone) apply here too; if the ranking is flat, widen the
-  window.
+  churn with its bundled script, restricted to the source directories (one
+  `--include` per directory, for example `--include 'src/**'`), then list the
+  co-changers of each top hit in the same window. Drop non-code paths from the
+  co-change lists: changelogs (`NEWS.md`, `CHANGELOG*`), generated docs
+  (`man/`), lock files, plan and PRD files. Treat each group of co-changing
+  files as one candidate area, not several. Its "when the ranking lies" cases
+  (young repo, bulk reformat, shallow clone) apply here too.
+- If the ranking is flat, or the repo is younger than the window, rerun over
+  the full history. If it is still flat, scope by file size and the user's
+  direction instead.
+- A bulk commit (a sweep touching many files) is noise for the ranking, but can
+  be evidence for a candidate: the same mechanical edit repeated across many
+  modules points at a rule with no single home.
 
 Keep the churn and co-change counts: they become evidence on the cards.
 
@@ -105,6 +113,10 @@ scripts (`scripts/lcom.py`, `scripts/balance_check.py`, relative to the
 `coupling-cohesion` skill directory) inline, writing any input JSON to the OS
 temp directory.
 
+Mode A's LCOM for R is a heuristic: one-line functions, long signatures,
+handler closures and package-global state defined in another file skew it.
+Read the code before a group count from it supports a split or shallow claim.
+
 Translate the result before it reaches a card: `coupling-cohesion` speaks of
 boundaries, integration strength and distance; the report speaks only the
 vocabulary file's terms. `references/evidence-translation.md` maps one to the
@@ -121,7 +133,8 @@ in the repo. Resolve the temp directory from `$TMPDIR`, falling back to `/tmp`
 (`%TEMP%` on Windows), and write
 `<tmpdir>/architecture-review-<timestamp>.html` so each run gets a fresh file.
 Open it for the user (`xdg-open` on Linux, `open` on macOS, `start` on
-Windows) and give the absolute path.
+Windows) and give the absolute path. Without a browser or opener (a headless
+session), print the path instead.
 
 For each candidate, render a card with:
 
