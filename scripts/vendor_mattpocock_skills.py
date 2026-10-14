@@ -13,9 +13,9 @@ not part of it). The pinned commit, the vendored names and upstream's MIT
 license live in `.claude/vendor/mattpocock-skills/`. A re-run replaces exactly
 the previously vendored directories, so a skill upstream dropped disappears.
 
-EXCLUDED names upstream skills that are never vendored: improve-codebase-architecture
-(forked into this catalogue as `improve-codebase`, #492). An excluded name is
-neither copied nor reported as a collision.
+Upstream skills named in the EXCLUDED constant are never vendored; the reason
+sits next to the constant. An excluded name is neither copied nor reported as a
+collision.
 
 Exit codes: 0 ok, 1 git clone/checkout failed, 2 a name collides with a
 directory this script does not own. Needs git; stdlib-only.
@@ -36,7 +36,8 @@ SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 VENDOR_DIR = REPO_ROOT / ".claude" / "vendor" / "mattpocock-skills"
 LOCK_PATH = VENDOR_DIR / "lock.json"
 UPSTREAM = "https://github.com/mattpocock/skills.git"
-# Upstream skills never vendored; a previously vendored copy is removed on re-run.
+# Never vendored: improve-codebase-architecture is forked into this catalogue as
+# `improve-codebase` (#492, ADR-0008). A previously vendored copy is removed on re-run.
 EXCLUDED = frozenset({"improve-codebase-architecture"})
 
 
