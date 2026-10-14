@@ -7,7 +7,7 @@ environments: coding, chat
 argument-hint: "[file | PR | URL | topic — empty means the last message]"
 description: Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # TL;DR
@@ -116,7 +116,8 @@ translate back.
   the command); a status for readers outside the working group is
   `stakeholder-update`.
 - **Short, and it still did not land.** The gap is missing premises. Back up and
-  re-explain with them.
+  re-explain with them. In a German chat, suggest the user run `was`, which
+  re-pitches the last message in plain German.
 - **The reasoning is the point** — a trade-off, a review call. Give the shape of
   the argument: both positions and what each turns on.
 - **Already short, no core, or a summary just written.** Say that in one line;

@@ -270,6 +270,18 @@
         "coding",
         "chat"
       ],
+      "version": "1.1"
+    },
+    {
+      "name": "was",
+      "summary": "Re-pitching the last message in plain German when it did not land — a little context first, short active sentences, the repo's glossary terms kept verbatim.",
+      "category": "communication",
+      "path": "skills/was/SKILL.md",
+      "activation": "command",
+      "environments": [
+        "coding",
+        "chat"
+      ],
       "version": "1.0"
     }
   ]
