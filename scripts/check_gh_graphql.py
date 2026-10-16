@@ -81,9 +81,6 @@ SCRIPT_SUFFIXES = {".py", ".sh", ".md"}
 # non-adjacent lines and merge without conflicts.
 ALLOWLIST: dict[tuple[str, str], str] = {
     # ----
-    # -- #509 poc-spec-loop: loop runner to REST, PR step wording --
-    ("skills/poc-spec-loop/SKILL.md", "gh pr create"): "#509 rewords the PR step",
-    ("skills/poc-spec-loop/assets/loop.sh", "gh pr create"): "#509 switches to gh api (REST)",
     # ----
     # -- #510 oss-scouting: issue list/view, linked PRs, default branch, code search --
     ("skills/oss-scouting/SKILL.md", "gh issue list"): "#510 adds the MCP sentence",
