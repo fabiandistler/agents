@@ -97,21 +97,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("skills/release-pr/references/forges.md", "gh pr edit"): "#511 adds the MCP sentence",
     ("skills/release-pr/references/forges.md", "gh pr view"): "#511 adds the MCP sentence",
     # ----
-    # -- #512 repo-status PR search and docs/agents issue-tracker conventions --
-    ("skills/repo-status/SKILL.md", "gh search prs"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh issue close"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh issue comment"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh issue create"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh issue edit"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh issue list"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh issue view"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh pr"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh pr close"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh pr comment"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh pr diff"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh pr edit"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh pr list"): "#512 adds the MCP sentence",
-    ("docs/agents/issue-tracker.md", "gh pr view"): "#512 adds the MCP sentence",
     # ----
 }
 

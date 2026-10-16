@@ -57,16 +57,19 @@ two identities apart:
   report that commits are unfiltered, and ask for it afterwards. Never take it from
   `git config user.email`: the local git identity can differ from the user's,
   e.g. in a cloud or shared checkout.
-- GitHub identity, for `gh`: `@me`.
+- GitHub identity, for PR search: `@me`, or the authenticated user's login.
 
 Then:
 
 - Commits: `git log --all --no-merges --since=<window> --author=<commit-email-or-name>`
-- PRs authored: `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
-- PRs reviewed: `gh search prs --reviewed-by=@me --updated=">=<date>" --json number,title,state,repository`
+- PRs authored and PRs reviewed since `<date>`: search pull requests by author
+  and by reviewer. Use the GitHub MCP tools if the session has them; otherwise
+  `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
+  and the same with `--reviewed-by=@me`.
 - CI status: `gh run list --limit 5`
 
-Without `gh`, fall back to git-only and structure what the user tells you.
+Without the GitHub MCP tools or `gh`, fall back to git-only and structure what
+the user tells you.
 
 **Or structure what the user tells you.** If nothing is connected, or the user just narrates, organize those notes into the format below.
 
