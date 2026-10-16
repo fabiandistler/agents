@@ -71,7 +71,7 @@ decision path).
 2. **Identify the bounded context(s) involved** and, for each relationship to another context, pick a context-mapping pattern from the table in `references/strategic-design.md` and name the trade-off being accepted.
 3. **Walk the tactical decision path** above to choose an implementation pattern, keeping the pattern proportional to the subdomain's classification and complexity.
 4. **Model with the building blocks** in `references/implementation-conventions.md`: identify Entities (identity + a lifecycle worth tracking), Value Objects (validated, immutable, no identity), and the Aggregate boundary — keep the aggregate as small as the actual consistency requirement allows.
-5. **Apply the implementation conventions** in `references/implementation-conventions.md` as the code-review checklist while writing; read `references/event-sourcing.md` when step 3 of the decision path selects event sourcing.
+5. **Apply the implementation conventions** in `references/implementation-conventions.md` as the code-review checklist while writing; read `references/event-sourcing.md` when question 1 of the decision path selects event sourcing.
 6. **Flag over/under-investment** explicitly: a Domain Model proposed for a Supporting subdomain, or a Transaction Script proposed for a Core one, is worth calling out before implementation starts (see the Decision path above).
 7. **Note migration triggers**, not migrations to do immediately (see `references/strategic-design.md`): name the next pattern on the spectrum as the future move, ideally via a Strangler Fig migration.
 
