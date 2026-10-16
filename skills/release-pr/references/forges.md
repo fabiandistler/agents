@@ -15,6 +15,20 @@ after the push. PR title, body order, commit message, and tag name stay as
 
 ## github — `gh`
 
+The operations:
+
+- **Find the existing PR for this branch:** list the open PRs whose head is
+  the current branch.
+- **Open the PR:** create it against the default branch, title
+  `<pkg> X.Y.Z`, body read from `<run>/pr-body.md`, not a draft.
+- **Update the PR:** replace its body with `<run>/pr-body.md`.
+- **CI on the tagged commit:** `gh run list` is REST-backed and works
+  everywhere.
+- **Create the release:** from the pushed tag, title `<pkg> X.Y.Z`, notes
+  from `<run>/notes.md`.
+
+Use the GitHub MCP tools if the session has them; otherwise `gh`:
+
 ```bash
 gh pr view --json number,url                  # existing PR for this branch?
 gh pr create --title "<pkg> X.Y.Z" --body-file <run>/pr-body.md
@@ -23,7 +37,9 @@ gh run list --commit "$(git rev-parse HEAD)"  # CI on the tagged commit
 gh release create <tag> --verify-tag --title "<pkg> X.Y.Z" --notes-file <run>/notes.md
 ```
 
-Issue link in the body: `Closes #<n>`.
+The `gh pr` commands go through GraphQL, which Claude Code cloud sessions
+block (HTTP 403); there the GitHub MCP tools are the path. Issue link in
+the body: `Closes #<n>`.
 
 ## azure — Azure Repos, `az` with the `azure-devops` extension
 

@@ -92,10 +92,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ("skills/oss-scouting/SKILL.md", "gh repo view"): "#510 adds the MCP sentence",
     ("skills/oss-scouting/SKILL.md", "gh search code"): "#510 adds the MCP sentence",
     # ----
-    # -- #511 release-pr: forge reference PR create/edit/view --
-    ("skills/release-pr/references/forges.md", "gh pr create"): "#511 adds the MCP sentence",
-    ("skills/release-pr/references/forges.md", "gh pr edit"): "#511 adds the MCP sentence",
-    ("skills/release-pr/references/forges.md", "gh pr view"): "#511 adds the MCP sentence",
     # ----
     # -- #512 repo-status PR search and docs/agents issue-tracker conventions --
     ("skills/repo-status/SKILL.md", "gh search prs"): "#512 adds the MCP sentence",
