@@ -65,7 +65,13 @@ Then:
 - PRs authored and PRs reviewed since `<date>`: search pull requests by author
   and by reviewer. Use the GitHub MCP tools if the session has them; otherwise
   `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
-  and the same with `--reviewed-by=@me`.
+  and the same with `--reviewed-by=@me`. Where search is refused (cloud
+  sessions bind to their configured repositories and reject `search/*`), list
+  each configured repo's PRs instead with the GitHub MCP tools or
+  `gh api "repos/<owner>/<repo>/pulls?state=all&sort=updated&direction=desc&per_page=50"`,
+  keeping those updated since `<date>` whose `user.login` is yours; for
+  reviewed PRs, check `gh api repos/<owner>/<repo>/pulls/<n>/reviews` on the
+  remaining ones.
 - CI status: `gh run list --limit 5`
 
 Without the GitHub MCP tools or `gh`, fall back to git-only and structure what
