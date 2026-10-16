@@ -4,11 +4,11 @@ category: workflow
 activation: command
 disable-model-invocation: true
 environments: coding
-compatibility: Requires git and the GitHub CLI (`gh`, read-only). Running a candidate's reproduction needs that project's own toolchain.
+compatibility: Requires git and read-only GitHub access through the GitHub MCP tools or the GitHub CLI (`gh`). Running a candidate's reproduction needs that project's own toolchain.
 argument-hint: "<owner>/<repo>"
 description: Scout one third-party open-source repository for open issues that suit a small, clean contribution, and write repro, root-cause analysis, fix diff, test, and a submit checklist to a local folder only.
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 # OSS Scouting
@@ -131,27 +131,55 @@ or by looking for auto-close bots and pinned notices.
 
 ### 2 Issue review
 
-Tool: `gh` CLI, read-only. Window: the last 6 months. Resolve the default
-branch once per run and use it everywhere below instead of a hardcoded name:
+Read-only. Window: the last 6 months. Every GitHub step below names the
+operation first. Use the GitHub MCP tools if the session has them; otherwise
+`gh` with the commands shown. They call the REST API (`gh api`) on purpose:
+the porcelain built on GraphQL (`gh issue list`, `gh repo view --json`) fails
+with HTTP 403 where GraphQL is blocked, as in Claude Code cloud sessions.
+
+**Resolve the default branch** once per run, and use it everywhere below
+instead of a hardcoded name. **List open, unassigned issues created in the
+window.** The REST issues endpoint also returns pull requests, so drop the
+items that carry a `pull_request` key. It sorts by creation date, newest first:
 
 ```bash
-DEFAULT_BRANCH=$(gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name)
+DEFAULT_BRANCH=$(gh api repos/<owner>/<repo> --jq .default_branch)
 SINCE=$(date -v-6m +%F 2>/dev/null || date -d '6 months ago' +%F)
-gh issue list -R <owner>/<repo> --state open --limit 200 \
-  --search "created:>=$SINCE no:assignee" \
-  --json number,title,labels,comments,createdAt,updatedAt,author,url \
-  --jq '.[] | {number,title,labels,commentCount: (.comments|length),createdAt,updatedAt,author,url}'
+gh api -X GET repos/<owner>/<repo>/issues --paginate \
+  -f state=open -f assignee=none -f per_page=100 \
+  --jq ".[] | select(.pull_request == null and .created_at >= \"$SINCE\")
+        | {number, title, labels: [.labels[].name], commentCount: .comments,
+           created_at, updated_at, author: .user.login, url: .html_url}"
 ```
 
-Check each issue with `gh issue view <nr> --comments`:
+**Read each issue with its comments.** Use the GitHub MCP tools if the session
+has them; otherwise `gh api repos/<owner>/<repo>/issues/<nr>` for the issue and
+`gh api --paginate repos/<owner>/<repo>/issues/<nr>/comments` for the thread.
+Each comment carries `author_association`.
+
+**Check for linked PRs.** Use the GitHub MCP tools if the session has them;
+otherwise `gh` against the REST issue timeline. A PR that mentions or closes
+the issue leaves a `cross-referenced` event there, whether the PR is open,
+closed, or merged; the event's `source.issue` has a `pull_request` key only
+when the source is a PR:
+
+```bash
+gh api --paginate repos/<owner>/<repo>/issues/<nr>/timeline \
+  --jq '.[] | select(.event == "cross-referenced" and .source.issue.pull_request)
+        | {number: .source.issue.number, state: .source.issue.state,
+           repo: .source.issue.repository.full_name}'
+```
+
+If the timeline is unavailable, search pull requests (any state) in the repo
+for the issue number instead: with the GitHub MCP tools, or with `gh api -X GET
+search/issues -f q="repo:<owner>/<repo> is:pr <nr>"`. Search matches the
+number as text, so confirm each hit actually refers to the issue.
 
 **In:** reproducibly described (code + versions) or a demonstrable
 documentation error; narrowly scoped; at least one maintainer response
-(`authorAssociation` OWNER, MEMBER, COLLABORATOR) confirming the problem or
-setting a direction; no assignee; no open PR linked (cross-check with
-`gh issue view <nr> -R <owner>/<repo> --json closedByPullRequestsReferences`,
-which covers open and closed linked PRs; on older `gh` fall back to
-`gh pr list -R <owner>/<repo> --state all --search "<nr>"`).
+(`author_association` OWNER, MEMBER, COLLABORATOR) confirming the problem or
+setting a direction; no assignee; no open PR linked (the linked-PR check
+above).
 
 **Out:** design or architecture discussion; labels such as `needs-decision`,
 `discussion`, `wontfix`, `breaking`, `RFC`, `blocked`; a maintainer has voiced a
@@ -206,7 +234,7 @@ one clone, resetting it between candidates.
 4. **test**: in the project's test framework, in the place the project keeps
    comparable tests; fails without the fix, passes with it — run both and record
    the result.
-5. **Risk** (in analysis.md): affected callers (`grep` / `gh search code`), API
+5. **Risk** (in analysis.md): affected callers (`grep` in the clone), API
    surface, performance, edge behavior (NA/NULL/None, empty inputs, encoding,
    platform), backward compatibility. Rate low/medium/high with a reason.
 

@@ -82,12 +82,6 @@ SCRIPT_SUFFIXES = {".py", ".sh", ".md"}
 ALLOWLIST: dict[tuple[str, str], str] = {
     # ----
     # ----
-    # -- #510 oss-scouting: issue list/view, linked PRs, default branch, code search --
-    ("skills/oss-scouting/SKILL.md", "gh issue list"): "#510 adds the MCP sentence",
-    ("skills/oss-scouting/SKILL.md", "gh issue view"): "#510 adds the MCP sentence",
-    ("skills/oss-scouting/SKILL.md", "gh pr list"): "#510 adds the MCP sentence",
-    ("skills/oss-scouting/SKILL.md", "gh repo view"): "#510 adds the MCP sentence",
-    ("skills/oss-scouting/SKILL.md", "gh search code"): "#510 adds the MCP sentence",
     # ----
     # ----
     # -- #512 repo-status PR search and docs/agents issue-tracker conventions --
