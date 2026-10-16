@@ -92,7 +92,7 @@ POC_AGENT=<runner> bash <skill-dir>/assets/loop.sh
 - **Checkpoint** every 5 passed items: a separate runner context runs the `code-review` skill since the branch start. Spec findings become new prd items (`origin: checkpoint`, `deps` on the causing item); standards findings go to `plans/REVIEW.md` and from there into the PR body. Checkpoint items may push the list past the Phase 1 range, up to the schema cap of 40; findings beyond the cap go to `REVIEW.md` instead of `prd.json`.
 - **Stop the whole run** when 3 consecutive items land in BLOCKED, or when item 1 or 2 (toolchain, CI) blocks → **draft** PR immediately, listing the open items under `## Not reached (run stopped early)`.
 - **Unreachable items**: when no item is selectable but some with a `check` are still open (their `deps` include a blocked item), the run ends with a **draft** PR that lists them under `## Unreachable`.
-- **End of run**: PR `poc/<date>` → `main` with item checklist, open `manual_reason` items, BLOCKED.md contents, standards findings and the `## Definition of Done` section of `SPEC.md` as deployment instructions. Ready PR only if nothing is blocked or unreachable.
+- **End of run**: PR `poc/<date>` → `main` with item checklist, open `manual_reason` items, BLOCKED.md contents, standards findings and the `## Definition of Done` section of `SPEC.md` as deployment instructions. Ready PR only if nothing is blocked or unreachable. `loop.sh` opens it itself; when you have to open or update that PR by hand (say, after a failed push), use the GitHub MCP tools if the session has them; otherwise `gh api repos/{owner}/{repo}/pulls` (REST), with `plans/PR.md` as the body.
 
 **Requested in the task prompt** (model discipline, not checked by the script):
 
@@ -110,7 +110,7 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 | State | `plans/SPEC.md`, `plans/prd.json`, `plans/BLOCKED.md`, `plans/REVIEW.md`, `plans/PR.md` (full PR body) — committed, CI ignores `plans/**` | this file |
 | Toolchain per language | detect / scaffold / test / lint / typecheck commands | `references/toolchains.md` |
 | Definition of Done per target | smoke command, required artefact, non-goal | `references/deploy-targets.md` |
-| Forge | detected from `origin`: GitHub → `gh pr create`; Azure DevOps Services → `az repos pr create`, description cut to the checklist plus a pointer to `plans/PR.md` (4,000-character cap) | `loop.sh` |
+| Forge | detected from `origin`: GitHub → REST pulls endpoint via `gh api` (a headless script cannot call MCP tools, and GraphQL-backed `gh pr create` is blocked in cloud sessions); Azure DevOps Services → `az repos pr create`, description cut to the checklist plus a pointer to `plans/PR.md` (4,000-character cap) | `loop.sh` |
 | No placeholders, no mocks in production code | hard rule (prompt-level) | `assets/task-prompt.md` |
 
 ## Provenance
