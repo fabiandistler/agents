@@ -218,6 +218,15 @@ machine consumption prefer `skills.json`.
 - A reference file over 100 lines carries a `## Contents` heading with
   section links within its first 20 lines, so a partial read still shows its
   scope. CI enforces this with `python3 scripts/check_reference_tocs.py`.
+- A GitHub step an agent executes names the operation (list open issues,
+  read an issue with comments, create a PR), then uses this canonical
+  sentence, keeping the `gh` command as the fallback for agents without the
+  GitHub MCP: "Use the GitHub MCP tools if the session has them; otherwise
+  `gh` …". GraphQL-backed `gh` porcelain (`gh issue`, `gh pr`, `gh search`,
+  `gh label`, `gh repo view`, `gh release list|view`) fails with HTTP 403 in
+  Claude Code cloud sessions; REST (`gh api`, `gh run`) works. A script that
+  runs headlessly cannot call MCP tools, so it uses `gh api` against the REST
+  endpoint. CI enforces this with `python3 scripts/check_gh_graphql.py`.
 
 ## Scripts an agent runs
 
