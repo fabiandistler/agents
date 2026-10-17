@@ -135,7 +135,11 @@ Read-only. Window: the last 6 months. Every GitHub step below names the
 operation first. Use the GitHub MCP tools if the session has them; otherwise
 `gh` with the commands shown. They call the REST API (`gh api`) on purpose:
 the porcelain built on GraphQL (`gh issue list`, `gh repo view --json`) fails
-with HTTP 403 where GraphQL is blocked, as in Claude Code cloud sessions.
+in sessions where GitHub's GraphQL endpoint is blocked.
+
+Some sessions are bound to their configured repositories and refuse requests
+for any other repo, `search/*` included. To scout a third-party repo in such a
+session, first attach the repo to the session or use the GitHub MCP tools.
 
 **Resolve the default branch** once per run, and use it everywhere below
 instead of a hardcoded name. **List open, unassigned issues created in the
@@ -161,19 +165,32 @@ Each comment carries `author_association`.
 otherwise `gh` against the REST issue timeline. A PR that mentions or closes
 the issue leaves a `cross-referenced` event there, whether the PR is open,
 closed, or merged; the event's `source.issue` has a `pull_request` key only
-when the source is a PR:
+when the source is a PR. A PR linked by hand in the issue's "Development"
+sidebar leaves a `connected` event instead (`disconnected` when the link is
+removed):
 
 ```bash
 gh api --paginate repos/<owner>/<repo>/issues/<nr>/timeline \
-  --jq '.[] | select(.event == "cross-referenced" and .source.issue.pull_request)
-        | {number: .source.issue.number, state: .source.issue.state,
-           repo: .source.issue.repository.full_name}'
+  --jq '.[] | if .event == "cross-referenced" and .source.issue.pull_request
+              then {event, number: .source.issue.number, state: .source.issue.state,
+                    repo: .source.issue.repository.full_name}
+              elif .event == "connected" or .event == "disconnected"
+              then {event, actor: .actor.login, created_at}
+              else empty end'
 ```
 
-If the timeline is unavailable, search pull requests (any state) in the repo
-for the issue number instead: with the GitHub MCP tools, or with `gh api -X GET
-search/issues -f q="repo:<owner>/<repo> is:pr <nr>"`. Search matches the
-number as text, so confirm each hit actually refers to the issue.
+A `connected` event does not name the PR: the REST event carries only the
+actor, the timestamp and a commit reference. So a `connected` event without
+a later `disconnected` one counts as a linked PR of unknown state; find which
+PR it is with the search below or on the issue page before ruling the issue
+out.
+
+If the timeline is unavailable, or to name a `connected` PR, search pull
+requests (any state) in the repo for the issue number: with the GitHub MCP
+tools, or with `gh api -X GET search/issues -f q="repo:<owner>/<repo> is:pr
+<nr>"`. Search matches the number as text, so confirm each hit actually refers
+to the issue. Sessions bound to their configured repositories may refuse
+`search/issues`; there the issue page is the remaining source.
 
 **In:** reproducibly described (code + versions) or a demonstrable
 documentation error; narrowly scoped; at least one maintainer response
