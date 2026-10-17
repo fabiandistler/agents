@@ -110,7 +110,7 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 | State | `plans/SPEC.md`, `plans/prd.json`, `plans/BLOCKED.md`, `plans/REVIEW.md`, `plans/PR.md` (full PR body) — committed, CI ignores `plans/**` | this file |
 | Toolchain per language | detect / scaffold / test / lint / typecheck commands | `references/toolchains.md` |
 | Definition of Done per target | smoke command, required artefact, non-goal | `references/deploy-targets.md` |
-| Forge | detected from `origin`: GitHub → REST pulls endpoint via `gh api` (a headless script cannot call MCP tools, and GraphQL-backed `gh pr create` is blocked in cloud sessions); Azure DevOps Services → `az repos pr create`, description cut to the checklist plus a pointer to `plans/PR.md` (4,000-character cap) | `loop.sh` |
+| Forge | detected from `origin`: GitHub → REST pulls endpoint via `gh api` (a headless script cannot call MCP tools, and GraphQL-backed `gh pr create` fails in sessions where GitHub's GraphQL endpoint is blocked); Azure DevOps Services → `az repos pr create`, description cut to the checklist plus a pointer to `plans/PR.md` (4,000-character cap) | `loop.sh` |
 | No placeholders, no mocks in production code | hard rule (prompt-level) | `assets/task-prompt.md` |
 
 ## Provenance

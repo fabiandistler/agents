@@ -216,7 +216,7 @@ open_pr() {
   git push -u origin "$BRANCH"
   local title="PoC loop $BRANCH"
   case $FORGE in
-    github) # REST via gh api: GraphQL-backed `gh pr create` is blocked in cloud sessions
+    github) # REST via gh api: GraphQL-backed `gh pr create` fails where GitHub's GraphQL endpoint is blocked
       local extra=()
       [[ $kind == draft ]] && extra=(-F draft=true)
       # gh fills {owner}/{repo} from the current repo's git remote; --jq prints the PR URL.
