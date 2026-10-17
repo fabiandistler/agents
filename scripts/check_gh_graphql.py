@@ -6,8 +6,8 @@ Run from repo root:
 
 A GraphQL-backed gh command is gh porcelain that talks to GitHub's GraphQL
 API: `gh issue ...`, `gh pr ...`, `gh repo view`, `gh release list|view`,
-`gh search ...`, `gh label ...`. Claude Code cloud sessions block GraphQL, so
-such a step fails there with HTTP 403 while working locally. REST-backed
+`gh search ...`, `gh label ...`. Such a step fails in sessions where GitHub's
+GraphQL endpoint is blocked, while working locally. REST-backed
 commands (`gh api ...`, `gh run ...`) always pass.
 
 A step an agent executes states the operation and then uses the canonical
@@ -27,9 +27,9 @@ and are counted once. Vendored skills under .claude/ are out of scope; report
 those upstream. Stdlib-only, matching the other scripts/check_*.py gates.
 
 Exemptions live in ALLOWLIST as (relative path, command) keys with the reason
-as the value, grouped in one block per follow-up ticket so that each ticket
-deletes its own block. An entry that no longer matches a hit is reported as
-stale, so a fixed file must also leave the allowlist.
+as the value. The list is currently empty; add to it only for a command that
+must stay bare on purpose, with the reason. An entry that no longer matches a
+hit is reported as stale, so a fixed file must also leave the allowlist.
 """
 
 from __future__ import annotations
@@ -77,17 +77,7 @@ ALTERNATIVE = re.compile(r"github\s+mcp|\bgh\s+api\b", re.IGNORECASE)
 
 SCRIPT_SUFFIXES = {".py", ".sh", ".md"}
 
-# (relative path, command) -> reason. One block per follow-up ticket of #506;
-# a ticket that fixes its files deletes its whole block (header comment
-# included) but keeps the `# ----` separator lines, so parallel tickets edit
-# non-adjacent lines and merge without conflicts.
-ALLOWLIST: dict[tuple[str, str], str] = {
-    # ----
-    # ----
-    # ----
-    # ----
-    # ----
-}
+ALLOWLIST: dict[tuple[str, str], str] = {}
 
 
 def scanned_files(root: Path) -> list[Path]:
@@ -172,8 +162,8 @@ def main(argv: list[str] | None = None) -> int:
         for violation in violations:
             sys.stderr.write(f"  - {violation}\n")
         sys.stderr.write(
-            "\nGraphQL is blocked in Claude Code cloud sessions. See AGENTS.md,"
-            ' "Conventions for skill authors".\n'
+            "\nGraphQL-backed gh porcelain fails in sessions where GitHub's GraphQL"
+            ' endpoint is blocked. See AGENTS.md, "Conventions for skill authors".\n'
         )
         return 1
     print(f"gh graphql ok ({checked} files)")
