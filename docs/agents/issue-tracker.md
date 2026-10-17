@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues. For every operation below, use the GitHub MCP tools if the session has them; otherwise `gh` with the command given. GraphQL-backed `gh` porcelain (`gh issue`, `gh pr`) fails with HTTP 403 in Claude Code cloud sessions; `gh api` (REST) works everywhere.
+Issues and specs for this repo live as GitHub issues. For every operation below, use the GitHub MCP tools if the session has them; otherwise `gh` with the command given. GraphQL-backed `gh` porcelain (`gh issue`, `gh pr`) fails in sessions where GitHub's GraphQL endpoint is blocked; `gh api` (REST) works everywhere.
 
 ## Conventions
 
