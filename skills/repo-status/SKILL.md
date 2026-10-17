@@ -57,16 +57,26 @@ two identities apart:
   report that commits are unfiltered, and ask for it afterwards. Never take it from
   `git config user.email`: the local git identity can differ from the user's,
   e.g. in a cloud or shared checkout.
-- GitHub identity, for `gh`: `@me`.
+- GitHub identity, for PR search: `@me`, or the authenticated user's login.
 
 Then:
 
 - Commits: `git log --all --no-merges --since=<window> --author=<commit-email-or-name>`
-- PRs authored: `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
-- PRs reviewed: `gh search prs --reviewed-by=@me --updated=">=<date>" --json number,title,state,repository`
+- PRs authored and PRs reviewed since `<date>`: search pull requests by author
+  and by reviewer. Use the GitHub MCP tools if the session has them; otherwise
+  `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
+  and the same with `--reviewed-by=@me`. Where search is refused (sessions
+  bound to their configured repositories reject `search/*`), list each
+  configured repo's PRs instead with the GitHub MCP tools or
+  `gh api --paginate "repos/<owner>/<repo>/pulls?state=all&sort=updated&direction=desc&per_page=100" --jq '.[] | select(.updated_at >= "<date>")'`,
+  keeping those whose `user.login` is yours (`--paginate` walks every page,
+  so a repo with more than one page of PRs is not cut off); for
+  reviewed PRs, check `gh api repos/<owner>/<repo>/pulls/<n>/reviews` on the
+  remaining ones.
 - CI status: `gh run list --limit 5`
 
-Without `gh`, fall back to git-only and structure what the user tells you.
+Without the GitHub MCP tools or `gh`, fall back to git-only and structure what
+the user tells you.
 
 **Or structure what the user tells you.** If nothing is connected, or the user just narrates, organize those notes into the format below.
 

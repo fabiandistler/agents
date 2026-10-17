@@ -177,11 +177,11 @@
       "category": "workflow",
       "path": "skills/oss-scouting/SKILL.md",
       "activation": "command",
-      "compatibility": "Requires git and the GitHub CLI (`gh`, read-only). Running a candidate's reproduction needs that project's own toolchain.",
+      "compatibility": "Requires git and read-only GitHub access through the GitHub MCP tools or the GitHub CLI (`gh`). Running a candidate's reproduction needs that project's own toolchain.",
       "environments": [
         "coding"
       ],
-      "version": "1.2"
+      "version": "1.3"
     },
     {
       "name": "poc-spec-loop",
@@ -233,7 +233,7 @@
       "category": "workflow",
       "path": "skills/release-pr/SKILL.md",
       "activation": "command",
-      "compatibility": "Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only (tomllib on Python 3.11+, regex fallback below).",
+      "compatibility": "Requires git plus the forge's CLI — `gh` or the GitHub MCP tools (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only (tomllib on Python 3.11+, regex fallback below).",
       "environments": [
         "coding"
       ],

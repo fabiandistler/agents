@@ -115,6 +115,15 @@ def committed(repo, path):
     ).stdout
 
 
+def current_branch(repo):
+    return subprocess.run(
+        ["git", "-C", str(repo), "branch", "--show-current"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
 def read_argv(log_dir, name):
     return (log_dir / f"{name}.argv").read_text().split("\0")[:-1]
 
@@ -157,9 +166,15 @@ class LoopRunnerTest(unittest.TestCase):
                 prd = json.loads((repo / "plans" / "prd.json").read_text())
                 self.assertIs(prd["items"][0]["passes"], True)
                 gh = read_argv(log_dir, "gh")
-                self.assertEqual(gh[:2], ["pr", "create"])
-                self.assertNotIn("--draft", gh)
-                self.assertEqual(gh[gh.index("--body-file") + 1], "plans/PR.md")
+                # REST, not GraphQL-backed `gh pr create`: cloud sessions block GraphQL.
+                self.assertEqual(gh[:4], ["api", "repos/{owner}/{repo}/pulls", "--method", "POST"])
+                fields = gh[4:]
+                branch = current_branch(repo)
+                self.assertIn("base=main", fields)
+                self.assertIn(f"head={branch}", fields)
+                self.assertIn(f"title=PoC loop {branch}", fields)
+                self.assertEqual(fields[fields.index("body=@plans/PR.md") - 1], "-F")
+                self.assertFalse(any(f.startswith("draft=") for f in fields))
                 self.assertIn("- [x] prd-01", committed(repo, "plans/PR.md"))
 
     def test_flags_override_replaces_defaults(self):

@@ -216,10 +216,12 @@ open_pr() {
   git push -u origin "$BRANCH"
   local title="PoC loop $BRANCH"
   case $FORGE in
-    github)
+    github) # REST via gh api: GraphQL-backed `gh pr create` fails where GitHub's GraphQL endpoint is blocked
       local extra=()
-      [[ $kind == draft ]] && extra=(--draft)
-      gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$PR_MD" "${extra[@]}"
+      [[ $kind == draft ]] && extra=(-F draft=true)
+      # gh fills {owner}/{repo} from the current repo's git remote; --jq prints the PR URL.
+      gh api 'repos/{owner}/{repo}/pulls' --method POST --jq .html_url \
+        -f base=main -f head="$BRANCH" -f title="$title" -F body=@"$PR_MD" "${extra[@]}"
       ;;
     azure) # organization and project come from origin via az's --detect default
       local draft=false

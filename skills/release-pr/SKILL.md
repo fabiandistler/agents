@@ -4,7 +4,7 @@ category: workflow
 activation: command
 disable-model-invocation: true
 environments: coding
-compatibility: Requires git plus the forge's CLI — `gh` (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only (tomllib on Python 3.11+, regex fallback below).
+compatibility: Requires git plus the forge's CLI — `gh` or the GitHub MCP tools (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only (tomllib on Python 3.11+, regex fallback below).
 argument-hint: "[major | minor | patch | X.Y.Z | tag]"
 description: Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written. After merge, tag and publish the release.
 metadata:
@@ -179,9 +179,11 @@ Commit the version bump and the changelog together, separate from the
 feature commits, as `Increment version number to X.Y.Z` (usethis's own
 message; used for Python too so both languages read the same in `git log`).
 
-Push after confirmation. If the branch already has a PR, edit its body;
-otherwise open one, titled `<package> X.Y.Z`, with the forge's CLI
-(`references/forges.md`). Write the body to `<run>/pr-body.md` first, where
+Push after confirmation. Find the branch's open PR. If it has one, update
+its body; otherwise open one, titled `<package> X.Y.Z`. On GitHub, use the
+GitHub MCP tools if the session has them; otherwise `gh` (`gh pr view`,
+`gh pr edit`, `gh pr create`). Other forges use their CLI; the commands per
+forge are in `references/forges.md`. Write the body to `<run>/pr-body.md` first, where
 `<run>` is the directory a fresh `mktemp -d /tmp/release-pr-XXXXXX` printed,
 and pass that path to the CLI. The body, in this order:
 
@@ -230,8 +232,15 @@ Each step may run in a new shell, so shell variables do not carry over.
 - [ ] 3 `release_state.py --section X.Y.Z > <run>/notes.md`; the file is not empty
 - [ ] 4 Show tag name (`<tag>`), commit, and the notes; confirm
 - [ ] 5 `git tag -a <tag> -m "<package> X.Y.Z" && git push origin <tag>`
-- [ ] 6 `gh release create <tag> --verify-tag --title "<package> X.Y.Z" --notes-file <run>/notes.md`
-      (`--prerelease` for a Python `a`/`b`/`rc` version). When the release attaches binary assets, create it as a draft first and publish only after the assets are up, so no partial release is ever public. GitLab: `glab
+- [ ] 6 Create the GitHub release from the pushed tag, title `<package> X.Y.Z`,
+      notes from `<run>/notes.md`. The GitHub MCP tools read releases but cannot
+      create one, so use `gh`:
+      `gh release create <tag> --verify-tag --title "<package> X.Y.Z" --notes-file <run>/notes.md`
+      (`--prerelease` for a Python `a`/`b`/`rc` version), or its REST form
+      `gh api -X POST 'repos/{owner}/{repo}/releases' -f tag_name=<tag> -f name="<package> X.Y.Z" -F body=@<run>/notes.md`
+      (`-F prerelease=true` likewise). The REST call has no `--verify-tag`: it
+      creates a missing tag from the default branch, so run it only after step 5
+      pushed the tag. When the release attaches binary assets, create it as a draft first and publish only after the assets are up, so no partial release is ever public. GitLab: `glab
       release create`. Azure Repos and unknown hosts have no release
       object, so steps 5–6 become one annotated tag carrying the notes
       (`references/forges.md`)

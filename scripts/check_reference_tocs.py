@@ -18,6 +18,8 @@ import re
 import sys
 from pathlib import Path
 
+from catalogue import unique_real_files
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
 MAX_LINES = 100
@@ -39,17 +41,7 @@ exit: 0 all long references have a TOC | 1 violations found | 2 usage error
 
 
 def reference_files() -> list[Path]:
-    seen: set[Path] = set()
-    files: list[Path] = []
-    for path in sorted(SKILLS_DIR.rglob("references/*.md")):
-        if not path.is_file():
-            continue
-        real = path.resolve()
-        if real in seen:
-            continue
-        seen.add(real)
-        files.append(real)
-    return files
+    return unique_real_files(sorted(SKILLS_DIR.rglob("references/*.md")))
 
 
 def has_toc(lines: list[str]) -> bool:
