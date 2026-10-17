@@ -37,6 +37,8 @@ import re
 import sys
 from pathlib import Path
 
+from catalogue import unique_real_files
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
 MANIFEST_PATH = REPO_ROOT / "skills.json"
@@ -107,24 +109,15 @@ RUN = re.compile(r"\brun\b", re.IGNORECASE)
 
 
 def body_files() -> list[Path]:
-    seen: set[Path] = set()
-    files: list[Path] = []
+    candidates: list[Path] = []
     for skill_dir in sorted(SKILLS_DIR.iterdir()):
         if not skill_dir.is_dir() or skill_dir.name.startswith("."):
             continue
-        candidates = [skill_dir / "SKILL.md"]
+        candidates.append(skill_dir / "SKILL.md")
         references = skill_dir / "references"
         if references.is_dir():
             candidates.extend(sorted(references.glob("*.md")))
-        for path in candidates:
-            if not path.is_file():
-                continue
-            real = path.resolve()
-            if real in seen:
-                continue
-            seen.add(real)
-            files.append(real)
-    return files
+    return unique_real_files(candidates)
 
 
 def body_lines(path: Path) -> tuple[list[str], int]:

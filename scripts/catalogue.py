@@ -88,3 +88,24 @@ def routed_categories(catalogue: Iterable[SkillEntry]) -> set[str]:
     `build_routers.py --check` validates the nested `members/` symlinks.
     """
     return {entry.category for entry in catalogue if entry.is_router}
+
+
+def unique_real_files(paths: Iterable[Path]) -> list[Path]:
+    """The existing files among `paths`, resolved and each listed once.
+
+    A router's `members/<name>` is a symlink to the top-level skill directory,
+    so the same SKILL.md or reference file is reachable under two paths. A
+    checker that walks both reports it once, under its real path, in the order
+    first seen. Paths that are not files are skipped.
+    """
+    seen: set[Path] = set()
+    files: list[Path] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        real = path.resolve()
+        if real in seen:
+            continue
+        seen.add(real)
+        files.append(real)
+    return files

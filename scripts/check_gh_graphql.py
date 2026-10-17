@@ -38,6 +38,8 @@ import re
 import sys
 from pathlib import Path
 
+from catalogue import unique_real_files
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 USAGE = """usage: check_gh_graphql.py [--root DIR] [--help]
@@ -89,55 +91,27 @@ ALLOWLIST: dict[tuple[str, str], str] = {
 
 
 def scanned_files(root: Path) -> list[Path]:
-    seen: set[Path] = set()
-    files: list[Path] = []
+    """Every in-scope file, resolved to its real path and listed once.
 
-    def add(path: Path) -> None:
-        if not path.is_file():
-            return
-        real = path.resolve()
-        if real in seen:
-            return
-        seen.add(real)
-        files.append(path)
-
+    Router `members/` entries are symlinks to top-level skills, so walking the
+    top-level skill directories already covers them.
+    """
+    candidates: list[Path] = []
     skills_dir = root / "skills"
-    skill_dirs: list[Path] = []
     if skills_dir.is_dir():
         for skill_dir in sorted(skills_dir.iterdir()):
             if not skill_dir.is_dir() or skill_dir.name.startswith("."):
                 continue
-            skill_dirs.append(skill_dir)
-            members = skill_dir / "members"
-            if members.is_dir():
-                skill_dirs.extend(sorted(p for p in members.iterdir() if p.is_dir()))
-    for skill_dir in skill_dirs:
-        add(skill_dir / "SKILL.md")
-        references = skill_dir / "references"
-        if references.is_dir():
-            for path in sorted(references.glob("*.md")):
-                add(path)
-        for sub in ("scripts", "assets"):
-            folder = skill_dir / sub
-            if not folder.is_dir():
-                continue
-            for path in sorted(folder.iterdir()):
-                if path.suffix in SCRIPT_SUFFIXES and not path.name.startswith("test_"):
-                    add(path)
-    agents_docs = root / "docs" / "agents"
-    if agents_docs.is_dir():
-        for path in sorted(agents_docs.glob("*.md")):
-            add(path)
-    return files
-
-
-def display_path(root: Path, path: Path) -> str:
-    """Path relative to root, with a member symlink shown as its real file."""
-    real = path.resolve()
-    try:
-        return real.relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return path.relative_to(root).as_posix()
+            candidates.append(skill_dir / "SKILL.md")
+            candidates.extend(sorted(skill_dir.glob("references/*.md")))
+            for sub in ("scripts", "assets"):
+                candidates.extend(
+                    path
+                    for path in sorted(skill_dir.glob(f"{sub}/*"))
+                    if path.suffix in SCRIPT_SUFFIXES and not path.name.startswith("test_")
+                )
+    candidates.extend(sorted(root.glob("docs/agents/*.md")))
+    return unique_real_files(candidates)
 
 
 def command_name(match: re.Match[str]) -> str:
@@ -151,8 +125,9 @@ def collect(root: Path) -> tuple[list[str], set[tuple[str, str]], int]:
     violations: list[str] = []
     allowed_hits: set[tuple[str, str]] = set()
     files = scanned_files(root)
+    real_root = root.resolve()
     for path in files:
-        rel = display_path(root, path)
+        rel = path.relative_to(real_root).as_posix()
         lines = path.read_text(encoding="utf-8").splitlines()
         for index, line in enumerate(lines):
             for match in GRAPHQL_COMMAND.finditer(line):
