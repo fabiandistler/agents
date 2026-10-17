@@ -35,11 +35,14 @@ gh pr create --title "<pkg> X.Y.Z" --body-file <run>/pr-body.md
 gh pr edit --body-file <run>/pr-body.md
 gh run list --commit "$(git rev-parse HEAD)"  # CI on the tagged commit
 gh release create <tag> --verify-tag --title "<pkg> X.Y.Z" --notes-file <run>/notes.md
+# REST form of the release (no --verify-tag: a missing tag is created, so push it first)
+gh api -X POST 'repos/{owner}/{repo}/releases' -f tag_name=<tag> -f name="<pkg> X.Y.Z" -F body=@<run>/notes.md
 ```
 
-The `gh pr` commands go through GraphQL, which Claude Code cloud sessions
-block (HTTP 403); there the GitHub MCP tools are the path. Issue link in
-the body: `Closes #<n>`.
+The `gh pr` commands go through GraphQL, so they fail in sessions where
+GitHub's GraphQL endpoint is blocked; there the GitHub MCP tools are the path.
+The MCP tools read releases but cannot create one, so the release itself
+always goes through `gh`. Issue link in the body: `Closes #<n>`.
 
 ## azure — Azure Repos, `az` with the `azure-devops` extension
 
