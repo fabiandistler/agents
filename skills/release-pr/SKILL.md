@@ -240,8 +240,8 @@ Each step may run in a new shell, so shell variables do not carry over.
       `gh api -X POST 'repos/{owner}/{repo}/releases' -f tag_name=<tag> -f name="<package> X.Y.Z" -F body=@<run>/notes.md`
       (`-F prerelease=true` likewise). The REST call has no `--verify-tag`: it
       creates a missing tag from the default branch, so run it only after step 5
-      pushed the tag. When the release attaches binary assets, create it as a draft first and publish only after the assets are up, so no partial release is ever public. GitLab: `glab
-      release create`. Azure Repos and unknown hosts have no release
+      pushed the tag. When the release attaches binary assets, create it as a draft first and publish only after the assets are up, so no partial release is ever public. GitLab:
+      `glab release create`. Azure Repos and unknown hosts have no release
       object, so steps 5–6 become one annotated tag carrying the notes
       (`references/forges.md`)
 - [ ] 7 Report the release URL and what happens next per the language page

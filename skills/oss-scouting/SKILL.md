@@ -87,11 +87,11 @@ layout under the resolved root:
     test.<ext>           test case in the project's own test framework
     submit-checklist.md  filled in per project
   02-issue-<nr>/ …
-<root>/LOG.md            every run: date, repo, and per reviewed issue its number, its updatedAt at review time, and the outcome
+<root>/LOG.md            every run: date, repo, and per reviewed issue its number, its updated_at at review time, and the outcome
 ```
 
 Read `LOG.md` before reviewing: an issue already checked is only revisited if
-its current `updatedAt` is newer than the logged one.
+its current `updated_at` is newer than the logged one.
 
 ### 1 Policy gate
 
@@ -187,8 +187,8 @@ out.
 
 If the timeline is unavailable, or to name a `connected` PR, search pull
 requests (any state) in the repo for the issue number: with the GitHub MCP
-tools, or with `gh api -X GET search/issues -f q="repo:<owner>/<repo> is:pr
-<nr>"`. Search matches the number as text, so confirm each hit actually refers
+tools, or with
+`gh api -X GET search/issues -f q="repo:<owner>/<repo> is:pr <nr>"`. Search matches the number as text, so confirm each hit actually refers
 to the issue. Sessions bound to their configured repositories may refuse
 `search/issues`; there the issue page is the remaining source.
 
