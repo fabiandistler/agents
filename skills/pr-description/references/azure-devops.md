@@ -54,9 +54,10 @@ in chat.
 
 ## Length cap and shortening order
 
-Azure DevOps rejects a PR description longer than 4,000 characters. Keep the
-body (everything after the title line and the empty line) under 4,000
-characters, and count it rather than estimating:
+Microsoft does not document a length limit for PR descriptions. Keep the body
+(everything after the title line and the empty line) under 4,000 characters
+anyway, as an unverified, conservative bound. Count it rather than
+estimating:
 
 ```bash
 tail -n +3 <file> | wc -m
@@ -119,14 +120,20 @@ az repos pr create --title "$(head -1 <file>)" \
 ## Mermaid subset
 
 Azure DevOps renders a standard ```` ```mermaid ```` fence in PR descriptions
-since Sprint 274 (May 2026), with limited syntax:
+since Sprint 274 (May 2026). Microsoft's Markdown guidance lists what Azure
+DevOps does not support in Mermaid:
 
-- `graph TD` or `graph LR`, never `flowchart`;
-- no HTML tags in labels (`<br>`, `<b>`), no Font Awesome icons (`fa:`);
-- no long arrow `---->`, no edges to or from a `subgraph`;
-- `sequenceDiagram`, `classDiagram`, `stateDiagram-v2`, `erDiagram`, `gantt`,
-  `pie`, `journey`, `gitGraph`, `timeline` and `requirementDiagram` are
-  supported.
+- the `flowchart` keyword: write `graph TD` or `graph LR` instead;
+- most HTML tags, so no `<br>` or `<b>` in labels;
+- Font Awesome icons (`fa:`);
+- the long arrow `---->`;
+- links to and from a `subgraph`.
+
+The list ends with "and more", so it is not complete. The same page lists the
+diagram types the wiki supports (sequence, Gantt, flowchart as `graph`, class,
+state, user journey, pie, requirement, gitGraph, entity relationship,
+timeline); it does not say which of them render in PR descriptions. Prefer
+`graph` and `sequenceDiagram`, which its examples show.
 
 ```mermaid
 graph LR
@@ -161,7 +168,6 @@ character rule is applied unchanged.
   https://learn.microsoft.com/azure/devops/repos/git/pull-requests?view=azure-devops
   and the `az repos pr create` reference,
   https://learn.microsoft.com/cli/azure/repos/pr?view=azure-cli-latest
-- The 4,000-character cap: no Microsoft document states it. It is an observed
-  limit; the service rejects longer descriptions, as reported for example in
-  https://feedback.gearset.com/forums/283474-help-us-improve-gearset/suggestions/47072533-remove-limitation-of-number-of-prs-to-be-added-to
-  If Microsoft documents a different value, the documented value wins.
+- The 4,000-character bound: unverified. Microsoft does not document a limit,
+  and no evidence was found that the service rejects longer descriptions. If
+  Microsoft documents a limit, the documented value wins.
