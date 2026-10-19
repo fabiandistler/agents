@@ -75,8 +75,9 @@ src/
 
 ## Mermaid
 
-Show component interaction, control flow, or data flow with Mermaid. Azure
-DevOps renders only a subset of Mermaid.
+Show component interaction, control flow, or data flow with Mermaid. Write
+flowcharts as `graph TD` / `graph LR` rather than `flowchart`, with no HTML in
+labels, so the diagram renders on every forge.
 
 ```mermaid
 sequenceDiagram

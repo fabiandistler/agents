@@ -2,10 +2,10 @@
 name: pr-description
 category: workflow
 environments: coding
-compatibility: Requires git. Reads linked issues and an existing PR body through the GitHub MCP tools or `gh api`.
+compatibility: Requires git. Reads linked issues and an existing PR body with whatever tool the session has for the forge; works without one.
 description: Write a pull request title and body in plain German — executed before/after output, the change in the smallest fitting visual, reading order, risks, checks run, linked issues — to a file. Use whenever a PR description is written or updated.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # PR Description
@@ -55,9 +55,6 @@ skill only writes a file.
 | 6 | `## Verknüpfungen` |
 | 7 | `## Geprüft` |
 
-On Azure DevOps, follow `references/azure-devops.md` for the length cap and
-the shortening order.
-
 Sections 2 and 7 are evidence: output you ran, pasted verbatim. Never write
 output you did not run; when you could not run it, say so (see below).
 
@@ -67,31 +64,26 @@ output you did not run; when you could not run it, say so (see below).
    remote's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`;
    when that ref is missing, `git ls-remote --symref origin HEAD`). Read `git log --oneline <base>..HEAD`, `git diff --stat <base>...HEAD` and
    the diff itself.
-2. **Detect the forge** from the host of the remote URL, following
-   `references/azure-devops.md` (Detect the forge); never print the URL, it
-   can carry a token. On Azure DevOps or Azure DevOps Server, follow that file
-   before writing: it changes the length cap, section 6 and Mermaid, and adds
-   an `az` line to print in chat.
-3. **Read the context.** Read the target repo's `GLOSSARY.md`; if it has
+2. **Read the context.** Read the target repo's `GLOSSARY.md`; if it has
    several, `GLOSSARY-MAP.md` names the right one. Find linked issues in the
    branch name, the commit messages and the user's request, and read each one
-   with its comments. Use the GitHub MCP tools if the session has them;
-   otherwise `gh api repos/<owner>/<repo>/issues/<n>` and
-   `gh api repos/<owner>/<repo>/issues/<n>/comments`.
-4. **Sort the changed files.** Mark every generated file (list below). Count
+   with its comments, using the tool the session has for the forge. Without
+   one, drop the summary of the issue discussion from section 6 and say so in
+   chat.
+3. **Sort the changed files.** Mark every generated file (list below). Count
    only the rest. Note every export change.
-5. **Check focus.** If the diff mixes refactoring (moves, renames,
+4. **Check focus.** If the diff mixes refactoring (moves, renames,
    restructuring without behaviour change) with a behaviour change or bug fix,
    warn in chat and propose a split: which commits or files go into a separate
    refactoring PR first. Still write the description for the diff as it is. The
    warning never goes into the description.
-6. **Collect the evidence.** Run the before/after example on the base and on
+5. **Collect the evidence.** Run the before/after example on the base and on
    the PR branch (section 2), then the repo's checks on the PR branch
    (section 7). Read `references/evidence.md` for how to run the example on
    both sides without touching the user's working tree.
-7. **Write** title and body to the file, following the sections and the style
+6. **Write** title and body to the file, following the sections and the style
    below.
-8. **Re-read** the file against the diff once: every claim matches the code,
+7. **Re-read** the file against the diff once: every claim matches the code,
    every dropped section really had nothing to say. Count the title's
    characters (`head -1 <file> | wc -m` counts the newline too) rather than
    estimating them.
@@ -99,8 +91,8 @@ output you did not run; when you could not run it, say so (see below).
 ### Updating an existing body
 
 When the PR already exists and has new commits, read the PR's current body
-first. Use the GitHub MCP tools if the session has them; otherwise
-`gh api repos/<owner>/<repo>/pulls/<n>`. Regenerate the contract sections
+first, using the tool the session has for the forge; without one, ask the
+user to paste it. Regenerate the contract sections
 from the current diff. Keep every paragraph a human added verbatim: text under
 headings outside the contract, and paragraphs inside a contract section that
 the diff cannot produce (decisions, reviewer notes, mentions, screenshots).
@@ -148,8 +140,7 @@ pseudocode, call tree, component tree, shallow file tree, Mermaid, a `diff`
 shaped like the topic, or a whole block when most of it is new. Read
 `references/visuals.md` for the catalogue with an example of each and the
 placement rules. Usually one or two visuals, each next to the sentence it
-supports; never all of them. On Azure DevOps, follow
-`references/azure-devops.md` for the Mermaid subset.
+supports; never all of them.
 
 ### 4 Review-Reihenfolge
 
@@ -201,10 +192,6 @@ count:
 - When an issue's discussion is long or weighed several approaches, add two to
   four sentences on its outcome: which approach was chosen and why, so the
   reviewer does not have to read the thread.
-
-On Azure DevOps, `Closes #<n>` does nothing: list work items as `#<id>` and
-print the `az repos pr create … --work-items` line in chat
-(`references/azure-devops.md`).
 
 ### 7 Geprüft
 
