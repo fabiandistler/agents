@@ -3,7 +3,7 @@ name: pr-description
 category: workflow
 environments: coding
 compatibility: Requires git. Reads linked issues and an existing PR body through the GitHub MCP tools or `gh api`.
-description: Write a pull request title and body in plain German — what changed in the smallest fitting visual, where to start reading, risk and weaknesses, linked issues — to a file. Use whenever a PR description is written or updated.
+description: Write a pull request title and body in plain German — executed before/after output, the change in the smallest fitting visual, reading order, risks, checks run, linked issues — to a file. Use whenever a PR description is written or updated.
 metadata:
   version: "1.0"
 ---
@@ -55,6 +55,10 @@ skill only writes a file.
 | 6 | `## Verknüpfungen` |
 | 7 | `## Geprüft` |
 
+On Azure DevOps the body stays under 4,000 characters; when it is longer,
+shorten section 3 first, then the discussion summary in section 6, and never
+sections 2, 5 or 7 (`references/azure-devops.md`).
+
 Sections 2 and 7 are evidence: output you ran, pasted verbatim. Never write
 output you did not run; when you could not run it, say so (see below).
 
@@ -64,26 +68,33 @@ output you did not run; when you could not run it, say so (see below).
    remote's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`;
    when that ref is missing, `git ls-remote --symref origin HEAD`). Read `git log --oneline <base>..HEAD`, `git diff --stat <base>...HEAD` and
    the diff itself.
-2. **Read the context.** Read the target repo's `GLOSSARY.md`; if it has
+2. **Detect the forge** from `git remote get-url origin`, lowercased; never
+   print the URL, it can carry a token. `github` means GitHub;
+   `dev.azure.com` or `visualstudio.com` means Azure DevOps; another URL with
+   `/_git/` means Azure DevOps Server; anything else is unknown and gets the
+   GitHub body. On either Azure DevOps, read `references/azure-devops.md`
+   before writing: it changes the length cap, section 6 and Mermaid, and adds
+   an `az` line to print in chat.
+3. **Read the context.** Read the target repo's `GLOSSARY.md`; if it has
    several, `GLOSSARY-MAP.md` names the right one. Find linked issues in the
    branch name, the commit messages and the user's request, and read each one
    with its comments. Use the GitHub MCP tools if the session has them;
    otherwise `gh api repos/<owner>/<repo>/issues/<n>` and
    `gh api repos/<owner>/<repo>/issues/<n>/comments`.
-3. **Sort the changed files.** Mark every generated file (list below). Count
+4. **Sort the changed files.** Mark every generated file (list below). Count
    only the rest. Note every export change.
-4. **Check focus.** If the diff mixes refactoring (moves, renames,
+5. **Check focus.** If the diff mixes refactoring (moves, renames,
    restructuring without behaviour change) with a behaviour change or bug fix,
    warn in chat and propose a split: which commits or files go into a separate
    refactoring PR first. Still write the description for the diff as it is. The
    warning never goes into the description.
-5. **Collect the evidence.** Run the before/after example on the base and on
+6. **Collect the evidence.** Run the before/after example on the base and on
    the PR branch (section 2), then the repo's checks on the PR branch
    (section 7). Read `references/evidence.md` for how to run each without
    touching the user's working tree.
-6. **Write** title and body to the file, following the sections and the style
+7. **Write** title and body to the file, following the sections and the style
    below.
-7. **Re-read** the file against the diff once: every claim matches the code,
+8. **Re-read** the file against the diff once: every claim matches the code,
    every dropped section really had nothing to say. Count the title's
    characters (`head -1 <file> | wc -m` counts the newline too) rather than
    estimating them.
@@ -140,7 +151,8 @@ pseudocode, call tree, component tree, shallow file tree, Mermaid, a `diff`
 shaped like the topic, or a whole block when most of it is new. Read
 `references/visuals.md` for the catalogue with an example of each and the
 placement rules. Usually one or two visuals, each next to the sentence it
-supports; never all of them.
+supports; never all of them. On Azure DevOps, Mermaid uses `graph`, never
+`flowchart`, and no HTML in labels.
 
 ### 4 Review-Reihenfolge
 
@@ -190,6 +202,10 @@ count:
 - When an issue's discussion is long or weighed several approaches, add two to
   four sentences on its outcome: which approach was chosen and why, so the
   reviewer does not have to read the thread.
+
+On Azure DevOps, `Closes #<n>` does nothing: list work items as `#<id>` and
+print the `az repos pr create … --work-items` line in chat
+(`references/azure-devops.md`).
 
 ### 7 Geprüft
 
