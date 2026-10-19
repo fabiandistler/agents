@@ -196,6 +196,17 @@
       "version": "1.0"
     },
     {
+      "name": "pr-description",
+      "summary": "Write a pull request title and body in plain German — what changed in the smallest fitting visual, where to start reading, risk and weaknesses, linked issues — to a file.",
+      "category": "workflow",
+      "path": "skills/pr-description/SKILL.md",
+      "compatibility": "Requires git. Reads linked issues and an existing PR body through the GitHub MCP tools or `gh api`.",
+      "environments": [
+        "coding"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "problem-first-explanation",
       "summary": "Output-form skill for explaining anything that solves a problem — a tool, method, concept, rule, or proposal — by leading with the concrete problem before the solution.",
       "category": "communication",

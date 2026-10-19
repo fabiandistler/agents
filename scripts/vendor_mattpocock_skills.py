@@ -37,8 +37,9 @@ VENDOR_DIR = REPO_ROOT / ".claude" / "vendor" / "mattpocock-skills"
 LOCK_PATH = VENDOR_DIR / "lock.json"
 UPSTREAM = "https://github.com/mattpocock/skills.git"
 # Never vendored: improve-codebase-architecture is forked into this catalogue as
-# `improve-codebase` (#492, ADR-0008). A previously vendored copy is removed on re-run.
-EXCLUDED = frozenset({"improve-codebase-architecture"})
+# `improve-codebase` (#492, ADR-0008), and pr as `pr-description` (#518, ADR-0009).
+# A previously vendored copy is removed on re-run.
+EXCLUDED = frozenset({"improve-codebase-architecture", "pr"})
 
 
 def git(*args: str, cwd: Path) -> str:

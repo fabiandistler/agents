@@ -167,6 +167,9 @@ on drift (`--check`). Refresh the vendored skills with
 Upstream skills named in the script's `EXCLUDED` set are never vendored:
 `improve-codebase-architecture` is left out because this catalogue forks it
 as `improve-codebase` (#492), so cloud sessions offer one such command, not two.
+`pr` is left out for the same reason: the catalogue forks it as
+`pr-description` (#518, ADR-0009), so cloud sessions offer one PR-description
+skill, not two.
 
 Locally the same project skills would duplicate the marketplace plugins, so
 `.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
