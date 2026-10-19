@@ -12,3 +12,6 @@
   - 2026-10-19 superseded: diagnosis found no stuck rotation; slice is
     `ISO week % 4`, and manual fires within one week repeat the slice.
     Week 53/1 collision noted. No repo change made; options put to the user.
+  - 2026-10-19: User chose to leave `scripts/skill_audit_select.py` as is
+    (option A). Manual fires within a week should pass `--week <next>`;
+    the week 53/1 collision is accepted.

@@ -23,3 +23,5 @@
 - 2026-10-19: #536 merged by the user with the commit restoring
   `disable-model-invocation: true` on `pypet-snippets`, i.e. it stays a
   command skill. Read as the user's answer to the open question.
+- 2026-10-19: #537, #538 and #534 merged; all PRs of this session landed.
+  SessionStart hook cold-start time still unmeasured.
