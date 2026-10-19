@@ -59,8 +59,8 @@ are not written in this version, so the numbering keeps their place.
 ## Workflow
 
 1. **Find the diff.** The base is the branch the PR targets; default to the
-   remote's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`).
-   Read `git log --oneline <base>..HEAD`, `git diff --stat <base>...HEAD` and
+   remote's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`;
+   when that ref is missing, `git ls-remote --symref origin HEAD`). Read `git log --oneline <base>..HEAD`, `git diff --stat <base>...HEAD` and
    the diff itself.
 2. **Read the context.** Read the target repo's `GLOSSARY.md`; if it has
    several, `GLOSSARY-MAP.md` names the right one. Find linked issues in the
@@ -78,7 +78,9 @@ are not written in this version, so the numbering keeps their place.
 5. **Write** title and body to the file, following the sections and the style
    below.
 6. **Re-read** the file against the diff once: every claim matches the code,
-   every dropped section really had nothing to say.
+   every dropped section really had nothing to say. Count the title's
+   characters (`head -1 <file> | wc -m` counts the newline too) rather than
+   estimating them.
 
 ### Updating an existing body
 
@@ -135,7 +137,9 @@ count:
 - testthat snapshots (`tests/testthat/_snaps/`);
 - files marked `linguist-generated` in `.gitattributes`;
 - files whose header says they are generated and must not be edited
-  ("generated … do not edit").
+  ("generated … do not edit");
+- files the repo's own docs (`AGENTS.md`, `CONTRIBUTING.md`) say a script
+  regenerates, such as a manifest or a directory of generated links.
 
 ### 5 Risiko & Schwächen
 
