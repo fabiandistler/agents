@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted (2026-09-27)
+Accepted (2026-09-27). On 2026-10-19 coverage reached 20/20 and CI switched to
+`--strict` as planned under Consequences (#535; run via `scripts/check_all.sh`, #537).
 
 ## Context
 

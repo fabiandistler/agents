@@ -51,8 +51,8 @@ Per run, at most:
 2. **Deterministic pass (repo-wide).** Delegate to the `repo-error-checker`
    subagent: it runs every CI step and reports blocking failures, allowlist
    drift, dangling symlinks and eval gaps. Its findings go into the issue
-   under *CI / format*. If the subagent is unavailable, run the `run:` steps
-   of `.github/workflows/ci.yml` yourself.
+   under *CI / format*. If the subagent is unavailable, run
+   `scripts/check_all.sh` yourself.
 
 3. **Select skills for the content pass.**
    `python3 scripts/skill_audit_select.py` prints JSON: `selected` is this
@@ -88,7 +88,7 @@ Per run, at most:
      Wording, triggering, structure and anything tagged *unverified* stay in
      the issue for a human.
    - Keep the diff under 200 lines; the rest stays in the issue.
-   - Run every `run:` step of `.github/workflows/ci.yml` before and after;
+   - Run `scripts/check_all.sh` before and after;
      push only if nothing that passed before fails after.
    - One commit per skill touched, message `fix(<skill>): <what> (skill audit)`.
    - Open the PR ready for review, body listing each fix with its finding key,

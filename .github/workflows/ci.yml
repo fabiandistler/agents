@@ -14,90 +14,19 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install ruff
-        run: pip install ruff
+      - name: Install pinned check tools
+        run: pip install -r scripts/check_all.requirements.txt
 
-      - name: Manifest in sync
-        run: python scripts/build_manifest.py --check
-
-      - name: Router bodies in sync
-        run: python scripts/build_routers.py --check
-
-      - name: Description budget
-        run: python scripts/check_descriptions.py
-
-      - name: Catalogue tables in sync
-        run: python scripts/check_docs.py
-
-      - name: Plugin marketplace in sync
-        run: python scripts/check_plugins.py
-
-      - name: Instruction fragments valid
-        run: python scripts/check_instructions.py
-
-      - name: Project .claude/ in sync
-        run: python scripts/build_project_claude.py --check
-
-      - name: Skill frontmatter valid
-        # compileall proves the validator parses; only running it proves its
-        # allowlist still matches the frontmatter this repo actually ships.
-        run: |
-          pip install "pyyaml>=6"
-          fail=0
-          for d in skills/*/; do
-            [ -f "$d/SKILL.md" ] || continue
-            python3 scripts/quick_validate.py "$d" >/dev/null || {
-              echo "::error file=${d}SKILL.md::$(python3 scripts/quick_validate.py "$d" 2>&1)"
-              fail=1
-            }
-          done
-          exit $fail
-
-      - name: Eval coverage
-        run: python scripts/check_evals.py --strict
-
-      - name: Skill vocabulary
-        run: python scripts/check_skill_vocab.py
-
-      - name: GitHub steps survive blocked GraphQL
-        run: python scripts/check_gh_graphql.py
-
-      - name: Reference TOCs
-        run: python scripts/check_reference_tocs.py
-
-      - name: Lint (ruff)
-        run: ruff check .
-
-      - name: Script tests
-        # Collects every test_*.py under scripts/ and skills/; naming one file
-        # here left the other skills' tests unrun.
-        run: |
-          pip install pytest "pyyaml>=6"
-          pytest scripts skills
-
-      - name: Hooks in sync (prek)
-        run: |
-          pip install prek
-          prek run --all-files --show-diff-on-failure
-
-      - name: Python compiles
-        run: python -m compileall -q scripts skills
-
-      - name: Shell lint (shellcheck)
-        # -S warning: gate on real problems; skip advisory info/style notes.
-        run: shellcheck -S warning install.sh scripts/test_install.sh scripts/maintenance-scan.sh skills/poc-spec-loop/assets/loop.sh
-
-      - name: install.sh smoke test
-        run: bash scripts/test_install.sh
+      - name: All checks
+        # The check list lives once, in scripts/check_all.sh. Mermaid runs in
+        # its own job below because it needs Node.
+        run: scripts/check_all.sh --skip mermaid --tail 0
 
   mermaid:
-    # Browserless syntax check over every tracked Markdown file: parses each
-    # fenced mermaid block with Mermaid's own parser (jsdom, no browser
-    # download). mermaid is pinned next to mmdlint because mmdlint itself
-    # only asks for ^11, which would float to every new 11.x release.
+    # Browserless syntax check over every tracked Markdown file with
+    # Mermaid's own parser (jsdom, no browser download); the pinned command
+    # and the broken-fixture guard live in scripts/check_all.sh.
     runs-on: ubuntu-latest
-    env:
-      MMDLINT: npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint
     steps:
       - uses: actions/checkout@v7
 
@@ -105,16 +34,5 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Validator rejects a broken diagram
-        # Proves the guard can go red; without it a validator that parses
-        # nothing would pass forever.
-        run: |
-          $MMDLINT scripts/fixtures/mermaid/valid.md
-          if $MMDLINT scripts/fixtures/mermaid/broken.md; then
-            echo "::error::mmdlint accepted scripts/fixtures/mermaid/broken.md"
-            exit 1
-          fi
-
       - name: Validate Mermaid diagrams (browserless)
-        run: |
-          git ls-files -z '*.md' '*.markdown' ':!:scripts/fixtures/' | xargs -0 -r $MMDLINT
+        run: scripts/check_all.sh --only mermaid --tail 0

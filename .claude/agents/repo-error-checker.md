@@ -25,19 +25,13 @@ finds.
 
 ## Step 2 — deterministic CI checks
 
-`.github/workflows/ci.yml` is the source of truth; read it and run every
-`run:` step of the `checks` job from the repo root, in order, rather than a
-list copied here (a copied list drifts as CI grows). Skip the
-`pip install` lines. Do not stop at the first failure;
-collect all output.
-
-- For `ruff`, use `uvx ruff@latest` when available: CI installs the newest
-  ruff, and a stale local copy both misses and invents findings.
-- Skip a step with a note when its tool (shellcheck, prek, pytest, pyyaml)
-  is not installed and cannot be run through `uvx`; never install tools
-  globally yourself.
-- Also run `python3 scripts/check_evals.py --strict` and report its gaps as
-  failures (CI runs it strict).
+Run `scripts/check_all.sh --tail 0` from the repo root: it is the check
+list CI calls, so no list is copied here. It runs every check even after a
+failure and prints one PASS/FAIL/MISSING line each. Report a `MISSING`
+check (exit 3) as not run, naming the tool; never install tools globally
+yourself. ruff runs inside the `prek` check at the version pinned in
+`.pre-commit-config.yaml`; eval coverage runs inside the `evals` check
+with `--strict`, so report its gaps as failures.
 
 ## Step 3 — validator allowlist drift
 

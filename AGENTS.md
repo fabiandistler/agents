@@ -271,8 +271,9 @@ change.
   installed elsewhere, so the target repo is always passed as an argument.
 - Per-skill eval prompts live in `skills/<name>/evals.json` (>=3
   `should_trigger`, >=1 `should_not_trigger`, optional `expected_behavior`;
-  see `docs/adr/0006-skill-eval-prompts.md`). CI runs
-  `scripts/check_evals.py --strict`, so a missing or malformed file fails.
+  see `docs/adr/0006-skill-eval-prompts.md`). The `evals` check in
+  `scripts/check_all.sh` (the list CI calls) runs `check_evals.py --strict`,
+  so a missing or malformed file fails.
 
 ## Agent skills
 
