@@ -24,10 +24,10 @@ def make_repo(root: Path) -> Path:
     return root
 
 
-def write(root: Path, rel: str, body: str) -> None:
+def write(root: Path, rel: str, body: str, description: str = "Demo.") -> None:
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"---\nname: x\ndescription: Use c4-modeling.\n---\n\n{body}\n")
+    path.write_text(f"---\nname: x\ndescription: {description}\n---\n\n{body}\n")
 
 
 def run_gate(root: Path, capsys):
@@ -158,3 +158,23 @@ def test_missing_manifest_is_usage_error(tmp_path, capsys):
 
     assert code == 2
     assert "skills.json" in err
+
+
+def test_trigger_text_names_no_member_or_command(tmp_path, capsys):
+    make_repo(tmp_path)
+    write(
+        tmp_path, "skills/docs/SKILL.md", "Body.", description="Not for diagrams; use c4-modeling."
+    )
+    write(tmp_path, "skills/ddd/SKILL.md", "Body.", description="Compress with `tldr`.")
+    write(tmp_path, "skills/arch/SKILL.md", "Body.", description="Routes to ddd or c4-modeling.")
+    path = tmp_path / "skills/c4-modeling/SKILL.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("---\nname: c4-modeling\nwhen_to_use: >\n  draw it, then ddd\n---\n\nBody.\n")
+
+    code, _, err = run_gate(tmp_path, capsys)
+
+    assert code == 1
+    assert "skills/docs/SKILL.md:3: c4-modeling: router member named in trigger text" in err
+    assert "skills/ddd/SKILL.md:3: tldr: command skill named in trigger text" in err
+    assert "skills/c4-modeling/SKILL.md:4: ddd:" in err
+    assert "skills/arch" not in err

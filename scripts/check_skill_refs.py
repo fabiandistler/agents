@@ -23,8 +23,10 @@ catalogue.py), so the check tracks the manifest:
 - path: `members/<x>/SKILL.md` where x is no member, or a sibling link
   `../<x>/` to a member or command skill.
 
-Scope: skills/*/SKILL.md (body, frontmatter skipped) and skills/*/references/
-**/*.md. Symlinked router-member copies count once. Stdlib-only.
+Scope: skills/*/SKILL.md and skills/*/references/**/*.md. In SKILL.md
+frontmatter only `description` and `when_to_use` count: they are the
+always-loaded trigger text, so a member or command name there has no router
+form and is always reported (the router itself may name its members). Symlinked router-member copies count once. Stdlib-only.
 """
 
 from __future__ import annotations
@@ -67,6 +69,7 @@ MEMBER_PATH = re.compile(r"members/(?P<name>[a-z0-9-]+)/SKILL\.md")
 SIBLING_LINK = re.compile(r"\]\(\.\./(?P<name>[a-z0-9-]+)/")
 RUN_HINT = re.compile(r"\brun\b|\bcommand\b", re.IGNORECASE)
 EXTERNAL_HINT = re.compile(r"https?://|\w's\s+`")
+TRIGGER_KEY = re.compile(r"(?:description|when_to_use):")
 
 
 @dataclass(frozen=True)
@@ -117,6 +120,26 @@ def body_start(lines: list[str]) -> int:
     return 0
 
 
+def trigger_fields(lines: list[str]) -> list[tuple[int, int]]:
+    """(first, end) line spans of the frontmatter `description` and `when_to_use`.
+
+    A field runs from its key line through any indented continuation lines.
+    """
+    spans: list[tuple[int, int]] = []
+    end_of_frontmatter = body_start(lines) - 1
+    index = 1
+    while index < end_of_frontmatter:
+        if TRIGGER_KEY.match(lines[index]):
+            first = index
+            index += 1
+            while index < end_of_frontmatter and lines[index][:1] in (" ", "\t"):
+                index += 1
+            spans.append((first, index))
+        else:
+            index += 1
+    return spans
+
+
 def paragraphs(lines: list[str], start: int) -> list[tuple[int, int]]:
     """(first, end) line spans of blank-line-delimited blocks from `start`."""
     spans: list[tuple[int, int]] = []
@@ -145,6 +168,20 @@ def check_file(path: Path, rel: str, owner: str, sets: SkillSets) -> list[str]:
     introduced: set[str] = set()
     member_patterns = {name: name_pattern(name, marked_only=False) for name in sets.member_router}
     command_patterns = {name: name_pattern(name, marked_only=True) for name in sets.command}
+
+    for first, end in trigger_fields(lines):
+        block = "\n".join(lines[first:end])
+        for index in range(first, end):
+            where = f"{rel}:{index + 1}"
+            for name, router in sets.member_router.items():
+                if name != owner and owner != router and member_patterns[name].search(lines[index]):
+                    violations.append(
+                        f"{where}: {name}: router member named in trigger text; drop it or"
+                        f" say what the skill is not for"
+                    )
+            for name, pattern in command_patterns.items():
+                if name != owner and pattern.search(lines[index]) and not RUN_HINT.search(block):
+                    violations.append(f"{where}: {name}: command skill named in trigger text")
 
     for first, end in paragraphs(lines, body_start(lines)):
         block = "\n".join(lines[first:end])
