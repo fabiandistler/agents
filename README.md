@@ -191,7 +191,7 @@ python3 scripts/check_plugins.py            # plugin symlinks and marketplace en
 python3 scripts/check_instructions.py       # instruction fragments valid
 python3 scripts/build_project_claude.py --check  # .claude/ mirror is current
 for d in skills/*/; do python3 scripts/quick_validate.py "$d"; done  # frontmatter valid
-python3 scripts/check_evals.py              # eval coverage (warn-only)
+python3 scripts/check_evals.py --strict     # eval coverage
 python3 scripts/check_skill_vocab.py        # skill vocabulary
 python3 scripts/check_gh_graphql.py         # GitHub steps name the MCP or gh api
 python3 scripts/check_reference_tocs.py     # long references carry a contents list
