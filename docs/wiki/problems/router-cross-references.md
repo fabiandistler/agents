@@ -11,3 +11,5 @@
   amend the convention. Either way, add a cross-reference check to CI.
 
 Related: [unrunnable commands](unrunnable-skill-commands.md).
+- 2026-10-19: Resolved in favour of rewriting, see
+  [decision](../decisions/2026-10-19-router-references.md).

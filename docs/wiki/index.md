@@ -8,10 +8,12 @@ nothing here describes the present. See [conventions](conventions.md).
 
 - [goal](goal.md) — the long-running goal, its scope, and the ordering decision (improve before extend).
 - [merge plan](merge-plan.md) — open PRs and their merge-order constraints.
+- [schedules](schedules.md) — recurring scheduled tasks and their setup.
 
 ## Decisions
 
 - [2026-10-19 wiki location](decisions/2026-10-19-wiki-location.md) — why the wiki lives in `docs/wiki/`.
+- [2026-10-19 router references](decisions/2026-10-19-router-references.md) — option A: rewrite to router form, enforce in CI.
 
 ## Recurring problems
 
