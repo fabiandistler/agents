@@ -90,8 +90,7 @@ like a reprex, or as a separate `text` block.
 ## Performance: a benchmark on both branches
 
 Run the same benchmark on both sides, on the same machine, one after the
-other. R: `bench::mark()` in the reprex. Python: `python -m timeit` or
-`pytest-benchmark`. A CLI: `hyperfine` with one command per tree. Paste the
+other. R: `bench::mark()` in the reprex. Python: `python -m timeit`. A CLI: `hyperfine` with one command per tree. Paste the
 numbers as printed, plus one line naming the machine (CPU, OS) and that both
 ran in the same session. Never round a speed-up into the prose that the table
 does not show.
