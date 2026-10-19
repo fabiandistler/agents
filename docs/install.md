@@ -159,6 +159,7 @@ should have:
 | `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
 | `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
 | `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
+| `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
 After changing a skill's frontmatter or an instruction fragment, regenerate
 the manifest and then run `python3 scripts/build_project_claude.py`; CI fails
