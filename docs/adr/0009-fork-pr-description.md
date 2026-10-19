@@ -87,13 +87,26 @@ body:
 - The skill is listed in both catalogue tables, the manifest and the
   `workflow` plugin, like any other skill. As an auto skill its description
   counts toward the always-loaded budget.
-- **Deviation from the spec on Azure DevOps Server.** The spec has the skill
-  print the `az repos pr create … --work-items` line on Azure DevOps; on Azure
-  DevOps Server it prints none, because the Azure DevOps CLI does not support
-  Server, and tells the user to link work items in the browser instead.
 - `release-pr` is not changed and keeps writing its own release body.
 - `GLOSSARY.md` is not changed: "PR description" is skill vocabulary, not this
   repo's domain; "Forge" already exists.
+
+## Amended (2026-10-19)
+
+The forge rules are removed
+([#528](https://github.com/fabiandistler/agents/issues/528)). `pr-description`
+now writes the same title and body on every forge, as upstream `pr` does: no
+forge detection, no Azure DevOps reference, no length cap or shortening order,
+no work-item syntax, no printed `az` line. Linked issues and an existing PR
+body are read with whatever tool the session has for the forge. The reasons are
+leanness — the Azure DevOps branch was rarely needed but always loaded — and
+forge independence: the branch was untested in practice and partly built on
+unverified facts (an undocumented 4,000-character cap, unconfirmed Mermaid on
+Azure DevOps Server). The rest of this ADR stands; where the text above names
+the Azure DevOps rules as a reason for the fork, the remaining differences
+(German output, the title, the reading order, executed evidence) still carry
+it. `.out-of-scope/pr-description-forge-rules.md` records what would reopen
+the question.
 
 ## Notes
 
