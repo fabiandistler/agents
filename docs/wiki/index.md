@@ -7,6 +7,7 @@ nothing here describes the present. See [conventions](conventions.md).
 ## Goal and plan
 
 - [goal](goal.md) — the long-running goal, its scope, and the ordering decision (improve before extend).
+- [merge plan](merge-plan.md) — open PRs and their merge-order constraints.
 
 ## Decisions
 
