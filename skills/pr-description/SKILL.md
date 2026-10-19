@@ -87,8 +87,8 @@ output you did not run; when you could not run it, say so (see below).
    warning never goes into the description.
 6. **Collect the evidence.** Run the before/after example on the base and on
    the PR branch (section 2), then the repo's checks on the PR branch
-   (section 7). Read `references/evidence.md` for how to run each without
-   touching the user's working tree.
+   (section 7). Read `references/evidence.md` for how to run the example on
+   both sides without touching the user's working tree.
 7. **Write** title and body to the file, following the sections and the style
    below.
 8. **Re-read** the file against the diff once: every claim matches the code,
