@@ -18,18 +18,37 @@ stay the same as on GitHub.
 
 Read the remote URL with `git remote get-url origin` (the remote the PR goes
 to, when it is not `origin`). Never print or paste the URL: it can carry a
-token. Match it lowercased, first match wins:
+token. Match on the host, never on the whole URL: a path segment such as
+`/acme/github-mirror/` says nothing about the forge. Lowercase the URL, take
+the host, then match top to bottom, first match wins:
 
-| URL contains | Forge |
+| Match | Forge |
 |---|---|
-| `github` | GitHub |
-| `dev.azure.com` or `visualstudio.com` | Azure DevOps Services |
-| `/_git/` | Azure DevOps Server (on-prem) |
+| host `dev.azure.com`, `ssh.dev.azure.com` or `*.visualstudio.com` | Azure DevOps Services |
+| host contains `github` | GitHub |
+| any other host, path contains `/_git/` | Azure DevOps Server (on-prem) |
 | anything else, or no remote | unknown |
 
+The host is what follows the scheme (`https://`, `ssh://`) and an optional
+`user[:token]@`, up to the next `:` or `/`; an scp-style remote
+(`git@host:path`) has no scheme. In shell:
+
+```bash
+url=$(git remote get-url origin | tr '[:upper:]' '[:lower:]')
+host=$(printf '%s\n' "$url" | sed -E 's#^[a-z][a-z0-9+.-]*://##; s#^[^@/]*@##; s#[:/].*##')
+case "$host" in
+  dev.azure.com | ssh.dev.azure.com | *.visualstudio.com) forge=azure-devops ;;
+  *github*) forge=github ;;
+  *) case "$url" in */_git/*) forge=azure-devops-server ;; *) forge=unknown ;; esac ;;
+esac
+```
+
 This covers `https://dev.azure.com/<org>/<project>/_git/<repo>`, the SSH form
-`git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`, and the legacy
-`https://<org>.visualstudio.com/<project>/_git/<repo>`. An unknown forge
+`git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`, the legacy
+`https://<org>.visualstudio.com/<project>/_git/<repo>` and its SSH form
+`<org>@vs-ssh.visualstudio.com:v3/…`, GitHub over HTTPS and
+`git@github.com:<owner>/<repo>`, and on-prem
+`https://<server>/<collection>/<project>/_git/<repo>`. An unknown forge
 (GitLab included) gets the GitHub body without forge-specific extras; say so
 in chat.
 

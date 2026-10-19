@@ -75,9 +75,8 @@ src/
 
 ## Mermaid
 
-Show component interaction, control flow, or data flow with Mermaid. On Azure
-DevOps only a subset renders (`graph`, not `flowchart`; no HTML in labels); see
-`azure-devops.md`.
+Show component interaction, control flow, or data flow with Mermaid. Azure
+DevOps renders only a subset of Mermaid.
 
 ```mermaid
 sequenceDiagram

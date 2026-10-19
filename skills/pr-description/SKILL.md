@@ -55,9 +55,8 @@ skill only writes a file.
 | 6 | `## Verknüpfungen` |
 | 7 | `## Geprüft` |
 
-On Azure DevOps the body stays under 4,000 characters; when it is longer,
-shorten section 3 first, then the discussion summary in section 6, and never
-sections 2, 5 or 7 (`references/azure-devops.md`).
+On Azure DevOps, follow `references/azure-devops.md` for the length cap and
+the shortening order.
 
 Sections 2 and 7 are evidence: output you ran, pasted verbatim. Never write
 output you did not run; when you could not run it, say so (see below).
@@ -68,11 +67,9 @@ output you did not run; when you could not run it, say so (see below).
    remote's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`;
    when that ref is missing, `git ls-remote --symref origin HEAD`). Read `git log --oneline <base>..HEAD`, `git diff --stat <base>...HEAD` and
    the diff itself.
-2. **Detect the forge** from `git remote get-url origin`, lowercased; never
-   print the URL, it can carry a token. `github` means GitHub;
-   `dev.azure.com` or `visualstudio.com` means Azure DevOps; another URL with
-   `/_git/` means Azure DevOps Server; anything else is unknown and gets the
-   GitHub body. On either Azure DevOps, read `references/azure-devops.md`
+2. **Detect the forge** from the host of the remote URL, following
+   `references/azure-devops.md` (Detect the forge); never print the URL, it
+   can carry a token. On Azure DevOps or Azure DevOps Server, follow that file
    before writing: it changes the length cap, section 6 and Mermaid, and adds
    an `az` line to print in chat.
 3. **Read the context.** Read the target repo's `GLOSSARY.md`; if it has
@@ -151,8 +148,8 @@ pseudocode, call tree, component tree, shallow file tree, Mermaid, a `diff`
 shaped like the topic, or a whole block when most of it is new. Read
 `references/visuals.md` for the catalogue with an example of each and the
 placement rules. Usually one or two visuals, each next to the sentence it
-supports; never all of them. On Azure DevOps, Mermaid uses `graph`, never
-`flowchart`, and no HTML in labels.
+supports; never all of them. On Azure DevOps, follow
+`references/azure-devops.md` for the Mermaid subset.
 
 ### 4 Review-Reihenfolge
 
