@@ -21,15 +21,30 @@ worktree inside `<run>`, the same temporary directory the description goes
 into:
 
 ```bash
+export PYTHONDONTWRITEBYTECODE=1
 base_sha=$(git merge-base <base> HEAD)
 git worktree add --detach <run>/base "$base_sha"
 ```
+
+`PYTHONDONTWRITEBYTECODE=1` keeps Python from writing `__pycache__/` into
+the trees, both the base worktree and the user's checkout. Without it,
+`git worktree remove` refuses a base tree whose repo does not ignore
+`__pycache__/`.
 
 The merge-base is the code the PR's diff is computed against, so "Vorher"
 shows exactly what the PR changes. The PR branch is the user's current
 checkout; uncommitted changes are not part of the PR, so when `git status`
 shows any, say so in chat and run "Nachher" from a second worktree at `HEAD`.
-Remove the worktrees when done: `git worktree remove <run>/base`.
+Remove the worktrees when done:
+
+```bash
+git worktree remove --force <run>/base
+```
+
+`--force` is safe here and only here: the base worktree is a detached
+checkout this run created, so it holds no work of the user's, only what the
+run left behind (bytecode, build output). Never use `--force` on a worktree
+you did not create.
 
 Write the example once and run the identical file on both sides. Keep it
 minimal: the smallest input that shows the change, no setup the reviewer does
@@ -75,8 +90,7 @@ like a reprex, or as a separate `text` block.
 ## Performance: a benchmark on both branches
 
 Run the same benchmark on both sides, on the same machine, one after the
-other. R: `bench::mark()` in the reprex. Python: `python -m timeit` or
-`pytest-benchmark`. A CLI: `hyperfine` with one command per tree. Paste the
+other. R: `bench::mark()` in the reprex. Python: `python -m timeit`. A CLI: `hyperfine` with one command per tree. Paste the
 numbers as printed, plus one line naming the machine (CPU, OS) and that both
 ran in the same session. Never round a speed-up into the prose that the table
 does not show.
