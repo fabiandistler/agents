@@ -83,9 +83,10 @@ decision path).
 
 ## Related skills
 
-- **architecture-pattern-advisor** — once bounded contexts are identified, use this skill for the topology decision (monolith vs. modular monolith vs. microservices) and code-organization pattern; bounded contexts are the natural seams, but the topology call is out of scope here.
-- **coupling-cohesion** — to judge whether a specific cross-context dependency is acceptable as designed (integration strength × distance × volatility), e.g. before accepting a conformist relationship or a shared kernel; and because Aggregates are, among other things, a cohesion boundary.
-- **logical-component-design** — to decompose a bounded context into named logical components; aggregates live inside components and bounded contexts group components.
+Sibling sub-skills, each read via the `architecture` router:
+- `members/architecture-pattern-advisor/SKILL.md` — once bounded contexts are identified, use this skill for the topology decision (monolith vs. modular monolith vs. microservices) and code-organization pattern; bounded contexts are the natural seams, but the topology call is out of scope here.
+- `members/coupling-cohesion/SKILL.md` — to judge whether a specific cross-context dependency is acceptable as designed (integration strength × distance × volatility), e.g. before accepting a conformist relationship or a shared kernel; and because Aggregates are, among other things, a cohesion boundary.
+- `members/logical-component-design/SKILL.md` — to decompose a bounded context into named logical components; aggregates live inside components and bounded contexts group components.
 
 ## Source
 

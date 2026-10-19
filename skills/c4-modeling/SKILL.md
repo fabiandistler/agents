@@ -22,8 +22,8 @@ context / container / component diagram", "visualize the system (landscape /
 deployment)", or wants architecture documentation with diagrams. The model is
 elicited interview-style (one question at a time) and reviewed against the
 c4model.com notation checklist. Not for inventing the component decomposition
-itself (→ logical-component-design) or choosing topology / code organization
-(→ architecture-pattern-advisor).
+itself (→ `members/logical-component-design/SKILL.md`) or choosing topology / code organization
+(→ `members/architecture-pattern-advisor/SKILL.md`); both are read via the `architecture` router.
 
 Reference pages:
 

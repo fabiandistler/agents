@@ -16,8 +16,9 @@ or "keep the architecture from eroding", asks how to make an architectural
 decision stick in CI, or mentions fitness functions, evolutionary
 architecture, or chaos engineering as governance — even without the term
 "fitness function". Not for measuring the current coupling/cohesion of
-existing code (→ coupling-cohesion) or choosing an
-architecture in the first place (→ architecture-pattern-advisor).
+existing code (→ `members/coupling-cohesion/SKILL.md`) or choosing an
+architecture in the first place (→ `members/architecture-pattern-advisor/SKILL.md`); both
+are read via the `architecture` router.
 
 An **architecture fitness function** is any automated check that scores how close the codebase or running system stays to the architect's intent — a perspective on tools you already have (tests, metrics, monitors, chaos), wired into CI so important-but-never-urgent concerns like modularity don't erode one import at a time.
 
@@ -162,11 +163,12 @@ governance suite. Deliver the check ready to commit, not as a proposal.
 
 ## Related skills
 
-- **`coupling-cohesion`** — measures afferent/efferent coupling, Instability,
+Sibling sub-skills, each read via the `architecture` router:
+- `members/coupling-cohesion/SKILL.md` — measures afferent/efferent coupling, Instability,
   and Distance from the Main Sequence on an existing codebase (use it to pick
   the thresholds this skill then enforces), plus split/merge/leave cohesion
   verdicts for individual modules.
-- **`architecture-pattern-advisor`** — choosing the architecture whose rules
+- `members/architecture-pattern-advisor/SKILL.md` — choosing the architecture whose rules
   fitness functions will guard.
 
 ## Source

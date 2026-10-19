@@ -136,7 +136,7 @@ design.
 
 Estimating it:
 
-- **Subdomain type** (the DDD lens; classify with `ddd-advisor`): core
+- **Subdomain type** (the DDD lens; classify with `members/ddd/SKILL.md`, read via the `architecture` router): core
   subdomains are the business's competitive edge and churn continuously;
   supporting subdomains change occasionally; generic subdomains (auth,
   billing engines, email) are stable, often bought not built. Wardley

@@ -191,7 +191,7 @@ Split it — move the strayed responsibilities into their own components:
 | `Customer Notification` | Email the customer an order summary. |
 
 Each now has a clearer, more distinct role and is easier to maintain, test, and
-deploy. For a metric-backed decision on a borderline case, use `coupling-cohesion`.
+deploy. For a metric-backed decision on a borderline case, use `members/coupling-cohesion/SKILL.md`, read via the `architecture` router.
 
 ---
 
@@ -212,7 +212,7 @@ a component's size.
 
 This step assumes you already know which architecture characteristics matter most
 to the system — ask the user for the top 3, or take them from an existing ADR
-or architecture-pattern-advisor's trade-off analysis, then run this pass. Do
+or the trade-off analysis from `members/architecture-pattern-advisor/SKILL.md` (read via the `architecture` router), then run this pass. Do
 not assume them.
 
 ---

@@ -63,7 +63,7 @@ Ubiquitous Language are internally consistent — the same term ("Customer")
 can mean something different in the Sales context than in the Support
 context, without confusion, because meaning is scoped to the context. Bounded
 contexts can be developed, deployed, and scaled independently, and are the
-natural basis for service boundaries (see `architecture-pattern-advisor` for
+natural basis for service boundaries (see `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router, for
 the topology/microservice-boundary decision itself — this skill stays focused
 on the domain-modeling side).
 
@@ -89,8 +89,8 @@ serves through a published language.
 
 To judge whether a specific cross-context dependency is acceptable as
 designed — how much knowledge crosses the boundary, at what distance, and how
-volatile it is — use the balance-a-dependency mode of the `coupling-cohesion`
-skill; its volatility step in turn leans on the subdomain classification above.
+volatile it is — use the balance-a-dependency mode of `members/coupling-cohesion/SKILL.md`,
+read via the `architecture` router; its volatility step in turn leans on the subdomain classification above.
 
 ## Migration paths
 

@@ -7,7 +7,7 @@
 
 ## Service Boundaries
 
-Cut boundaries around business domains with one owner per aggregate — see `architecture-pattern-advisor` for boundary sizing and extraction.
+Cut boundaries around business domains with one owner per aggregate — see `members/architecture-pattern-advisor/SKILL.md` (read via the `architecture` router) for boundary sizing and extraction.
 - **Treat an inbound state-change as a request the owning service may reject** by validating it against the aggregate's state machine — not a command it blindly applies. (ch2)
 - **Don't build a service that is a thin CRUD wrapper over a table.** Public get/set over private rows leaks state-transition logic to callers and weakens cohesion. (ch2)
 - **Reference an aggregate living in another service by an explicit URI or pseudo-URI, not a bare foreign-key ID.** `soundcloud:tracks:123` over `track_id = 123` — the owner can rekey its internals without breaking every holder of the reference. (ch2)
@@ -61,7 +61,7 @@ Cut boundaries around business domains with one owner per aggregate — see `arc
 
 ## Messaging Reliability
 
-- **Write the state change and the event through a transactional outbox in the same local transaction; relay the outbox to the broker asynchronously.** See ddd for the outbox pattern. (ch4, ch6)
+- **Write the state change and the event through a transactional outbox in the same local transaction; relay the outbox to the broker asynchronously.** See `members/ddd/SKILL.md` (read via the `architecture` router) for the outbox pattern. (ch4, ch6)
 - **Assume at-least-once delivery and dedupe consumers on the message or business ID.** A consumer must tolerate receiving the same event twice. (ch4)
 - **Never publish to the broker inside the business transaction.** Commit state (plus the outbox row) first; let the relay publish afterward. (ch4, ch6)
   - ❌ `db.commit(); broker.publish(evt)`   ← likely-default

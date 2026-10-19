@@ -26,7 +26,7 @@ scope. Constraints are what make the rest of the design legible.
 **High-level design.** The components and their responsibilities, with a
 diagram. Keep prose and diagram consistent — every box named in one appears in
 the other. For the diagram notation itself (context, container, and component
-views, and when to draw which), use the `architecture` skill (c4-modeling); this document just
+views, and when to draw which), read `members/c4-modeling/SKILL.md` via the `architecture` router; this document just
 holds the result. One diagram per level of zoom; a single diagram trying to show
 everything shows nothing.
 

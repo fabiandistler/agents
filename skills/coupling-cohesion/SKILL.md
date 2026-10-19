@@ -28,12 +28,12 @@ Mode A is the cohesion half of the same law. The per-scale expressions and the
 classic failure shapes live in
 [references/cohesion-taxonomy.md](references/cohesion-taxonomy.md#the-same-law-at-every-scale).
 For *greenfield* decomposition of a system that doesn't exist yet, use
-`logical-component-design` instead — this skill measures what's already there.
+`members/logical-component-design/SKILL.md` (read via the `architecture` router) instead — this skill measures what's already there.
 
 ## When to use
 
 **Not for:** a single function's cyclomatic complexity, choosing an architecture
-from scratch (use `architecture-pattern-advisor`), or greenfield component
+from scratch (use `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router), or greenfield component
 decomposition (use `logical-component-design`).
 
 ## Output contract (all modes)
@@ -399,7 +399,7 @@ far.
 How likely is the *shared* knowledge to change? Read plain language first,
 established term in brackets: changes often (core) versus changes rarely
 (supporting, generic, low). Use the subdomain type as the first proxy
-(classify with the `ddd` skill if unclear), then correct with evidence:
+(classify with `members/ddd/SKILL.md`, read via the `architecture` router, if unclear), then correct with evidence:
 commit history of the shared surface, roadmap pressure, and whether the
 upstream is actively evolved or in maintenance mode. A low-volatility
 acceptance is a loan, not a gift — it needs a revisit condition.
@@ -460,6 +460,7 @@ Next step: <fix with seam | reason to leave, e.g. stable with revisit condition>
 
 ## Related skills
 
+Sibling sub-skills, each read via the `architecture` router:
 - **logical-component-design** — the generative front end: *creates* a
   decomposition for a new system; this skill *measures* one that already exists.
 - **architecture-pattern-advisor** — when the topology itself is wrong, not just
