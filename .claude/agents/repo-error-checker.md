@@ -30,9 +30,8 @@ list CI calls, so no list is copied here. It runs every check even after a
 failure and prints one PASS/FAIL/MISSING line each. Report a `MISSING`
 check (exit 3) as not run, naming the tool; never install tools globally
 yourself. ruff runs inside the `prek` check at the version pinned in
-`.pre-commit-config.yaml`.
-- Also run `python3 scripts/check_evals.py --strict` and report its gaps as
-  recommendations (CI runs it warn-only).
+`.pre-commit-config.yaml`; eval coverage runs inside the `evals` check
+with `--strict`, so report its gaps as failures.
 
 ## Step 3 — validator allowlist drift
 

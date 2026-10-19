@@ -81,7 +81,7 @@ run_check() {
       done
       return $fail
       ;;
-    evals) "$PY" scripts/check_evals.py ;; # warn-only until content lands
+    evals) "$PY" scripts/check_evals.py --strict ;;
     vocab) "$PY" scripts/check_skill_vocab.py ;;
     gh-graphql) "$PY" scripts/check_gh_graphql.py ;;
     reference-tocs) "$PY" scripts/check_reference_tocs.py ;;

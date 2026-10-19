@@ -2,7 +2,7 @@
 name: natural-planning
 category: workflow
 environments: chat
-description: Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions) when it feels stuck, vague, or overwhelming; does not triage inboxes or pick today's task.
+description: Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions) when it feels stuck, vague, or overwhelming. Not for inbox triage or picking today's task.
 metadata:
   version: "1.0"
 ---
