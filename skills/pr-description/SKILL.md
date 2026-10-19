@@ -166,7 +166,9 @@ examples explain the purpose better than the implementation. Otherwise drop it.
 - Group files that are read together into one step.
 - End with one line naming the generated files:
   `Generiert, nicht reviewen: <path>, <path>`. Drop the line when there are
-  none.
+  none. When generated files changed but this section is dropped, put the
+  line at the end of section 3 instead, so the reviewer still knows to skip
+  them.
 
 **Generated files** are left out of the reading order and of the four-file
 count:
