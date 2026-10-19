@@ -87,6 +87,10 @@ body:
 - The skill is listed in both catalogue tables, the manifest and the
   `workflow` plugin, like any other skill. As an auto skill its description
   counts toward the always-loaded budget.
+- **Deviation from the spec on Azure DevOps Server.** The spec has the skill
+  print the `az repos pr create … --work-items` line on Azure DevOps; on Azure
+  DevOps Server it prints none, because the Azure DevOps CLI does not support
+  Server, and tells the user to link work items in the browser instead.
 - `release-pr` is not changed and keeps writing its own release body.
 - `GLOSSARY.md` is not changed: "PR description" is skill vocabulary, not this
   repo's domain; "Forge" already exists.
