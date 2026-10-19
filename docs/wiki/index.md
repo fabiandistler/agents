@@ -16,6 +16,7 @@ nothing here describes the present. See [conventions](conventions.md).
 
 - [router cross-references](problems/router-cross-references.md) — skills naming router members as standalone skills; the main source of audit errors.
 - [unrunnable commands in skills](problems/unrunnable-skill-commands.md) — shell snippets in SKILL.md that fail when an agent follows them.
+- [unlinked PRs](problems/unlinked-prs.md) — merged work left its issue open; caused a wasted worker run.
 
 ## Snapshots
 
