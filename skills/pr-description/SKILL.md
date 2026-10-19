@@ -101,9 +101,9 @@ output you did not run; when you could not run it, say so (see below).
 
 ### Updating an existing body
 
-When the PR already exists and has new commits, read its current body first
-(GitHub MCP tools if the session has them; otherwise
-`gh api repos/<owner>/<repo>/pulls/<n>`). Regenerate the contract sections
+When the PR already exists and has new commits, read the PR's current body
+first. Use the GitHub MCP tools if the session has them; otherwise
+`gh api repos/<owner>/<repo>/pulls/<n>`. Regenerate the contract sections
 from the current diff. Keep every paragraph a human added verbatim: text under
 headings outside the contract, and paragraphs inside a contract section that
 the diff cannot produce (decisions, reviewer notes, mentions, screenshots).
