@@ -200,11 +200,11 @@
       "summary": "Write a pull request title and body in plain German — executed before/after output, the change in the smallest fitting visual, reading order, risks, checks run, linked issues — to a file.",
       "category": "workflow",
       "path": "skills/pr-description/SKILL.md",
-      "compatibility": "Requires git. Reads linked issues and an existing PR body through the GitHub MCP tools or `gh api`.",
+      "compatibility": "Requires git. Reads linked issues and an existing PR body with whatever tool the session has for the forge; works without one.",
       "environments": [
         "coding"
       ],
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "name": "problem-first-explanation",
