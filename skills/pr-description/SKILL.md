@@ -90,15 +90,11 @@ output you did not run; when you could not run it, say so (see below).
 
 ### Updating an existing body
 
-When the PR already exists and has new commits, read the PR's current body
-first, using the tool the session has for the forge; without one, ask the
-user to paste it. Regenerate the contract sections
-from the current diff. Keep every paragraph a human added verbatim: text under
-headings outside the contract, and paragraphs inside a contract section that
-the diff cannot produce (decisions, reviewer notes, mentions, screenshots).
-Carry each into the matching new section at the same place. When unsure
-whether a paragraph is human-written, keep it and say so in chat. Rerun the
-evidence for sections 2 and 7 on the new head; never carry old output over.
+Read the PR's current body with the session's forge tool, or ask the user to
+paste it. Regenerate the contract sections from the current diff, but carry
+every human-written paragraph (extra headings, decisions, reviewer notes,
+mentions, screenshots) verbatim into its matching section; when unsure,
+keep it and say so in chat. Rerun the evidence on the new head.
 
 ## Sections
 
@@ -158,18 +154,11 @@ examples explain the purpose better than the implementation. Otherwise drop it.
   line at the end of section 3 instead, so the reviewer still knows to skip
   them.
 
-**Generated files** are left out of the reading order and of the four-file
-count:
-
-- lockfiles (`uv.lock`, `poetry.lock`, `package-lock.json`, `pnpm-lock.yaml`,
-  `yarn.lock`, `Cargo.lock`, `renv.lock`, and the like);
-- roxygen output: `man/*.Rd` and `NAMESPACE`;
-- testthat snapshots (`tests/testthat/_snaps/`);
-- files marked `linguist-generated` in `.gitattributes`;
-- files whose header says they are generated and must not be edited
-  ("generated … do not edit");
-- files the repo's own docs (`AGENTS.md`, `CONTRIBUTING.md`) say a script
-  regenerates, such as a manifest or a directory of generated links.
+**Generated files** (lockfiles such as `uv.lock` or `renv.lock`, roxygen
+output in `man/*.Rd` and `NAMESPACE`, testthat snapshots under `_snaps/`, files
+marked `linguist-generated` in `.gitattributes` or whose header says
+"generated, do not edit", and files the repo's own docs say a script
+regenerates) stay out of the reading order and the four-file count.
 
 ### 5 Risiko & Schwächen
 
