@@ -163,7 +163,7 @@
     },
     {
       "name": "natural-planning",
-      "summary": "Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions) when it feels stuck, vague, or overwhelming; does not triage inboxes or pick toda…",
+      "summary": "Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions) when it feels stuck, vague, or overwhelming.",
       "category": "workflow",
       "path": "skills/natural-planning/SKILL.md",
       "environments": [
