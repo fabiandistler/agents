@@ -113,7 +113,8 @@ def main(argv: list[str] | None = None) -> int:
         for gap in gaps:
             sys.stderr.write(f"  - {gap}\n")
         return 1
-    sys.stdout.write(f"evals coverage: {covered}/{checked} auto+router skills (warn-only)\n")
+    mode = "strict" if strict else "warn-only"
+    sys.stdout.write(f"evals coverage: {covered}/{checked} auto+router skills ({mode})\n")
     for gap in gaps:
         sys.stderr.write(f"  warn: {gap}\n")
     return 0

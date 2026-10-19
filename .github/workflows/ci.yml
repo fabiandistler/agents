@@ -54,7 +54,7 @@ jobs:
           exit $fail
 
       - name: Eval coverage
-        run: python scripts/check_evals.py
+        run: python scripts/check_evals.py --strict
 
       - name: Skill vocabulary
         run: python scripts/check_skill_vocab.py

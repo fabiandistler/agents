@@ -1,0 +1,13 @@
+{
+  "should_trigger": [
+    "My manager wrote 'Interesting approach, let's discuss' under my proposal — what is she actually telling me?",
+    "Help me rewrite this feedback to a colleague so it doesn't come across as an attack",
+    "Here's a chat with my partner that escalated — what was each of us really asking for?",
+    "I need to say no to extra weekend shifts without sounding hostile; can you help me phrase it?"
+  ],
+  "should_not_trigger": [
+    "Fix the grammar and spelling in this email",
+    "Write the weekly status update for leadership about the migration project"
+  ],
+  "expected_behavior": "Decodes the message on all four sides (factual, self-revealing, relationship, appeal), names incongruences and hidden appeals, and offers a clearer rewrite or active-listening response; stays educational and does not turn into therapy."
+}

@@ -37,7 +37,7 @@ collect all output.
   is not installed and cannot be run through `uvx`; never install tools
   globally yourself.
 - Also run `python3 scripts/check_evals.py --strict` and report its gaps as
-  recommendations (CI runs it warn-only).
+  failures (CI runs it strict).
 
 ## Step 3 — validator allowlist drift
 

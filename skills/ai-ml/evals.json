@@ -1,0 +1,14 @@
+{
+  "should_trigger": [
+    "Our support chatbot keeps making up refund policies that aren't in the docs — how do I fix that?",
+    "How do I test whether a prompt change made our summarizer better or worse before shipping it?",
+    "Should we fine-tune a model on our tickets or just add retrieval?",
+    "I have 50k rows of customer data and want to predict churn — what baseline and model should I start with?",
+    "Our fraud model's accuracy dropped three months after launch; when and how should we retrain?"
+  ],
+  "should_not_trigger": [
+    "Pivot this sales CSV by region and plot monthly revenue as a line chart",
+    "What's the exact parameter name for streaming in the Anthropic Python SDK?"
+  ],
+  "expected_behavior": "Routes LLM-app problems (hallucination, prompt-change evals, fine-tune vs. retrieval) to members/llm-application-engineering/SKILL.md and classical ML work (baselines, model choice, drift and retraining) to members/ml-project-lifecycle/SKILL.md, reading the member file before answering; stays silent on generic data wrangling, plotting, and SDK syntax questions."
+}
