@@ -9,3 +9,6 @@
   - Weekly skill audit (pre-existing, see `docs/agents/skill-audit.md`):
     rotation observed stuck on slice 2/4; diagnosis dispatched 2026-10-19
     (branch `claude/audit-rotation`, refs #466).
+  - 2026-10-19 superseded: diagnosis found no stuck rotation; slice is
+    `ISO week % 4`, and manual fires within one week repeat the slice.
+    Week 53/1 collision noted. No repo change made; options put to the user.
