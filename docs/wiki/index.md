@@ -22,3 +22,4 @@ nothing here describes the present. See [conventions](conventions.md).
 
 - [2026-10-19 backlog](snapshots/2026-10-19-backlog.md) — open issues, audit state, leverage ranking at session start.
 - [2026-10-19 CI health](snapshots/2026-10-19-ci-health.md) — all runnable checks green; warn-only gaps and unverifiable steps.
+- [2026-10-19 env gaps](snapshots/2026-10-19-env-gaps.md) — missing guardrails for agents, ranked.
