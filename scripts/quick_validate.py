@@ -82,6 +82,34 @@ def find_repo_root_script_paths(skill_path):
     return hits
 
 
+def find_command_skill_gap(skill_path, frontmatter):
+    """Return why a command skill could still be auto-triggered, or None.
+
+    'activation: command' is a catalogue field no runtime reads. Claude honors
+    'disable-model-invocation: true'; Codex honors the committed
+    agents/openai.yaml sidecar, which install.sh links but never generates.
+    """
+    if frontmatter.get("disable-model-invocation") is not True:
+        return (
+            "'activation: command' requires 'disable-model-invocation: true' "
+            "in the frontmatter (keeps Claude from auto-triggering it)"
+        )
+    sidecar = Path(skill_path) / "agents" / "openai.yaml"
+    if not sidecar.is_file():
+        return (
+            "'activation: command' requires agents/openai.yaml with "
+            "'policy.allow_implicit_invocation: false' (keeps Codex from auto-triggering it)"
+        )
+    try:
+        config = yaml.safe_load(sidecar.read_text(encoding="utf-8"))
+    except yaml.YAMLError as e:
+        return f"Invalid YAML in agents/openai.yaml: {e}"
+    policy = config.get("policy") if isinstance(config, dict) else None
+    if not isinstance(policy, dict) or policy.get("allow_implicit_invocation") is not False:
+        return "agents/openai.yaml must set 'policy.allow_implicit_invocation: false'"
+    return None
+
+
 def validate_skill(skill_path):
     """Basic validation of a skill"""
     skill_path = Path(skill_path)
@@ -219,6 +247,11 @@ def validate_skill(skill_path):
                 False,
                 f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters.",
             )
+
+    if frontmatter.get("activation") == "command":
+        problem = find_command_skill_gap(skill_path, frontmatter)
+        if problem:
+            return False, problem
 
     hits = find_repo_root_script_paths(skill_path)
     if hits:

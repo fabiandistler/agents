@@ -42,3 +42,66 @@ def test_description_budget_is_left_to_check_descriptions(tmp_path, capsys):
 
     assert valid, message
     assert "WARNING" not in capsys.readouterr().out
+
+
+COMMAND_FRONTMATTER = "name: demo-command\ndescription: Does a thing.\nactivation: command"
+NO_IMPLICIT = "policy:\n  allow_implicit_invocation: false\n"
+
+
+def write_sidecar(skill_dir: Path, text: str) -> None:
+    (skill_dir / "agents").mkdir()
+    (skill_dir / "agents" / "openai.yaml").write_text(text, encoding="utf-8")
+
+
+def test_command_skill_with_flag_and_sidecar_is_valid(tmp_path):
+    skill_dir = write_skill(
+        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\ndisable-model-invocation: true"
+    )
+    write_sidecar(skill_dir, NO_IMPLICIT)
+
+    valid, message = validate_skill(skill_dir)
+
+    assert valid, message
+
+
+def test_command_skill_without_disable_model_invocation_is_invalid(tmp_path):
+    skill_dir = write_skill(tmp_path, "demo-command", COMMAND_FRONTMATTER)
+    write_sidecar(skill_dir, NO_IMPLICIT)
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert "disable-model-invocation" in message
+
+
+def test_command_skill_without_sidecar_is_invalid(tmp_path):
+    skill_dir = write_skill(
+        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\ndisable-model-invocation: true"
+    )
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert "agents/openai.yaml" in message
+
+
+def test_command_skill_sidecar_allowing_implicit_invocation_is_invalid(tmp_path):
+    skill_dir = write_skill(
+        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\ndisable-model-invocation: true"
+    )
+    write_sidecar(skill_dir, "policy:\n  allow_implicit_invocation: true\n")
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert "allow_implicit_invocation" in message
+
+
+def test_auto_skill_needs_no_sidecar(tmp_path):
+    skill_dir = write_skill(
+        tmp_path, "demo-skill", "name: demo-skill\ndescription: Does a thing.\nactivation: auto"
+    )
+
+    valid, message = validate_skill(skill_dir)
+
+    assert valid, message

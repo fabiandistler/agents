@@ -162,9 +162,10 @@ machine consumption prefer `skills.json`.
     sidecar (`policy.allow_implicit_invocation: false`) that keeps Codex from
     auto-triggering them. That sidecar is committed per skill, at
     `skills/<name>/agents/openai.yaml` — `install.sh` links it, it does not
-    generate it, and no CI check notices a missing one. For Claude, pair
-    `command` with `disable-model-invocation: true` in the same frontmatter (the runtime
-    realization Claude honors; ignored elsewhere).
+    generate it. For Claude, pair `command` with
+    `disable-model-invocation: true` in the same frontmatter (the runtime
+    realization Claude honors; ignored elsewhere). CI enforces both with
+    `scripts/quick_validate.py`.
   - `when_to_use` — trigger phrases for a **router**, as a single paragraph.
     Claude Code appends it to the description in its skill listing (joined
     with `" - "`, the two capped at 1,536 chars together), so it holds the
