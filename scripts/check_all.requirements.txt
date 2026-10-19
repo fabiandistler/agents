@@ -1,0 +1,7 @@
+# Python tools scripts/check_all.sh needs, pinned. CI installs exactly this
+# file; install it locally with `pip install -r scripts/check_all.requirements.txt`.
+# ruff, ty, shellcheck, shfmt and the secret scanner are pinned in
+# .pre-commit-config.yaml and run through prek, not installed here.
+prek==0.5.5
+pytest==9.1.1
+pyyaml==6.0.3

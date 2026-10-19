@@ -1,7 +1,8 @@
 """Guardrail sync for Mermaid validation (#476, #477).
 
-CI runs one pinned browserless command; the C4 guide documents that same
-command as its first validation option and keeps the legacy mmdc variant
+CI runs one pinned browserless command (defined in scripts/check_all.sh,
+which the CI mermaid job calls); the C4 guide documents that same command as
+its first validation option and keeps the legacy mmdc variant
 with its browser prerequisite. These tests pin that sync so the two
 cannot drift apart.
 """
@@ -13,6 +14,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+CHECK_ALL = REPO_ROOT / "scripts" / "check_all.sh"
 GUIDE = REPO_ROOT / "skills" / "c4-modeling" / "references" / "mermaid-c4-guide.md"
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "mermaid"
 
@@ -34,10 +36,23 @@ def _validation_section() -> str:
     return text.split(marker, 1)[1]
 
 
+def _mermaid_check() -> str:
+    text = CHECK_ALL.read_text(encoding="utf-8")
+    match = re.search(r"^    mermaid\)\n(.*?)^      ;;$", text, re.MULTILINE | re.DOTALL)
+    assert match is not None, "check_all.sh lost its mermaid check"
+    return match.group(1)
+
+
 def test_ci_runs_pinned_browserless_validator():
+    text = CHECK_ALL.read_text(encoding="utf-8")
+    assert f'MMDLINT="{PINNED_COMMAND}"' in text, (
+        "check_all.sh does not define the pinned mmdlint command"
+    )
+    assert "$MMDLINT" in _mermaid_check(), "mermaid check does not run $MMDLINT"
     job = _mermaid_job()
-    assert job["env"]["MMDLINT"] == PINNED_COMMAND, (
-        "CI mermaid job does not run the pinned mmdlint command"
+    runs = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "scripts/check_all.sh --only mermaid" in runs, (
+        "CI mermaid job does not run the mermaid check of check_all.sh"
     )
     job_text = yaml.safe_dump(job).lower()
     assert "puppeteer" not in job_text, "CI validator must not pull in Puppeteer"
@@ -48,11 +63,11 @@ def test_ci_runs_pinned_browserless_validator():
 
 
 def test_ci_proves_validator_rejects_broken_fixture():
-    runs = "\n".join(step.get("run", "") for step in _mermaid_job()["steps"])
+    runs = _mermaid_check()
     for fixture in ("valid.md", "broken.md"):
         assert (FIXTURES / fixture).is_file(), f"fixture {fixture} missing"
         assert f"scripts/fixtures/mermaid/{fixture}" in runs, (
-            f"CI mermaid job does not check fixture {fixture}"
+            f"mermaid check does not check fixture {fixture}"
         )
     assert "':!:scripts/fixtures/'" in runs, "repo-wide scan must exclude the broken fixture"
 

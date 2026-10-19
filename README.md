@@ -179,34 +179,24 @@ still listed here.
 
 Skill-authoring conventions — frontmatter fields, description budgets, the
 manifest and catalogue that must stay in sync — are in
-[`AGENTS.md`](AGENTS.md). Before opening a PR, run what CI runs
-(`.github/workflows/ci.yml`):
+[`AGENTS.md`](AGENTS.md). Before opening a PR, run what CI runs — CI calls
+the same script, so this is the whole list:
 
 ```sh
-python3 scripts/build_manifest.py --check   # skills.json matches the SKILL.md files
-python3 scripts/build_routers.py --check    # router bodies match the manifest
-python3 scripts/check_descriptions.py       # description budget
-python3 scripts/check_docs.py               # catalogue tables in README + AGENTS agree
-python3 scripts/check_plugins.py            # plugin symlinks and marketplace entries
-python3 scripts/check_instructions.py       # instruction fragments valid
-python3 scripts/build_project_claude.py --check  # .claude/ mirror is current
-for d in skills/*/; do python3 scripts/quick_validate.py "$d"; done  # frontmatter valid
-python3 scripts/check_evals.py              # eval coverage (warn-only)
-python3 scripts/check_skill_vocab.py        # skill vocabulary
-python3 scripts/check_gh_graphql.py         # GitHub steps name the MCP or gh api
-python3 scripts/check_reference_tocs.py     # long references carry a contents list
-ruff check .
-pytest scripts skills                       # needs pytest and pyyaml
-prek run --all-files                        # whitespace, YAML/TOML and ruff hooks
-python -m compileall -q scripts skills
-shellcheck -S warning install.sh scripts/*.sh
-bash scripts/test_install.sh                # install.sh smoke test in a temp HOME
+pip install -r scripts/check_all.requirements.txt  # pinned prek, pytest, pyyaml
+scripts/check_all.sh          # one PASS/FAIL/MISSING line per check
+scripts/check_all.sh --list   # the checks and the tools each needs
 ```
 
+A check whose tool is not installed is reported as `MISSING` and the script
+exits 3, so a skipped gate never reads as green. The mermaid check also needs
+Node.js (`npx`).
+
 The hooks in `.pre-commit-config.yaml` are run by
-[prek](https://github.com/j178/prek) (`uv tool install prek`). Run `prek
- install` once and they fire on every commit; CI runs them too, so a skipped
- hook fails the build rather than landing on `main`.
+[prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
+the secret scanner. Run `prek install` once and they fire on every commit;
+`check_all.sh` runs them too, so a skipped hook fails the build rather than
+landing on `main`.
 
 `build_manifest.py --check` runs first for a reason: the catalogue and plugin
 checks read `skills.json`, so a stale manifest makes them answer from stale

@@ -4,7 +4,8 @@
 #
 # Only the secrets job is here. The plugin's template also ships python-lint and
 # r-lint; both are omitted deliberately:
-#   - ci.yml already runs `ruff check .` over this repo's first-party Python.
+#   - ci.yml already runs ruff (prek hook, via scripts/check_all.sh) over this
+#     repo's first-party Python.
 #   - both template jobs are gated on hashFiles('pyproject.toml', 'requirements.txt')
 #     or 'DESCRIPTION', and this repo has none of them, so they would never run.
 name: maintenance-gate

@@ -42,7 +42,7 @@ regularly finds nothing when CI is green only burns rotation slots.
 | Once planned as a job | Runs in CI instead |
 |---|---|
 | security-footguns | `maintenance-gate` -> gitleaks; ruff `S113` via `ruff.toml` |
-| dead-code (local vars/imports) | `ci.yml` -> `ruff check .` (`F401`/`F841` are in the default set) |
+| dead-code (local vars/imports) | `ci.yml` -> `scripts/check_all.sh` -> prek's `ruff-check` hook (`F401`/`F841` are in the default set) |
 
 Only the open question stays in the catalog: `dead-exports` (exports across the package boundary).
 
@@ -55,37 +55,18 @@ Only the open question stays in the catalog: `dead-exports` (exports across the 
 
 ## Baseline
 
-The baseline is the check sequence from `.github/workflows/ci.yml`, captured before the
-run and reproduced identically afterwards:
+The baseline is `scripts/check_all.sh`, the same entry point CI calls, captured before the
+run and reproduced identically afterwards (`scripts/check_all.sh --list` names the checks).
+Tool versions are pinned in `scripts/check_all.requirements.txt` and
+`.pre-commit-config.yaml`; ruff runs as a prek hook at the version pinned there. A check
+reported `MISSING` counts as not run, never as green.
 
-```bash
-python scripts/build_manifest.py --check
-python scripts/build_routers.py --check
-python scripts/check_descriptions.py
-python scripts/check_docs.py
-python scripts/check_plugins.py
-python scripts/check_instructions.py
-python scripts/check_evals.py
-for d in skills/*/; do [ -f "$d/SKILL.md" ] && python3 scripts/quick_validate.py "$d"; done
-uvx ruff@latest check .
-python -m compileall -q scripts skills
-uvx --with pyyaml pytest scripts skills
-uvx --from shellcheck-py shellcheck -S warning \
-  install.sh scripts/test_install.sh scripts/maintenance-scan.sh
-uvx prek run --all-files
-bash scripts/test_install.sh
-```
+One standing caveat:
 
-Fourteen checks. Two standing caveats:
-
-- Use `uvx ruff@latest`, not whatever `ruff` is on `PATH`: `ci.yml` installs the newest
-  ruff too, so a stale local copy falsifies the comparison. Record the version the
-  baseline resolved to and reproduce the run with that exact `ruff@X.Y.Z`, so a release
-  landing mid-run cannot read as a finding.
 - On a WSL host ruff reports none of the `flake8-executable` rules (`EXE001`-`EXE003`)
   whatever the file's real mode - measured on this repo's ext4 checkout, where the bits
   are correct and the same ruff version flags 13 files in CI. A local baseline is blind to
-  them, so `ci.yml` decides them alone: never report "ruff is clean" from WSL.
+  them, so CI decides them alone: never report "ruff is clean" from WSL.
 
 ## Jobs
 
@@ -123,7 +104,7 @@ The catalog-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml`, plus the unpinned `pip install` lines in `.github/workflows/ci.yml` (`ruff` deliberately, per `ee36b79`; `prek` and `pytest` incidentally) and the `pyyaml>=6` floor. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
+| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` |
 
@@ -133,11 +114,8 @@ Carried over from the 2026-09-28 `deps-audit` run (closed PR #412) when this cat
 replaced `ROOMBA.md`. Everything else from that catalog's backlog was discarded on purpose
 and is recoverable from git history.
 
-- **`prek` is unpinned in `ci.yml`** and feeds the blocking *Hooks in sync* step, while
-  prek v0.5.0 (2026-08-27) removed `auto-update`, `init-template-dir` and
-  `PREK_MAX_CONCURRENCY`. The 2026-09-28 run confirmed no tracked file uses a removed name,
-  so nothing is broken; unlike ruff's unpinning (`ee36b79`) no decision is recorded for
-  `prek`. Pin it the first time the gate fails for no reproducible reason.
+Empty: the one carry-over (unpinned `prek` in `ci.yml`) is resolved by
+`scripts/check_all.requirements.txt`.
 
 ## Run history
 
