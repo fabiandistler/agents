@@ -42,11 +42,17 @@ evidence: paste it.
 ## Python: one script per branch
 
 Run the same script from each tree with the project's runner, so imports
-resolve against that tree (without uv: `PYTHONPATH=<run>/base/src`):
+resolve against that tree:
 
 ```bash
 uv run --directory <run>/base python <run>/example.py
 uv run --directory . python <run>/example.py
+# without uv, src layout (flat layout: drop /src):
+PYTHONPATH=<run>/base/src python <run>/example.py
+PYTHONPATH=./src python <run>/example.py
 ```
 
 Paste the script once per side with its output below it.
+
+When R, Python or uv is missing, do not install it silently; write SKILL.md's
+`Nicht ausgeführt, weil <Grund>.` line instead.

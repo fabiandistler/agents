@@ -53,9 +53,11 @@ body:
 - **A distinct name avoids a clash with a locally installed `pr`.** Naming the
   fork `pr-description` keeps it from shadowing, or being shadowed by, Pocock's
   `pr` where his plugin is enabled.
-- **The changes are content, not fixes.** German output, the title, the
-  reading order and the Azure DevOps rules serve this catalogue's readers; they
-  are not changes an upstream English skill would take.
+- **The changes are content, not fixes.** ~~German output, the title, the
+  reading order and the Azure DevOps rules serve this catalogue's readers;~~
+  *Amended 2026-10-19:* the Azure DevOps rules are removed (see Amended below);
+  German output, the title and the reading order serve this catalogue's readers;
+  they are not changes an upstream English skill would take.
 
 ## Considered options
 
