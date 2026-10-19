@@ -39,7 +39,7 @@ model's trigger surface.
 | coupling-cohesion | Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov). | `members/coupling-cohesion/SKILL.md` |
 | ddd | Domain-Driven Design: subdomain classification, context mapping and legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing. | `members/ddd/SKILL.md` |
 | fitness-functions | Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes. | `members/fitness-functions/SKILL.md` |
-| logical-component-design | Decompose a NEW system or feature into named logical components; to measure an existing decomposition use coupling-cohesion instead. | `members/logical-component-design/SKILL.md` |
+| logical-component-design | Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. | `members/logical-component-design/SKILL.md` |
 | microservices-design | Design or review how services interact — boundaries, coupling, communication style, contract versioning, sagas, resiliency patterns. | `members/microservices-design/SKILL.md` |
 <!-- END generated:members -->
 

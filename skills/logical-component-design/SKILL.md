@@ -2,7 +2,7 @@
 name: logical-component-design
 category: architecture
 environments: coding
-description: Decompose a NEW system or feature into named logical components; to measure an existing decomposition use coupling-cohesion instead. Richards & Ford's iterative, generative identify-and-refine cycle.
+description: Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. Richards & Ford's iterative, generative identify-and-refine cycle.
 ---
 
 # Logical Component Design
