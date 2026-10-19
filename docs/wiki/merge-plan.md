@@ -14,3 +14,12 @@
     Startup time in a fresh container not yet measured.
 - Side effect noted 2026-10-19: testing #538 ran `prek install` in the main
   checkout, so commits there now run the pre-commit hook.
+
+## Updates
+
+- 2026-10-19: #535 merged. #537 took main in via merge commit `d8da6c6`;
+  `check_evals --strict` now runs in the `evals)` case of `check_all.sh`;
+  ADR-0006 got a dated status note (`fdb027d`).
+- 2026-10-19: #536 merged by the user with the commit restoring
+  `disable-model-invocation: true` on `pypet-snippets`, i.e. it stays a
+  command skill. Read as the user's answer to the open question.
