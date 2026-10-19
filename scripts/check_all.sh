@@ -15,7 +15,7 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 # Order matters: the catalogue and plugin checks read skills.json, so the
 # manifest check runs first.
 CHECKS=(manifest routers descriptions docs plugins instructions project-claude
-  frontmatter evals vocab gh-graphql reference-tocs pytest prek compileall
+  frontmatter evals vocab gh-graphql skill-refs reference-tocs pytest prek compileall
   install-smoke mermaid)
 
 usage() {
@@ -84,6 +84,7 @@ run_check() {
     evals) "$PY" scripts/check_evals.py --strict ;;
     vocab) "$PY" scripts/check_skill_vocab.py ;;
     gh-graphql) "$PY" scripts/check_gh_graphql.py ;;
+    skill-refs) "$PY" scripts/check_skill_refs.py ;;
     reference-tocs) "$PY" scripts/check_reference_tocs.py ;;
     # Every test_*.py under scripts/ and skills/; naming one file left the
     # other skills' tests unrun.
