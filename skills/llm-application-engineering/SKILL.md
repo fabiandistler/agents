@@ -221,7 +221,7 @@ opt-out — lost trust costs more than the data is worth.
 
 ### Baseline checklist before calling anything deployment-worthy
 
-For classifiers, use the five-baseline gate in `ml-project-lifecycle` Part A. For generative apps, compare against these four instead: the current prompt and model version as the regression baseline, the strongest available model as the ceiling, a simple non-LLM heuristic or template, and a human expert. Ship only when the candidate beats the regression baseline and the heuristic, and the gap to the ceiling and the expert is acceptable for the use case.
+For classifiers, use the five-baseline gate in `members/ml-project-lifecycle/SKILL.md` Part A, read via the `ai-ml` router. For generative apps, compare against these four instead: the current prompt and model version as the regression baseline, the strongest available model as the ceiling, a simple non-LLM heuristic or template, and a human expert. Ship only when the candidate beats the regression baseline and the heuristic, and the gap to the ceiling and the expert is acceptable for the use case.
 
 ## Applying the three parts together
 

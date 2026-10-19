@@ -1,6 +1,6 @@
-# Evidence translation: coupling-cohesion terms into the report vocabulary
+# Evidence translation: coupling and cohesion terms into the report vocabulary
 
-`coupling-cohesion` reports in its own terms (boundary, integration strength,
+`members/coupling-cohesion/SKILL.md` (read via the `architecture` router) reports in its own terms (boundary, integration strength,
 distance, volatility, groups, LCOM). The report and the interview use only the
 terms in `design-vocabulary.md`. Translate at the hand-off: keep the measured
 value as evidence, replace the term around it. No term from the left column

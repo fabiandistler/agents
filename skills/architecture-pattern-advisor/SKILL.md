@@ -56,7 +56,7 @@ Once chosen, document it. Write an ADR capturing context, the decision drivers f
 - **New repo:** generate the folder/file skeleton from the annotated example tree for the chosen pattern in [references/pattern-catalog.md](references/pattern-catalog.md), adapted to the repo name and language.
 - **Existing repo:** produce an **incremental migration plan** (strangler-fig): smallest first move, what moves where, keeping the build green at every step. Never a big-bang rewrite.
 - Apply deep-module thinking when shaping boundaries: narrow interface, deep implementation (Ousterhout) — small interfaces hiding complexity.
-- Add a boundary check to the target repo that fails CI when a module reaches into another module's internals (Python: import-linter contract or Tach; Java: Spring Modulith or ArchUnit; JavaScript/TypeScript: dependency-cruiser rule). See `fitness-functions` for the check shape.
+- Add a boundary check to the target repo that fails CI when a module reaches into another module's internals (Python: import-linter contract or Tach; Java: Spring Modulith or ArchUnit; JavaScript/TypeScript: dependency-cruiser rule). For the check shape see `members/fitness-functions/SKILL.md`, read via the `architecture` router.
 
 ### 6. Verify
 
@@ -68,16 +68,17 @@ When step 3's candidates are close or the choice is contentious, weigh the real 
 
 ## Once topology lands on microservices
 
-Stop here for boundary work: find bounded contexts with `ddd`, then cut and wire services with `microservices-design`. This skill's only rule: extract from a modular monolith along module seams already proven by change-locality. Never cut along technical layers.
+Stop here for boundary work: find bounded contexts with `members/ddd/SKILL.md`, then cut and wire services with `members/microservices-design/SKILL.md` (both read via the `architecture` router). This skill's only rule: extract from a modular monolith along module seams already proven by change-locality. Never cut along technical layers.
 
 ## Related skills
 
-- `ddd` — use when domain boundaries are unclear and bounded contexts must be found first.
-- `microservices-design` — use when services exist and their boundaries, communication, or contracts need design or review.
-- `logical-component-design` — use when decomposing a new system or feature into named logical components.
-- `fitness-functions` — use when a chosen boundary must be enforced by a check that fails CI.
-- `c4-modeling` — use when the chosen architecture must be drawn as Context, Container, or Component diagrams.
-- `coupling-cohesion` — use when measuring whether an existing decomposition is sound.
+Sibling sub-skills, each read via the `architecture` router:
+- `members/ddd/SKILL.md` — use when domain boundaries are unclear and bounded contexts must be found first.
+- `members/microservices-design/SKILL.md` — use when services exist and their boundaries, communication, or contracts need design or review.
+- `members/logical-component-design/SKILL.md` — use when decomposing a new system or feature into named logical components.
+- `members/fitness-functions/SKILL.md` — use when a chosen boundary must be enforced by a check that fails CI.
+- `members/c4-modeling/SKILL.md` — use when the chosen architecture must be drawn as Context, Container, or Component diagrams.
+- `members/coupling-cohesion/SKILL.md` — use when measuring whether an existing decomposition is sound.
 
 ## Common Mistakes
 

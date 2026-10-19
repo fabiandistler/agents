@@ -27,8 +27,8 @@ Whenever the work touches an interaction between two or more services — a new
 service or endpoint, an event or message schema, a shared library crossing
 service boundaries, a cross-service workflow, or code that calls another
 service. Not for deciding whether to use microservices at all
-(→ architecture-pattern-advisor) or where domain boundaries lie
-(→ ddd).
+(→ `members/architecture-pattern-advisor/SKILL.md`) or where domain boundaries lie
+(→ `members/ddd/SKILL.md`); both are read via the `architecture` router.
 
 ## How to apply
 
@@ -62,15 +62,16 @@ For modules in a modular monolith, Coupling / Contracts / Code Reuse apply; Resi
 
 ## Division of labor with related skills
 
-- **architecture-pattern-advisor** — decides *whether* microservices are the
+Sibling sub-skills, each read via the `architecture` router:
+- `members/architecture-pattern-advisor/SKILL.md` — decides *whether* microservices are the
   right topology and where to cut boundaries; this skill governs how the
   resulting services *interact*. Boundary sizing and extraction live there;
   the Service Boundaries cluster keeps only the interaction-level rules so
   the reference file still reads alone as a review checklist.
-- **ddd** — derives the bounded contexts and aggregates that the
+- `members/ddd/SKILL.md` — derives the bounded contexts and aggregates that the
   Service Boundaries cluster assumes as given; context-mapping patterns live
   there.
-- **coupling-cohesion** — when a specific inter-service dependency flagged by
+- `members/coupling-cohesion/SKILL.md` — when a specific inter-service dependency flagged by
   the Coupling cluster needs a deeper verdict (integration strength ×
   distance × volatility), hand it to that skill's balanced-coupling mode.
 

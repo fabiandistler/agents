@@ -25,7 +25,7 @@ Do **not** use for:
 - **Decision records** — a doc whose subject is *why we chose X over Y* is an
   ADR, not documentation.
 - **Architecture diagrams** — for the notation itself (context/container/
-  component views) use the `architecture` skill (c4-modeling); this skill only says where a diagram goes
+  component views) read `members/c4-modeling/SKILL.md` via the `architecture` router; this skill only says where a diagram goes
   in the surrounding document.
 - **Rules files for coding agents** (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`) —
   those are distilled constraints kept short in the repo root; no skill governs

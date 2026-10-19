@@ -50,7 +50,7 @@
 - **Size a bounded context as a function of its model — not "as small as possible".** Smallest-possible / one-per-microservice is an anti-heuristic (Ch 10).
   - ❌ splitting into microservices by default before the model is understood ← likely-default
 - **Start wide, decompose later — especially for core/volatile subdomains.** Refactoring logical boundaries is cheap; refactoring physical (service) boundaries is expensive (Ch 10).
-- **Map these logical boundaries to services via `microservices-design`.** This skill sizes the logical bounded context; the service-level mapping (one service per context, subdividing only later) lives there.
+- **Map these logical boundaries to services via `members/microservices-design/SKILL.md`** (read via the `architecture` router). This skill sizes the logical bounded context; the service-level mapping (one service per context, subdividing only later) lives there.
 - **Treat a change that spans multiple bounded contexts as a boundary smell**, not routine work (Ch 10).
 - **Keep bounded contexts and subdomains distinct.** One bounded context may contain several subdomains; don't assume 1:1 (Ch 3).
 - **Assign exactly one team as owner of a bounded context.** Multiple teams sharing one context (outside a deliberate shared kernel) is a violation (Ch 3/4).

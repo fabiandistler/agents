@@ -2,7 +2,7 @@
 name: logical-component-design
 category: architecture
 environments: coding
-description: Decompose a NEW system or feature into named logical components; to measure an existing decomposition use coupling-cohesion instead. Richards & Ford's iterative, generative identify-and-refine cycle.
+description: Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. Richards & Ford's iterative, generative identify-and-refine cycle.
 ---
 
 # Logical Component Design
@@ -12,7 +12,7 @@ represented in code as a namespace or directory (`com.app.order.placement`,
 `order/placement/`). This skill takes a system or feature you are *about to
 build* and produces a first set of named components, then refines them. It is the
 generative front end to the analysis skills: it *creates* the decomposition;
-the `coupling-cohesion` skill *measures* one that already exists.
+`members/coupling-cohesion/SKILL.md` (read via the `architecture` router) *measures* one that already exists.
 
 The core idea, from *Fundamentals of Software Architecture* (ch. 8), is that
 component identification is an **iterative feedback loop**, not a one-shot act of
@@ -36,17 +36,18 @@ domain", "how should I organize these user stories into components", or
 applying the Workflow or Actor/Action approach, or worrying about the Entity
 Trap — even without naming the book. Not for analyzing existing code
 (→ coupling-cohesion) or choosing system topology and folder layout
-(→ architecture-pattern-advisor).
+(→ `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router).
 
 ## Relation to siblings
 
-- **ddd** — aggregates live inside components, and bounded contexts group
+Sibling sub-skills, each read via the `architecture` router:
+- `members/ddd/SKILL.md` — aggregates live inside components, and bounded contexts group
   components. The Entity Trap below is about naming components after nouns,
   not about modeling domain entities.
-- **architecture-pattern-advisor** — use it for the top-level
+- `members/architecture-pattern-advisor/SKILL.md` — use it for the top-level
   domain-vs-technical partition; this skill decomposes within that split.
-- **c4-modeling** — render the final component table as a C4 Component view.
-- **microservices-design** — reach for it when components become deployment
+- `members/c4-modeling/SKILL.md` — render the final component table as a C4 Component view.
+- `members/microservices-design/SKILL.md` — reach for it when components become deployment
   units.
 
 ## The cycle
