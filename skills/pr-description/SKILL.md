@@ -48,13 +48,15 @@ skill only writes a file.
 | Slot | Heading |
 |---|---|
 | 1 | `## Worum geht's` |
+| 2 | `## Vorher / Nachher` |
 | 3 | `## Was genau geändert wurde` |
 | 4 | `## Review-Reihenfolge` |
 | 5 | `## Risiko & Schwächen` |
 | 6 | `## Verknüpfungen` |
+| 7 | `## Geprüft` |
 
-Slot numbers are fixed. Slots 2 and 7 are reserved for evidence sections and
-are not written in this version, so the numbering keeps their place.
+Sections 2 and 7 are evidence: output you ran, pasted verbatim. Never write
+output you did not run; when you could not run it, say so (see below).
 
 ## Workflow
 
@@ -75,9 +77,13 @@ are not written in this version, so the numbering keeps their place.
    warn in chat and propose a split: which commits or files go into a separate
    refactoring PR first. Still write the description for the diff as it is. The
    warning never goes into the description.
-5. **Write** title and body to the file, following the sections and the style
+5. **Collect the evidence.** Run the before/after example on the base and on
+   the PR branch (section 2), then the repo's checks on the PR branch
+   (section 7). Read `references/evidence.md` for how to run each without
+   touching the user's working tree.
+6. **Write** title and body to the file, following the sections and the style
    below.
-6. **Re-read** the file against the diff once: every claim matches the code,
+7. **Re-read** the file against the diff once: every claim matches the code,
    every dropped section really had nothing to say. Count the title's
    characters (`head -1 <file> | wc -m` counts the newline too) rather than
    estimating them.
@@ -91,7 +97,8 @@ from the current diff. Keep every paragraph a human added verbatim: text under
 headings outside the contract, and paragraphs inside a contract section that
 the diff cannot produce (decisions, reviewer notes, mentions, screenshots).
 Carry each into the matching new section at the same place. When unsure
-whether a paragraph is human-written, keep it and say so in chat.
+whether a paragraph is human-written, keep it and say so in chat. Rerun the
+evidence for sections 2 and 7 on the new head; never carry old output over.
 
 ## Sections
 
@@ -104,6 +111,27 @@ Three short parts, context first:
 - the review depth the author wants: "Ein Review auf Architekturebene reicht"
   or "Bitte Zeile für Zeile prüfen, vor allem …". Name the part that needs the
   closest look.
+
+### 2 Vorher / Nachher
+
+Show the behaviour change as real output, executed on the base (the merge-base
+of the PR) and on the PR branch. Write it for a bug fix, a behaviour change or
+a performance change; drop it for a pure refactoring, docs or CI change.
+
+- **R:** one `reprex` of the same example, rendered once per branch.
+- **Python:** one minimal script, run once per branch, its output pasted under
+  the code.
+- **Performance:** the same benchmark on both branches, numbers verbatim, plus
+  the machine it ran on.
+
+Two subheadings, `### Vorher (<base>)` and `### Nachher (<branch>)`, each with
+the code and its output. Keep the example minimal: only what shows the change.
+
+When the example cannot be run here (runtime or package missing, needs
+credentials, network, a database or data you do not have), write one line
+instead: `Nicht ausgeführt, weil <Grund>.` Add the example code as a block the
+reviewer can run, with no output under it. Never write output you expect,
+remember or reconstructed.
 
 ### 3 Was genau geändert wurde
 
@@ -162,6 +190,24 @@ count:
 - When an issue's discussion is long or weighed several approaches, add two to
   four sentences on its outcome: which approach was chosen and why, so the
   reviewer does not have to read the thread.
+
+### 7 Geprüft
+
+The quality gates you ran locally on the PR branch head, one line each: the
+command in backticks, an em dash, the one-line result as the tool printed it
+(`` `pytest` — 142 passed `` or `` `devtools::check()` — 0 errors, 0 warnings,
+1 note ``). Take the checks from the repo's CI workflow, `AGENTS.md`,
+`CONTRIBUTING.md` or `Makefile`. A failing check stays in the list with its
+failure; never drop it, skip it or loosen a threshold to make it pass.
+
+End with a `### Nicht geprüft` sublist naming each gap as
+`<what>: <why, or where it is covered>`, such as an OS matrix that only CI
+runs, a check whose tool is not installed here, or an integration test that
+needs credentials. Drop the sublist only when every check ran.
+
+Section 2 shows behaviour; section 7 shows quality gates. Test or lint output
+never goes into section 2, and the before/after example never goes into
+section 7.
 
 ## Style
 
