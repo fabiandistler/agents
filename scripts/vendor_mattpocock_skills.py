@@ -9,7 +9,7 @@ Run from repo root:
 Cloud sessions do not install plugins, so the `mattpocock-skills` plugin is
 copied in as plain project skills. The skill list is upstream's own
 `.claude-plugin/plugin.json` (its released set; `in-progress/` and `misc/` are
-not part of it). The pinned commit, the vendored names and upstream's MIT
+not part of it), plus the `in-progress/` skills named in INCLUDED_IN_PROGRESS. The pinned commit, the vendored names and upstream's MIT
 license live in `.claude/vendor/mattpocock-skills/`. A re-run replaces exactly
 the previously vendored directories, so a skill upstream dropped disappears.
 
@@ -18,7 +18,8 @@ sits next to the constant. An excluded name is neither copied nor reported as a
 collision.
 
 Exit codes: 0 ok, 1 git clone/checkout failed, 2 a name collides with a
-directory this script does not own. Needs git; stdlib-only.
+directory this script does not own, 3 an INCLUDED_IN_PROGRESS skill is missing
+upstream at the requested ref. Needs git; stdlib-only.
 """
 
 from __future__ import annotations
@@ -40,8 +41,12 @@ UPSTREAM = "https://github.com/mattpocock/skills.git"
 # `improve-codebase` (#492, ADR-0008). pr was forked as `pr-description` (#518,
 # ADR-0009); that fork is removed (#544) and this repo ships no PR-description
 # skill, so pr stays excluded (.out-of-scope/pr-description-skill.md).
-# A previously vendored copy is removed on re-run.
-EXCLUDED = frozenset({"improve-codebase-architecture", "pr"})
+# ask-matt was deleted by hand on 2026-10-13 (5fc4f2f); excluding it keeps a re-run
+# from bringing it back. A previously vendored copy is removed on re-run.
+EXCLUDED = frozenset({"ask-matt", "improve-codebase-architecture", "pr"})
+# Unreleased upstream skills vendored anyway: chief-of-staff runs the long-lived
+# goal sessions whose record lives in docs/wiki/.
+INCLUDED_IN_PROGRESS = ("chief-of-staff",)
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -78,6 +83,12 @@ def main() -> int:
         sources = {
             Path(p).name: clone / p for p in plugin["skills"] if Path(p).name not in EXCLUDED
         }
+        for name in INCLUDED_IN_PROGRESS:
+            source = clone / "skills" / "in-progress" / name
+            if not (source / "SKILL.md").is_file():
+                sys.stderr.write(f"in-progress skill missing upstream at {commit[:12]}: {name}\n")
+                return 3
+            sources[name] = source
 
         collisions = [
             name
