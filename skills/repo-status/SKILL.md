@@ -67,12 +67,26 @@ Then:
   `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
   and the same with `--reviewed-by=@me`. Where search is refused (sessions
   bound to their configured repositories reject `search/*`), list each
-  configured repo's PRs instead with the GitHub MCP tools or
-  `gh api --paginate "repos/<owner>/<repo>/pulls?state=all&sort=updated&direction=desc&per_page=100" --jq '.[] | select(.updated_at >= "<date>")'`,
-  keeping those whose `user.login` is yours (`--paginate` walks every page,
-  so a repo with more than one page of PRs is not cut off); for
-  reviewed PRs, check `gh api repos/<owner>/<repo>/pulls/<n>/reviews` on the
-  remaining ones.
+  configured repo's PRs instead with the GitHub MCP tools or the loop below,
+  keeping those whose login column is yours. It pages by hand and stops at
+  the first page that is not entirely inside the window: the list is sorted
+  by `updated_at`, so later pages are older. Do not use `gh api --paginate`
+  here: it walks the repo's whole PR history, and it follows `Link` URLs of
+  the form `repositories/<id>/…`, which some proxies refuse with HTTP 403.
+
+  ```bash
+  page=1
+  while :; do
+    prs=$(gh api "repos/<owner>/<repo>/pulls?state=all&sort=updated&direction=desc&per_page=100&page=$page" \
+      --jq '.[] | select(.updated_at >= "<date>") | [.number, .user.login, .state, .title] | @tsv') || break
+    [ -n "$prs" ] && printf '%s\n' "$prs"
+    [ "$(printf '%s' "$prs" | grep -c .)" -eq 100 ] || break
+    page=$((page + 1))
+  done
+  ```
+
+  For reviewed PRs, check each remaining one with
+  `gh api "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100" --jq '.[] | select(.user.login == "<login>" and .submitted_at >= "<date>") | .state'`.
 - CI status: `gh run list --limit 5`
 
 Without the GitHub MCP tools or `gh`, fall back to git-only and structure what
