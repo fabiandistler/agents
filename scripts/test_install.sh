@@ -407,6 +407,22 @@ grep -q 'skills\.config\|routed-member skill overrides' "$CONFIG_OV2" &&
   fail "override uninstall left our block behind"
 pass "override uninstall removes only our block"
 
+# 21c2. an unchanged override block is left alone: a reinstall reports "ok"
+#       without rewriting the file, and a dry-run plans no removal.
+HOME_OV3="$(mktemp -d)"
+HOME="$HOME_OV3" "$INSTALL" --target=codex --category=ai-ml >/dev/null
+CONFIG_OV3="$HOME_OV3/.codex/config.toml"
+inode_before="$(stat -c %i "$CONFIG_OV3")"
+ov_output="$(HOME="$HOME_OV3" "$INSTALL" --target=codex --category=ai-ml 2>&1)"
+[[ "$(stat -c %i "$CONFIG_OV3")" == "$inode_before" ]] ||
+  fail "reinstall rewrote an unchanged override block"
+grep -q '^  ok .*config.toml' <<<"$ov_output" ||
+  fail "reinstall did not report the unchanged override block as ok"
+ov_dry="$(HOME="$HOME_OV3" "$INSTALL" --target=codex --category=ai-ml --dry-run 2>&1)"
+grep -q 'remove routed-member skill overrides' <<<"$ov_dry" &&
+  fail "dry-run planned removing an override block it would keep"
+pass "unchanged override block is neither rewritten nor planned for removal"
+
 # 21d. a config left behind by a version that still registered the
 #      knowledge-base MCP servers is cleaned up — by install as well as by
 #      uninstall — across every legacy category, foreign tables untouched.

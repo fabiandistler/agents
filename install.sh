@@ -297,6 +297,114 @@ list_skills() {
   done
 }
 
+# --- Managed blocks ----------------------------------------------------------
+#
+# A managed block is a marker-delimited region install.sh owns inside a file it
+# does not (see GLOSSARY.md). Each caller passes its own begin and end marker
+# lines verbatim, so blocks written by earlier versions keep matching. Content
+# outside the markers is never touched. A file whose markers are unbalanced (a
+# hand edit) is left alone: stripping from a dangling begin marker would drop
+# everything after it. `what` names the block's content in the status lines.
+
+# Replace a file with the given content, atomically. A plain `> "$path"`
+# truncates before writing, so an interrupt in between leaves a file we do not
+# own in pieces; a temp file plus mv either lands whole or not at all.
+write_file_atomic() {
+  local path="$1" content="$2"
+  local tmp="$path.tmp.$$"
+  if [[ -n "$content" ]]; then
+    printf '%s\n' "$content" >"$tmp"
+  else
+    : >"$tmp"
+  fi
+  mv "$tmp" "$path"
+}
+
+# True if stdin's begin/end marker lines are absent or properly nested pairs.
+block_markers_balanced() {
+  awk -v b="$1" -v e="$2" '
+    $0 == b { if (open) bad = 1; open = 1; next }
+    $0 == e { if (!open) bad = 1; open = 0; next }
+    END { exit (bad || open) ? 1 : 0 }
+  '
+}
+
+# Filter stdin, dropping the block (inclusive), plus the separator blank line
+# before it and any blank lines left at the start of the file (so reinstalls do
+# not accumulate or shuffle blank lines). Blank lines are held back one step and
+# only flushed once the next line turns out not to be the begin marker.
+strip_block() {
+  awk -v b="$1" -v e="$2" '
+    $0 == b { skip = 1; pending = 0; next }
+    $0 == e { skip = 0; next }
+    skip { next }
+    $0 == "" { if (pending && printed) print ""; pending = 1; next }
+    { if (pending && printed) print ""; pending = 0; print; printed = 1 }
+  '
+}
+
+warn_unbalanced_markers() {
+  printf '  WARN      unbalanced marker lines in %s, leaving it untouched (%s)\n' \
+    "$1" "$2" >&2
+}
+
+# Write `body` as the block between `begin` and `end` in `file`, appended after
+# the file's other content. A missing file counts as empty. An unchanged
+# result is reported as ok and not written. An empty body is a caller error:
+# to drop the block, call managed_block_remove.
+managed_block_set() {
+  local file="$1" begin="$2" end="$3" body="$4" what="$5"
+  if [[ -z "$body" ]]; then
+    echo "managed_block_set: empty body for $what in $file" >&2
+    return 1
+  fi
+  local before="" after
+  [[ -f "$file" ]] && before="$(cat "$file")"
+  if ! block_markers_balanced "$begin" "$end" <<<"$before"; then
+    warn_unbalanced_markers "$file" "$what"
+    return 0
+  fi
+  after="$(strip_block "$begin" "$end" <<<"$before")"
+  local block="$begin"$'\n'"$body"$'\n'"$end"
+  if [[ -n "$after" ]]; then
+    after="$after"$'\n\n'"$block"
+  else
+    after="$block"
+  fi
+  if [[ "$after" == "$before" ]]; then
+    printf '  ok        %s (%s)\n' "$file" "$what"
+    return 0
+  fi
+  if ((DRY_RUN)); then
+    printf '[dry-run] write %s into %s\n' "$what" "$file"
+    return 0
+  fi
+  ensure_parent "${file%/*}"
+  write_file_atomic "$file" "$after"
+  printf '  updated   %s (%s)\n' "$file" "$what"
+}
+
+# Drop the block between `begin` and `end` from `file`, keeping everything
+# else. A missing file or an absent block is a silent no-op.
+managed_block_remove() {
+  local file="$1" begin="$2" end="$3" what="$4"
+  [[ -f "$file" ]] || return 0
+  local before after
+  before="$(cat "$file")"
+  if ! block_markers_balanced "$begin" "$end" <<<"$before"; then
+    warn_unbalanced_markers "$file" "$what"
+    return 0
+  fi
+  after="$(strip_block "$begin" "$end" <<<"$before")"
+  [[ "$after" != "$before" ]] || return 0
+  if ((DRY_RUN)); then
+    printf '[dry-run] remove %s from %s\n' "$what" "$file"
+    return 0
+  fi
+  write_file_atomic "$file" "$after"
+  printf '  removed   %s from %s\n' "$what" "$file"
+}
+
 # --- Legacy Codex MCP cleanup ----------------------------------------------
 #
 # Earlier versions registered each plugin's knowledge-base MCP server in
@@ -307,21 +415,6 @@ list_skills() {
 # keep Codex pointing at a server script this repo no longer ships.
 
 codex_config_path() { printf '%s/.codex/config.toml' "$HOME"; }
-
-# Replace ~/.codex/config.toml with the given content, atomically. A plain
-# `> "$config"` truncates before writing, so an interrupt in between leaves a
-# file we do not own in pieces; a temp file plus mv either lands whole or not
-# at all. install_codex_member_overrides already writes this way.
-write_codex_config() {
-  local config="$1" content="$2"
-  local tmp="$config.tmp.$$"
-  if [[ -n "$content" ]]; then
-    printf '%s\n' "$content" >"$tmp"
-  else
-    : >"$tmp"
-  fi
-  mv "$tmp" "$config"
-}
 
 # Categories that ever shipped an .mcp.json. Hardcoded, because the files this
 # list was once derived from no longer exist.
@@ -337,58 +430,16 @@ mcp_end_marker() {
   printf '# <<< agents:%s MCP servers <<<' "$1"
 }
 
-# True if stdin's marker lines for a category are absent or form properly
-# nested begin/end pairs. A hand-edited config with a dangling begin or end
-# marker must not be stripped: strip_mcp_block would silently drop
-# everything from the begin marker to end of file.
-mcp_markers_balanced() {
-  awk -v b="$(mcp_begin_marker "$1")" -v e="$(mcp_end_marker "$1")" '
-    $0 == b { if (open) bad = 1; open = 1; next }
-    $0 == e { if (!open) bad = 1; open = 0; next }
-    END { exit (bad || open) ? 1 : 0 }
-  '
-}
-
-# Filter stdin, dropping the marker block (inclusive) for a category, plus
-# the separator blank line before it and any blank lines left at the start
-# of the file (so reinstalls do not accumulate or shuffle blank lines).
-# Blank lines are held back one step and only flushed once the next line
-# turns out not to be our begin marker.
-strip_mcp_block() {
-  awk -v b="$(mcp_begin_marker "$1")" -v e="$(mcp_end_marker "$1")" '
-    $0 == b { skip = 1; pending = 0; next }
-    $0 == e { skip = 0; next }
-    skip { next }
-    $0 == "" { if (pending && printed) print ""; pending = 1; next }
-    { if (pending && printed) print ""; pending = 0; print; printed = 1 }
-  '
-}
-
 # Drop every managed MCP block a previous version wrote, plus the runtime venv
 # it provisioned. Foreign [mcp_servers.*] tables live outside our markers and
-# are never touched; a hand-edited unbalanced marker pair leaves the file alone.
+# are never touched.
 remove_legacy_codex_mcp() {
-  local config
+  local config cat
   config="$(codex_config_path)"
-  local cat before after
-  if [[ -f "$config" ]]; then
-    for cat in $LEGACY_MCP_CATEGORIES; do
-      before="$(cat "$config")"
-      if ! mcp_markers_balanced "$cat" <<<"$before"; then
-        printf '  WARN      unbalanced %s marker lines in %s (leaving it untouched)\n' \
-          "$cat" "$config" >&2
-        continue
-      fi
-      after="$(strip_mcp_block "$cat" <<<"$before")"
-      [[ "$after" != "$before" ]] || continue
-      if ((DRY_RUN)); then
-        printf '[dry-run] remove legacy %s MCP servers from %s\n' "$cat" "$config"
-        continue
-      fi
-      write_codex_config "$config" "$after"
-      printf '  removed   legacy %s MCP servers from %s\n' "$cat" "$config"
-    done
-  fi
+  for cat in $LEGACY_MCP_CATEGORIES; do
+    managed_block_remove "$config" "$(mcp_begin_marker "$cat")" \
+      "$(mcp_end_marker "$cat")" "legacy $cat MCP servers"
+  done
 
   local venv
   venv="$(codex_mcp_runtime_dir)"
@@ -422,28 +473,6 @@ skill_override_end_marker() {
   printf '# <<< agents routed-member skill overrides <<<'
 }
 
-# True if stdin's override marker lines are absent or form a properly nested
-# begin/end pair (see mcp_markers_balanced for the rationale).
-skill_override_markers_balanced() {
-  awk -v b="$(skill_override_begin_marker)" -v e="$(skill_override_end_marker)" '
-    $0 == b { if (open) bad = 1; open = 1; next }
-    $0 == e { if (!open) bad = 1; open = 0; next }
-    END { exit (bad || open) ? 1 : 0 }
-  '
-}
-
-# Filter stdin, dropping the override marker block (inclusive) and normalising
-# surrounding blank lines (see strip_mcp_block).
-strip_skill_override_block() {
-  awk -v b="$(skill_override_begin_marker)" -v e="$(skill_override_end_marker)" '
-    $0 == b { skip = 1; pending = 0; next }
-    $0 == e { skip = 0; next }
-    skip { next }
-    $0 == "" { if (pending && printed) print ""; pending = 1; next }
-    { if (pending && printed) print ""; pending = 0; print; printed = 1 }
-  '
-}
-
 # Render one [[skills.config]] disable table per member name read on stdin.
 render_skill_override_toml() {
   local name first=1
@@ -462,24 +491,8 @@ render_skill_override_toml() {
 
 # Strip our override block from ~/.codex/config.toml (leaving foreign config).
 remove_codex_member_overrides() {
-  local config
-  config="$(codex_config_path)"
-  [[ -f "$config" ]] || return 0
-  local before after
-  before="$(cat "$config")"
-  if ! skill_override_markers_balanced <<<"$before"; then
-    printf '  WARN      unbalanced skill-override marker lines in %s (leaving it untouched)\n' \
-      "$config" >&2
-    return 0
-  fi
-  after="$(strip_skill_override_block <<<"$before")"
-  [[ "$after" != "$before" ]] || return 0
-  if ((DRY_RUN)); then
-    printf '[dry-run] remove routed-member skill overrides from %s\n' "$config"
-    return 0
-  fi
-  write_codex_config "$config" "$after"
-  printf '  removed   routed-member skill overrides from %s\n' "$config"
+  managed_block_remove "$(codex_config_path)" "$(skill_override_begin_marker)" \
+    "$(skill_override_end_marker)" "routed-member skill overrides"
 }
 
 # Write the managed override block that disables the nested router members
@@ -487,43 +500,19 @@ remove_codex_member_overrides() {
 # Uses only shell built-ins and the same core tools as the rest of install.sh
 # (no sort/wc/tr) so it works under the minimal sandboxed PATH.
 install_codex_member_overrides() {
-  local config
-  config="$(codex_config_path)"
-  local members="" count=0 name
+  local members="" count=0 name toml
   while IFS= read -r name; do
     [[ -n "${name//[[:space:]]/}" ]] || continue
     members+="$name"$'\n'
     count=$((count + 1))
   done
-  if [[ -z "$members" ]]; then
-    remove_codex_member_overrides
-    return 0
-  fi
-  if ((DRY_RUN)); then
-    remove_codex_member_overrides
-    printf '[dry-run] disable %s routed member skills in %s\n' "$count" "$config"
-    return 0
-  fi
-  mkdir -p "$(dirname "$config")"
-  [[ -f "$config" ]] || : >"$config"
-  if ! skill_override_markers_balanced <"$config"; then
-    printf '  WARN      unbalanced skill-override marker lines in %s (leaving it untouched)\n' \
-      "$config" >&2
-    return 0
-  fi
-  local rest toml
-  rest="$(strip_skill_override_block <"$config")"
   toml="$(printf '%s' "$members" | render_skill_override_toml)"
-  {
-    if [[ -n "$rest" ]]; then printf '%s\n\n' "$rest"; fi
-    skill_override_begin_marker
-    printf '\n'
-    printf '%s\n' "$toml"
-    skill_override_end_marker
-    printf '\n'
-  } >"$config.tmp.$$"
-  mv "$config.tmp.$$" "$config"
-  printf '  skills    %s routed members disabled in %s\n' "$count" "$config"
+  if [[ -z "$toml" ]]; then
+    remove_codex_member_overrides
+    return 0
+  fi
+  managed_block_set "$(codex_config_path)" "$(skill_override_begin_marker)" \
+    "$(skill_override_end_marker)" "$toml" "$count routed members disabled"
 }
 
 # --- Codex custom agent registration ----------------------------------------
@@ -787,42 +776,6 @@ instructions_end_marker() {
   printf '<!-- <<< agents instructions <<< -->'
 }
 
-# True if stdin's marker lines are absent or form a properly nested begin/end
-# pair (see mcp_markers_balanced for the rationale).
-instructions_markers_balanced() {
-  awk -v b="$(instructions_begin_marker)" -v e="$(instructions_end_marker)" '
-    $0 == b { if (open) bad = 1; open = 1; next }
-    $0 == e { if (!open) bad = 1; open = 0; next }
-    END { exit (bad || open) ? 1 : 0 }
-  '
-}
-
-# Filter stdin, dropping the instructions block (inclusive) and normalising
-# surrounding blank lines (see strip_mcp_block).
-strip_instructions_block() {
-  awk -v b="$(instructions_begin_marker)" -v e="$(instructions_end_marker)" '
-    $0 == b { skip = 1; pending = 0; next }
-    $0 == e { skip = 0; next }
-    skip { next }
-    $0 == "" { if (pending && printed) print ""; pending = 1; next }
-    { if (pending && printed) print ""; pending = 0; print; printed = 1 }
-  '
-}
-
-# Replace a text file with the given content, atomically (see
-# write_codex_config; instruction files are Markdown, not TOML, and are
-# created from nothing when the agent has no global file yet).
-write_text_file() {
-  local path="$1" content="$2"
-  local tmp="$path.tmp.$$"
-  if [[ -n "$content" ]]; then
-    printf '%s\n' "$content" >"$tmp"
-  else
-    : >"$tmp"
-  fi
-  mv "$tmp" "$path"
-}
-
 # Compose the fragments for a target and write them into its instruction file
 # as the managed block, replacing whatever the block held before. Content
 # outside the markers is preserved; unbalanced markers leave the file alone.
@@ -841,33 +794,8 @@ install_instructions() {
       "$target" "$dest" >&2
     return 0
   fi
-  local body
-  body="$(render_instructions <<<"$fragments")"
-  local before="" after block
-  [[ -f "$dest" ]] && before="$(cat "$dest")"
-  if ! instructions_markers_balanced <<<"$before"; then
-    printf '  WARN      unbalanced instruction marker lines in %s (leaving it untouched)\n' \
-      "$dest" >&2
-    return 0
-  fi
-  after="$(strip_instructions_block <<<"$before")"
-  block="$(instructions_begin_marker)"$'\n'"$body"$'\n'"$(instructions_end_marker)"
-  if [[ -n "$after" ]]; then
-    after="$after"$'\n\n'"$block"
-  else
-    after="$block"
-  fi
-  if [[ "$after" == "$before" ]]; then
-    printf '  ok        %s (%s instruction fragments)\n' "$dest" "$count"
-    return 0
-  fi
-  if ((DRY_RUN)); then
-    printf '[dry-run] write %s instruction fragments into %s\n' "$count" "$dest"
-    return 0
-  fi
-  ensure_parent "${dest%/*}"
-  write_text_file "$dest" "$after"
-  printf '  updated   %s (%s instruction fragments)\n' "$dest" "$count"
+  managed_block_set "$dest" "$(instructions_begin_marker)" "$(instructions_end_marker)" \
+    "$(render_instructions <<<"$fragments")" "$count instruction fragments"
 }
 
 # --- Path-scoped Claude rules ------------------------------------------------
@@ -948,7 +876,7 @@ install_claude_rules() {
       continue
     fi
     ensure_parent "$(claude_rules_dir)"
-    write_text_file "$dest" "$content"
+    write_file_atomic "$dest" "$content"
     printf '  updated   %s\n' "$dest"
   done
   while IFS= read -r file; do
@@ -968,22 +896,8 @@ remove_claude_rules() {
 remove_instructions() {
   local target="$1" dest
   dest="$(instruction_file_for "$target")" || return 1
-  [[ -f "$dest" ]] || return 0
-  local before after
-  before="$(cat "$dest")"
-  if ! instructions_markers_balanced <<<"$before"; then
-    printf '  WARN      unbalanced instruction marker lines in %s (leaving it untouched)\n' \
-      "$dest" >&2
-    return 0
-  fi
-  after="$(strip_instructions_block <<<"$before")"
-  [[ "$after" != "$before" ]] || return 0
-  if ((DRY_RUN)); then
-    printf '[dry-run] remove instructions block from %s\n' "$dest"
-    return 0
-  fi
-  write_text_file "$dest" "$after"
-  printf '  removed   instructions block from %s\n' "$dest"
+  managed_block_remove "$dest" "$(instructions_begin_marker)" \
+    "$(instructions_end_marker)" "instructions block"
 }
 
 run() {
