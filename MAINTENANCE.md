@@ -19,7 +19,15 @@ PR #412. Two findings were carried forward into *Backlog* below.
 | Last job | `test-flakiness` (report-only, 0 findings, PR pending merge) |
 | Next due job | `perf-quickwins` (no run yet -> catalog order) |
 | Baseline status | 2026-10-17: 9 of 14 checks run, all green (7 `scripts/` checks, ruff 0.17.1, pytest 96 passed); shellcheck, prek, install test not run |
-| Open maintenance PRs | see `gh pr list --state open --search "head:maintenance/"` |
+| Open maintenance PRs | open PRs whose head branch starts with `maintenance/` (command below the table) |
+
+List open PRs, keeping those whose head branch starts with `maintenance/`. Use
+the GitHub MCP tools if the session has them; otherwise `gh api` (REST; `gh pr
+list` is GraphQL-backed and fails in cloud sessions):
+
+```bash
+gh api "repos/{owner}/{repo}/pulls?state=open&per_page=100" --jq '.[] | select(.head.ref | startswith("maintenance/")) | [.number, .head.ref, .title] | @tsv'
+```
 
 ## Rules
 

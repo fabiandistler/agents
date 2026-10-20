@@ -158,3 +158,23 @@ def test_scans_references_scripts_and_agents_docs_but_not_tests_or_vendored(
 
 def test_repo_itself_is_clean():
     assert check_gh_graphql.main([]) == 0
+
+
+def test_top_level_markdown_is_in_scope(tmp_path, monkeypatch, capsys):
+    write(tmp_path, "MAINTENANCE.md", "# Catalog\n\nsee `gh pr list --state open`\n")
+
+    code, _, err = run_gate(tmp_path, monkeypatch, capsys)
+
+    assert code == 1
+    assert "MAINTENANCE.md:3: gh pr list:" in err
+
+
+def test_markdown_below_top_level_outside_skills_and_agent_docs_is_out_of_scope(
+    tmp_path, monkeypatch, capsys
+):
+    write(tmp_path, "docs/wiki/notes.md", "`gh pr list --state open`\n")
+
+    code, out, _ = run_gate(tmp_path, monkeypatch, capsys)
+
+    assert code == 0
+    assert "gh graphql ok" in out

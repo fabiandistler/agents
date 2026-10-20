@@ -21,8 +21,9 @@ the REST endpoint instead. A hit passes when the window of WINDOW lines on
 either side mentions the GitHub MCP or `gh api`.
 
 Scope: every skills/*/SKILL.md, skills/*/references/*.md, skill scripts and
-assets (skills/*/scripts/*, skills/*/assets/*, test_*.py excluded), and
-docs/agents/*.md. Symlinked router-member copies resolve to their real file
+assets (skills/*/scripts/*, skills/*/assets/*, test_*.py excluded),
+docs/agents/*.md, and the top-level *.md files (AGENTS.md, MAINTENANCE.md and
+the like, which agents read and run steps from). Symlinked router-member copies resolve to their real file
 and are counted once. Vendored skills under .claude/ are out of scope; report
 those upstream. Stdlib-only, matching the other scripts/check_*.py gates.
 
@@ -45,8 +46,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 USAGE = """usage: check_gh_graphql.py [--root DIR] [--help]
 
 Flag GraphQL-backed gh porcelain (gh issue/pr/search/label, gh repo view,
-gh release list|view) in skills and docs/agents unless the GitHub MCP or
-`gh api` is named within the surrounding lines.
+gh release list|view) in skills, docs/agents and top-level *.md files
+unless the GitHub MCP or `gh api` is named within the surrounding lines.
 
   --root DIR  repository root to scan (default: this script's repo)
   --help      show this message
@@ -101,6 +102,7 @@ def scanned_files(root: Path) -> list[Path]:
                     if path.suffix in SCRIPT_SUFFIXES and not path.name.startswith("test_")
                 )
     candidates.extend(sorted(root.glob("docs/agents/*.md")))
+    candidates.extend(sorted(root.glob("*.md")))
     return unique_real_files(candidates)
 
 

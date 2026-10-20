@@ -106,7 +106,8 @@ changelog that mention the current version, the `forge` hosting the remote
 | `consistent` | this branch already bumped and wrote entries: verify only |
 | `mismatch` | version and heading disagree, or no changelog: fix first |
 
-`mismatch` and `open-heading` exit non-zero with the reason in `problems`.
+Only `mismatch` exits non-zero (3), with the reason in `problems`: it stops the
+run. `open-heading` exits 0 and lists the empty heading in `problems`.
 Read the language page now: `references/r.md` or `references/python.md`.
 Unless `forge` is `github`, also read `references/forges.md`: the PR,
 CI, and release commands below are GitHub's, and that page has the

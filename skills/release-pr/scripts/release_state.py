@@ -27,9 +27,10 @@ STATE is one of:
                 release step replaces it with the concrete version.
   mismatch      version and top heading disagree, or no changelog exists.
 
-Exit codes: 0 state is consistent, released or development; 1 usage error;
-2 not an R or Python package (or ambiguous without --language); 3 state is
-open-heading or mismatch, details in the JSON; 4 git unavailable or no commits.
+Exit codes: 0 state is consistent, released, development or open-heading (an
+open heading is adopted, not fixed, so it must not stop a caller); 1 usage
+error; 2 not an R or Python package (or ambiguous without --language); 3 state
+is mismatch, details in the JSON; 4 git unavailable or no commits.
 """
 
 from __future__ import annotations
@@ -377,7 +378,7 @@ def main() -> None:
             "examples:\n"
             "  release_state.py\n"
             "  release_state.py --repo ~/pkg --section 1.2.0 > notes.md\n"
-            "exit: 0 ok | 1 usage | 2 not a package | 3 inconsistent | 4 git"
+            "exit: 0 ok | 1 usage | 2 not a package | 3 mismatch | 4 git"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -508,7 +509,7 @@ def main() -> None:
         print(f"wrote {args.output}", file=sys.stderr)
     else:
         print(text)
-    sys.exit(3 if state in ("open-heading", "mismatch") else 0)
+    sys.exit(3 if state == "mismatch" else 0)
 
 
 if __name__ == "__main__":
