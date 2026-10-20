@@ -37,7 +37,9 @@ VENDOR_DIR = REPO_ROOT / ".claude" / "vendor" / "mattpocock-skills"
 LOCK_PATH = VENDOR_DIR / "lock.json"
 UPSTREAM = "https://github.com/mattpocock/skills.git"
 # Never vendored: improve-codebase-architecture is forked into this catalogue as
-# `improve-codebase` (#492, ADR-0008), and pr as `pr-description` (#518, ADR-0009).
+# `improve-codebase` (#492, ADR-0008). pr was forked as `pr-description` (#518,
+# ADR-0009); that fork is removed (#544) and this repo ships no PR-description
+# skill, so pr stays excluded (.out-of-scope/pr-description-skill.md).
 # A previously vendored copy is removed on re-run.
 EXCLUDED = frozenset({"improve-codebase-architecture", "pr"})
 

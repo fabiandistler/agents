@@ -2,8 +2,8 @@
 
 `release-pr` writes its pull request body in English — the `## Release`
 heading, `**Bump:**`, `### Changes`, `### Checks run`, `### Not verified here`
-and `### After merge` — even though `pr-description` writes every other PR body
-in German. This project keeps it that way.
+and `### After merge` — even though the user's other PR bodies are often
+German. This project keeps it that way.
 
 ## Why this is out of scope
 
@@ -16,14 +16,14 @@ the changelog itself is out of the question: it is the package's public record.
 the release notes from the same changelog section, and the PR title is
 `<package> X.Y.Z`. An English body reads as one piece with both.
 
-**Release PRs face a wider audience than review PRs.** `pr-description`
-serves internal review, where German fits the readers. A release PR is where a
+**Release PRs face a wider audience than review PRs.** A review PR serves
+internal review, where German fits the readers. A release PR is where a
 package meets its users — CRAN, r-universe, PyPI — who are not assumed to read
 German.
 
 The split is deliberate, not an oversight: ADR-0009 kept `release-pr` unchanged
-when `pr-description` went German, and `pr-description` routes release PRs to
-`release-pr`.
+when the German `pr-description` skill was added. That skill has since been
+removed (#544); the reasons above never depended on it.
 
 ## Prior requests
 
