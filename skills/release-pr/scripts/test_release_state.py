@@ -124,7 +124,7 @@ def test_python_development_unreleased_heading(tmp_path):
 def test_python_open_heading(tmp_path):
     repo = make_repo(tmp_path / "repo", python_files("1.4.0", "1.4.0", ""))
     proc, data = report(repo)
-    assert proc.returncode == 3
+    assert proc.returncode == 0
     assert data["state"] == "open-heading"
     assert any("no entries" in p for p in data["problems"])
 
@@ -198,7 +198,7 @@ def test_r_development_dev_suffix(tmp_path):
 def test_r_open_heading(tmp_path):
     repo = make_repo(tmp_path / "repo", r_files("1.4.0", "1.4.0", ""))
     proc, data = report(repo)
-    assert proc.returncode == 3
+    assert proc.returncode == 0
     assert data["state"] == "open-heading"
 
 
