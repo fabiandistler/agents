@@ -47,9 +47,17 @@ is **automatic** when the runtime pulls on its own, and **manual** when a human
 must run a command on every machine. The distinction, not the channel, is what
 this repo optimises for.
 
+## Managed block
+
+A marker-delimited region that `install.sh` owns inside a file it does not:
+the instruction block in an agent's global instruction file, or the
+routed-member overrides in `~/.codex/config.toml`. The installer replaces or
+removes only what lies between its markers. When the markers are unbalanced
+(a hand edit), it leaves the whole file untouched.
+
 ## Instruction block
 
-The marker-delimited region in an agent's global instruction file holding the
+The managed block in an agent's global instruction file holding the
 composed `instructions/` fragments. It is not a skill: skills load on demand,
 an instruction block applies to every session. Content outside the markers is
 never this repo's to touch.
