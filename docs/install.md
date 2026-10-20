@@ -170,9 +170,8 @@ Upstream skills named in the script's `EXCLUDED` set are never vendored:
 `improve-codebase-architecture` is left out because this catalogue forks it
 as `improve-codebase` (#492), so cloud sessions offer one such command, not two.
 `ask-matt` is left out because it was deleted by hand on 2026-10-13, and a re-run
-would bring it back. `pr` stays left out: it was excluded when the catalogue forked it as
-`pr-description` (#518, ADR-0009), and after that fork was removed (#544)
-this repo still ships no PR-description skill
+would bring it back. Pocock's `pr` is vendored again since 2026-10-20 at the
+user's request; the catalogue itself still ships no PR-description skill
 (`.out-of-scope/pr-description-skill.md`).
 `chief-of-staff` is still in upstream's `in-progress/` and is vendored anyway
 (`INCLUDED_IN_PROGRESS`): it runs the long-lived goal sessions recorded in

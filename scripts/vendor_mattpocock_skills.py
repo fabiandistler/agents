@@ -38,12 +38,9 @@ VENDOR_DIR = REPO_ROOT / ".claude" / "vendor" / "mattpocock-skills"
 LOCK_PATH = VENDOR_DIR / "lock.json"
 UPSTREAM = "https://github.com/mattpocock/skills.git"
 # Never vendored: improve-codebase-architecture is forked into this catalogue as
-# `improve-codebase` (#492, ADR-0008). pr was forked as `pr-description` (#518,
-# ADR-0009); that fork is removed (#544) and this repo ships no PR-description
-# skill, so pr stays excluded (.out-of-scope/pr-description-skill.md).
-# ask-matt was deleted by hand on 2026-10-13 (5fc4f2f); excluding it keeps a re-run
+# `improve-codebase` (#492, ADR-0008). ask-matt was deleted by hand on 2026-10-13 (5fc4f2f); excluding it keeps a re-run
 # from bringing it back. A previously vendored copy is removed on re-run.
-EXCLUDED = frozenset({"ask-matt", "improve-codebase-architecture", "pr"})
+EXCLUDED = frozenset({"ask-matt", "improve-codebase-architecture"})
 # Unreleased upstream skills vendored anyway: chief-of-staff runs the long-lived
 # goal sessions whose record lives in docs/wiki/.
 INCLUDED_IN_PROGRESS = ("chief-of-staff",)

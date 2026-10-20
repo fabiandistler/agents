@@ -8,6 +8,9 @@ Superseded (2026-10-20): the `pr-description` skill is removed
 ([#544](https://github.com/fabiandistler/agents/issues/544)); the user does not
 need it. Pocock's `pr` stays unvendored. The text below is kept as history.
 
+Amended (2026-10-20): at the user's request Pocock's `pr` is vendored into
+`.claude/skills/` again; the catalogue ships no PR-description skill.
+
 ## Context
 
 Matt Pocock's `pr` skill writes a pull request body: a summary drawn in the
