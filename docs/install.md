@@ -158,7 +158,7 @@ should have:
 | `.claude/skills/<name>` | symlinks to this repo's `coding` skills (routers, unrouted skills, command skills) | `scripts/build_project_claude.py` |
 | `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
 | `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
-| `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
+| `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
 After changing a skill's frontmatter or an instruction fragment, the prek
@@ -169,10 +169,14 @@ commit again); without them, regenerate the manifest and then run
 Upstream skills named in the script's `EXCLUDED` set are never vendored:
 `improve-codebase-architecture` is left out because this catalogue forks it
 as `improve-codebase` (#492), so cloud sessions offer one such command, not two.
-`pr` stays left out: it was excluded when the catalogue forked it as
+`ask-matt` is left out because it was deleted by hand on 2026-10-13, and a re-run
+would bring it back. `pr` stays left out: it was excluded when the catalogue forked it as
 `pr-description` (#518, ADR-0009), and after that fork was removed (#544)
 this repo still ships no PR-description skill
 (`.out-of-scope/pr-description-skill.md`).
+`chief-of-staff` is still in upstream's `in-progress/` and is vendored anyway
+(`INCLUDED_IN_PROGRESS`): it runs the long-lived goal sessions recorded in
+`docs/wiki/`.
 
 Locally the same project skills would duplicate the marketplace plugins, so
 `.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
