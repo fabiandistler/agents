@@ -25,3 +25,9 @@
   command skill. Read as the user's answer to the open question.
 - 2026-10-19: #537, #538 and #534 merged; all PRs of this session landed.
   SessionStart hook cold-start time still unmeasured.
+- 2026-10-20: #540 (router-reference check, 63 refs fixed), #541 (prek
+  hooks regenerate skills.json/routers/.claude on commit; ~0.5 s per
+  commit) and #542 (runnable commands in repo-status, release-pr,
+  MAINTENANCE.md; check_gh_graphql scans root *.md) merged.
+- 2026-10-20: SessionStart hook cold-start time still unmeasured: the
+  container resumed with yesterday's cache, so no cold run happened.

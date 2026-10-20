@@ -13,3 +13,7 @@
 Related: [unrunnable commands](unrunnable-skill-commands.md).
 - 2026-10-19: Resolved in favour of rewriting, see
   [decision](../decisions/2026-10-19-router-references.md).
+- 2026-10-20: Enforced by `scripts/check_skill_refs.py` (#540), including
+  frontmatter `description`/`when_to_use`. Known leniencies: names near a
+  URL/author credit count as external; after one router-form mention a file
+  may use the short name.
