@@ -72,3 +72,34 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks
+
+  # Generated files: skills.json, the router member tables and the .claude/
+  # mirror. Each hook runs its generator's --check and, on drift, regenerates
+  # and fails, so the commit stops with the regenerated files ready to stage
+  # (git add, commit again). Failing on --check, not on a modified-files diff,
+  # also catches new untracked .claude/ symlinks. `files:` lists each
+  # generator's inputs (including upstream generators' inputs, since
+  # skills.json is not staged yet in the same commit), so commits that touch
+  # none of them skip the hooks. Deleted files never reach `files:`, so CI's
+  # --check gates (scripts/check_all.sh) stay the backstop. Order matters:
+  # routers and .claude/ read skills.json.
+  - repo: local
+    hooks:
+      - id: build-manifest
+        name: regenerate skills.json
+        language: system
+        entry: bash -c 'python3 scripts/build_manifest.py --check || { python3 scripts/build_manifest.py; exit 1; }'
+        pass_filenames: false
+        files: ^(skills/.*SKILL\.md|skills\.json|scripts/build_manifest\.py)$
+      - id: build-routers
+        name: regenerate router member tables
+        language: system
+        entry: bash -c 'python3 scripts/build_routers.py --check || { python3 scripts/build_routers.py; exit 1; }'
+        pass_filenames: false
+        files: ^(skills/.*SKILL\.md|skills\.json|scripts/build_(manifest|routers)\.py)$
+      - id: build-project-claude
+        name: regenerate .claude/ skills, agents and rules
+        language: system
+        entry: bash -c 'python3 scripts/build_project_claude.py --check || { python3 scripts/build_project_claude.py; exit 1; }'
+        pass_filenames: false
+        files: ^(skills/.*SKILL\.md|skills\.json|instructions/.*\.md|plugins/[^/]+/agents/.*\.md|\.claude/(skills|agents|rules)/.*|scripts/build_(manifest|project_claude)\.py)$
