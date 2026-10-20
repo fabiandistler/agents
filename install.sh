@@ -311,7 +311,7 @@ codex_config_path() { printf '%s/.codex/config.toml' "$HOME"; }
 # Replace ~/.codex/config.toml with the given content, atomically. A plain
 # `> "$config"` truncates before writing, so an interrupt in between leaves a
 # file we do not own in pieces; a temp file plus mv either lands whole or not
-# at all. install_codex_member_overrides already writes this way.
+# at all.
 write_codex_config() {
   local config="$1" content="$2"
   local tmp="$config.tmp.$$"
@@ -499,30 +499,32 @@ install_codex_member_overrides() {
     remove_codex_member_overrides
     return 0
   fi
-  if ((DRY_RUN)); then
-    remove_codex_member_overrides
-    printf '[dry-run] disable %s routed member skills in %s\n' "$count" "$config"
-    return 0
-  fi
-  mkdir -p "$(dirname "$config")"
-  [[ -f "$config" ]] || : >"$config"
-  if ! skill_override_markers_balanced <"$config"; then
+  local before=""
+  [[ -f "$config" ]] && before="$(cat "$config")"
+  if ! skill_override_markers_balanced <<<"$before"; then
     printf '  WARN      unbalanced skill-override marker lines in %s (leaving it untouched)\n' \
       "$config" >&2
     return 0
   fi
-  local rest toml
-  rest="$(strip_skill_override_block <"$config")"
+  local after toml block
+  after="$(strip_skill_override_block <<<"$before")"
   toml="$(printf '%s' "$members" | render_skill_override_toml)"
-  {
-    if [[ -n "$rest" ]]; then printf '%s\n\n' "$rest"; fi
-    skill_override_begin_marker
-    printf '\n'
-    printf '%s\n' "$toml"
-    skill_override_end_marker
-    printf '\n'
-  } >"$config.tmp.$$"
-  mv "$config.tmp.$$" "$config"
+  block="$(skill_override_begin_marker)"$'\n'"$toml"$'\n'"$(skill_override_end_marker)"
+  if [[ -n "$after" ]]; then
+    after="$after"$'\n\n'"$block"
+  else
+    after="$block"
+  fi
+  if [[ "$after" == "$before" ]]; then
+    printf '  ok        %s (%s routed members disabled)\n' "$config" "$count"
+    return 0
+  fi
+  if ((DRY_RUN)); then
+    printf '[dry-run] disable %s routed member skills in %s\n' "$count" "$config"
+    return 0
+  fi
+  mkdir -p "$(dirname "$config")"
+  write_codex_config "$config" "$after"
   printf '  skills    %s routed members disabled in %s\n' "$count" "$config"
 }
 
