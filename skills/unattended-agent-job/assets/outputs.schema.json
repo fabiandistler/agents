@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "outputs.schema.json",
+  "title": "Unattended agent job: LLM step outputs",
+  "description": "Everything the LLM step may hand to the publisher, as outputs/outputs.json next to an optional outputs/patch.diff. The publisher rejects any file that fails this schema. Targets (which issue, which branch, which repository) are publisher configuration, never LLM output. Copy this file into the job and delete the kinds the job does not emit; tighten the caps to the job's real needs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "summary"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "summary": {
+      "description": "One line for the run log: what the step found or changed.",
+      "type": "string",
+      "maxLength": 300
+    },
+    "noop": {
+      "description": "Set when the run found nothing to do. Silence is a valid outcome; the publisher writes nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": { "reason": { "type": "string", "maxLength": 300 } }
+    },
+    "patch": {
+      "description": "A unified diff in outputs/patch.diff. The publisher runs scripts/validate_patch.py on it before applying anything.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file"],
+      "properties": {
+        "file": { "const": "patch.diff" },
+        "commit_message": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "pr": {
+      "description": "Pull request for the validated patch. The publisher picks the branch name and base; requires `patch`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "body"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "body": { "type": "string", "maxLength": 10000 }
+      }
+    },
+    "issue_body": {
+      "description": "Replacement body for the job's one configured issue.",
+      "type": "string",
+      "maxLength": 60000
+    },
+    "comment": {
+      "description": "One comment on the job's configured issue or PR.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5000
+    }
+  },
+  "dependentRequired": { "pr": ["patch"] },
+  "not": { "required": ["noop", "patch"] }
+}

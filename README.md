@@ -131,6 +131,7 @@ still listed here.
 |---|---|
 | `skills/llm-application-engineering/` | Diagnosing LLM output failures, ordering LLM app architecture builds, defining production monitoring metrics, or applying craft-level conventions for prompting, evaluation/LLM-judges, guardrails, finetuning, and training data. |
 | `skills/ml-project-lifecycle/` | Scoping an ML project, picking a model/baseline, handling missing data, or planning pipelines and staged deployment. |
+| `skills/unattended-agent-job/` | Designing or auditing a scheduled or CI agent job so the LLM step holds no write credential — write inventory, privilege ladder, output contract, a model-free patch validator, idempotency, and pre-flight. |
 
 ### Workflow & planning (`workflow`)
 

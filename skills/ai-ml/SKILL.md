@@ -4,7 +4,7 @@ category: ai-ml
 activation: router
 environments: coding
 description: "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill."
-when_to_use: "Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting."
+when_to_use: "Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain, is it safe to let a nightly bot push or open PRs on its own. Not for generic data wrangling or plotting."
 ---
 
 # AI & ML
@@ -37,6 +37,7 @@ model's trigger surface.
 |---|---|---|
 | llm-application-engineering | Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring. | `members/llm-application-engineering/SKILL.md` |
 | ml-project-lifecycle | Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining. | `members/ml-project-lifecycle/SKILL.md` |
+| unattended-agent-job | Design or audit a scheduled or CI agent job so the LLM step only emits a patch or outputs file and a model-free step validates and publishes it. | `members/unattended-agent-job/SKILL.md` |
 <!-- END generated:members -->
 
 The table above is generated from `skills.json` by

@@ -19,3 +19,4 @@ managed-by: fabiandistler/agents build_project_claude.py
   - An unattended LLM step never holds a write credential; it emits a patch artifact, a separate model-free step validates and publishes it.
   - Enforce scope outside the prompt: check every changed path against an anchored allowlist, including untracked files (`git ls-files --others --exclude-standard`), and stage only that list.
   - Agent self-edits (prompt, workflow, references) pass the same allowlist and human PR; an edit loosening tools, tokens or permissions is reported, never applied.
+  - Designing or auditing such a job: read the `ai-ml` router's `unattended-agent-job` member (`members/unattended-agent-job/SKILL.md`).

@@ -94,6 +94,7 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 |---|---|
 | [llm-application-engineering](skills/llm-application-engineering/SKILL.md) | Diagnosing LLM output failures, ordering LLM app architecture builds, defining production monitoring metrics, or applying craft-level conventions for prompting, evaluation/LLM-judges, guardrails, finetuning, and training data. |
 | [ml-project-lifecycle](skills/ml-project-lifecycle/SKILL.md) | Scoping an ML project, picking a model/baseline, handling missing data, or planning pipelines and staged deployment. |
+| [unattended-agent-job](skills/unattended-agent-job/SKILL.md) | Designing or auditing a scheduled or CI agent job so the LLM step holds no write credential — write inventory, privilege ladder, output contract, a model-free patch validator, idempotency, and pre-flight. |
 
 ### Workflow & planning (`workflow`)
 
