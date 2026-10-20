@@ -169,9 +169,10 @@ commit again); without them, regenerate the manifest and then run
 Upstream skills named in the script's `EXCLUDED` set are never vendored:
 `improve-codebase-architecture` is left out because this catalogue forks it
 as `improve-codebase` (#492), so cloud sessions offer one such command, not two.
-`pr` is left out for the same reason: the catalogue forks it as
-`pr-description` (#518, ADR-0009), so cloud sessions offer one PR-description
-skill, not two.
+`pr` stays left out: it was excluded when the catalogue forked it as
+`pr-description` (#518, ADR-0009), and after that fork was removed (#544)
+this repo still ships no PR-description skill
+(`.out-of-scope/pr-description-skill.md`).
 
 Locally the same project skills would duplicate the marketplace plugins, so
 `.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
