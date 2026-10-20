@@ -285,7 +285,7 @@
     },
     {
       "name": "unattended-agent-job",
-      "summary": "Design or audit a scheduled or CI agent job so the LLM step only emits a patch or outputs file and a model-free step validates and publishes it.",
+      "summary": "Designs or audits a scheduled or CI agent job so the LLM step only emits a patch or outputs file and a model-free step validates and publishes it.",
       "category": "ai-ml",
       "path": "skills/unattended-agent-job/SKILL.md",
       "environments": [

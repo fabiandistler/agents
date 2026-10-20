@@ -3,11 +3,14 @@
     "I want a nightly job where Claude fixes lint warnings and opens a PR — how do I set that up safely?",
     "Our scheduled agent run has a GitHub token with write access. Is that a problem, and what should it look like instead?",
     "A bot should update a weekly status issue automatically without anyone watching — how do I stop it from editing the wrong things?",
-    "Review this GitHub Actions workflow that runs codex exec on a cron and pushes the result"
+    "Review this GitHub Actions workflow that runs codex exec on a cron and pushes the result",
+    "Can Claude on a weekly schedule merge its own PRs?"
   ],
   "should_not_trigger": [
     "My agent keeps calling the wrong tool in an interactive chat session — how do I fix tool selection?",
-    "Set up a cron job that runs pytest every night and emails the result"
+    "Set up a cron job that runs pytest every night and emails the result",
+    "How do I build an LLM judge that grades the summaries our summarizer produces?",
+    "My agent's tool loop never terminates — it keeps calling the search tool until it hits the step limit. How do I fix it?"
   ],
   "expected_behavior": "Inventory every external write with its step and credential, place the job on the ladder (direct write → branch-only → emitted outputs → validated outputs), and propose a model-free publisher with an allowlist and diff-budget gate plus an entry-condition re-check immediately before the write; link to the pipeline rules instead of restating them."
 }

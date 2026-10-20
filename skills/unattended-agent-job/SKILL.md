@@ -2,7 +2,7 @@
 name: unattended-agent-job
 category: ai-ml
 environments: coding
-description: "Design or audit a scheduled or CI agent job so the LLM step only emits a patch or outputs file and a model-free step validates and publishes it. Covers credential split, output contract, allowlist gate, idempotency, pre-flight."
+description: "Designs or audits a scheduled or CI agent job so the LLM step only emits a patch or outputs file and a model-free step validates and publishes it. Not for prompt or eval quality (use the ai-ml router)."
 metadata:
   version: "1.0"
 ---
@@ -84,19 +84,26 @@ against the schema and refuses the whole run on a failure.
 
 ### 4. Wire the validator
 
-The publisher, on a clean checkout of the base commit, runs:
+The publisher downloads the outputs **outside** the checkout (on GitHub
+Actions `$RUNNER_TEMP/outputs/`) — a file inside it would count as an
+untracked change, and the validator refuses a `--patch` inside `--repo`. Then,
+on a clean checkout of the base commit, it runs:
 
 ```bash
-python3 scripts/validate_patch.py --repo . --patch outputs/patch.diff \
+python3 scripts/validate_patch.py --repo . \
+  --patch "$RUNNER_TEMP/outputs/patch.diff" \
   --allowlist <allowlist file> --max-lines <budget> \
   --protected '<job prompt>' --protected '<workflow file>'
 ```
 
 It is read-only and prints one JSON report; `--help` lists the flags and exit
-codes. Branch on the exit code: 0 apply and publish; 6 (protected path) open a
-PR for a human instead; anything else abort with no write. Keep the allowlist
-file in a protected path, so the job cannot widen its own scope. After the
-gate, stage exactly the validated paths, never `git add -A`.
+codes. It rejects symlinks, submodules, binary patches, absolute, `..` and
+`.git` paths, and modified tracked files in the checkout; it lists
+executable-bit changes in the report. It assumes a case-sensitive (Linux)
+checkout and matches `--protected` case-insensitively. Branch on the exit
+code: 0 apply and publish; 6 (protected path) open a PR for a human instead;
+anything else abort with no write. For where the allowlist lives and what to
+stage after the gate, follow the fragment's scope and self-edit bullets.
 
 ### 5. Decide state and the re-check
 
@@ -148,6 +155,7 @@ sheet gets that one sentence.
 - Inventorying only the writes the prompt asks for, while an included
   connector or token permits more.
 - Letting the LLM pick the write target (issue number, branch, repository).
-- Checking the entry condition only at the start of the run.
+- Skipping any bullet of the fragment's *Writing into external systems*
+  section; this list does not repeat them.
 - Keeping "already done" state in the clock and forgetting manual fires.
 - Reading a green run status as success: confirm what was written.
