@@ -53,9 +53,9 @@ def _run(tmp_path: Path, monkeypatch, *, with_in_progress: bool = True) -> int:
 def test_in_progress_skill_is_vendored_and_excluded_are_not(tmp_path, monkeypatch):
     skills_dir, vendor_dir = tmp_path / "skills", tmp_path / "vendor"
     assert _run(tmp_path, monkeypatch) == 0
-    assert sorted(p.name for p in skills_dir.iterdir()) == ["chief-of-staff", "tdd"]
+    assert sorted(p.name for p in skills_dir.iterdir()) == ["chief-of-staff", "pr", "tdd"]
     lock = json.loads((vendor_dir / "lock.json").read_text(encoding="utf-8"))
-    assert lock["skills"] == ["chief-of-staff", "tdd"]
+    assert lock["skills"] == ["chief-of-staff", "pr", "tdd"]
 
 
 def test_missing_in_progress_skill_fails_without_writing(tmp_path, monkeypatch):

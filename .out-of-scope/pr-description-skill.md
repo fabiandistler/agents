@@ -3,9 +3,12 @@
 This catalogue ships no skill whose job is writing a pull request title or
 body. `pr-description` (#518, ADR-0009) did that — German title and body, an
 executed before/after reprex, the change in the smallest fitting visual, a
-reading order, checks run — and was removed on 2026-10-20 (#544). Matt
-Pocock's `pr` is not vendored into `.claude/skills/` either. This project
-keeps it that way.
+reading order, checks run — and was removed on 2026-10-20 (#544). This
+project keeps it that way.
+
+On 2026-10-20, after #544, the user asked for Matt Pocock's `pr` back. It is
+vendored into `.claude/skills/` again. That copy serves cloud sessions in this
+repo only and is not part of the catalogue, so this record still holds.
 
 ## Why this is out of scope
 
@@ -25,8 +28,8 @@ upstream added maintenance with no reader to show for it.
 `release-pr-body-language.md`), and `poc-spec-loop` opens its pull request
 itself. Neither depended on `pr-description`.
 
-Anyone who wants Pocock's `pr` can install the mattpocock-skills plugin; that
-is outside this catalogue.
+Elsewhere, anyone who wants Pocock's `pr` can install the mattpocock-skills
+plugin; that is outside this catalogue.
 
 ## What would reopen it
 
