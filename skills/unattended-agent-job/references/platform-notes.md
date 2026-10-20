@@ -9,7 +9,8 @@ note older than three months. Next review: 2027-01-20.
 Split the job into two jobs. `agent` runs the LLM with `permissions:
 contents: read` (plus nothing else) and uploads `outputs/` as an artifact;
 `publish` declares `needs: agent`, holds the write permissions, downloads the
-artifact, validates it, re-checks the entry condition, and writes. Secrets
+artifact to `$RUNNER_TEMP/outputs/` (outside the checkout, so it never counts
+as an untracked change), validates it, re-checks the entry condition, and writes. Secrets
 the publisher needs are referenced only in `publish`. A workflow triggered by
 comments or issue text runs on untrusted input: the job sheet's
 untrusted-input row applies.
