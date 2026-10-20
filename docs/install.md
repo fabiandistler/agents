@@ -161,9 +161,10 @@ should have:
 | `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
-After changing a skill's frontmatter or an instruction fragment, regenerate
-the manifest and then run `python3 scripts/build_project_claude.py`; CI fails
-on drift (`--check`). Refresh the vendored skills with
+After changing a skill's frontmatter or an instruction fragment, the prek
+commit hooks regenerate the manifest and `.claude/` (stage the result and
+commit again); without them, regenerate the manifest and then run
+`python3 scripts/build_project_claude.py`. CI fails on drift (`--check`). Refresh the vendored skills with
 `python3 scripts/vendor_mattpocock_skills.py` (optionally `--ref <sha>`).
 Upstream skills named in the script's `EXCLUDED` set are never vendored:
 `improve-codebase-architecture` is left out because this catalogue forks it
