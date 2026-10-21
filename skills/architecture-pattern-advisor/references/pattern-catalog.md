@@ -47,7 +47,7 @@ Stateless functions run on demand by a managed platform; scale to zero.
 - **Fits:** event-driven glue, scheduled jobs, spiky stateless workloads, webhooks.
 - **Avoid:** steady high-throughput on per-invocation pricing, long-lived connections, unless the platform offers durable or managed-instance modes.
 
-> Platform limits (checked 2026-09): AWS Lambda caps a single invocation at 15 minutes; Cloud Run functions (the renamed Cloud Functions, 2nd gen) allow up to 60 minutes for HTTP functions; Lambda synchronous payloads stay small while response streaming reaches up to 200 MB; Lambda Durable Functions support checkpointed workflows lasting up to 1 year; Lambda Managed Instances target steady high-volume traffic. Recheck before deciding, these numbers move.
+> Platform limits (per-invocation time cap, payload and response size, durable-workflow length, steady-traffic modes) differ by provider and change often. Check the provider's current limits before deciding; a cap that rules out serverless for a long job may have moved.
 
 > **Note:** Event-Driven (see Advanced section below) is a *communication style* that overlays any topology, not a topology itself — a monolith, microservices deployment, or serverless cluster can all be event-driven internally.
 
