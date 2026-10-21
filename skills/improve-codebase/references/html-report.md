@@ -28,6 +28,7 @@ looks generic.
   <head>
     <meta charset="utf-8" />
     <title>Architecture review for {{repo name}}</title>
+    <!-- Tailwind Play CDN is unversioned; fine for a throwaway local report. -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
