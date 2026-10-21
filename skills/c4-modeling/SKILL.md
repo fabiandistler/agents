@@ -2,14 +2,13 @@
 name: c4-modeling
 category: architecture
 environments: coding, chat
-description: Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4). Drafts a C4 model with the user from one element/relationship table and renders it as Mermaid.
+description: Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code). Use when asked to draw or document a system as C4 diagrams.
 compatibility: No dependencies — Mermaid renders natively on GitHub, GitLab, and most Markdown tools, and in VS Code with a Mermaid extension. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.
 ---
 
 # C4 Modeling
 
-The C4 model (Simon Brown, c4model.com) describes a software system at four zoom levels — **Context, Containers, Components, Code**.
-This skill drafts that model *with* the user in a short interview, then renders the agreed diagrams as Mermaid so they display directly in the repository and in chat.
+This skill drafts a C4 model (c4model.com) *with* the user in a short interview, then renders the agreed diagrams as Mermaid so they display directly in the repository and in chat.
 
 The one habit that makes C4 diagrams stay consistent: **model first, diagrams
 second.** All diagrams are projections of one element/relationship table; you
@@ -27,15 +26,18 @@ itself (→ `members/logical-component-design/SKILL.md`) or choosing topology / 
 
 Reference pages:
 
-- [references/c4-best-practices.md](references/c4-best-practices.md) — the
+- [references/c4-best-practices.md](references/c4-best-practices.md) (step 1
+  for diagram choice, step 5 for review) — the
   four abstractions, all six diagram types with audience guidance, notation
   rules, and the full review checklist.
-- [references/mermaid-c4-guide.md](references/mermaid-c4-guide.md) — complete
+- [references/mermaid-c4-guide.md](references/mermaid-c4-guide.md) (step 3) — complete
   Mermaid C4 syntax, layout control, known limitations, and the styled
   flowchart fallback.
-- [references/c4-plantuml-guide.md](references/c4-plantuml-guide.md) —
+- [references/c4-plantuml-guide.md](references/c4-plantuml-guide.md) (step 4,
+  only when PlantUML output is wanted) —
   optional C4-PlantUML alternative for publication-grade rendering.
 - [assets/context-container-template.md](assets/context-container-template.md)
+  (steps 2–3)
   — a worked example (model table + Context + Container diagram) to copy from.
 
 ## Workflow
@@ -133,7 +135,7 @@ editors to change the table first. If the user needs publication-grade visuals
 [references/c4-plantuml-guide.md](references/c4-plantuml-guide.md) — the model
 table makes this a mechanical translation. If the model outgrows one table
 (more than about 30 elements or several systems), move it to Structurizr DSL
-(Structurizr vNext) or LikeC4 and export Mermaid or PlantUML; the table maps
+or LikeC4 and export Mermaid or PlantUML; the table maps
 one to one onto that source.
 
 If architectural decisions surfaced during drafting ("why is search its own

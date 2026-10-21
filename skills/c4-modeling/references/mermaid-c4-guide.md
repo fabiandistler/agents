@@ -134,7 +134,7 @@ order; one scenario per diagram.
 | Relationship labels overlap | `UpdateRelStyle(..., $offsetX/$offsetY)` |
 | No automatic legend | Add a one-line key under the diagram in Markdown ("gray = external"), or use the flowchart fallback with a legend subgraph |
 | No links/tooltips on elements | Put element details in the model table above the diagram |
-| Renderer major differs (GitHub vs mmdc, Mermaid 12 ELK default and neo look) | Mermaid C4 stays experimental; check with the target renderer early, and set `config: {look: classic, layout: dagre}` in the diagram frontmatter to keep the C4 palette and layout stable |
+| Renderer major differs (GitHub vs mmdc; a newer major may change the default layout engine or look) | Mermaid C4 stays experimental; check with the target renderer early, and set `config: {look: classic, layout: dagre}` in the diagram frontmatter to keep the C4 palette and layout stable |
 
 ## Flowchart fallback (C4-styled)
 

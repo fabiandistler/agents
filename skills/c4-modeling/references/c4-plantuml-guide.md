@@ -24,8 +24,9 @@ with PlantUML ≥ 2020) or from the C4-PlantUML repo:
 @startuml
 !include <C4/C4_Context>      ' or C4_Container, C4_Component,
                               '    C4_Dynamic, C4_Deployment
-' offline/pinned alternative:
-' !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+' pinned alternative: replace <tag> with a release tag of
+' plantuml-stdlib/C4-PlantUML, never the moving master branch
+' !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/<tag>/C4_Container.puml
 @enduml
 ```
 

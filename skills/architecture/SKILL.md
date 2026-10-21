@@ -35,7 +35,7 @@ model's trigger surface.
 | Sub-skill | When to use | Read before acting |
 |---|---|---|
 | architecture-pattern-advisor | Guides choosing a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). | `members/architecture-pattern-advisor/SKILL.md` |
-| c4-modeling | Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4). | `members/c4-modeling/SKILL.md` |
+| c4-modeling | Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code). | `members/c4-modeling/SKILL.md` |
 | coupling-cohesion | Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov). | `members/coupling-cohesion/SKILL.md` |
 | ddd | Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing. | `members/ddd/SKILL.md` |
 | fitness-functions | Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes. | `members/fitness-functions/SKILL.md` |

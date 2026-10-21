@@ -32,7 +32,7 @@
     },
     {
       "name": "c4-modeling",
-      "summary": "Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4).",
+      "summary": "Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code).",
       "category": "architecture",
       "path": "skills/c4-modeling/SKILL.md",
       "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, and most Markdown tools, and in VS Code with a Mermaid extension. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
