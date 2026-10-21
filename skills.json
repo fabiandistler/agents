@@ -63,7 +63,7 @@
     },
     {
       "name": "ddd",
-      "summary": "Domain-Driven Design: subdomain classification, context mapping and legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing.",
+      "summary": "Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing.",
       "category": "architecture",
       "path": "skills/ddd/SKILL.md",
       "environments": [
