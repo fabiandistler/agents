@@ -153,7 +153,7 @@
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining.",
+      "summary": "Guides a classical ML project — framing, baselines, model choice, missing data, deployment, retraining.",
       "category": "ai-ml",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "environments": [
