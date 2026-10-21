@@ -70,7 +70,7 @@ yourpkg::main_function(example_data)
   live examples to small data.
 
 Source: forge pass 2026-10-03 on the webR docs (docs.r-wasm.org, webR 0.6.0)
-and the quarto-live README; review in Todoist (Tickler, 2027-06-21).
+and the quarto-live README.
 
 ## Failure modes
 

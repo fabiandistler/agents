@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# poc-spec-loop / Phase 2 driver — SKELETON, not yet run against a real PoC.
+# poc-spec-loop / Phase 2 driver. Not yet run against a real PoC (tests use
+# stub CLIs).
 #
 # Owns everything the per-task prompt must not carry: branch, item selection,
 # fresh-context invocation, check execution, attempts/BLOCKED bookkeeping,

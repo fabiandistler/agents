@@ -3,7 +3,7 @@
   "skills": [
     {
       "name": "ai-ml",
-      "summary": "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill. - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting.",
+      "summary": "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill. - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting, SDK/API syntax, or MCP server implementation.",
       "category": "ai-ml",
       "path": "skills/ai-ml/SKILL.md",
       "activation": "router",
@@ -13,7 +13,7 @@
     },
     {
       "name": "architecture",
-      "summary": "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, coupling/cohesion analysis, CI architecture rules, and SQL schemas as stable consumer interfaces. - Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors.",
+      "summary": "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, coupling/cohesion analysis, and CI architecture rules. - Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors.",
       "category": "architecture",
       "path": "skills/architecture/SKILL.md",
       "activation": "router",
@@ -23,7 +23,7 @@
     },
     {
       "name": "architecture-pattern-advisor",
-      "summary": "Choose a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion), not generic project setup.",
+      "summary": "Guides choosing a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion).",
       "category": "architecture",
       "path": "skills/architecture-pattern-advisor/SKILL.md",
       "environments": [
@@ -32,7 +32,7 @@
     },
     {
       "name": "c4-modeling",
-      "summary": "Diagram how a software system fits together at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code / level 4).",
+      "summary": "Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code).",
       "category": "architecture",
       "path": "skills/c4-modeling/SKILL.md",
       "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, and most Markdown tools, and in VS Code with a Mermaid extension. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
@@ -43,7 +43,7 @@
     },
     {
       "name": "communication-analysis",
-      "summary": "Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
+      "summary": "Analyzes or rewrites a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
       "category": "communication",
       "path": "skills/communication-analysis/SKILL.md",
       "environments": [
@@ -63,7 +63,7 @@
     },
     {
       "name": "ddd",
-      "summary": "Domain-Driven Design: subdomain classification, context mapping and legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing.",
+      "summary": "Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing.",
       "category": "architecture",
       "path": "skills/ddd/SKILL.md",
       "environments": [
@@ -73,7 +73,7 @@
     },
     {
       "name": "documentation",
-      "summary": "Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, or package docs.",
+      "summary": "Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes.",
       "category": "communication",
       "path": "skills/documentation/SKILL.md",
       "environments": [
@@ -83,7 +83,7 @@
     },
     {
       "name": "fitness-functions",
-      "summary": "Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes.",
+      "summary": "Designs and implements architecture fitness functions — automated CI checks that fail the build when a characteristic such as modularity, layering, coupling, security, or resilience erodes.",
       "category": "architecture",
       "path": "skills/fitness-functions/SKILL.md",
       "environments": [
@@ -102,7 +102,7 @@
     },
     {
       "name": "hypertrophy-training",
-      "summary": "Evidence-based hypertrophy programming and auto-regulation with plateau diagnosis for experienced trainees.",
+      "summary": "Evidence-based hypertrophy programming, auto-regulation and plateau diagnosis for experienced trainees, including training under elevated injury risk and the return after an injury.",
       "category": "personal",
       "path": "skills/hypertrophy-training/SKILL.md",
       "environments": [
@@ -153,7 +153,7 @@
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining.",
+      "summary": "Guides a classical ML project — framing, baselines, model choice, missing data, deployment, retraining.",
       "category": "ai-ml",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "environments": [
@@ -185,7 +185,7 @@
     },
     {
       "name": "poc-spec-loop",
-      "summary": "Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request.",
+      "summary": "Takes a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec, then a per-task TDD loop with fresh context up to a pull request.",
       "category": "workflow",
       "path": "skills/poc-spec-loop/SKILL.md",
       "activation": "command",
@@ -208,7 +208,7 @@
     },
     {
       "name": "pypet-snippets",
-      "summary": "Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.",
+      "summary": "Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, including proposing one from commands that recur in shell history.",
       "category": "workflow",
       "path": "skills/pypet-snippets/SKILL.md",
       "activation": "command",
@@ -252,7 +252,7 @@
     },
     {
       "name": "stakeholder-update",
-      "summary": "Writing a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.",
+      "summary": "Drafts a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.",
       "category": "communication",
       "path": "skills/stakeholder-update/SKILL.md",
       "environments": [

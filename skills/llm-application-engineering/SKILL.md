@@ -2,7 +2,7 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring."
+description: "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring. Use when building or debugging an app on top of an LLM."
 metadata:
   version: "1.2"
 ---
@@ -61,7 +61,7 @@ fix the root cause.
 | 2 | **Structured outputs** | Schema-constrained outputs or tool schemas for format failures — fix format without training. |
 | 3 | **Few-shot prompting** | A few diverse canonical examples; on reasoning models try zero-shot first and skip step-by-step scaffolds. |
 | 4 | **Stronger model** | A stronger model or enabled reasoning when the failure is capability, not knowledge. |
-| 5 | **Cached long context** | Whole knowledge base in a cached prompt under about 200k tokens; still prefer retrieval for fact-seeking or freshness-critical data. |
+| 5 | **Cached long context** | Whole knowledge base in a cached prompt that fits the model's context window (check the provider's current limits); still prefer retrieval for fact-seeking or freshness-critical data. |
 | 6 | **Retrieval** | Hybrid plus contextual chunks plus rerank as the default, or agentic search, when the failure is missing information. |
 | 7 | **Finetuning** | Used when the problem is *behavior* (irrelevant, unsafe responses), not missing knowledge or format. Largest boost combined with retrieval, at the highest complexity. |
 
@@ -151,7 +151,7 @@ preemptively.
 | 1 | **Enhance and minimize context** | Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/ai-engineering-conventions.md` | Always first — poor context is the most common cause of poor output |
 | 2 | **Put in guardrails** | Input protection (prompt-injection detection, PII filtering) and output protection (hallucination/toxicity filters) | As soon as real users can reach the system |
 | 3 | **Add router and gateway** | Router sends each request to the right model (e.g. cheap model for simple queries); gateway unifies the interface across self-hosted models and APIs, centralizing load balancing, logging, caching, guardrails | As soon as more than one model or provider is in use |
-| 4 | **Reduce latency with caches** | Prompt cache for shared prefixes first (hosted APIs, cache reads ~0.1× input price); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable | As soon as requests repeat, or individual calls are expensive |
+| 4 | **Reduce latency with caches** | Prompt cache for shared prefixes first (hosted APIs, cache reads cost a fraction of input price; check current provider pricing); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable | As soon as requests repeat, or individual calls are expensive |
 | 5a | **Add predefined workflows** | Chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer — fixed paths where generated output feeds back into the system | When the path through the system can be predefined |
 | 5b | **Add autonomous agents** | The model plans its own path and the system may take write actions | Last, and only when the path cannot be predefined — agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation |
 

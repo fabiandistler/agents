@@ -2,7 +2,7 @@
 name: ddd
 category: architecture
 environments: coding
-description: "Domain-Driven Design: subdomain classification, context mapping and legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing."
+description: "Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing. Use for DDD design or review."
 metadata:
   version: "2.0"
 ---
@@ -24,7 +24,7 @@ the code-review checklist while writing.
 
 ## Core principle
 
-Match the investment to the value. A subdomain's strategic classification
+A subdomain's strategic classification
 (Core / Generic / Supporting) should drive both *how much* engineering effort
 it gets and *which tactical pattern* implements it. Never let architectural
 enthusiasm outrun the subdomain's actual importance.
@@ -37,7 +37,7 @@ Walk questions 1–4 in order and stop at the first "yes"; question 5 is a follo
 2. **Does the subdomain carry complex, changing business logic or domain invariants that must be enforced** (this is where Core subdomains usually land)? → **Domain Model.**
 3. **Is the data structure complex** (object trees, hierarchies, 1:n or n:m relations) **but the logic is still essentially CRUD**, with no rich business rules to enforce? → **Active Record.**
 4. **Otherwise** (flat/simple data, linear straightforward operation — ETL, batch/report generation, simple CRUD)? → **Transaction Script.**
-5. **Does the system need multiple persistence models** (e.g. a write model and separately optimized read models)? → Layer **CQRS + Event Sourcing**, or a **Ports & Adapters** architecture, on top of whichever pattern steps 1–4 selected — this is an orthogonal concern, not a fifth rung on the ladder.
+5. **Does the system need multiple persistence models** (e.g. a write model and separately optimized read models)? → Layer **CQRS** (add Event Sourcing only if question 1 fired), or a **Ports & Adapters** architecture, on top of whichever pattern steps 1–4 selected — this is an orthogonal concern, not a fifth rung on the ladder.
 
 Testing shape follows the pattern (Ch 10): Transaction Script → reversed pyramid (few unit tests, mostly integration/E2E); Active Record → diamond (integration-heavy); Domain Model and Event-Sourced Domain Model → pyramid (mostly unit tests).
 

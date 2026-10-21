@@ -2,7 +2,7 @@
 name: ml-project-lifecycle
 category: ai-ml
 environments: coding
-description: "Run a classical ML project — training your own model on your own data, not an LLM app: framing, baselines, model choice, missing data, deployment, retraining."
+description: "Guides a classical ML project — framing, baselines, model choice, missing data, deployment, retraining. Use when training a model on your own data, not when building an LLM app."
 metadata:
   version: "1.0"
 ---
@@ -58,7 +58,7 @@ Keep the MCAR/MAR/MNAR taxonomy only for inference and effect estimation, where 
 
 ## Part B — Model selection
 
-### Default model choice (as of 2026-09)
+### Default model choice
 
 Pick the model family from the shape of the data first, and prefer the boring, well-understood option unless the data specifically calls for more:
 
@@ -159,7 +159,7 @@ group_vfold_cv(train, group = entity_id, v = 5)
 sliding_period(train, index = timestamp, period = "month", lookback = 12, assess_stop = 1)
 ```
 
-**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): never hard-code a fixed vocabulary. Prefer one of these: sklearn `OneHotEncoder(handle_unknown="infrequent_if_exist")` or TargetEncoder; recipes `step_novel` plus `step_other` plus `step_dummy_hash`; CatBoost native handling. A hashing trick into a fixed index space (e.g. 2^18 slots) remains a fallback where none of the above fits.
+**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): never hard-code a fixed vocabulary. Prefer one of these: sklearn `OneHotEncoder(handle_unknown="infrequent_if_exist")` or TargetEncoder; recipes `step_novel` plus `step_other`, or textrecipes `step_dummy_hash` (needs `library(textrecipes)`); CatBoost native handling. A hashing trick into a fixed index space (e.g. 2^18 slots) remains a fallback where none of the above fits.
 
 ### Staged deployment
 

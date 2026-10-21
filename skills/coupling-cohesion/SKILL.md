@@ -12,10 +12,6 @@ compatibility: The bundled scripts are stdlib-only Python 3.8+. LCOM analyzes Py
 This skill **measures existing code** along both axes and picks the right lens
 for the question in front of you:
 
-> Start here — what are you judging: one module's togetherness, whole
-> codebase brittleness, or one dependency's balance? Togetherness → Mode A,
-> brittleness → Mode B, one dependency's balance → Mode C.
-
 | Mode | The question | Jump to |
 |---|---|---|
 | **A. Cohesion** | Do this module/class/file's parts belong together — split, merge, or leave? | [Mode A](#mode-a--cohesion-of-a-module) |
@@ -31,6 +27,10 @@ For *greenfield* decomposition of a system that doesn't exist yet, use
 `members/logical-component-design/SKILL.md` (read via the `architecture` router) instead — this skill measures what's already there.
 
 ## When to use
+
+- "Is this `utils.py` a grab-bag — split it or leave it?"
+- "Which of our packages sit in the Zone of Pain?"
+- "Is it OK that the billing service reads the shared customer entity?"
 
 **Not for:** a single function's cyclomatic complexity, choosing an architecture
 from scratch (use `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router), or greenfield component
@@ -149,21 +149,17 @@ Trade-offs: <one line per step-5 question: too small? remaining module growing? 
 Next step: <seam to extract | fold-back target | reason to leave> — <concrete action>
 ```
 
-## Cohesion — worked repo contrast
+## Cohesion — worked contrast
 
-Groups decide, scores only bracketed. A snapshot (October 2026) from the
-skill catalogue repo this skill ships in, file level only; the files live in
-that repo, not in the installed skill, and the numbers drift as they change:
+Groups decide, scores only bracketed. Two file-level shapes recur:
 
-- Cohesive despite a high score: `scripts/build_manifest.py` — 12 functions,
-  `groups=1 [LCOM=42]` — well connected. Trade-offs: nothing to extract, so
-  no split question arises. Leave.
-- Split candidate despite a low score: `scripts/catalogue.py` — 2 functions,
-  `groups=2 [LCOM=1]` — two disjoint groups sharing no symbol, so a real
-  split candidate. Trade-offs: each group is one small function over the same
-  `SkillEntry` catalogue (question 1), so splitting buys a module and nothing
-  else. Leave, with that reason — the groups flag *where* to ask, the
-  questions decide.
+- Cohesive despite a high score: a dozen functions, one group, a large LCOM
+  — well connected. Nothing to extract, so no split question arises. Leave.
+- Split candidate despite a low score: two functions, two groups, LCOM of 1
+  — disjoint groups sharing no symbol. If each group is one small function
+  over the same data (question 1), splitting buys a module and nothing else.
+  Leave, with that reason — the groups flag *where* to ask, the questions
+  decide.
 
 Trust the group count, not the raw score.
 
@@ -224,7 +220,9 @@ respecting that the numbers are blunt and need interpretation.
 Definitions, formulas, the zone map, the SDP/SAP principles behind the Main
 Sequence, and a worked example live in
 [references/metrics.md](references/metrics.md). Fixes per zone live in
-[references/remediation.md](references/remediation.md).
+[references/remediation.md](references/remediation.md); read it together with
+the limitations section of metrics.md, since a flagged zone is a prompt to
+look, not a verdict.
 
 ## Coupling-metrics workflow
 
@@ -355,7 +353,9 @@ it is tolerable only when the shared knowledge is stable (low volatility).
 Dimension definitions, the strength levels with recognition cues, the distance
 and volatility ladders, and the balance quadrants live in
 [references/balanced-coupling-model.md](references/balanced-coupling-model.md).
-Fixes per imbalance live in [references/rebalancing.md](references/rebalancing.md).
+Fixes per imbalance live in [references/rebalancing.md](references/rebalancing.md);
+open it alongside the model page whenever you accept an imbalance as stable, since
+it holds the revisit conditions.
 
 ## Balanced-coupling workflow
 
@@ -457,6 +457,9 @@ Next step: <fix with seam | reason to leave, e.g. stable with revisit condition>
   don't compare. Fix the level in step 1 and stay there.
 
 ---
+
+`scripts/test_*.py` are the bundled scripts' own tests; they are not part of
+any workflow above.
 
 ## Related skills
 

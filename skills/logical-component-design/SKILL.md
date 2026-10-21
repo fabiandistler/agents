@@ -2,7 +2,7 @@
 name: logical-component-design
 category: architecture
 environments: coding
-description: Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. Richards & Ford's iterative, generative identify-and-refine cycle.
+description: Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. Use when asking what components a new system needs.
 ---
 
 # Logical Component Design
@@ -198,14 +198,14 @@ Next iteration / open questions: <unmet checks from above + what to revisit as r
 
 ## Common mistakes
 
-- **Perfectionism up front.** You know least at the start; iterate instead.
+- **Perfectionism up front, or treating the first design as final.** See the
+  feedback loop above.
 - **The Entity Trap.** `*Manager` / `*Handler` names and god-components; name for
   role, not entity.
 - **One component per step / per action.** Reused steps and actions share a
   component; don't inflate the count mechanically.
 - **Skipping the characteristics pass.** Function-only decomposition misses
   splits that scalability or reliability demand.
-- **Treating the first design as final.** Restructuring is expected, continuously.
 - **Chasing "the one true design."** Few systems have only one valid
   decomposition. Assess trade-offs honestly and pick the **least-worst** set.
 

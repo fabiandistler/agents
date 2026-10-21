@@ -2,7 +2,7 @@
 name: documentation
 category: communication
 environments: coding, chat
-description: Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, or package docs. Covers per-type skeletons, audience targeting, and keeping docs current instead of stale.
+description: Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes. Covers per-type skeletons, audience targeting, and keeping docs current instead of stale.
 ---
 
 # Technical Documentation
@@ -151,8 +151,8 @@ subagents, give the user the questions to try with the doc in a fresh chat.
 Keep the Markdown source plain with stable headings, generate the `llms.txt`
 index with the site tool rather than hand-writing one, and never put content
 only in images. If a site generator is chosen, prefer Zensical: Material for
-MkDocs is in maintenance mode, with end of life currently set to 2027-05-05
-(squidfunk/mkdocs-material#8523, checked 2026-09-28).
+MkDocs is in maintenance mode, heading for end of life (current status in
+squidfunk/mkdocs-material#8523).
 
 ## Principles
 

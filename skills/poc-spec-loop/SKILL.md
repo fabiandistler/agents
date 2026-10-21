@@ -5,7 +5,7 @@ activation: command
 disable-model-invocation: true
 environments: coding
 compatibility: Requires jq, one loop runner CLI (claude, codex, or opencode), and the forge CLI (gh, or az with the azure-devops extension) on PATH, a single GitHub or Azure DevOps Services remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).
-description: Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request.
+description: Takes a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec, then a per-task TDD loop with fresh context up to a pull request. Use when productionizing a greenfield PoC.
 metadata:
   version: "1.0"
 ---
@@ -115,6 +115,10 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 
 ## Provenance
 
-- Toolchain versions in `references/toolchains.md` were last verified 2026-09-07; re-verify before each real run.
-- `assets/loop.sh` has not yet run against a real PoC with any runner; its tests use stub CLIs. Verify the runner's flags first; the script header records which CLI versions they were checked against. The Azure DevOps path (push, `az repos pr create`, `azure-pipelines.yml`) has not run against a real organization either; `az` flags were checked against the Microsoft Learn reference on 2026-10-12.
+When each toolchain version, runner flag and `az` flag was last checked, and
+what has never run for real, is in
+[references/provenance.md](references/provenance.md); read it before the
+first real run. `scripts/test_loop.py` is the stub-CLI test suite for
+`loop.sh`; the skill never runs it.
+
 - Sunset: delete this skill on 2027-03-01 if no second real run has happened by then.

@@ -2,7 +2,7 @@
 name: stakeholder-update
 category: communication
 environments: coding, chat
-description: Writing a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.
+description: Drafts a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.
 ---
 
 # Stakeholder Update

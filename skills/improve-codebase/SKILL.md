@@ -5,7 +5,7 @@ activation: command
 disable-model-invocation: true
 environments: coding
 compatibility: Requires git and a browser to view the HTML report. Writes only to the OS temp directory, plus the repo's GLOSSARY.md and ADRs when the user agrees.
-description: Scan a codebase for deepening opportunities, present them as a visual HTML report with before/after diagrams, then interview the user round by round about the candidate they pick.
+description: Scan a codebase for deepening opportunities, present them as a visual HTML report with before/after diagrams, then interview the user round by round about the candidate they pick. Use when reviewing a repository's architecture.
 metadata:
   version: "1.0"
 ---
@@ -200,9 +200,9 @@ Write these side effects as decisions crystallise during the interview, not in
 a batch at the end. Create files lazily, only when there is something to write.
 
 - **A deepened module named after a concept missing from `GLOSSARY.md`**: add
-  the term. Create the file if it does not exist.
-- **A fuzzy term sharpened in the conversation**: update `GLOSSARY.md` on the
-  spot. When the user uses a term that conflicts with the glossary, say so
+  the term once the user agrees. Create the file if it does not exist.
+- **A fuzzy term sharpened in the conversation**: update `GLOSSARY.md` as
+  soon as the user confirms the sharpened meaning. When the user uses a term that conflicts with the glossary, say so
   immediately and ask which meaning holds.
 - **The user rejects the candidate with a load-bearing reason**: offer an ADR,
   framed as "Record this as an ADR so future architecture reviews do not

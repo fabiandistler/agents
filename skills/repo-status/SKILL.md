@@ -57,7 +57,8 @@ two identities apart:
   report that commits are unfiltered, and ask for it afterwards. Never take it from
   `git config user.email`: the local git identity can differ from the user's,
   e.g. in a cloud or shared checkout.
-- GitHub identity, for PR search: `@me`, or the authenticated user's login.
+- GitHub identity, for PR search: `@me`, or the authenticated user's login
+  (`gh api user --jq .login`, or the GitHub MCP `get_me`).
 
 Then:
 
@@ -67,7 +68,8 @@ Then:
   `gh search prs --author=@me --updated=">=<date>" --json number,title,state,repository`
   and the same with `--reviewed-by=@me`. Where search is refused (sessions
   bound to their configured repositories reject `search/*`), list each
-  configured repo's PRs instead with the GitHub MCP tools or the loop below,
+  repo's PRs instead (the repos from `git remote -v`, or the ones the user
+  names) with the GitHub MCP tools or the loop below,
   keeping those whose login column is yours. It pages by hand and stops at
   the first page that is not entirely inside the window: the list is sorted
   by `updated_at`, so later pages are older. Do not use `gh api --paginate`

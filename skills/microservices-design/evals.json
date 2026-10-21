@@ -5,7 +5,8 @@
     "we need to rename a field in our public API"
   ],
   "should_not_trigger": [
-    "should we split our monolith?"
+    "should we split our monolith?",
+    "where should the bounded context lines between our services go?"
   ],
-  "expected_behavior": "Checks the HTTP client against Resiliency timeout/retry rules, the billing-shipping flow against Messaging Reliability outbox and Contracts schema rules, and the rename against additive-change and coexistence rules; routes split decisions to architecture-pattern-advisor."
+  "expected_behavior": "Checks the HTTP client against Resiliency timeout/retry rules, the billing-shipping flow against Messaging Reliability outbox and Contracts schema rules, and the rename against additive-change and coexistence rules; routes split decisions to architecture-pattern-advisor and bounded-context placement to ddd."
 }

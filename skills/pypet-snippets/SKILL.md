@@ -5,33 +5,28 @@ activation: command
 disable-model-invocation: true
 environments: coding
 compatibility: Requires pypet-cli 0.9 on PATH (upstream archived Aug 2026, final v0.9.0).
-description: Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, or propose one for recurring terminal commands.
+description: Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, including proposing one from commands that recur in shell history.
 ---
 
 # Pypet Snippets
 
 Curate [pypet](https://github.com/fabiandistler/pypet) command snippets
-through its CLI. pypet is a small, archived snippet manager: it stores named
-shell commands with descriptions, tags and parameters as plain TOML. Upstream
-is archived (Aug 2026, final v0.9.0); the CLI installs as `pypet-cli`, not
-`pypet`. Only call its CLI — never modify its package and never hand-edit
+through its CLI. pypet is a small snippet manager: it stores named
+shell commands with descriptions, tags and parameters as plain TOML. The CLI
+installs as `pypet-cli`, not `pypet`. Only call its CLI — never modify its package and never hand-edit
 its store.
 
 ## When to use
 
 - Someone asks to save a command as a snippet ("save this as a snippet",
   "create a snippet").
-- Someone calls a command annoying or recurring — only offer a snippet when
-  `command -v pypet` succeeds; if pypet is missing, give no proactive hint.
-- The same long command obviously repeats — drop at most a single hint
-  offering a snippet, and only when pypet is installed. Never create one
-  uninvited, never nag twice for the same command.
+- Someone asks which of their recurring commands deserve a snippet — propose
+  candidates from the sources below, never create one unconfirmed.
 
 ## Workflow
 
 1. **Check presence first**: run `command -v pypet`. If pypet is missing,
-   give no proactive hint; on an explicit request, say `uv tool install
-   pypet-cli` and stop before continuing.
+   say `uv tool install pypet-cli` and stop before continuing.
 2. **Dedup first**: run `pypet search "<keyword>"` and `pypet list` before
    proposing anything. If a matching snippet exists, point at it instead of
    creating one.
@@ -65,7 +60,7 @@ its store.
   `<id>`; without one it opens a picker. Always confirms before running
   (prints `Aborted!` and exits 0 with stdin closed); `-p` only prints the
   resolved command, `-c` copies it instead of running, `-e` edits first
-  (never use it), `-P` fills a parameter without prompting.
+  (never use it), `-P` fills a parameter without prompting (pass one per parameter).
 - `pypet copy <id> [-P ...]` — always pass `<id>`; without one it opens a
   picker. Copies the resolved command to the clipboard instead of running
   it; never prompts besides the picker.
@@ -77,14 +72,6 @@ its store.
 
 Do NOT use `save-last` / `save-clipboard` (unreliable: history-file lag,
 clipboard flakiness), `sync`, or `gen` — outside this skill's loop.
-
-### Non-interactive use
-
-Always pass `<id>` — `exec`, `copy` and `delete` open a picker without
-one. Resolve with `pypet exec <id> -p -P k=v`, passing `-P` for every
-parameter, and hand the printed command to the person to run themselves.
-Never use `exec -e` (edits first) or `edit -f` (opens `$EDITOR`). Before
-`pypet alias add <id> <name>`, check `pypet alias list` for conflicts.
 
 ## Proposal sources
 

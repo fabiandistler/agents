@@ -88,7 +88,7 @@ default branch, stop and ask for a branch name. Then:
 
 ```bash
 git fetch origin
-python3 <skill>/scripts/release_state.py --repo .
+python3 scripts/release_state.py --repo <package-root>  # from the skill directory
 ```
 
 The script prints JSON to stdout. It detects the language (`DESCRIPTION` → R, `pyproject.toml` →
