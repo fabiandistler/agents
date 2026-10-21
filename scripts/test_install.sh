@@ -739,4 +739,40 @@ HOME="$HOME_RULES" "$INSTALL" --target=claude --category=communication --instruc
 [[ -f "$HOME_RULES/.claude/rules/own.md" ]] || fail "uninstall removed a foreign rule file"
 pass "paths: fragments become path-scoped Claude rules only"
 
+# 45. --merge-guard puts the PR merge guard into each agent's user-level config
+#     (Claude settings.json entry, Codex [hooks] block, opencode plugin link),
+#     keeps foreign settings, is idempotent, and --uninstall restores the files.
+HOME_MG="$(mktemp -d)"
+mkdir -p "$HOME_MG/.claude" "$HOME_MG/.codex"
+printf '{"model": "opus", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x"}]}]}}\n' \
+  >"$HOME_MG/.claude/settings.json"
+printf 'model = "o3"\n' >"$HOME_MG/.codex/config.toml"
+cp "$HOME_MG/.codex/config.toml" "$HOME_MG/codex-before.toml"
+HOME="$HOME_MG" "$INSTALL" --target=all --category=communication >/dev/null
+grep -q pr_merge_guard "$HOME_MG/.claude/settings.json" "$HOME_MG/.codex/config.toml" &&
+  fail "merge guard installed without --merge-guard"
+HOME="$HOME_MG" "$INSTALL" --target=all --category=communication --merge-guard >/dev/null
+python3 - "$HOME_MG" <<'PY' || fail "merge guard entries missing or foreign settings lost"
+import json, sys, tomllib
+home = sys.argv[1]
+claude = json.load(open(f"{home}/.claude/settings.json"))
+assert claude["model"] == "opus" and claude["hooks"]["Stop"]
+assert "pr_merge_guard.py" in claude["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+codex = tomllib.load(open(f"{home}/.codex/config.toml", "rb"))
+assert codex["model"] == "o3"
+assert "--harness codex" in codex["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+PY
+[[ -L "$HOME_MG/.config/opencode/plugins/pr-merge-guard.js" ]] || fail "opencode plugin not linked"
+cp "$HOME_MG/.claude/settings.json" "$HOME_MG/claude-once.json"
+HOME="$HOME_MG" "$INSTALL" --target=all --category=communication --merge-guard >/dev/null
+diff -q "$HOME_MG/claude-once.json" "$HOME_MG/.claude/settings.json" >/dev/null ||
+  fail "second --merge-guard run changed settings.json"
+HOME="$HOME_MG" "$INSTALL" --target=all --category=communication --merge-guard --uninstall >/dev/null
+! grep -q pr_merge_guard "$HOME_MG/.claude/settings.json" || fail "uninstall left the Claude hook"
+grep -q '"Stop"' "$HOME_MG/.claude/settings.json" || fail "uninstall dropped a foreign hook"
+diff -q "$HOME_MG/codex-before.toml" "$HOME_MG/.codex/config.toml" >/dev/null ||
+  fail "uninstall did not restore config.toml"
+[[ ! -e "$HOME_MG/.config/opencode/plugins/pr-merge-guard.js" ]] || fail "uninstall left the plugin"
+pass "--merge-guard installs per agent, idempotently, and uninstalls cleanly"
+
 echo "all install.sh tests passed"

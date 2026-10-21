@@ -21,10 +21,14 @@ as a local install:
      loaded, or path-scoped when the fragment has `paths:` (same rendering as
      install.sh). A path-scoped fragment is skipped while no tracked file
      matches its globs (the R rules in this Python/Markdown repo).
+  4. The `PreToolUse` entry in `.claude/settings.json` that runs
+     `scripts/pr_merge_guard.py`, so agents in this repo cannot merge PRs. The
+     entry itself comes from that module, shared with install.sh.
 
-It owns only symlinks pointing into this repo and rule files carrying the
-`managed-by:` marker; anything else in `.claude/` (hand-written subagents, the
-vendored third-party skills) is left alone. Reads skills.json, so run
+It owns only symlinks pointing into this repo, rule files carrying the
+`managed-by:` marker and the guard's entry in settings.json; anything else in
+`.claude/` (hand-written subagents and hooks, the vendored third-party skills,
+the rest of settings.json) is left alone. Reads skills.json, so run
 build_manifest.py first. Stdlib-only.
 """
 
@@ -39,6 +43,8 @@ import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
 
+from pr_merge_guard import with_claude_hook
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "skills.json"
 INSTRUCTIONS_DIR = REPO_ROOT / "instructions"
@@ -48,6 +54,8 @@ ENVIRONMENT = "coding"
 RULE_MARKER = "managed-by: fabiandistler/agents build_project_claude.py"
 # Fragments that do not apply to work on this repo.
 SKIPPED_FRAGMENTS = frozenset({"60-code-comments.md"})
+SETTINGS_PATH = CLAUDE_DIR / "settings.json"
+MERGE_GUARD_COMMAND = 'python3 "$CLAUDE_PROJECT_DIR"/scripts/pr_merge_guard.py --harness claude'
 FIELD = re.compile(r"^([a-z]+):[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 
 
@@ -115,6 +123,11 @@ def wanted_rules() -> dict[Path, str]:
     return rules
 
 
+def wanted_settings() -> str:
+    settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    return json.dumps(with_claude_hook(settings, MERGE_GUARD_COMMAND), indent=2) + "\n"
+
+
 def is_ours(link: Path) -> bool:
     if not link.is_symlink():
         return False
@@ -169,6 +182,13 @@ def sync(check: bool) -> list[str]:
         for path in sorted(rules_dir.glob("agents-*.md")):
             if path not in rules and RULE_MARKER in path.read_text(encoding="utf-8"):
                 act(f"remove {path.relative_to(REPO_ROOT)}", path.unlink)
+
+    settings = wanted_settings()
+    if SETTINGS_PATH.read_text(encoding="utf-8") != settings:
+        act(
+            f"write {SETTINGS_PATH.relative_to(REPO_ROOT)} (PR merge guard hook)",
+            lambda: SETTINGS_PATH.write_text(settings, encoding="utf-8"),
+        )
     return drift
 
 

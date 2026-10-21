@@ -13,6 +13,7 @@
 #   ./install.sh --target=codex  --env=coding # only coding skills
 #   ./install.sh --target=claude --category=architecture,refactoring
 #   ./install.sh --target=all --instructions   # also sync the rule files
+#   ./install.sh --target=all --merge-guard    # also block agent PR merges
 #
 # --env=coding|chat|all (default all) selects which skills to (un)install,
 # based on each skill's `environments:` frontmatter field. A skill with no
@@ -73,6 +74,14 @@
 # gets its own ~/.config/opencode/AGENTS.md: it reads ~/.claude/CLAUDE.md only
 # as a fallback when that file is missing, and opencode V2 not at all.
 #
+# --merge-guard (off by default) installs a model-free pre-tool hook that stops
+# the agent from merging pull requests or enabling auto-merge; the human merges.
+# The check is scripts/pr_merge_guard.py (needs python3 at hook time). claude:
+# a PreToolUse entry in ~/.claude/settings.json; codex: a managed [hooks] block
+# in ~/.codex/config.toml (trust it once in Codex's /hooks); opencode: a plugin
+# symlink in ~/.config/opencode/plugins/. --merge-guard --uninstall removes
+# exactly these, leaving other settings and hooks alone.
+#
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
 #   - Symlink pointing elsewhere:      skip with a warning, never overwrite.
@@ -98,6 +107,7 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 DRY_RUN=0
 UNINSTALL=0
 INSTRUCTIONS=0
+MERGE_GUARD=0
 TARGET=""
 ENV="all"
 CATEGORY="all"
@@ -117,6 +127,7 @@ for arg in "$@"; do
     --category=*) CATEGORY="${arg#--category=}" ;;
     --dry-run) DRY_RUN=1 ;;
     --instructions) INSTRUCTIONS=1 ;;
+    --merge-guard) MERGE_GUARD=1 ;;
     --uninstall) UNINSTALL=1 ;;
     -h | --help)
       usage
@@ -900,6 +911,135 @@ remove_instructions() {
     "$(instructions_end_marker)" "instructions block"
 }
 
+# --- PR merge guard -----------------------------------------------------------
+#
+# Agents act under the user's GitHub account, so branch rules cannot stop them
+# from merging; a pre-tool hook can. The decision and the hook entry both live
+# in scripts/pr_merge_guard.py; this section only places the entry in each
+# agent's user-level config. Claude's settings.json is JSON and cannot carry
+# marker comments, so there our entry is identified by the script name in its
+# command, and only that entry is ever added or removed.
+
+merge_guard_command() {
+  printf 'python3 "%s/scripts/pr_merge_guard.py" --harness %s' "$REPO_ROOT" "$1"
+}
+
+merge_guard_begin_marker() {
+  printf '# >>> agents PR merge guard (managed by install.sh, do not edit) >>>'
+}
+
+merge_guard_end_marker() {
+  printf '# <<< agents PR merge guard <<<'
+}
+
+opencode_merge_guard_link() { printf '%s/.config/opencode/plugins/pr-merge-guard.js' "$HOME"; }
+
+# Print ~/.claude/settings.json with the guard entry added (mode install) or
+# removed (mode remove). Exit 10: nothing to change; exit 1: not a JSON object.
+claude_settings_with_merge_guard() {
+  python3 - "$REPO_ROOT/scripts" "$1" "$2" "$(merge_guard_command claude)" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from pr_merge_guard import with_claude_hook, without_claude_hook
+
+mode, path, command = sys.argv[2], Path(sys.argv[3]), sys.argv[4]
+try:
+    settings = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+except ValueError:
+    sys.exit(1)
+if not isinstance(settings, dict):
+    sys.exit(1)
+wanted = with_claude_hook(settings, command) if mode == "install" else without_claude_hook(settings)
+if wanted == settings:
+    sys.exit(10)
+print(json.dumps(wanted, indent=2))
+PY
+}
+
+sync_claude_merge_guard() {
+  local mode="$1" file="$HOME/.claude/settings.json" content status=0
+  content="$(claude_settings_with_merge_guard "$mode" "$file")" || status=$?
+  case "$status" in
+    0) ;;
+    10)
+      [[ "$mode" == "install" ]] && printf '  ok        %s (PR merge guard hook)\n' "$file"
+      return 0
+      ;;
+    *)
+      printf '  WARN      %s is not a JSON object, leaving it untouched (PR merge guard)\n' \
+        "$file" >&2
+      return 0
+      ;;
+  esac
+  if ((DRY_RUN)); then
+    printf '[dry-run] %s PR merge guard hook in %s\n' "$mode" "$file"
+    return 0
+  fi
+  ensure_parent "${file%/*}"
+  write_file_atomic "$file" "$content"
+  if [[ "$mode" == "install" ]]; then
+    printf '  updated   %s (PR merge guard hook)\n' "$file"
+  else
+    printf '  removed   PR merge guard hook from %s\n' "$file"
+  fi
+}
+
+install_merge_guard() {
+  local target="$1" toml
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; the PR merge guard needs it (skipping %s)\n' \
+      "$target" >&2
+    return 0
+  fi
+  case "$target" in
+    claude) sync_claude_merge_guard install ;;
+    codex)
+      if ! toml="$(
+        python3 - "$REPO_ROOT/scripts" "$(merge_guard_command codex)" <<'PY'
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from pr_merge_guard import codex_hook_toml
+
+print(codex_hook_toml(sys.argv[2]))
+PY
+      )"; then
+        printf '  WARN      cannot render the Codex PR merge guard hook (skipping)\n' >&2
+        return 0
+      fi
+      managed_block_set "$(codex_config_path)" "$(merge_guard_begin_marker)" \
+        "$(merge_guard_end_marker)" "$toml" "PR merge guard hook"
+      ;;
+    opencode)
+      ensure_parent "${HOME}/.config/opencode/plugins"
+      link_one "$REPO_ROOT/scripts/opencode/pr-merge-guard.js" "$(opencode_merge_guard_link)"
+      ;;
+  esac
+}
+
+uninstall_merge_guard() {
+  case "$1" in
+    claude)
+      if command -v python3 >/dev/null 2>&1; then
+        sync_claude_merge_guard remove
+      else
+        printf '  WARN      python3 not found; remove the pr_merge_guard.py hook from %s by hand\n' \
+          "$HOME/.claude/settings.json" >&2
+      fi
+      ;;
+    codex)
+      managed_block_remove "$(codex_config_path)" "$(merge_guard_begin_marker)" \
+        "$(merge_guard_end_marker)" "PR merge guard hook"
+      ;;
+    opencode)
+      unlink_one "$REPO_ROOT/scripts/opencode/pr-merge-guard.js" "$(opencode_merge_guard_link)"
+      ;;
+  esac
+}
+
 run() {
   if ((DRY_RUN)); then
     printf '[dry-run] %s\n' "$*"
@@ -1095,6 +1235,13 @@ main() {
       else
         install_instructions "$target"
         if [[ "$target" == "claude" ]]; then install_claude_rules; fi
+      fi
+    fi
+    if ((MERGE_GUARD)); then
+      if ((UNINSTALL)); then
+        uninstall_merge_guard "$target"
+      else
+        install_merge_guard "$target"
       fi
     fi
   done < <(resolve_targets)

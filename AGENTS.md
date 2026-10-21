@@ -15,8 +15,11 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   install paths for Claude Code, Codex CLI, and opencode. For Codex CLI
   it also converts the plugins' subagents to Codex custom agents in
   `~/.codex/agents/` and disables routed members via a marker-delimited
-  block in `~/.codex/config.toml` (both removed by `--uninstall`). See
-  `./install.sh --help`.
+  block in `~/.codex/config.toml` (both removed by `--uninstall`).
+  `--merge-guard` adds the model-free hook `scripts/pr_merge_guard.py` that
+  stops agents from merging PRs (only the human merges); this repo's
+  `.claude/settings.json` carries it via `scripts/build_project_claude.py`.
+  See `./install.sh --help` and `docs/install.md`.
 - `instructions/` holds the agent-instruction fragments: single-topic
   Markdown files, ordered by their numeric filename prefix, that
   `install.sh --instructions` composes into a marker-delimited managed block

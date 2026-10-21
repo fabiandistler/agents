@@ -18,6 +18,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/scripts/pr_merge_guard.py --harness claude"
+          }
+        ]
+      }
     ]
   }
 }

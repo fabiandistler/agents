@@ -96,6 +96,54 @@ opencode too belongs in `~/.config/opencode/AGENTS.md` as well.
 
 The flag is opt-in — plain `./install.sh --target=...` only touches skills.
 
+## PR merge guard (`--merge-guard`)
+
+Coding agents act under your GitHub account, so branch protection and required
+approvals do not stop them from merging their own pull requests. In this repo
+that led to 22 PRs merged on red CI and 30 reverted merges (#557). The merge
+guard is a model-free pre-tool hook: before each shell or MCP tool call it runs
+[`scripts/pr_merge_guard.py`](../scripts/pr_merge_guard.py), which blocks the
+call and tells the agent to ask you to merge.
+
+```sh
+./install.sh --target=all --merge-guard             # install for every agent
+./install.sh --target=all --merge-guard --dry-run   # preview
+./install.sh --target=all --merge-guard --uninstall # remove it again
+```
+
+It blocks `gh pr merge` (including `--auto`), `gh api` or `curl` writes to
+`repos/<o>/<r>/pulls/<n>/merge` and `repos/<o>/<r>/merges`, the GraphQL
+mutations `mergePullRequest`, `enablePullRequestAutoMerge` and
+`enqueuePullRequest`, and MCP tools named `merge_pull_request` or
+`enable_pr_auto_merge`. GitHub has no REST endpoint for auto-merge. Reads pass:
+`gh pr view`, `gh pr checks`, a local `git merge`. To merge, use the GitHub web
+UI or your own terminal. The guard only checks the agent's tool calls.
+
+| Agent | What the installer writes | Hook |
+|---|---|---|
+| `claude` | one `PreToolUse` entry in `~/.claude/settings.json`, found again by the script name in its command | [PreToolUse](https://code.claude.com/docs/en/hooks), exit 2 blocks |
+| `codex` | a managed `[[hooks.PreToolUse]]` block in `~/.codex/config.toml` | [PreToolUse](https://developers.openai.com/codex/hooks), exit 2 blocks |
+| `opencode` | symlink `~/.config/opencode/plugins/pr-merge-guard.js` | [`tool.execute.before`](https://opencode.ai/docs/plugins/) (1.x) and `ctx.tool.hook("execute.before")` ([2.x](https://opencode.ai/v2/docs/build/plugins)); a throw blocks |
+
+All other settings, hooks and config stay as they are. The hook needs
+`python3` on `PATH` when it runs, and the hook command points into this
+clone, so do not move the clone after installing.
+
+Limits:
+
+- **Codex** runs a new or changed non-managed hook only after you trust it.
+  Open `/hooks` once after installing. Until then Codex skips the guard and
+  warns at startup.
+- **opencode** does not fire plugin hooks under headless `opencode run`
+  ([anomalyco/opencode#41422](https://github.com/anomalyco/opencode/issues/41422))
+  or in the Desktop app
+  ([anomalyco/opencode#38604](https://github.com/anomalyco/opencode/issues/38604)),
+  and may skip them for MCP tools in experimental code mode. The plugin's default
+  export with `server()` needs opencode 1.18.29 or later.
+- Hooks are a guardrail, not a security boundary. A command the parser does not
+  recognize (a `gh` alias, a script file that calls `gh pr merge`) gets
+  through. A required status check on `main` is still the backstop.
+
 ## Codex CLI specifics
 
 For Codex, `--target=codex` covers the full plugins, not just the skills. It
@@ -159,6 +207,7 @@ should have:
 | `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
 | `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
 | `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
+| `.claude/settings.json` `PreToolUse` entry | the PR merge guard (`scripts/pr_merge_guard.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
 After changing a skill's frontmatter or an instruction fragment, the prek
