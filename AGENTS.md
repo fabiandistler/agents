@@ -192,6 +192,11 @@ machine consumption prefer `skills.json`.
     the Claude distribution, a skill that excludes `claude` also gets no
     plugin symlink (`scripts/check_plugins.py` knows this).
   - `metadata.version` — semver-ish string.
+  - `argument-hint` — the argument a `command` skill takes, shown by Claude
+    Code next to the command name (e.g. `argument-hint: "<owner>/<repo>"`).
+    Other agents ignore it.
+  - `license`, `allowed-tools` — Agent Skills format fields that
+    `scripts/quick_validate.py` accepts. No skill here uses them yet.
 - The body is plain Markdown. Avoid agent-specific vocabulary
   (slash-commands, "the Skill tool", proprietary tool names, hardcoded
   install paths, runtime error text). Prefer
