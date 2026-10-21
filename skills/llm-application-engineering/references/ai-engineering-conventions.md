@@ -248,7 +248,8 @@ obvious — the cost of guessing wrong is high._
   description fields) as untrusted input and keep it out of the agent's
   context unless a human curated it.** A regex "read-only mode" is a blocklist
   the agent can be talked around; a GRANT is not. Tool-scoped DB privileges:
-  `agent-engineering-conventions.md`, Tool Design. (Rehberger, CVE-2026-65669)
+  `agent-engineering-conventions.md`, Tool Design. (Rehberger; CVE-2026-65669,
+  https://nvd.nist.gov/vuln/detail/CVE-2026-65669)
   - ✅ `agent_ro` user, `GRANT SELECT ON v_*`, schema text from a curated fixture
   - ❌ agent runs on the analyst's connection, read-only via a SQL keyword filter   ← likely-default
 - **Streaming emits tokens before output guardrails can run** — make that
