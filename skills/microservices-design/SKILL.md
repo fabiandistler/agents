@@ -39,8 +39,8 @@ service. Not for deciding whether to use microservices at all
 2. **Load the matching sections of the reference file** and walk the change
    against each rule as a pass/fail checklist. Every rule is falsifiable by
    design.
-3. **Flag violations with the rule, not just an opinion.** Quote the rule and
-   its `❌` example when the code matches the likely-default anti-pattern.
+3. **Flag violations with the rule, not just an opinion.** Quote the rule, and
+   its `❌` example where one exists, when the code matches the likely-default anti-pattern.
 4. **Record consequential design calls** (e.g. choreography vs orchestration,
    breaking-change migration strategy) as an ADR.
 

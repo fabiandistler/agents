@@ -4,6 +4,7 @@
 > Generic best practice ("loose coupling good", "write tests", "monitor everything", ACID definitions) is assumed and omitted.
 > These are design-principle rules, not project rules — nothing here is specific to any codebase.
 > Chapter references in `(ch N)` instead of rationale.
+> Named tools and spec versions (AsyncAPI 3.x; Temporal, Restate, DBOS) are examples as of 2026 and will date; the rule around them is the durable part.
 
 ## Service Boundaries
 
