@@ -5,6 +5,10 @@ the source chapter, then modern equivalents. Pick the tool that already fits
 the project's test stack — a fitness function developers can read and run
 locally beats a more powerful one bolted on from outside.
 
+Maintenance notes are as of 2026-10: NetArchTest's last release was in 2021,
+ts-arch's in 2024-12, and ArchUnitPython's first release was in April 2026.
+Recheck the release pages before relying on any of them.
+
 ## Contents
 
 - [Java](#java)
@@ -92,7 +96,7 @@ as the code is cleaned up.
 
 Recommended default: **ArchUnitNET**.
 
-**NetArchTest** — stale (no release since 2021): fluent layer/dependency rules as ordinary unit tests
+**NetArchTest** — stale (no recent release; see the note below): fluent layer/dependency rules as ordinary unit tests
 (Example 6-5):
 
 ```csharp
@@ -137,8 +141,8 @@ inside an existing ESLint setup; good when the team already treats lint
 failures as build failures. **ArchUnitTS** (npm `archunit`) offers
 ArchUnit-style assertions
 (`filesOfProject().inFolder("ui").shouldNot().dependOnFiles().inFolder("db")`)
-inside Jest/Vitest. **ts-arch** covers the same ground but shows no release
-since 2024-12, so prefer ArchUnitTS for new rules.
+inside Jest/Vitest. **ts-arch** covers the same ground but shows no recent
+release, so prefer ArchUnitTS for new rules.
 
 Baselining legacy code: generate a known-violations file (`depcruise-baseline`
 command, `baseline` reporter) and run CI with `depcruise --ignore-known`, so
@@ -208,7 +212,7 @@ Also covers named layers (`project_layers()`), external modules, naming
 conventions, LCOM and distance metrics, and PlantUML component-diagram
 adherence in one API; zero runtime dependencies, works with pytest or
 unittest. Empty matches fail by default, which catches glob typos. Caveat:
-first release April 2026, one maintainer, roughly two orders of magnitude
+young project, one maintainer, roughly two orders of magnitude
 less adopted than import-linter — weigh that before it becomes a build
 blocker.
 

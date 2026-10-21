@@ -83,7 +83,7 @@
     },
     {
       "name": "fitness-functions",
-      "summary": "Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes.",
+      "summary": "Designs and implements architecture fitness functions — automated CI checks that fail the build when a characteristic such as modularity, layering, coupling, security, or resilience erodes.",
       "category": "architecture",
       "path": "skills/fitness-functions/SKILL.md",
       "environments": [

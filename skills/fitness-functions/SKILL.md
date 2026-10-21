@@ -2,7 +2,7 @@
 name: fitness-functions
 category: architecture
 environments: coding
-description: Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes. These are architecture fitness functions; covers designing and implementing them.
+description: Designs and implements architecture fitness functions — automated CI checks that fail the build when a characteristic such as modularity, layering, coupling, security, or resilience erodes.
 ---
 
 # Fitness Functions
@@ -177,6 +177,5 @@ Mark Richards & Neal Ford, *Fundamentals of Software Architecture*, 2nd ed.
 (O'Reilly), "Measuring and Governing Architecture Characteristics" — definition and evolutionary-
 computing origin of fitness functions, the cyclic-dependency and Distance from
 the Main Sequence examples (JDepend), layer governance (ArchUnit, NetArchTest),
-metric gaming, the Netflix Simian Army as production fitness functions, and the
-Checklist Manifesto framing. Builds on Neal Ford et al., *Building Evolutionary
+metric gaming, and the Netflix Simian Army as production fitness functions. Builds on Neal Ford et al., *Building Evolutionary
 Architectures* (O'Reilly, 2022).

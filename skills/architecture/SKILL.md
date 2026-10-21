@@ -38,7 +38,7 @@ model's trigger surface.
 | c4-modeling | Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code). | `members/c4-modeling/SKILL.md` |
 | coupling-cohesion | Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov). | `members/coupling-cohesion/SKILL.md` |
 | ddd | Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing. | `members/ddd/SKILL.md` |
-| fitness-functions | Automate a CI check that governs an architecture characteristic — modularity, layering, coupling, security, resilience — and fails the build when it erodes. | `members/fitness-functions/SKILL.md` |
+| fitness-functions | Designs and implements architecture fitness functions — automated CI checks that fail the build when a characteristic such as modularity, layering, coupling, security, or resilience erodes. | `members/fitness-functions/SKILL.md` |
 | logical-component-design | Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. | `members/logical-component-design/SKILL.md` |
 | microservices-design | Design or review how services interact — boundaries, coupling, communication style, contract versioning, sagas, resiliency patterns. | `members/microservices-design/SKILL.md` |
 <!-- END generated:members -->
