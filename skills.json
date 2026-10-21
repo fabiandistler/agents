@@ -3,7 +3,7 @@
   "skills": [
     {
       "name": "ai-ml",
-      "summary": "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill. - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting.",
+      "summary": "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill. - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting, SDK/API syntax, or MCP server implementation.",
       "category": "ai-ml",
       "path": "skills/ai-ml/SKILL.md",
       "activation": "router",
@@ -43,7 +43,7 @@
     },
     {
       "name": "communication-analysis",
-      "summary": "Analyze or rewrite a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
+      "summary": "Analyzes or rewrites a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
       "category": "communication",
       "path": "skills/communication-analysis/SKILL.md",
       "environments": [
