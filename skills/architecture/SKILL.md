@@ -3,7 +3,7 @@ name: architecture
 category: architecture
 activation: router
 environments: coding
-description: "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, coupling/cohesion analysis, CI architecture rules, and SQL schemas as stable consumer interfaces."
+description: "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, coupling/cohesion analysis, and CI architecture rules."
 when_to_use: "Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors."
 ---
 
