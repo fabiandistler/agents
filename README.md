@@ -97,6 +97,12 @@ single-topic fragments, composed into `~/.claude/CLAUDE.md`,
 `./install.sh --instructions`. Content outside the
 managed markers is never touched.
 
+**Only the human merges.** `./install.sh --merge-guard` adds a pre-tool hook
+to Claude Code, Codex CLI and opencode that blocks the agent from merging pull
+requests or enabling auto-merge; this repo's `.claude/settings.json` carries
+the same hook for cloud sessions. Details and limits:
+[docs/install.md](docs/install.md#pr-merge-guard---merge-guard).
+
 **Reading without installing:** [`skills.json`](skills.json) is the
 machine-readable manifest, and [`AGENTS.md`](AGENTS.md) is the agent-facing
 entry point with links to every `SKILL.md`.

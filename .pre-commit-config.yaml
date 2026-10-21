@@ -98,8 +98,8 @@ repos:
         pass_filenames: false
         files: ^(skills/.*SKILL\.md|skills\.json|scripts/build_(manifest|routers)\.py)$
       - id: build-project-claude
-        name: regenerate .claude/ skills, agents and rules
+        name: regenerate .claude/ skills, agents, rules and settings hook
         language: system
         entry: bash -c 'python3 scripts/build_project_claude.py --check || { python3 scripts/build_project_claude.py; exit 1; }'
         pass_filenames: false
-        files: ^(skills/.*SKILL\.md|skills\.json|instructions/.*\.md|plugins/[^/]+/agents/.*\.md|\.claude/(skills|agents|rules)/.*|scripts/build_(manifest|project_claude)\.py)$
+        files: ^(skills/.*SKILL\.md|skills\.json|instructions/.*\.md|plugins/[^/]+/agents/.*\.md|\.claude/(skills|agents|rules)/.*|\.claude/settings\.json|scripts/(build_(manifest|project_claude)|pr_merge_guard)\.py)$
