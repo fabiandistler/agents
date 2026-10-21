@@ -126,8 +126,10 @@ Summarize in README.md as a table:
 Done. No workaround suggestions.
 
 **Stop** on PR access: every value except "open" stops the run or needs user confirmation
-before reviewing any issue. Check live access by trying the repo's contribution settings,
-or by looking for auto-close bots and pinned notices.
+before reviewing any issue. Check live access concretely: pinned issues or notices about
+who may open PRs; a workflow under `.github/workflows/` that auto-closes PRs from
+non-members; and CONTRIBUTING wording that a maintainer must vouch for, approve or assign
+an issue before a PR.
 
 ### 2 Issue review
 
