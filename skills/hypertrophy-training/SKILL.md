@@ -2,14 +2,14 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Evidence-based hypertrophy programming and auto-regulation with plateau diagnosis for experienced trainees. Covers set volume, RIR targets, Stimulus:Fatigue ratio, rest, muscle lengths, elevated injury risk, and returning after injury.
+description: Evidence-based hypertrophy programming, auto-regulation and plateau diagnosis for experienced trainees, including training under elevated injury risk and the return after an injury.
 metadata:
   version: "1.1"
 ---
 
 # Hypertrophy Training
 
-This skill covers evidence-based hypertrophy programming and auto-regulation for **experienced trainees** (roughly 9+ years of systematic training).
+This skill covers evidence-based hypertrophy programming and auto-regulation for **experienced trainees**.
 
 ## When to use
 
@@ -67,7 +67,7 @@ disproportionate recovery cost.
 compensate. For experienced trainees, moderate volume at high intensity tends
 to outperform high volume at moderate intensity.
 
-### 2. Intensity: 0–2 RIR is meaningfully better than 4+ RIR
+### 2. Intensity: closer to failure appears better than far from failure (exploratory evidence)
 
 Proximity to failure appears to matter as much as, or more than, absolute
 volume for experienced trainees:
@@ -120,7 +120,7 @@ and intensity decisions.
 - Fast-twitch-dominant individuals
 
 **Improves the ratio (less fatigue per unit of stimulus):**
-- Moderate volume (2–6 sets per muscle group)
+- Moderate volume (2–6 sets per muscle group per session)
 - Training with 1–2 RIR reserve
 - Adjusted frequency (1.5–2.5×/week; expert heuristic, same caveat as above)
 - Balanced exercise selection
@@ -132,6 +132,9 @@ the target ratio — volume ranges are starting points to individualize, not
 individual prescriptions.
 
 ### 5. Volume by training experience
+
+The rows below Advanced are context for scaling down, not programming advice
+for beginners or intermediates (this skill does not serve them).
 
 | Level | Working volume | Note |
 |---|---|---|
@@ -425,8 +428,8 @@ the outcome by roughly ±50%.
 - Coleman et al. (2024) — https://doi.org/10.7717/peerj.16777
 - Singer et al. (2024) — https://doi.org/10.3389/fspor.2024.1429789
 - Halperin et al. (2022) — https://doi.org/10.1007/s40279-021-01559-x
-- Wolf et al. (2025, lengthened partials) — https://pubmed.ncbi.nlm.nih.gov/?term=Wolf+lengthened+partials+full+range+2025
-- Remmert et al. (2025, PUOS preprint) — https://sportrxiv.org/
+- Wolf et al. (2025, lengthened partials) — https://doi.org/10.7717/peerj.18904
+- Remmert et al. (2025, PUOS preprint) — https://sportrxiv.org/index.php/server/preprint/view/537
 - Gain-rate estimates: Aragon — https://alanaragon.com/, McDonald — https://bodyrecomposition.com/muscle-gain/genetic-muscular-potential, Helms — https://www.strongerbyscience.com/mass/
 
 **Part C** (both sections) is distilled from Israetel et al., *Scientific

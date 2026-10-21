@@ -6,7 +6,7 @@
   ],
   "should_not_trigger": [
     "I have never lifted before — what is a good first full-body routine?",
-    "What should I eat for breakfast to lose weight?"
+    "Give me a rehab protocol for my torn ACL before PT clearance."
   ],
   "expected_behavior": "Give experienced-trainee volume and RIR ranges with plateau diagnosis and safety bounds, not beginner programming or medical advice."
 }
