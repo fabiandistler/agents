@@ -141,10 +141,11 @@ Start every eval from outputs, not from metrics:
 
 ## Part B — Progressive architecture: five build steps
 
-LLM applications grow more complex in a deliberate sequence, not all at once.
-Each of the five steps below solves one concrete problem and should be added
-only when that problem is actually present — none of them should be built
-preemptively.
+LLM applications grow more complex step by step, not all at once. Each of the
+five steps below solves one concrete problem and should be added only when
+that problem is actually present — none of them should be built
+preemptively. The numbers give the usual order; the "Add it when" column
+decides each step.
 
 | Step | Name | What it adds | Add it when |
 |---|---|---|---|
@@ -155,23 +156,29 @@ preemptively.
 | 5a | **Add predefined workflows** | Chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer — fixed paths where generated output feeds back into the system | When the path through the system can be predefined |
 | 5b | **Add autonomous agents** | The model plans its own path and the system may take write actions | Last, and only when the path cannot be predefined — agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation |
 
-### Why the order is not optional
+### Dependencies between the steps
 
-Each step assumes the previous one is in place:
+A step whose trigger is absent is skipped, even if a later one applies: a
+single-model app needs no router before prompt caching. Only these
+dependencies hold, each when both steps are present:
 
-- Guardrails without a context layer are blind.
-- A router without guardrails can send dangerous requests to a cheaper,
-  less-protected model.
-- Caching without a router caches the wrong answers.
-- Agents without caches and guardrails are expensive, uncontrolled loops.
+- Output checks for hallucination compare the answer against the retrieved
+  context, so they need the context layer of step 1.
+- When a router or gateway is added, enforce guardrails in front of it or in
+  the gateway, so every model it can route to is covered, including the
+  cheaper ones.
+- An exact or semantic cache sits behind the input guardrails and is scoped to
+  whatever changes the answer (user or tenant permissions, model); otherwise it
+  skips the checks or serves one user's answer to another.
+- Autonomous agents need guardrails on every write action before real users
+  can reach them.
 
 ### Anti-pattern: building agents first
 
 The recurring mistake is building autonomous agents (step 5b) before eval, context (step
 1), and guardrails (step 2) exist. This produces impressive demos and
-unusable products. Treat the pattern as a maturity model: move up only once
-the current step is fully exploited, not because a higher step sounds more
-capable.
+unusable products. Add a step because its trigger is present, not because it
+sounds more capable.
 
 ## Part C — Production monitoring and feedback
 
