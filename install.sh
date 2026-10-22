@@ -506,6 +506,28 @@ remove_codex_member_overrides() {
     "$(skill_override_end_marker)" "routed-member skill overrides"
 }
 
+# Print the nested members (one per line) of every router Codex sees under
+# dest_dir: one linked by this run (named in the newline-separated `skills`)
+# or one whose link a previous run left in place. Deriving the set from the
+# installed routers rather than from the --category filter keeps a narrower
+# re-run from re-enabling the members of routers it did not touch (#562).
+codex_routed_members() {
+  local dest_dir="$1" skills="$2" d router member
+  for d in "$REPO_ROOT"/skills/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    [[ "$(skill_activation "$d/SKILL.md")" == "router" ]] || continue
+    router="$(basename "$d")"
+    if ! { [[ $'\n'"$skills"$'\n' == *$'\n'"$router"$'\n'* ]] &&
+      skill_matches_target "$d/SKILL.md" codex; } &&
+      [[ "$(readlink "$dest_dir/$router" 2>/dev/null)" != "$REPO_ROOT/skills/$router" ]]; then
+      continue
+    fi
+    for member in "$d"members/*; do
+      [[ -e "$member" ]] && printf '%s\n' "$(basename "$member")"
+    done
+  done
+}
+
 # Write the managed override block that disables the nested router members
 # named on stdin (one per line). With no names, any stale block is removed.
 # Uses only shell built-ins and the same core tools as the rest of install.sh
@@ -1180,7 +1202,7 @@ main() {
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    local dest_dir cmd_dir="" cmd_dir_ready=0 codex_disabled_members=""
+    local dest_dir cmd_dir="" cmd_dir_ready=0
     dest_dir="$(target_dir_for "$target")"
     [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
     printf '%s: %s\n' "$target" "$dest_dir"
@@ -1204,9 +1226,8 @@ main() {
         # members/ dir and loads lazily when routed to, so it is never linked
         # at top level. Command skills bypass routing (handled above for
         # non-codex; linked as skills for codex), so they are not skipped here.
-        # Codex discovers the nested member recursively anyway, so record it to
-        # disable by name in ~/.codex/config.toml further down.
-        [[ "$target" == "codex" ]] && codex_disabled_members+="$skill"$'\n'
+        # Codex discovers the nested member recursively anyway; it is disabled
+        # by name in ~/.codex/config.toml further down.
         # Migration: before this category was routed, the member was linked
         # flat here. That link still resolves, so prune_stale_skill_links (which
         # only removes broken ones) leaves it, and the member keeps registering
@@ -1243,7 +1264,7 @@ main() {
         remove_codex_member_overrides
       else
         install_codex_agents
-        printf '%s' "$codex_disabled_members" | install_codex_member_overrides
+        codex_routed_members "$dest_dir" "$skills" | install_codex_member_overrides
       fi
     fi
     if [[ "$target" == "opencode" ]]; then
