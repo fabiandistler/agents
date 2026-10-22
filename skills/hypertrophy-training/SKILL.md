@@ -2,7 +2,7 @@
 name: hypertrophy-training
 category: personal
 environments: chat
-description: Evidence-based hypertrophy programming, auto-regulation and plateau diagnosis for experienced trainees, including training under elevated injury risk and the return after an injury.
+description: Guides experienced trainees in hypertrophy programming, auto-regulation, and plateau diagnosis. Use when setting training volume or effort, adjusting a stalled lift, managing injury risk, or returning after injury.
 metadata:
   version: "1.1"
 ---

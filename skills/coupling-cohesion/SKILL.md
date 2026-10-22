@@ -2,7 +2,7 @@
 name: coupling-cohesion
 category: architecture
 environments: coding
-description: Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov).
+description: Assesses existing code for module cohesion and LCOM, codebase-wide coupling metrics and zones, or the balance of one dependency (Khononov). Use when measuring cohesion, coupling, or dependency balance.
 compatibility: The bundled scripts are stdlib-only Python 3.8+. LCOM analyzes Python (precise, via AST), R, and Bash (heuristic); the coupling and balance checks are language-agnostic. Dependency-graph extraction uses whatever tool fits the ecosystem (examples in the Mode B file for Python, JS/TS, Java, .NET, Go).
 ---
 

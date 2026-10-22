@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Enforce the skill-description budget.
+"""Enforce skill-description budgets and frontmatter style.
 
 Run from repo root:
-    python3 scripts/check_descriptions.py    # exit 1 on any over-budget skill
+    python3 scripts/check_descriptions.py    # exit 1 on any description issue
 
 Codex CLI budgets only ~2% of the context window for skill descriptions, so an
 oversized frontmatter `description` gets the list truncated — the metadata that
@@ -14,10 +14,16 @@ SKILL.md body (progressive disclosure), not the always-loaded frontmatter.
 This is a stricter *policy* layer on top of build_manifest.py's 1024-char
 spec cap; the two are deliberately decoupled. Stdlib-only; reuses the
 frontmatter parser from build_manifest.py.
+
+Always-loaded `auto` descriptions need a third-person opening and a `Use when`
+or `Use for` trigger clause. Routers need the third-person opening; their
+non-empty `when_to_use` field is the trigger clause. `command` descriptions are
+human-facing summaries and are exempt from both style checks.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 
 from build_manifest import (
@@ -53,6 +59,16 @@ AUTO_TOTAL_BUDGET = 10_000
 CLAUDE_COMBINED_BUDGET = 1_536
 CLAUDE_JOINER = " - "
 
+USE_TRIGGER_CLAUSE = re.compile(r"\bUse\s+(?:when|for)\s+[A-Za-z0-9]", re.IGNORECASE)
+THIRD_PERSON_OPENING = re.compile(
+    r"^(?:"
+    r"(?!This\b)[A-Za-z][A-Za-z’'-]*s\b"
+    r"|(?:The|This|A|An)\s+[A-Za-z][\w’'-]*\s+[A-Za-z][A-Za-z’'-]*s\b"
+    r"|It\s+[A-Za-z][A-Za-z’'-]*s\b"
+    r")",
+    re.IGNORECASE,
+)
+
 
 def budget_for(name: str, activation: str) -> int:
     # Router descriptions are the sole trigger surface for a whole category and
@@ -63,6 +79,35 @@ def budget_for(name: str, activation: str) -> int:
     if name in ALLOWLIST:
         return ALLOWLIST_BUDGET
     return DEFAULT_BUDGET
+
+
+def description_style_issues(
+    description: str,
+    activation: str,
+    when_to_use: object,
+) -> list[str]:
+    """Return style diagnostics using a compact frontmatter-level heuristic.
+
+    A third-person opening is a bare verb ending in `s`, `The/This/A/An` plus
+    a subject and such a verb, or `It` plus such a verb. This is not a full
+    grammar parser.
+    """
+    if activation == "command":
+        return []
+
+    issues: list[str] = []
+    if not THIRD_PERSON_OPENING.match(description.strip()):
+        issues.append(
+            "must start in third person (for example, 'Guides ...' or 'The skill guides ...')"
+        )
+
+    trigger_text = description
+    if activation == "router" and isinstance(when_to_use, str) and when_to_use.strip():
+        trigger_text = when_to_use
+    elif not USE_TRIGGER_CLAUSE.search(trigger_text):
+        issues.append("needs a 'Use when' or 'Use for' trigger clause")
+
+    return issues
 
 
 def main() -> int:
@@ -80,6 +125,10 @@ def main() -> int:
             continue
         raw_activation = fm.get("activation", "auto")
         activation = raw_activation if isinstance(raw_activation, str) else "auto"
+        when_to_use = fm.get("when_to_use")
+        for issue in description_style_issues(description, activation, when_to_use):
+            errors.append(f"{name}: description {issue}.")
+
         length = len(description)
         budget = budget_for(name, activation)
         if length > budget:
@@ -90,7 +139,6 @@ def main() -> int:
         if activation == "auto":
             auto_total += length
 
-        when_to_use = fm.get("when_to_use")
         if isinstance(when_to_use, str) and when_to_use:
             combined = length + len(CLAUDE_JOINER) + len(when_to_use)
             if combined > CLAUDE_COMBINED_BUDGET:
@@ -108,7 +156,7 @@ def main() -> int:
         )
 
     if errors:
-        sys.stderr.write("description budget exceeded:\n")
+        sys.stderr.write("description checks failed:\n")
         for e in errors:
             sys.stderr.write(f"  - {e}\n")
         return 1

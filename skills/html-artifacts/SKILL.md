@@ -2,7 +2,7 @@
 name: html-artifacts
 category: communication
 environments: coding, chat
-description: Produce a self-contained HTML file for deliverables the reader will keep, share, or manipulate; not for ordinary answers. Use when spatial layout, comparison, or interaction carries meaning.
+description: Produces a self-contained HTML file for deliverables the reader will keep, share, or manipulate; not for ordinary answers. Use when spatial layout, comparison, or interaction carries meaning.
 ---
 
 # HTML Artifacts
