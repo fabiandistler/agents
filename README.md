@@ -65,8 +65,8 @@ behaviour is in [`docs/install.md`](docs/install.md).
 | Flag | Default | Effect |
 |---|---|---|
 | `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links) |
-| `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` |
-| `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app |
+| `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` (not Claude: install only some plugins instead) |
+| `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app (not Claude) |
 | `--instructions` | off | Also compose `instructions/` into the agent's global instruction file |
 | `--merge-guard` | off | Also install the PR merge guard hook (Codex, opencode; Claude uses the `merge-guard` plugin) |
 | `--dry-run` | off | Print every action, change nothing |
@@ -93,7 +93,8 @@ router's
 **Some skills are invoked explicitly.** Skills marked `activation: command`
 are user-invoked only and install as commands — `/workflow:oss-scouting`,
 `/workflow:repo-status` in Claude Code, where plugin commands carry the
-plugin name.
+plugin name. Codex gets them as skills that run only on an explicit
+`$oss-scouting`.
 
 **Shared rules are separate from skills.** Skills are capabilities loaded on
 demand; rules that apply to *every* session live in `instructions/` as
@@ -199,14 +200,17 @@ scripts/check_all.sh --list   # the checks and the tools each needs
 ```
 
 A check whose tool is not installed is reported as `MISSING` and the script
-exits 3, so a skipped gate never reads as green. The mermaid check also needs
-Node.js (`npx`).
+exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
+later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
+newer interpreter. The mermaid check also needs Node.js (`npx`).
 
 The hooks in `.pre-commit-config.yaml` are run by
 [prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
-the secret scanner. Run `prek install` once and they fire on every commit;
-`check_all.sh` runs them too, so a skipped hook fails the build rather than
-landing on `main`.
+the secret scanner. The shellcheck and shfmt hooks install under Python 3.12,
+and the secret scanner builds with the Go on `PATH` (prek downloads a
+toolchain only when none is found). Run `prek install` once and they fire on
+every commit; `check_all.sh` runs them too, so a skipped hook fails the build
+rather than landing on `main`.
 
 `build_manifest.py --check` runs first for a reason: the catalogue and plugin
 checks read `skills.json`, so a stale manifest makes them answer from stale
