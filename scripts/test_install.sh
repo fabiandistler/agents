@@ -221,6 +221,24 @@ HOME="$HOME_BADJ" "$INSTALL" --target=claude >/dev/null 2>&1
   fail "migration rewrote a settings.json that is not an object"
 pass "migration leaves a non-object settings.json alone"
 
+# 5a. --env or --category with a claude target prints exactly one WARN line
+#     (they have no effect there) and keeps the exit code; other targets and a
+#     plain claude run stay quiet.
+claude_filter_warns() {
+  local err
+  err="$(HOME="$(mktemp -d)" "$INSTALL" "$@" 2>&1 >/dev/null)" ||
+    fail "install.sh $* exited non-zero"
+  grep -c 'WARN .*no effect for claude' <<<"$err" || true
+}
+[[ "$(claude_filter_warns --target=claude --category=workflow)" -eq 1 ]] ||
+  fail "--category with --target=claude did not warn once"
+[[ "$(claude_filter_warns --target=all --env=chat --category=workflow --dry-run)" -eq 1 ]] ||
+  fail "--env/--category with --target=all did not warn once"
+[[ "$(claude_filter_warns --target=claude)" -eq 0 ]] || fail "plain claude run warned"
+[[ "$(claude_filter_warns --target=opencode --env=chat --dry-run)" -eq 0 ]] ||
+  fail "--env with --target=opencode warned about claude"
+pass "--env/--category with a claude target warn once, exit code unchanged"
+
 # 6. install --target=all populates codex and opencode only. opencode keeps
 #    command skills in its command dir; codex has no command dir, so its
 #    command skills land in the skills dir instead.

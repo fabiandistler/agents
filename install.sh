@@ -22,7 +22,8 @@
 # --instructions, and every claude run (install or uninstall) removes what
 # earlier versions created: our links in ~/.claude/skills and
 # ~/.claude/commands and the merge-guard entry in ~/.claude/settings.json.
-# --env and --category do not apply to claude.
+# --env and --category do not apply to claude; passing either with a claude
+# target prints one WARN line and changes nothing else.
 #
 # --env=coding|chat|all (default all) selects which skills to (un)install,
 # based on each skill's `environments:` frontmatter field. A skill with no
@@ -136,6 +137,8 @@ MERGE_GUARD=0
 TARGET=""
 ENV="all"
 CATEGORY="all"
+# Skill filters given on the command line (they do not apply to claude).
+FILTER_FLAGS=""
 
 # Must match the category list in scripts/build_manifest.py.
 CATEGORIES="architecture refactoring ai-ml workflow communication personal"
@@ -148,8 +151,14 @@ usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
 for arg in "$@"; do
   case "$arg" in
     --target=*) TARGET="${arg#--target=}" ;;
-    --env=*) ENV="${arg#--env=}" ;;
-    --category=*) CATEGORY="${arg#--category=}" ;;
+    --env=*)
+      ENV="${arg#--env=}"
+      [[ "$FILTER_FLAGS" == *--env* ]] || FILTER_FLAGS+=" --env"
+      ;;
+    --category=*)
+      CATEGORY="${arg#--category=}"
+      [[ "$FILTER_FLAGS" == *--category* ]] || FILTER_FLAGS+=" --category"
+      ;;
     --dry-run) DRY_RUN=1 ;;
     --instructions) INSTRUCTIONS=1 ;;
     --merge-guard) MERGE_GUARD=1 ;;
@@ -1406,6 +1415,10 @@ main() {
   routed="$(routed_categories)"
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
   [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
+  if [[ -n "$FILTER_FLAGS" && ("$TARGET" == "claude" || "$TARGET" == "all") ]]; then
+    printf '  WARN      %s: no effect for claude (its skills come from the plugin marketplace)\n' \
+      "${FILTER_FLAGS# }" >&2
+  fi
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue

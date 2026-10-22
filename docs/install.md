@@ -65,6 +65,8 @@ skill without the field belongs to every environment.
 
 Neither filter applies to Claude: there you choose a subset by installing only
 some plugins, one per category. The plugins have no coding/chat split.
+Passing `--env` or `--category` with `--target=claude` or `--target=all`
+prints one warning to say so, and changes nothing else.
 
 **Skills that skip an agent.** A skill can opt out of individual agents with a
 `targets` field (a comma-separated subset of `claude`, `codex`, `opencode`;
