@@ -104,19 +104,6 @@ more samples.**
 | 3% | ~1,000 |
 | 1% | ~10,000 |
 
-Practical consequences:
-
-- **Large improvements are cheap to prove.** A few dozen examples can confirm a
-  30-point win — but such wins get rarer after the first easy iterations.
-- **Small improvements are expensive to prove.** Detecting a 1% gain needs
-  ~10,000 eval examples *per comparison*. Monthly iteration across five
-  comparison dimensions can mean 50,000+ quality annotations a month.
-- **The cost curve is superlinear**, not linear: each ~3× reduction in the
-  detectable effect costs roughly 9–10× more data (the rule is a mnemonic form
-  of the general power-analysis result that detecting an effect of size ε
-  needs a sample ∝ 1/ε²). Teams routinely underestimate this and draw
-  conclusions from eval sets that are far too small.
-
 Before climbing a rung: estimate the expected effect size first. If it is
 small (~1%), either budget for a much larger eval set or reframe the
 comparison around a more variance-rich indirect metric (e.g. confidence
@@ -241,22 +228,3 @@ engineering was for classical ML, just with retrieved information standing
 in for engineered columns. Part C decides *how to know* whether either
 change actually helped once it reaches users, and feeds new failure evidence
 back into Part A's diagnosis step.
-
-## Common pitfalls to avoid
-
-- Reaching for finetuning when the eval shows an information failure, not a
-  behavior failure.
-- Climbing an adaptation rung on an eval set too small to detect the effect
-  size actually at stake.
-- Building a router, cache, or agent loop before the step beneath it
-  (context, guardrails) is solid — each skipped step becomes blind or unsafe.
-- Building agents first because they demo well, before eval, context, and
-  guardrails exist.
-- Monitoring only classic DevOps metrics (MTTD/MTTR/CFR) and missing
-  quality, security, and drift entirely.
-- Treating explicit feedback (thumbs up/down) as the whole feedback picture
-  and ignoring the richer, continuous implicit signals.
-- Writing generic metrics before reading traces — run error analysis first,
-  then encode persistent failures as checks or judges.
-- Declaring a generative app deployment-worthy without checking it against the
-  regression baseline, strongest-model ceiling, heuristic, and human expert.

@@ -30,12 +30,14 @@
 _Net-new vs. the Huyen sheet, which covers guardrails and code-sandboxing but
 not tool-as-interface design._
 
-- **Register only narrowly scoped operations as tools — never a generic
-  "run SQL" / "execute code" endpoint.** (Ch. 4)
+- **Expose narrow tools by default; expose SQL only through a constrained query
+  interface.** Never provide unrestricted `execute_sql(query)` or code execution.
+  For read-only database access, limit the connection to approved views with
+  database grants (see `ai-engineering-conventions.md`, Security). (Ch. 4)
   - ✅ `get_user_profile(user_id)`, `cancel_order(order_id)`
-  - ❌ `execute_sql(query: str)`   ← likely-default
-- **Give a read-only agent no write/delete tools, and give the agent's DB
-  account only the privileges its registered tools need.** (Ch. 4)
+  - ❌ `execute_sql(query: str)` with broad database access   ← likely-default
+- **Give a read-only agent no write/delete tools, and grant its account only the
+  privileges those tools need.** (Ch. 4)
 - **Treat tool metadata as the selection interface: a precise narrow name, a
   description that overlaps with no other tool, one example invocation, and
   explicit type/range constraints.** Overlapping descriptions are the main cause
@@ -188,8 +190,10 @@ sheet; these are the agent/MCP-specific additions._
 
 ## UX
 
-- **Expose autonomy as an explicit user control (Manual / Assist / Auto) with
-  defined behavior per level — don't hardcode one autonomy level.** (Ch. 3)
+- **For agents with interactive users, expose autonomy as an explicit user
+  control (Manual / Assist / Auto) with defined behavior per level. For
+  unattended agents, define autonomy and approval policy in job configuration.**
+  (Ch. 3)
 - **Classify each interaction explicitly as synchronous or asynchronous and
   design status communication for the async ones; never leave users watching a
   spinner on a long-running task.** (Ch. 3)
