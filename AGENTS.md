@@ -252,6 +252,11 @@ machine consumption prefer `skills.json`.
   into one paragraph per file that starts `As of 20YY-MM[-DD]`. Code spans,
   code blocks and URLs are exempt. CI enforces this with
   `python3 scripts/check_dated_claims.py`.
+- Every `references/`, `scripts/`, `assets/`, `evals/` or `members/` path a
+  SKILL.md or reference names exists relative to the skill directory, and
+  every relative Markdown link exists relative to the linking file — code
+  spans and fenced commands included. CI enforces this with
+  `python3 scripts/check_skill_paths.py`.
 - A GitHub step an agent executes names the operation (list open issues,
   read an issue with comments, create a PR), then uses this canonical
   sentence, keeping the `gh` command as the fallback for agents without the
