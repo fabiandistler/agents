@@ -243,8 +243,10 @@ def test_bad_input_fails_open_with_exit_3() -> None:
 
 def test_usage_error_does_not_look_like_a_block() -> None:
     run = run_guard("cursor", claude_event("cat .env"))
-    assert run.returncode == pr_merge_guard.EXIT_USAGE
-    assert run.stderr.strip().endswith("'opencode')") and "secret_read_guard:" in run.stderr
+    assert run.returncode == pr_merge_guard.EXIT_USAGE != guard.EXIT_BLOCK
+    # argparse quotes the choices differently across Python versions; match only stable markers
+    assert run.stderr.startswith("usage:") and "--harness" in run.stderr
+    assert "Blocked by" not in run.stderr
 
 
 def test_help_is_short_and_names_exit_codes() -> None:
