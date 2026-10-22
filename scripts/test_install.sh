@@ -423,6 +423,21 @@ grep -q 'remove routed-member skill overrides' <<<"$ov_dry" &&
   fail "dry-run planned removing an override block it would keep"
 pass "unchanged override block is neither rewritten nor planned for removal"
 
+# 21c3. a narrower --category re-run keeps the overrides of routers still
+#       installed (#562): the full install links the architecture and ai-ml
+#       routers, a communication-only re-run leaves those links in place, so
+#       their nested members must stay disabled.
+HOME_OV4="$(mktemp -d)"
+HOME="$HOME_OV4" "$INSTALL" --target=codex >/dev/null
+CONFIG_OV4="$HOME_OV4/.codex/config.toml"
+before="$(cat "$CONFIG_OV4")"
+grep -q 'routed-member skill overrides' <<<"$before" ||
+  fail "full codex install wrote no override block"
+HOME="$HOME_OV4" "$INSTALL" --target=codex --category=communication >/dev/null
+[[ "$(cat "$CONFIG_OV4")" == "$before" ]] ||
+  fail "narrower --category re-run changed the override block of installed routers"
+pass "narrower --category re-run keeps overrides of installed routers"
+
 # 21d. a config left behind by a version that still registered the
 #      knowledge-base MCP servers is cleaned up — by install as well as by
 #      uninstall — across every legacy category, foreign tables untouched.
