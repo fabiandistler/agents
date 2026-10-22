@@ -5,7 +5,7 @@ the source chapter, then modern equivalents. Pick the tool that already fits
 the project's test stack — a fitness function developers can read and run
 locally beats a more powerful one bolted on from outside.
 
-Maintenance notes are as of 2026-10: NetArchTest's last release was in 2021,
+As of 2026-10, NetArchTest's last release was in 2021,
 ts-arch's in 2024-12, and ArchUnitPython's first release was in April 2026.
 Recheck the release pages before relying on any of them.
 

@@ -115,10 +115,8 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 
 ## Provenance
 
-When each toolchain version, runner flag and `az` flag was last checked, and
-what has never run for real, is in
+When each toolchain version, runner flag and `az` flag was last checked, what
+has never run for real, and when the skill is retired, is in
 [references/provenance.md](references/provenance.md); read it before the
 first real run. `scripts/test_loop.py` is the stub-CLI test suite for
 `loop.sh`; the skill never runs it.
-
-- Sunset: delete this skill on 2027-03-01 if no second real run has happened by then.

@@ -69,7 +69,7 @@ yourpkg::main_function(example_data)
 - **Mobile browsers cap WebAssembly memory** whatever the device has; keep
   live examples to small data.
 
-Source: forge pass 2026-10-03 on the webR docs (docs.r-wasm.org, webR 0.6.0)
+As of 2026-10-03, sourced from the webR docs (docs.r-wasm.org, webR 0.6.0)
 and the quarto-live README.
 
 ## Failure modes
