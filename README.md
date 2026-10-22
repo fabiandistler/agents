@@ -16,11 +16,11 @@ execute code on their own.
 
 ## Quick start
 
-Two supported paths. Both take under five minutes; pick one — running both in
-Claude Code makes every skill appear twice.
+Two supported paths, one per agent family. Both take under five minutes.
 
-**Claude plugins** (Claude Code, claude.ai, Claude Desktop, Cowork) — install
-whole categories, no clone needed. In Claude Code:
+**Claude plugins** (Claude Code, claude.ai, Claude Desktop, Cowork) — the only
+way to get the skills, subagents and merge guard into Claude. Install whole
+categories, no clone needed. In Claude Code:
 
 ```
 /plugin marketplace add fabiandistler/agents
@@ -28,21 +28,24 @@ whole categories, no clone needed. In Claude Code:
 ```
 
 Elsewhere: Settings → Plugins → Add marketplace → GitHub →
-`fabiandistler/agents`, then install individual plugins.
+`fabiandistler/agents`, then install individual plugins. Auto-update is off by
+default for this marketplace; see
+[docs/install.md](docs/install.md#claude-code-plugins-only).
 
-**Symlinks** (Codex CLI, opencode, or local development on this repo).
-Requires `bash` and `git`; `python3` only for the Codex extras:
+**Symlinks** (Codex CLI, opencode). Requires `bash` and `git`; `python3` only
+for the Codex extras. For Claude, `install.sh` only syncs the shared
+instructions (`--instructions`):
 
 ```console
 $ git clone https://github.com/fabiandistler/agents.git ~/src/agents
 $ cd ~/src/agents
-$ ./install.sh --target=claude
-claude: /home/you/.claude/skills
-  linked    /home/you/.claude/skills/architecture -> /home/you/src/agents/skills/architecture
-  linked    /home/you/.claude/skills/documentation -> /home/you/src/agents/skills/documentation
-  linked    /home/you/.claude/skills/refactoring -> /home/you/src/agents/skills/refactoring
+$ ./install.sh --target=opencode
+opencode: /home/you/.config/opencode/skills
+  linked    /home/you/.config/opencode/skills/architecture -> /home/you/src/agents/skills/architecture
+  linked    /home/you/.config/opencode/skills/documentation -> /home/you/src/agents/skills/documentation
+  linked    /home/you/.config/opencode/skills/refactoring -> /home/you/src/agents/skills/refactoring
   ...
-  linked    /home/you/.claude/commands/repo-status.md -> /home/you/src/agents/skills/repo-status/SKILL.md
+  linked    /home/you/.config/opencode/command/repo-status.md -> /home/you/src/agents/skills/repo-status/SKILL.md
 ```
 
 Start your agent and ask it something the catalogue covers — *"is this
@@ -61,17 +64,18 @@ behaviour is in [`docs/install.md`](docs/install.md).
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into |
+| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links) |
 | `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` |
 | `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app |
 | `--instructions` | off | Also compose `instructions/` into the agent's global instruction file |
+| `--merge-guard` | off | Also install the PR merge guard hook (Codex, opencode; Claude uses the `merge-guard` plugin) |
 | `--dry-run` | off | Print every action, change nothing |
 | `--uninstall` | off | Remove only the links and managed blocks this installer created |
 
 ```sh
-./install.sh --target=claude --category=architecture
-./install.sh --target=codex  --env=coding
-./install.sh --target=all    --instructions --dry-run
+./install.sh --target=opencode --category=architecture
+./install.sh --target=codex    --env=coding
+./install.sh --target=all      --instructions --dry-run
 ```
 
 ## Usage
@@ -87,8 +91,9 @@ router's
 `members/` directory and load only when routed to.
 
 **Some skills are invoked explicitly.** Skills marked `activation: command`
-are user-invoked only and install as commands — `/oss-scouting`,
-`/repo-status` in Claude Code.
+are user-invoked only and install as commands — `/workflow:oss-scouting`,
+`/workflow:repo-status` in Claude Code, where plugin commands carry the
+plugin name.
 
 **Shared rules are separate from skills.** Skills are capabilities loaded on
 demand; rules that apply to *every* session live in `instructions/` as
@@ -97,10 +102,10 @@ single-topic fragments, composed into `~/.claude/CLAUDE.md`,
 `./install.sh --instructions`. Content outside the
 managed markers is never touched.
 
-**Only the human merges.** `./install.sh --merge-guard` adds a pre-tool hook
-to Claude Code, Codex CLI and opencode that blocks the agent from merging pull
-requests or enabling auto-merge; this repo's `.claude/settings.json` carries
-the same hook for cloud sessions. Details and limits:
+**Only the human merges.** A pre-tool hook blocks the agent from merging pull
+requests or enabling auto-merge: the `merge-guard` plugin in Claude Code,
+`./install.sh --merge-guard` for Codex CLI and opencode. This repo's
+`.claude/settings.json` carries the same hook for cloud sessions. Details and limits:
 [docs/install.md](docs/install.md#pr-merge-guard---merge-guard).
 
 **Reading without installing:** [`skills.json`](skills.json) is the
@@ -175,7 +180,7 @@ still listed here.
 | `instructions/` | Always-on rule fragments, composed into the agent's global instruction file by `--instructions` |
 | `.claude/` | Skills, subagents and rules mirrored for cloud sessions of this repo, generated by `scripts/build_project_claude.py` |
 | `.claude-plugin/` | The plugin marketplace manifest (`marketplace.json`) |
-| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents) |
+| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents), plus the hook-only `merge-guard` plugin |
 | `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
 | `maintenance/` | Reports from the scheduled maintenance rotation described in [`MAINTENANCE.md`](MAINTENANCE.md) |
 | `docs/adr/` | Architecture Decision Records for this repo's own structure |
