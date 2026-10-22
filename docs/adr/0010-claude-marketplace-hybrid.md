@@ -19,19 +19,22 @@ read as accepted. A Claude user with the marketplace installed therefore had
 two channels on one surface again.
 
 [#567](https://github.com/fabiandistler/agents/issues/567) asked which of the
-installer's Claude jobs a plugin can take over.
-`docs/research/plugin-only-distribution.md` tested this with Claude Code
-2.1.306, Codex CLI 0.162.1 and opencode 1.19.0:
+installer's Claude jobs a plugin can take over. On 2026-10-21 it was tested
+hands-on in throwaway `$HOME`s with Claude Code 2.1.306, Codex CLI 0.162.1 and
+opencode 1.19.0:
 
 - **Claude:** skills, routers with hidden members, command skills and both
-  subagents install from the marketplace as the repo is. The merge guard works
-  as a plugin `hooks/hooks.json` PreToolUse hook and blocked `gh pr merge` in a
-  headless run. No plugin component carries `CLAUDE.md` content or rules; a
+  subagents install from the marketplace as the repo is; symlinks within the
+  marketplace are dereferenced into the cache. The merge guard works as a
+  plugin `hooks/hooks.json` PreToolUse hook and blocked `gh pr merge` in a
+  headless run. No plugin component carries `CLAUDE.md` content or rules
+  ([plugins-reference](https://code.claude.com/docs/en/plugins-reference)); a
   SessionStart hook can inject the fragments, but only under a 10,000-char cap
-  per hook output.
+  per hook output. Auto-update is off by default for third-party marketplaces
+  ([plugin loading](https://code.claude.com/docs/en/plugins/loading)).
 - **Codex:** reads `.claude-plugin/marketplace.json`, but drops *every*
-  symlink, even one inside the plugin. It has no subagent component and lists
-  router members as top-level skills.
+  symlink when it copies a plugin into its cache, even one inside the plugin.
+  It has no subagent component and lists router members as top-level skills.
 - **opencode:** has no marketplace; a JS package plugin could register
   everything, but `npm pack` drops symlinks too, so it needs a build step.
 
