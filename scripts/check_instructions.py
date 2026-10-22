@@ -31,7 +31,9 @@ FILENAME = re.compile(r"^(\d{2})-[a-z0-9-]+\.md$")
 FIELD = re.compile(r"^([a-z]+):[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 
 VALID_TARGETS = frozenset({"all", "claude", "codex", "opencode"})
-REQUIRED_FIELDS = ("title", "targets")
+# `targets` is optional: install.sh and build_project_claude.py read an absent
+# field as every agent. A present but blank one is ambiguous, see check_targets.
+REQUIRED_FIELDS = ("title",)
 
 
 def split_frontmatter(text: str) -> tuple[str, str] | None:
@@ -111,9 +113,8 @@ def main() -> int:
             if not fields.get(field):
                 errors.append(f"{name}: missing or empty '{field}'")
 
-        targets = fields.get("targets")
-        if targets:
-            errors.extend(f"{name}: {e}" for e in check_targets(targets))
+        if "targets" in fields:
+            errors.extend(f"{name}: {e}" for e in check_targets(fields["targets"]))
 
         if "paths" in fields:
             errors.extend(f"{name}: {e}" for e in check_paths(fields["paths"]))
