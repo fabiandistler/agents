@@ -262,7 +262,7 @@
     },
     {
       "name": "tldr",
-      "summary": "Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread.",
+      "summary": "Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.",
       "category": "communication",
       "path": "skills/tldr/SKILL.md",
       "activation": "command",
@@ -270,11 +270,11 @@
         "coding",
         "chat"
       ],
-      "version": "1.1"
+      "version": "1.2"
     },
     {
       "name": "was",
-      "summary": "Re-pitching the last message in plain German when it did not land — a little context first, short active sentences, the repo's glossary terms kept verbatim.",
+      "summary": "Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim.",
       "category": "communication",
       "path": "skills/was/SKILL.md",
       "activation": "command",
@@ -282,7 +282,7 @@
         "coding",
         "chat"
       ],
-      "version": "1.0"
+      "version": "1.1"
     }
   ]
 }

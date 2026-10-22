@@ -5,15 +5,16 @@ activation: command
 disable-model-invocation: true
 environments: coding, chat
 argument-hint: "[file | PR | URL | topic — empty means the last message]"
-description: Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread.
+description: Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # TL;DR
 
-Something got too long to hold. Hand back the **cliffs**: the few facts that let
-the user decide or act, and an honest line about what those facts leave out.
+Something got too long to read. The user calls this instead of reading it, so
+hand back the **cliffs**: the few facts that let them decide or act, and an
+honest line about what those facts leave out.
 
 Cliffs, not a **telegram**. A telegram is shorter and just as unusable — it
 drops the premises, so only someone who already read the source can parse it.
@@ -102,12 +103,23 @@ Three things stay load-bearing however long the source is:
   different sentences; write the true one. Mark inference as inference:
   "(inferred — the doc never says)".
 
+## Plain on first read
+
+The user did not read the source, so the cliffs get one pass and no premises
+from it. Write them so that one pass is enough:
+
+- Context first: the bottom line says where things stand and why it matters
+  before it says what follows.
+- Short sentences in the active voice, one thought each.
+- One word, one meaning: name the same thing the same way every time.
+
 Prose follows the conversation, terms follow the source. The cliffs are written
 in the language the chat is in — an English PR summarised into a German thread
 comes back German. What stays in the source's own words are the terms
 themselves: identifiers, error strings, and a repo's `GLOSSARY.md` ubiquitous
-language. Translating those, or inventing a cleaner label, makes the reader
-translate back.
+language (with several glossaries, `GLOSSARY-MAP.md` names the right one).
+Translating those, or inventing a cleaner label, makes the reader translate
+back.
 
 ## When it is a different ask
 
@@ -115,8 +127,10 @@ translate back.
   drafted from recent activity is a `repo-status` task (suggest the user run
   the command); a status for readers outside the working group is
   `stakeholder-update`.
-- **Short, and it still did not land.** The gap is missing premises. Back up and
-  re-explain with them. In a German chat, suggest the user run `was`, which
+- **Short, read, and it still did not land.** Length decides, and it is
+  visible before reading: long and unread comes here, short but unclear after
+  reading does not, because the gap is missing premises and shortening adds
+  none. Back up and re-explain with them, or suggest the user run `was`, which
   re-pitches the last message in plain German.
 - **The reasoning is the point** — a trade-off, a review call. Give the shape of
   the argument: both positions and what each turns on.
