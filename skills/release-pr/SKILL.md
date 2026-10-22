@@ -8,7 +8,7 @@ compatibility: Requires git plus the forge's CLI — `gh` or the GitHub MCP tool
 argument-hint: "[major | minor | patch | X.Y.Z | tag]"
 description: Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written. After merge, tag and publish the release.
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Release PR
@@ -83,8 +83,10 @@ Copy the checklist and work through it:
 ### 0 State
 
 Preconditions: inside the package's git repository, on a branch that is not
-the default branch, working tree clean apart from the PR's own changes. On the
-default branch, stop and ask for a branch name. Then:
+the default branch, working tree clean apart from the PR's own changes. For R,
+commit those too before step 2: `usethis::use_version()` aborts under `Rscript`
+while tracked files have uncommitted changes. On the default branch, stop and
+ask for a branch name. Then:
 
 ```bash
 git fetch origin
