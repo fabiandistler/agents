@@ -292,7 +292,9 @@ change.
 - One named verb per write, narrowest stable ID, `--dry-run` first;
   never hide writes in `fix`/`auto`/raw.
 - Secrets from env or config, never a flag (shell history, `ps`); never
-  echo them, not in `--json` errors.
+  echo them, not in `--json` errors. CI flags a skill, instruction or
+  script example that passes a credential in argv with
+  `python3 scripts/check_secret_argv.py`.
 - Smoke-test the installed command from `/tmp`, not the source folder.
 - Bound the output. Harness output is truncated past roughly 10–30k
   characters, silently. Default to a summary; offer `--output FILE` and
