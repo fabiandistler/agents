@@ -121,15 +121,14 @@ CODEX_EXPECTED="$(skill_count all codex)"
 OPENCODE_EXPECTED="$(skill_count all opencode)"
 CODEX_CMD_EXPECTED="$(command_count all codex)"
 OPENCODE_CMD_EXPECTED="$(command_count all opencode)"
-# Skills opencode links itself under --target=all: those that skip both claude
-# and codex, so no shared root opencode reads holds them.
+# Skills opencode links itself under --target=all: those that skip codex, so
+# ~/.agents/skills (the root opencode shares) does not hold them.
 OPENCODE_ONLY_EXPECTED=0
 for _d in "$REPO_ROOT"/skills/*/; do
   [[ -f "$_d/SKILL.md" ]] || continue
   skill_is_command "$_d" && continue
   skill_is_nested_member "$_d" && continue
   skill_matches_target "$_d" opencode || continue
-  skill_matches_target "$_d" claude && continue
   skill_matches_target "$_d" codex && continue
   OPENCODE_ONLY_EXPECTED=$((OPENCODE_ONLY_EXPECTED + 1))
 done
@@ -142,63 +141,117 @@ HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run >/dev/null
 [[ ! -d "$HOME_DRY/.config/opencode" ]] || fail "dry-run created $HOME_DRY/.config/opencode"
 pass "dry-run creates no files"
 
-# 2. install --target=claude links every auto skill into skills/ and every
-#    command skill into commands/.
+# 2. install --target=claude links nothing: Claude gets skills, commands,
+#    subagents and the merge guard from the plugin marketplace (#567).
 HOME_C="$(mktemp -d)"
 HOME="$HOME_C" "$INSTALL" --target=claude >/dev/null
-got="$(count_links "$HOME_C/.claude/skills")"
-[[ "$got" -eq "$EXPECTED" ]] || fail "claude install: expected $EXPECTED links, got $got"
-pass "claude install creates $EXPECTED skill symlinks"
-got="$(count_links "$HOME_C/.claude/commands")"
-[[ "$got" -eq "$CMD_EXPECTED" ]] || fail "claude install: expected $CMD_EXPECTED command links, got $got"
-# A command skill must land as <name>.md in commands/, not in skills/.
-[[ -L "$HOME_C/.claude/commands/repo-status.md" ]] || fail "command skill repo-status not linked into commands/"
-[[ ! -e "$HOME_C/.claude/skills/repo-status" ]] || fail "command skill repo-status leaked into skills/"
-pass "claude install routes $CMD_EXPECTED command skills to commands/"
+[[ ! -e "$HOME_C/.claude/skills" ]] || fail "claude install created ~/.claude/skills"
+[[ ! -e "$HOME_C/.claude/commands" ]] || fail "claude install created ~/.claude/commands"
+[[ ! -e "$HOME_C/.claude/settings.json" ]] || fail "claude install created settings.json"
+pass "claude install links no skills or commands"
 
-# 3. Re-running is idempotent (still exactly $EXPECTED links).
-HOME="$HOME_C" "$INSTALL" --target=claude >/dev/null
-got="$(count_links "$HOME_C/.claude/skills")"
-[[ "$got" -eq "$EXPECTED" ]] || fail "idempotent run: link count drifted to $got"
-pass "claude install is idempotent"
-
-# 4. Foreign symlink is preserved.
-mkdir -p "$HOME_C/.claude/skills"
+# 3. Migration from a symlink install: every claude run removes our skill and
+#    command links (live and dangling) and the old merge-guard entry in
+#    settings.json; foreign links and settings stay. A dry-run only reports.
+make_claude_symlink_home() {
+  local home="$1"
+  mkdir -p "$home/.claude/skills" "$home/.claude/commands"
+  ln -s "$REPO_ROOT/skills/architecture" "$home/.claude/skills/architecture"
+  ln -s "$REPO_ROOT/skills/documentation" "$home/.claude/skills/documentation"
+  ln -s "$REPO_ROOT/skills/removed-skill" "$home/.claude/skills/removed-skill"
+  ln -s "$REPO_ROOT/skills/repo-status/SKILL.md" "$home/.claude/commands/repo-status.md"
+  ln -s "$foreign_src" "$home/.claude/skills/foreign-skill"
+  ln -s "$foreign_src" "$home/.claude/commands/foreign.md"
+  python3 - "$home/.claude/settings.json" "$REPO_ROOT" <<'PY'
+import json, sys
+guard = f'python3 "{sys.argv[2]}/scripts/pr_merge_guard.py" --harness claude'
+settings = {
+    "model": "opus",
+    "hooks": {
+        "Stop": [{"hooks": [{"type": "command", "command": "x"}]}],
+        "PreToolUse": [{"matcher": "^(Bash|mcp__.*)$", "hooks": [{"type": "command", "command": guard}]}],
+    },
+}
+open(sys.argv[1], "w").write(json.dumps(settings, indent=2) + "\n")
+PY
+}
 foreign_src="$(mktemp -d)/foreign"
 mkdir "$foreign_src"
-ln -sfn "$foreign_src" "$HOME_C/.claude/skills/foreign-skill"
-HOME="$HOME_C" "$INSTALL" --target=claude --uninstall >/dev/null
-[[ -L "$HOME_C/.claude/skills/foreign-skill" ]] || fail "uninstall removed a foreign symlink"
-pass "uninstall preserves foreign symlinks"
-
-# 5. Uninstall removes our symlinks; foreign stays.
-ours_remaining=0
-for f in "$HOME_C/.claude/skills"/*; do
-  [[ -L "$f" ]] || continue
-  target="$(readlink "$f")"
-  [[ "$target" == "$REPO_ROOT/"* ]] && ours_remaining=$((ours_remaining + 1))
+HOME_MIGC="$(mktemp -d)"
+make_claude_symlink_home "$HOME_MIGC"
+cp "$HOME_MIGC/.claude/settings.json" "$HOME_MIGC/settings-before.json"
+migc_dry="$(HOME="$HOME_MIGC" "$INSTALL" --target=claude --dry-run 2>&1)"
+[[ "$(count_links "$HOME_MIGC/.claude/skills")" -eq 4 ]] || fail "dry-run removed claude skill links"
+diff -q "$HOME_MIGC/settings-before.json" "$HOME_MIGC/.claude/settings.json" >/dev/null ||
+  fail "dry-run changed settings.json"
+grep -q 'remove PR merge guard hook' <<<"$migc_dry" || fail "dry-run did not plan the settings cleanup"
+HOME="$HOME_MIGC" "$INSTALL" --target=claude >/dev/null
+for gone in skills/architecture skills/documentation skills/removed-skill commands/repo-status.md; do
+  [[ ! -L "$HOME_MIGC/.claude/$gone" ]] || fail "migration left ~/.claude/$gone"
 done
-[[ "$ours_remaining" -eq 0 ]] || fail "uninstall left $ours_remaining of our symlinks"
-pass "uninstall removes our symlinks only"
+[[ -L "$HOME_MIGC/.claude/skills/foreign-skill" ]] || fail "migration removed a foreign skill link"
+[[ -L "$HOME_MIGC/.claude/commands/foreign.md" ]] || fail "migration removed a foreign command link"
+python3 - "$HOME_MIGC/.claude/settings.json" <<'PY' || fail "migration mangled settings.json"
+import json, sys
+settings = json.load(open(sys.argv[1]))
+assert settings["model"] == "opus" and settings["hooks"]["Stop"]
+assert "PreToolUse" not in settings["hooks"]
+PY
+cp "$HOME_MIGC/.claude/settings.json" "$HOME_MIGC/settings-once.json"
+HOME="$HOME_MIGC" "$INSTALL" --target=claude >/dev/null
+diff -q "$HOME_MIGC/settings-once.json" "$HOME_MIGC/.claude/settings.json" >/dev/null ||
+  fail "second claude run changed settings.json"
+pass "claude install migrates symlinks and the settings.json guard away"
 
-# 6. install --target=all populates all three roots. claude and opencode keep
-#    command skills in their command dir; codex has no command dir, so its
+# 4. --uninstall runs the same migration, whatever --category says.
+HOME_MIGU="$(mktemp -d)"
+make_claude_symlink_home "$HOME_MIGU"
+HOME="$HOME_MIGU" "$INSTALL" --target=claude --category=workflow --uninstall >/dev/null
+[[ "$(count_links "$HOME_MIGU/.claude/skills")" -eq 1 ]] || fail "claude uninstall left our skill links"
+[[ "$(count_links "$HOME_MIGU/.claude/commands")" -eq 1 ]] || fail "claude uninstall left our command links"
+! grep -q pr_merge_guard "$HOME_MIGU/.claude/settings.json" || fail "claude uninstall left the guard entry"
+pass "claude uninstall migrates too, ignoring --category"
+
+# 5. A settings.json that is not a JSON object is left untouched.
+HOME_BADJ="$(mktemp -d)"
+mkdir -p "$HOME_BADJ/.claude"
+printf '["pr_merge_guard.py"]\n' >"$HOME_BADJ/.claude/settings.json"
+HOME="$HOME_BADJ" "$INSTALL" --target=claude >/dev/null 2>&1
+[[ "$(cat "$HOME_BADJ/.claude/settings.json")" == '["pr_merge_guard.py"]' ]] ||
+  fail "migration rewrote a settings.json that is not an object"
+pass "migration leaves a non-object settings.json alone"
+
+# 5a. --env or --category with a claude target prints exactly one WARN line
+#     (they have no effect there) and keeps the exit code; other targets and a
+#     plain claude run stay quiet.
+claude_filter_warns() {
+  local err
+  err="$(HOME="$(mktemp -d)" "$INSTALL" "$@" 2>&1 >/dev/null)" ||
+    fail "install.sh $* exited non-zero"
+  grep -c 'WARN .*no effect for claude' <<<"$err" || true
+}
+[[ "$(claude_filter_warns --target=claude --category=workflow)" -eq 1 ]] ||
+  fail "--category with --target=claude did not warn once"
+[[ "$(claude_filter_warns --target=all --env=chat --category=workflow --dry-run)" -eq 1 ]] ||
+  fail "--env/--category with --target=all did not warn once"
+[[ "$(claude_filter_warns --target=claude)" -eq 0 ]] || fail "plain claude run warned"
+[[ "$(claude_filter_warns --target=opencode --env=chat --dry-run)" -eq 0 ]] ||
+  fail "--env with --target=opencode warned about claude"
+pass "--env/--category with a claude target warn once, exit code unchanged"
+
+# 6. install --target=all populates codex and opencode only. opencode keeps
+#    command skills in its command dir; codex has no command dir, so its
 #    command skills land in the skills dir instead.
 CODEX_SKILLS_EXPECTED=$((CODEX_EXPECTED + CODEX_CMD_EXPECTED))
 HOME_A="$(mktemp -d)"
 HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
-got="$(count_links "$HOME_A/.claude/skills")"
-[[ "$got" -eq "$EXPECTED" ]] || fail "all install: .claude/skills has $got links, expected $EXPECTED"
-# opencode also reads ~/.claude/skills and ~/.agents/skills (#564), so it keeps
-# links only for skills that neither claude nor codex installs.
+[[ ! -e "$HOME_A/.claude" ]] || fail "all install created ~/.claude"
 got="$(count_links "$HOME_A/.config/opencode/skills")"
 [[ "$got" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
   fail "all install: opencode skills has $got links, expected $OPENCODE_ONLY_EXPECTED"
 got="$(count_links "$HOME_A/.agents/skills")"
 [[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] ||
   fail "all install: .agents/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
-got="$(count_links "$HOME_A/.claude/commands")"
-[[ "$got" -eq "$CMD_EXPECTED" ]] || fail "all install: claude commands has $got links, expected $CMD_EXPECTED"
 got="$(count_links "$HOME_A/.config/opencode/command")"
 [[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] ||
   fail "all install: opencode command has $got links, expected $OPENCODE_CMD_EXPECTED"
@@ -206,34 +259,32 @@ got="$(count_links "$HOME_A/.config/opencode/command")"
 [[ -f "$HOME_A/.agents/skills/repo-status/agents/openai.yaml" ]] ||
   fail "codex: command skill repo-status missing its openai.yaml sidecar"
 [[ ! -e "$HOME_A/.codex/prompts/repo-status.md" ]] || fail "codex: command skill repo-status leaked into deprecated prompts/"
-pass "all install populates claude, codex, opencode (codex commands as skills)"
+pass "all install populates codex and opencode (codex commands as skills)"
 
 # 6a. --uninstall removes command-dir links (and the codex skill links).
 HOME="$HOME_A" "$INSTALL" --target=all --uninstall >/dev/null
-for sub in ".claude/commands" ".config/opencode/command"; do
-  got="$(count_links "$HOME_A/$sub")"
-  [[ "$got" -eq 0 ]] || fail "all uninstall: $sub still has $got command links"
-done
+got="$(count_links "$HOME_A/.config/opencode/command")"
+[[ "$got" -eq 0 ]] || fail "all uninstall: opencode command dir still has $got links"
 [[ ! -e "$HOME_A/.agents/skills/repo-status" ]] || fail "codex uninstall left command skill repo-status behind"
 pass "all uninstall removes command-dir links"
 
-# 6f. opencode reads ~/.claude/skills and ~/.agents/skills too, and wants skill
-#     names unique across them (#564): with claude installed first, opencode
-#     links none of the shared skills but keeps its command links.
+# 6f. opencode reads ~/.agents/skills too, and wants skill names unique across
+#     its roots (#564): with codex installed first, opencode links none of the
+#     shared skills but keeps its command links.
 HOME_OCS="$(mktemp -d)"
 OCS_SKILLS="$HOME_OCS/.config/opencode/skills"
-HOME="$HOME_OCS" "$INSTALL" --target=claude >/dev/null
+HOME="$HOME_OCS" "$INSTALL" --target=codex >/dev/null
 HOME="$HOME_OCS" "$INSTALL" --target=opencode >/dev/null
 got="$(count_links "$OCS_SKILLS")"
-[[ "$got" -eq 0 ]] || fail "opencode after claude: $got duplicate skill links"
+[[ "$got" -eq "$OPENCODE_ONLY_EXPECTED" ]] || fail "opencode after codex: $got duplicate skill links"
 got="$(count_links "$HOME_OCS/.config/opencode/command")"
 [[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] ||
-  fail "opencode after claude: expected $OPENCODE_CMD_EXPECTED command links, got $got"
-pass "opencode skips skills claude already links"
+  fail "opencode after codex: expected $OPENCODE_CMD_EXPECTED command links, got $got"
+pass "opencode skips skills codex already links"
 
-# 6g. the reverse order ends in the same state: a claude install removes the
-#     opencode links it now shadows, a foreign entry there survives, and an
-#     opencode-only run keeps its links.
+# 6g. the reverse order ends in the same state: a codex install removes the
+#     opencode links it now shadows, a foreign entry there survives, and
+#     uninstalling codex alone says how to restore opencode's own links.
 HOME_OCR="$(mktemp -d)"
 OCR_SKILLS="$HOME_OCR/.config/opencode/skills"
 HOME="$HOME_OCR" "$INSTALL" --target=opencode >/dev/null
@@ -242,42 +293,82 @@ got="$(count_links "$OCR_SKILLS")"
 foreign_oc="$(mktemp -d)/foreign"
 mkdir "$foreign_oc"
 ln -s "$foreign_oc" "$OCR_SKILLS/foreign-skill"
-HOME="$HOME_OCR" "$INSTALL" --target=claude --dry-run >/dev/null
+HOME="$HOME_OCR" "$INSTALL" --target=codex --dry-run >/dev/null
 got="$(count_links "$OCR_SKILLS")"
 [[ "$got" -eq $((OPENCODE_EXPECTED + 1)) ]] || fail "dry-run removed opencode links"
-HOME="$HOME_OCR" "$INSTALL" --target=claude >/dev/null
-got="$(count_links "$OCR_SKILLS")"
-[[ "$got" -eq 1 && -L "$OCR_SKILLS/foreign-skill" ]] ||
-  fail "claude after opencode: expected only the foreign link, found $got links"
-# A codex-only root counts too: drop the claude links, codex re-shares them.
-oc_note="$(HOME="$HOME_OCR" "$INSTALL" --target=claude --uninstall 2>&1 >/dev/null)"
-grep -q 'note .*re-run --target=opencode' <<<"$oc_note" ||
-  fail "claude uninstall did not tell how to restore opencode's links"
 HOME="$HOME_OCR" "$INSTALL" --target=codex >/dev/null
+got="$(count_links "$OCR_SKILLS")"
+[[ "$got" -eq $((OPENCODE_ONLY_EXPECTED + 1)) && -L "$OCR_SKILLS/foreign-skill" ]] ||
+  fail "codex after opencode: expected only the foreign link, found $got links"
+oc_note="$(HOME="$HOME_OCR" "$INSTALL" --target=codex --uninstall 2>&1 >/dev/null)"
+grep -q 'note .*re-run --target=opencode' <<<"$oc_note" ||
+  fail "codex uninstall did not tell how to restore opencode's links"
 HOME="$HOME_OCR" "$INSTALL" --target=opencode >/dev/null
 got="$(count_links "$OCR_SKILLS")"
-[[ "$got" -eq 1 ]] || fail "opencode after codex: $got links, expected only the foreign one"
-pass "claude or codex, in either order, leave opencode no duplicate links"
+[[ "$got" -eq $((OPENCODE_EXPECTED + 1)) ]] || fail "opencode re-run: expected all links back, got $got"
+pass "codex and opencode, in either order, leave opencode no duplicate links"
 
-# 6h. a narrower --env for claude leaves the rest to opencode's own links, and
+# 6h. a narrower --env for codex leaves the rest to opencode's own links, and
 #     a whole-tree dry-run plans exactly what the real run does.
 HOME_OCE="$(mktemp -d)"
-HOME="$HOME_OCE" "$INSTALL" --target=claude --env=chat >/dev/null
+HOME="$HOME_OCE" "$INSTALL" --target=codex --env=chat >/dev/null
 HOME="$HOME_OCE" "$INSTALL" --target=opencode >/dev/null
+shared=0
+for link in "$HOME_OCE/.agents/skills"/*; do
+  [[ -L "$link" ]] || continue
+  skill_is_command "$REPO_ROOT/skills/${link##*/}" || shared=$((shared + 1))
+done
 for link in "$HOME_OCE/.config/opencode/skills"/*; do
   [[ -L "$link" ]] || continue
-  [[ ! -e "$HOME_OCE/.claude/skills/${link##*/}" ]] ||
-    fail "opencode linked ${link##*/} although claude has it"
+  [[ ! -e "$HOME_OCE/.agents/skills/${link##*/}" ]] ||
+    fail "opencode linked ${link##*/} although codex has it"
 done
 got="$(count_links "$HOME_OCE/.config/opencode/skills")"
-want=$((OPENCODE_EXPECTED - $(count_links "$HOME_OCE/.claude/skills")))
-[[ "$got" -eq "$want" ]] || fail "opencode with claude --env=chat: expected $want links, got $got"
+want=$((OPENCODE_EXPECTED - shared))
+[[ "$got" -eq "$want" ]] || fail "opencode with codex --env=chat: expected $want links, got $got"
 oc_dry="$(HOME="$(mktemp -d)" "$INSTALL" --target=all --dry-run 2>&1)"
-grep -q 'linked .*/\.config/opencode/skills/' <<<"$oc_dry" &&
-  fail "dry-run --target=all planned opencode links that claude and codex share"
+[[ "$(grep -c 'linked .*/\.config/opencode/skills/' <<<"$oc_dry")" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
+  fail "dry-run --target=all planned opencode links that codex shares"
 grep -q 'shared .*/\.config/opencode/skills/' <<<"$oc_dry" ||
   fail "dry-run --target=all did not report the shared skills"
-pass "opencode links what claude lacks, and dry-run plans the shared state"
+pass "opencode links what codex lacks, and dry-run plans the shared state"
+
+# 6i. An earlier opencode install skipped the skills it read from
+#     ~/.claude/skills. The claude migration removes those links, so it hands
+#     each skill to an installed opencode, except those codex shares (#567).
+make_old_claude_skills() {
+  local home="$1" d
+  mkdir -p "$home/.claude/skills"
+  for d in "$REPO_ROOT"/skills/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    skill_is_command "$d" && continue
+    skill_is_nested_member "$d" && continue
+    ln -s "$REPO_ROOT/skills/$(basename "$d")" "$home/.claude/skills/$(basename "$d")"
+  done
+}
+HOME_HAND="$(mktemp -d)"
+make_old_claude_skills "$HOME_HAND"
+mkdir -p "$HOME_HAND/.config/opencode/skills"
+HOME="$HOME_HAND" "$INSTALL" --target=claude --dry-run >/dev/null
+[[ "$(count_links "$HOME_HAND/.config/opencode/skills")" -eq 0 ]] || fail "dry-run handed skills to opencode"
+HOME="$HOME_HAND" "$INSTALL" --target=claude >/dev/null
+[[ "$(count_links "$HOME_HAND/.claude/skills")" -eq 0 ]] || fail "migration left claude skill links"
+got="$(count_links "$HOME_HAND/.config/opencode/skills")"
+[[ "$got" -eq "$OPENCODE_EXPECTED" ]] ||
+  fail "migration handed $got skills to opencode, expected $OPENCODE_EXPECTED"
+HOME_HAND2="$(mktemp -d)"
+make_old_claude_skills "$HOME_HAND2"
+HOME="$HOME_HAND2" "$INSTALL" --target=codex >/dev/null
+mkdir -p "$HOME_HAND2/.config/opencode/skills"
+HOME="$HOME_HAND2" "$INSTALL" --target=claude >/dev/null
+got="$(count_links "$HOME_HAND2/.config/opencode/skills")"
+[[ "$got" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
+  fail "migration handed opencode $got skills codex already shares"
+HOME_HAND3="$(mktemp -d)"
+make_old_claude_skills "$HOME_HAND3"
+HOME="$HOME_HAND3" "$INSTALL" --target=claude >/dev/null
+[[ ! -e "$HOME_HAND3/.config/opencode" ]] || fail "migration created opencode's dir without opencode"
+pass "claude migration hands removed skills to an installed opencode"
 
 # 6c. codex install migrates our symlinks out of the deprecated prompts dir
 # (~/.codex/prompts) while preserving foreign entries there.
@@ -373,32 +464,32 @@ got="$(count_links "$HOME_OC/.config/opencode/skills")"
 pass "opencode install links skills/ and cleans the legacy agent dir"
 
 # 7. --env=chat links only the chat subset (non-empty, strictly fewer than all).
-CHAT_EXPECTED="$(skill_count chat)"
-CODING_EXPECTED="$(skill_count coding)"
+CHAT_EXPECTED="$(skill_count chat opencode)"
+CODING_EXPECTED="$(skill_count coding opencode)"
 [[ "$CHAT_EXPECTED" -ge 1 ]] || fail "no chat skills detected"
-[[ "$CHAT_EXPECTED" -lt "$EXPECTED" ]] || fail "chat subset is not smaller than all"
+[[ "$CHAT_EXPECTED" -lt "$OPENCODE_EXPECTED" ]] || fail "chat subset is not smaller than all"
 HOME_CHAT="$(mktemp -d)"
-HOME="$HOME_CHAT" "$INSTALL" --target=claude --env=chat >/dev/null
-got="$(count_links "$HOME_CHAT/.claude/skills")"
+HOME="$HOME_CHAT" "$INSTALL" --target=opencode --env=chat >/dev/null
+got="$(count_links "$HOME_CHAT/.config/opencode/skills")"
 [[ "$got" -eq "$CHAT_EXPECTED" ]] || fail "env=chat: expected $CHAT_EXPECTED links, got $got"
 pass "env=chat links only the $CHAT_EXPECTED chat skills"
 
 # 8. --env=coding links only the coding subset.
 HOME_CODE="$(mktemp -d)"
-HOME="$HOME_CODE" "$INSTALL" --target=claude --env=coding >/dev/null
-got="$(count_links "$HOME_CODE/.claude/skills")"
+HOME="$HOME_CODE" "$INSTALL" --target=opencode --env=coding >/dev/null
+got="$(count_links "$HOME_CODE/.config/opencode/skills")"
 [[ "$got" -eq "$CODING_EXPECTED" ]] || fail "env=coding: expected $CODING_EXPECTED links, got $got"
 pass "env=coding links only the $CODING_EXPECTED coding skills"
 
 # 9. coding + chat cover at least every skill (skills in both are counted twice).
-[[ $((CODING_EXPECTED + CHAT_EXPECTED)) -ge "$EXPECTED" ]] ||
-  fail "coding ($CODING_EXPECTED) + chat ($CHAT_EXPECTED) < all ($EXPECTED)"
+[[ $((CODING_EXPECTED + CHAT_EXPECTED)) -ge "$OPENCODE_EXPECTED" ]] ||
+  fail "coding ($CODING_EXPECTED) + chat ($CHAT_EXPECTED) < all ($OPENCODE_EXPECTED)"
 pass "coding + chat subsets cover all skills"
 
 # 10. dry-run with a filter creates nothing.
 HOME_DF="$(mktemp -d)"
-HOME="$HOME_DF" "$INSTALL" --target=claude --env=chat --dry-run >/dev/null
-[[ ! -d "$HOME_DF/.claude" ]] || fail "dry-run --env=chat created $HOME_DF/.claude"
+HOME="$HOME_DF" "$INSTALL" --target=opencode --env=chat --dry-run >/dev/null
+[[ ! -d "$HOME_DF/.config/opencode" ]] || fail "dry-run --env=chat created $HOME_DF/.config/opencode"
 pass "dry-run --env=chat creates no files"
 
 # 11. an invalid --env value is rejected.
@@ -424,20 +515,20 @@ category_count() {
   done
   echo "$n"
 }
-ARCH_EXPECTED="$(category_count architecture)"
+ARCH_EXPECTED="$(category_count architecture opencode)"
 [[ "$ARCH_EXPECTED" -ge 1 ]] || fail "no architecture skills detected"
-[[ "$ARCH_EXPECTED" -lt "$EXPECTED" ]] || fail "architecture subset is not smaller than all"
+[[ "$ARCH_EXPECTED" -lt "$OPENCODE_EXPECTED" ]] || fail "architecture subset is not smaller than all"
 HOME_CAT="$(mktemp -d)"
-HOME="$HOME_CAT" "$INSTALL" --target=claude --category=architecture >/dev/null
-got="$(count_links "$HOME_CAT/.claude/skills")"
+HOME="$HOME_CAT" "$INSTALL" --target=opencode --category=architecture >/dev/null
+got="$(count_links "$HOME_CAT/.config/opencode/skills")"
 [[ "$got" -eq "$ARCH_EXPECTED" ]] || fail "category=architecture: expected $ARCH_EXPECTED links, got $got"
 pass "category=architecture links only the $ARCH_EXPECTED architecture skills"
 
 # 13. a comma-separated --category list links the union of both subsets.
-MULTI_EXPECTED="$(category_count architecture,refactoring)"
+MULTI_EXPECTED="$(category_count architecture,refactoring opencode)"
 HOME_MULTI="$(mktemp -d)"
-HOME="$HOME_MULTI" "$INSTALL" --target=claude --category=architecture,refactoring >/dev/null
-got="$(count_links "$HOME_MULTI/.claude/skills")"
+HOME="$HOME_MULTI" "$INSTALL" --target=opencode --category=architecture,refactoring >/dev/null
+got="$(count_links "$HOME_MULTI/.config/opencode/skills")"
 [[ "$got" -eq "$MULTI_EXPECTED" ]] || fail "category list: expected $MULTI_EXPECTED links, got $got"
 pass "category=architecture,refactoring links $MULTI_EXPECTED skills"
 
@@ -717,8 +808,8 @@ pass "stale generated agent files are pruned, foreign and live ones kept"
 #     ride nested under the router's members/ dir (readable, not registered),
 #     and none of them leak into the skills directory.
 HOME_ROUTED="$(mktemp -d)"
-HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture >/dev/null
-ROUTED_SKILLS="$HOME_ROUTED/.claude/skills"
+HOME="$HOME_ROUTED" "$INSTALL" --target=opencode --category=architecture >/dev/null
+ROUTED_SKILLS="$HOME_ROUTED/.config/opencode/skills"
 [[ -L "$ROUTED_SKILLS/architecture" ]] || fail "router 'architecture' not linked"
 [[ -f "$ROUTED_SKILLS/architecture/SKILL.md" ]] || fail "router SKILL.md not readable"
 [[ "$(count_links "$ROUTED_SKILLS")" -eq 1 ]] ||
@@ -731,7 +822,7 @@ for member in c4-modeling coupling-cohesion ddd; do
   [[ ! -e "$ROUTED_SKILLS/$member" ]] ||
     fail "routed member $member leaked into the skills directory"
 done
-HOME="$HOME_ROUTED" "$INSTALL" --target=claude --category=architecture --uninstall >/dev/null
+HOME="$HOME_ROUTED" "$INSTALL" --target=opencode --category=architecture --uninstall >/dev/null
 [[ ! -e "$ROUTED_SKILLS/architecture" ]] || fail "uninstall left the router behind"
 pass "routed category registers only its router; members ride nested"
 
@@ -740,7 +831,7 @@ pass "routed category registers only its router; members ride nested"
 #      catch them — install must unlink them explicitly, or the members keep
 #      registering alongside the router. Foreign entries must survive.
 HOME_MIG="$(mktemp -d)"
-MIG_SKILLS="$HOME_MIG/.claude/skills"
+MIG_SKILLS="$HOME_MIG/.config/opencode/skills"
 mkdir -p "$MIG_SKILLS"
 mig_members=""
 for d in "$REPO_ROOT"/skills/*/; do
@@ -755,7 +846,7 @@ done
 mig_foreign="$(mktemp -d)/foreign"
 mkdir "$mig_foreign"
 ln -s "$mig_foreign" "$MIG_SKILLS/foreign-skill"
-HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture >/dev/null
+HOME="$HOME_MIG" "$INSTALL" --target=opencode --category=architecture >/dev/null
 while IFS= read -r name; do
   [[ -n "$name" ]] || continue
   [[ ! -e "$MIG_SKILLS/$name" ]] ||
@@ -764,12 +855,12 @@ done <<<"$mig_members"
 [[ -L "$MIG_SKILLS/architecture" ]] || fail "migration did not link the router"
 [[ -L "$MIG_SKILLS/foreign-skill" ]] || fail "migration removed a foreign symlink"
 # ... and --uninstall clears the flat links too, not just the router.
-HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture >/dev/null
+HOME="$HOME_MIG" "$INSTALL" --target=opencode --category=architecture >/dev/null
 while IFS= read -r name; do
   [[ -n "$name" ]] || continue
   ln -s "$REPO_ROOT/skills/$name" "$MIG_SKILLS/$name"
 done <<<"$mig_members"
-HOME="$HOME_MIG" "$INSTALL" --target=claude --category=architecture --uninstall >/dev/null
+HOME="$HOME_MIG" "$INSTALL" --target=opencode --category=architecture --uninstall >/dev/null
 while IFS= read -r name; do
   [[ -n "$name" ]] || continue
   [[ ! -e "$MIG_SKILLS/$name" ]] || fail "uninstall left the pre-router flat link for $name"
@@ -779,8 +870,8 @@ pass "pre-router flat member links are cleaned up on install and uninstall"
 
 # 37. A `targets:` skill installs only for the agents it lists. No shipped skill
 #     currently uses the field, so exercise it with a temporary fixture skill
-#     that opts out of claude: it must reach codex and opencode only — and a
-#     stale link in the claude skills dir is cleaned up by the next install.
+#     that opts out of opencode: it must reach codex only — and a stale link
+#     in the opencode skills dir is cleaned up by the next install.
 TGT_FIXTURE="$REPO_ROOT/skills/zz-targets-fixture"
 rm_tgt_fixture() { rm -rf "$TGT_FIXTURE"; }
 trap rm_tgt_fixture EXIT
@@ -790,35 +881,35 @@ cat >"$TGT_FIXTURE/SKILL.md" <<'FIXTURE'
 name: zz-targets-fixture
 description: Temporary fixture used by test_install.sh to exercise the targets field.
 category: communication
-targets: codex, opencode
+targets: codex
 ---
 
 # Fixture
 FIXTURE
 : >"$TGT_FIXTURE/scripts/bundled.txt"
 HOME_TGT="$(mktemp -d)"
-mkdir -p "$HOME_TGT/.claude/skills"
-ln -s "$TGT_FIXTURE" "$HOME_TGT/.claude/skills/zz-targets-fixture"
+mkdir -p "$HOME_TGT/.config/opencode/skills"
+ln -s "$TGT_FIXTURE" "$HOME_TGT/.config/opencode/skills/zz-targets-fixture"
 HOME="$HOME_TGT" "$INSTALL" --target=all --category=communication >/dev/null
-[[ ! -e "$HOME_TGT/.claude/skills/zz-targets-fixture" ]] ||
-  fail "targets: fixture installed for claude"
+[[ ! -e "$HOME_TGT/.config/opencode/skills/zz-targets-fixture" ]] ||
+  fail "targets: fixture installed for opencode"
 [[ -f "$HOME_TGT/.agents/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
   fail "targets: fixture missing (or incomplete) under codex"
-# opencode reads the fixture from ~/.agents/skills, so it links no copy (#564).
-[[ ! -e "$HOME_TGT/.config/opencode/skills/zz-targets-fixture" ]] ||
-  fail "targets: fixture linked twice for opencode (also in ~/.agents/skills)"
 # Its category-mates are unaffected and keep their bundled files.
-[[ -f "$HOME_TGT/.claude/skills/documentation/SKILL.md" ]] ||
-  fail "documentation not installed as a whole directory for claude"
-# Without codex, the fixture is in no root opencode shares, so opencode links
-# it itself next to claude (#564).
+[[ -f "$HOME_TGT/.agents/skills/documentation/SKILL.md" ]] ||
+  fail "documentation not installed as a whole directory for codex"
+# opencode reads documentation from ~/.agents/skills, so it links no copy (#564).
+[[ ! -e "$HOME_TGT/.config/opencode/skills/documentation" ]] ||
+  fail "opencode duplicated documentation, which codex already links"
+# A skill that skips codex is in no root opencode shares, so opencode links it
+# itself (#564).
+sed -i 's/^targets: codex$/targets: opencode/' "$TGT_FIXTURE/SKILL.md"
 HOME_TGT2="$(mktemp -d)"
-HOME="$HOME_TGT2" "$INSTALL" --target=claude --category=communication >/dev/null
-HOME="$HOME_TGT2" "$INSTALL" --target=opencode --category=communication >/dev/null
+HOME="$HOME_TGT2" "$INSTALL" --target=all --category=communication >/dev/null
 [[ -f "$HOME_TGT2/.config/opencode/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
-  fail "targets: fixture excluded from claude got no opencode link"
-[[ ! -e "$HOME_TGT2/.config/opencode/skills/documentation" ]] ||
-  fail "opencode duplicated documentation, which claude already links"
+  fail "targets: fixture excluded from codex got no opencode link"
+[[ ! -e "$HOME_TGT2/.agents/skills/zz-targets-fixture" ]] ||
+  fail "targets: fixture excluded from codex was linked for codex"
 rm_tgt_fixture
 trap - EXIT
 pass "targets: skips excluded agents and prunes a stale link"
@@ -826,12 +917,12 @@ pass "targets: skips excluded agents and prunes a stale link"
 # 38. A dangling symlink left by a skill the repo no longer ships is pruned;
 #     foreign and still-valid links are left alone.
 HOME_STALE="$(mktemp -d)"
-HOME="$HOME_STALE" "$INSTALL" --target=claude --category=communication >/dev/null
-STALE_SKILLS="$HOME_STALE/.claude/skills"
+HOME="$HOME_STALE" "$INSTALL" --target=opencode --category=communication >/dev/null
+STALE_SKILLS="$HOME_STALE/.config/opencode/skills"
 ln -s "$REPO_ROOT/skills/removed-skill" "$STALE_SKILLS/removed-skill"
 foreign_dangling="$(mktemp -d)/gone"
 ln -s "$foreign_dangling" "$STALE_SKILLS/foreign-dangling"
-HOME="$HOME_STALE" "$INSTALL" --target=claude --category=communication >/dev/null
+HOME="$HOME_STALE" "$INSTALL" --target=opencode --category=communication >/dev/null
 [[ ! -L "$STALE_SKILLS/removed-skill" ]] || fail "stale link for a removed skill survived"
 [[ -L "$STALE_SKILLS/foreign-dangling" ]] || fail "prune removed a foreign dangling symlink"
 [[ -L "$STALE_SKILLS/documentation" ]] || fail "prune removed a valid skill link"
@@ -921,36 +1012,39 @@ HOME="$HOME_RULES" "$INSTALL" --target=claude --category=communication --instruc
 pass "paths: fragments become path-scoped Claude rules only"
 
 # 45. --merge-guard puts the PR merge guard into each agent's user-level config
-#     (Claude settings.json entry, Codex [hooks] block, opencode plugin link),
-#     keeps foreign settings, is idempotent, and --uninstall restores the files.
+#     (Codex [hooks] block, opencode plugin link; Claude only gets the plugin
+#     command printed), keeps foreign settings, is idempotent, and --uninstall
+#     restores the files.
 HOME_MG="$(mktemp -d)"
 mkdir -p "$HOME_MG/.claude" "$HOME_MG/.codex"
 printf '{"model": "opus", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x"}]}]}}\n' \
   >"$HOME_MG/.claude/settings.json"
+cp "$HOME_MG/.claude/settings.json" "$HOME_MG/claude-before.json"
 printf 'model = "o3"\n' >"$HOME_MG/.codex/config.toml"
 cp "$HOME_MG/.codex/config.toml" "$HOME_MG/codex-before.toml"
 HOME="$HOME_MG" "$INSTALL" --target=all --category=communication >/dev/null
 grep -q pr_merge_guard "$HOME_MG/.claude/settings.json" "$HOME_MG/.codex/config.toml" &&
   fail "merge guard installed without --merge-guard"
-HOME="$HOME_MG" "$INSTALL" --target=all --category=communication --merge-guard >/dev/null
+mg_output="$(HOME="$HOME_MG" "$INSTALL" --target=all --category=communication --merge-guard)"
+grep -q 'claude plugin install merge-guard@fabiandistler-agents' <<<"$mg_output" ||
+  fail "--merge-guard did not point claude at the merge-guard plugin"
+diff -q "$HOME_MG/claude-before.json" "$HOME_MG/.claude/settings.json" >/dev/null ||
+  fail "--merge-guard wrote into ~/.claude/settings.json"
 python3 - "$HOME_MG" <<'PY' || fail "merge guard entries missing or foreign settings lost"
-import json, sys, tomllib
+import sys, tomllib
 home = sys.argv[1]
-claude = json.load(open(f"{home}/.claude/settings.json"))
-assert claude["model"] == "opus" and claude["hooks"]["Stop"]
-assert "pr_merge_guard.py" in claude["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
 codex = tomllib.load(open(f"{home}/.codex/config.toml", "rb"))
 assert codex["model"] == "o3"
 assert "--harness codex" in codex["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
 PY
 [[ -L "$HOME_MG/.config/opencode/plugins/pr-merge-guard.js" ]] || fail "opencode plugin not linked"
-cp "$HOME_MG/.claude/settings.json" "$HOME_MG/claude-once.json"
+cp "$HOME_MG/.codex/config.toml" "$HOME_MG/codex-once.toml"
 HOME="$HOME_MG" "$INSTALL" --target=all --category=communication --merge-guard >/dev/null
-diff -q "$HOME_MG/claude-once.json" "$HOME_MG/.claude/settings.json" >/dev/null ||
-  fail "second --merge-guard run changed settings.json"
+diff -q "$HOME_MG/codex-once.toml" "$HOME_MG/.codex/config.toml" >/dev/null ||
+  fail "second --merge-guard run changed config.toml"
 HOME="$HOME_MG" "$INSTALL" --target=all --category=communication --merge-guard --uninstall >/dev/null
-! grep -q pr_merge_guard "$HOME_MG/.claude/settings.json" || fail "uninstall left the Claude hook"
-grep -q '"Stop"' "$HOME_MG/.claude/settings.json" || fail "uninstall dropped a foreign hook"
+diff -q "$HOME_MG/claude-before.json" "$HOME_MG/.claude/settings.json" >/dev/null ||
+  fail "uninstall changed a settings.json without our entry"
 diff -q "$HOME_MG/codex-before.toml" "$HOME_MG/.codex/config.toml" >/dev/null ||
   fail "uninstall did not restore config.toml"
 [[ ! -e "$HOME_MG/.config/opencode/plugins/pr-merge-guard.js" ]] || fail "uninstall left the plugin"

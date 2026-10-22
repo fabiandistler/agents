@@ -8,24 +8,30 @@ or when you want a subset of the catalogue.
 Everything here is reversible with the same command plus `--uninstall`, and
 every command accepts `--dry-run`.
 
+Claude Code is the exception: it gets skills, subagents and the merge guard
+from the plugin marketplace only, and `install.sh --target=claude` only syncs
+`--instructions`. See [Claude Code: plugins only](#claude-code-plugins-only).
+
 ## What gets linked where
 
 | Target | Skills | Command skills (`activation: command`) |
 |---|---|---|
-| `claude` | `~/.claude/skills/<skill>` | `~/.claude/commands/<name>.md` |
+| `claude` | nothing; use the plugins | nothing; use the plugins |
 | `codex` | `~/.agents/skills/<skill>` | `~/.agents/skills/<skill>` (see below) |
 | `opencode` | `~/.config/opencode/skills/<skill>` | `~/.config/opencode/command/<name>.md` |
 
-opencode also reads `~/.claude/skills/` and `~/.agents/skills/`, and it expects
-skill names to be unique across all its roots
-([opencode skills](https://opencode.ai/docs/skills)). So when claude or codex
-already has our link to a skill, opencode gets no link of its own for it, and
-the installer removes one an earlier run created. Run order does not matter.
-opencode still links a skill itself when neither of those roots has it: the
-skill's `targets` field excludes claude and codex is not installed, or claude
-and codex were installed with a narrower `--env` or `--category`. After
-`--uninstall` of claude or codex alone, re-run `--target=opencode` so opencode
-gets its own links back; the uninstall prints a reminder.
+opencode also reads `~/.agents/skills/`, and it expects skill names to be
+unique across all its roots
+([opencode skills](https://opencode.ai/docs/skills)). So when codex already has
+our link to a skill, opencode gets no link of its own for it, and the installer
+removes one an earlier run created. Run order does not matter. opencode still
+links a skill itself when codex lacks it: the skill's `targets` field excludes
+codex, or codex was installed with a narrower `--env` or `--category`. After
+`--uninstall` of codex alone, re-run `--target=opencode` so opencode gets its
+own links back; the uninstall prints a reminder. opencode reads
+`~/.claude/skills/` as well, but `install.sh` no longer links there; when the
+Claude migration removes an old link, an installed opencode gets its own link
+to that skill in its place.
 
 Only top-level skills are linked. A category with a router (`architecture`,
 `ai-ml`) links the router alone — its members live under `members/` and load
@@ -44,8 +50,8 @@ outside this repo are never touched.
 which plugin bundles the skill.
 
 ```sh
-./install.sh --target=claude --category=architecture
-./install.sh --target=codex  --category=refactoring,workflow
+./install.sh --target=opencode --category=architecture
+./install.sh --target=codex    --category=refactoring,workflow
 ```
 
 **By environment.** Each skill is tagged `environments: coding`, `chat`, or
@@ -53,9 +59,14 @@ both, so a chat app gets the chat skills and a coding agent the coding ones. A
 skill without the field belongs to every environment.
 
 ```sh
-./install.sh --target=claude --env=coding
-./install.sh --target=claude --env=chat
+./install.sh --target=opencode --env=coding
+./install.sh --target=codex    --env=chat
 ```
+
+Neither filter applies to Claude: there you choose a subset by installing only
+some plugins, one per category. The plugins have no coding/chat split.
+Passing `--env` or `--category` with `--target=claude` or `--target=all`
+prints one warning to say so, and changes nothing else.
 
 **Skills that skip an agent.** A skill can opt out of individual agents with a
 `targets` field (a comma-separated subset of `claude`, `codex`, `opencode`;
@@ -106,6 +117,8 @@ its own and no rule loads twice. Once that file exists, opencode stops reading
 opencode too belongs in `~/.config/opencode/AGENTS.md` as well.
 
 The flag is opt-in — plain `./install.sh --target=...` only touches skills.
+Claude plugins cannot ship `CLAUDE.md` content or rules, so for Claude this
+flag is the only thing `install.sh` still installs.
 
 ## PR merge guard (`--merge-guard`)
 
@@ -117,9 +130,10 @@ guard is a model-free pre-tool hook: before each shell or MCP tool call it runs
 call and tells the agent to ask you to merge.
 
 ```sh
-./install.sh --target=all --merge-guard             # install for every agent
+./install.sh --target=all --merge-guard             # Codex and opencode
 ./install.sh --target=all --merge-guard --dry-run   # preview
 ./install.sh --target=all --merge-guard --uninstall # remove it again
+claude plugin install merge-guard@fabiandistler-agents  # Claude Code
 ```
 
 It blocks `gh pr merge` (including `--auto`), `gh api` or `curl` writes to
@@ -130,15 +144,16 @@ mutations `mergePullRequest`, `enablePullRequestAutoMerge` and
 `gh pr view`, `gh pr checks`, a local `git merge`. To merge, use the GitHub web
 UI or your own terminal. The guard only checks the agent's tool calls.
 
-| Agent | What the installer writes | Hook |
+| Agent | What gets installed | Hook |
 |---|---|---|
-| `claude` | one `PreToolUse` entry in `~/.claude/settings.json`, found again by the script name in its command | [PreToolUse](https://code.claude.com/docs/en/hooks), exit 2 blocks |
+| `claude` | the `merge-guard` plugin: `hooks/hooks.json` runs the script bundled in the plugin; `install.sh --merge-guard` only prints the install command | [PreToolUse](https://code.claude.com/docs/en/hooks), exit 2 blocks |
 | `codex` | a managed `[[hooks.PreToolUse]]` block in `~/.codex/config.toml` | [PreToolUse](https://developers.openai.com/codex/hooks), exit 2 blocks |
 | `opencode` | symlink `~/.config/opencode/plugins/pr-merge-guard.js` | [`tool.execute.before`](https://opencode.ai/docs/plugins/) (1.x) and `ctx.tool.hook("execute.before")` ([2.x](https://opencode.ai/v2/docs/build/plugins)); a throw blocks |
 
 All other settings, hooks and config stay as they are. The hook needs
-`python3` on `PATH` when it runs, and the hook command points into this
-clone, so do not move the clone after installing.
+`python3` on `PATH` when it runs. For Codex and opencode the hook command
+points into this clone, so do not move the clone after installing. The Claude
+plugin carries its own copy of the script.
 
 Limits:
 
@@ -207,18 +222,43 @@ Both install and `--uninstall` strip whatever an older version left in
 
 Restart Codex to pick up the new agents.
 
-## Claude plugins vs symlinks
+## Claude Code: plugins only
 
 The repo doubles as a Claude plugin marketplace: every category is packaged as
-one plugin (see `plugins/` and
+one plugin, plus the hook-only `merge-guard` plugin (see `plugins/` and
 [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json)), so
 you can install exactly the domains you want. Plugin skills are namespaced
 (`communication:documentation`); a routed category registers only its router,
 so there it is the router that carries the namespace
-(`architecture:architecture`).
+(`architecture:architecture`). Command skills are namespaced too:
+`/tldr` becomes `/communication:tldr`.
 
-In Claude Code, use either the plugins **or** the symlinks — with both at once
-every skill appears twice.
+```sh
+claude plugin marketplace add fabiandistler/agents
+claude plugin install architecture@fabiandistler-agents
+claude plugin install merge-guard@fabiandistler-agents
+```
+
+For Claude, `install.sh` installs no skills, commands or hooks any more (#567).
+`--target=claude` only syncs `--instructions`, because plugins cannot ship
+`CLAUDE.md` content or path-scoped rules. Every `--target=claude` run, install
+or `--uninstall`, also removes what earlier versions created, so skills do not
+load twice next to the plugins:
+
+- our symlinks in `~/.claude/skills` and `~/.claude/commands` (only links into
+  this clone's `skills/`; foreign links stay);
+- the merge-guard `PreToolUse` entry in `~/.claude/settings.json` (found by the
+  script name in its command; every other setting stays). Install the
+  `merge-guard` plugin to keep the guard.
+
+**Updates.** Claude Code turns auto-update off by default for third-party
+marketplaces such as this one. Turn it on in `/plugin` under Marketplaces, or
+set `"autoUpdate": true` on the marketplace's `extraKnownMarketplaces` entry
+in `settings.json`
+([plugin loading](https://code.claude.com/docs/en/plugins/loading)).
+Otherwise update by hand with
+`claude plugin update <plugin>@fabiandistler-agents`. A marketplace added from
+a local clone loads its plugins in place, so a `git pull` is enough there.
 
 ## Cloud sessions (`.claude/` in this repo)
 

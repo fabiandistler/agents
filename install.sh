@@ -3,17 +3,27 @@
 # for popular coding agents. Idempotent; reversible via --uninstall.
 #
 # Usage:
-#   ./install.sh --target=claude              # ~/.claude/skills/<skill>
+#   ./install.sh --target=claude --instructions # ~/.claude/CLAUDE.md + rules
 #   ./install.sh --target=codex               # ~/.agents/skills/<skill>
 #   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
 #   ./install.sh --target=all --dry-run       # show what would happen
 #   ./install.sh --target=all --uninstall     # remove symlinks owned by us
-#   ./install.sh --target=claude --env=chat   # only chat skills
+#   ./install.sh --target=opencode --env=chat # only chat skills
 #   ./install.sh --target=codex  --env=coding # only coding skills
-#   ./install.sh --target=claude --category=architecture,refactoring
+#   ./install.sh --target=codex --category=architecture,refactoring
 #   ./install.sh --target=all --instructions   # also sync the rule files
 #   ./install.sh --target=all --merge-guard    # also block agent PR merges
+#
+# Claude gets skills, command skills, subagents and the PR merge guard from the
+# plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
+# then claude plugin install <category>@fabiandistler-agents and
+# merge-guard@fabiandistler-agents). --target=claude therefore only syncs
+# --instructions, and every claude run (install or uninstall) removes what
+# earlier versions created: our links in ~/.claude/skills and
+# ~/.claude/commands and the merge-guard entry in ~/.claude/settings.json.
+# --env and --category do not apply to claude; passing either with a claude
+# target prints one WARN line and changes nothing else.
 #
 # --env=coding|chat|all (default all) selects which skills to (un)install,
 # based on each skill's `environments:` frontmatter field. A skill with no
@@ -30,10 +40,10 @@
 # equivalent of its own.
 #
 # Skills with `activation: command` in their frontmatter are user-invoked,
-# not model-triggered. For claude and opencode they are linked into the
-# target's command directory (~/.claude/commands, ~/.config/opencode/command)
-# as <name>.md instead of the skills directory, keeping them out of the
-# auto-trigger metadata. Codex custom prompts (~/.codex/prompts) are
+# not model-triggered. For opencode they are linked into its command
+# directory (~/.config/opencode/command) as <name>.md instead of the skills
+# directory, keeping them out of the auto-trigger metadata. Codex custom
+# prompts (~/.codex/prompts) are
 # deprecated, so under codex these skills install into the skills directory
 # like any other; their agents/openai.yaml sidecar
 # (policy.allow_implicit_invocation: false) keeps Codex from auto-triggering
@@ -60,12 +70,14 @@
 # skipped, never overwritten. Codex install and uninstall both remove our own
 # links (those pointing into this repo) from ~/.codex/skills.
 #
-# opencode also reads ~/.claude/skills and ~/.agents/skills and wants skill
-# names unique across all its roots. A skill we already linked into either of
-# them gets no ~/.config/opencode/skills link (an old one is removed), whichever
-# target runs first. Only skills missing there, through `targets:`, --env or
-# --category, get their own opencode link. After uninstalling claude or codex
-# alone, re-run --target=opencode to give opencode its own links back.
+# opencode also reads ~/.agents/skills and wants skill names unique across all
+# its roots. A skill we already linked there gets no ~/.config/opencode/skills
+# link (an old one is removed), whichever target runs first. Only skills
+# missing there, through `targets:`, --env or --category, get their own
+# opencode link. After uninstalling codex alone, re-run --target=opencode to
+# give opencode its own links back. opencode reads ~/.claude/skills too, but we
+# no longer link there; when the claude migration removes an old link, an
+# installed opencode gets its own link to that skill instead.
 #
 # The codex target additionally installs the full plugins, not just the
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
@@ -89,11 +101,12 @@
 #
 # --merge-guard (off by default) installs a model-free pre-tool hook that stops
 # the agent from merging pull requests or enabling auto-merge; the human merges.
-# The check is scripts/pr_merge_guard.py (needs python3 at hook time). claude:
-# a PreToolUse entry in ~/.claude/settings.json; codex: a managed [hooks] block
-# in ~/.codex/config.toml (trust it once in Codex's /hooks); opencode: a plugin
-# symlink in ~/.config/opencode/plugins/. --merge-guard --uninstall removes
-# exactly these, leaving other settings and hooks alone.
+# The check is scripts/pr_merge_guard.py (needs python3 at hook time). codex: a
+# managed [hooks] block in ~/.codex/config.toml (trust it once in Codex's
+# /hooks); opencode: a plugin symlink in ~/.config/opencode/plugins/; claude:
+# nothing, it prints the plugin command (the merge-guard plugin carries the
+# hook). --merge-guard --uninstall removes exactly these, leaving other
+# settings and hooks alone.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -124,6 +137,8 @@ MERGE_GUARD=0
 TARGET=""
 ENV="all"
 CATEGORY="all"
+# Skill filters given on the command line (they do not apply to claude).
+FILTER_FLAGS=""
 
 # Must match the category list in scripts/build_manifest.py.
 CATEGORIES="architecture refactoring ai-ml workflow communication personal"
@@ -136,8 +151,14 @@ usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
 for arg in "$@"; do
   case "$arg" in
     --target=*) TARGET="${arg#--target=}" ;;
-    --env=*) ENV="${arg#--env=}" ;;
-    --category=*) CATEGORY="${arg#--category=}" ;;
+    --env=*)
+      ENV="${arg#--env=}"
+      [[ "$FILTER_FLAGS" == *--env* ]] || FILTER_FLAGS+=" --env"
+      ;;
+    --category=*)
+      CATEGORY="${arg#--category=}"
+      [[ "$FILTER_FLAGS" == *--category* ]] || FILTER_FLAGS+=" --category"
+      ;;
     --dry-run) DRY_RUN=1 ;;
     --instructions) INSTRUCTIONS=1 ;;
     --merge-guard) MERGE_GUARD=1 ;;
@@ -979,9 +1000,11 @@ remove_instructions() {
 # Agents act under the user's GitHub account, so branch rules cannot stop them
 # from merging; a pre-tool hook can. The decision and the hook entry both live
 # in scripts/pr_merge_guard.py; this section only places the entry in each
-# agent's user-level config. Claude's settings.json is JSON and cannot carry
-# marker comments, so there our entry is identified by the script name in its
-# command, and only that entry is ever added or removed.
+# agent's user-level config. Claude gets the guard from the merge-guard plugin
+# instead; earlier versions wrote it into ~/.claude/settings.json, and the
+# Claude migration below removes that entry. settings.json is JSON and cannot
+# carry marker comments, so our entry is identified by the script name in its
+# command, and only that entry is ever removed.
 
 merge_guard_command() {
   printf 'python3 "%s/scripts/pr_merge_guard.py" --harness %s' "$REPO_ROOT" "$1"
@@ -997,40 +1020,47 @@ merge_guard_end_marker() {
 
 opencode_merge_guard_link() { printf '%s/.config/opencode/plugins/pr-merge-guard.js' "$HOME"; }
 
-# Print ~/.claude/settings.json with the guard entry added (mode install) or
-# removed (mode remove). Exit 10: nothing to change; exit 1: not a JSON object.
-claude_settings_with_merge_guard() {
-  python3 - "$REPO_ROOT/scripts" "$1" "$2" "$(merge_guard_command claude)" <<'PY'
+MARKETPLACE="fabiandistler/agents"
+MERGE_GUARD_PLUGIN="merge-guard@fabiandistler-agents"
+
+# Print ~/.claude/settings.json without the guard entry. Exit 10: nothing to
+# change; exit 1: not a JSON object.
+claude_settings_without_merge_guard() {
+  python3 - "$REPO_ROOT/scripts" "$1" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, sys.argv[1])
-from pr_merge_guard import with_claude_hook, without_claude_hook
+from pr_merge_guard import without_claude_hook
 
-mode, path, command = sys.argv[2], Path(sys.argv[3]), sys.argv[4]
+path = Path(sys.argv[2])
 try:
-    settings = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    settings = json.loads(path.read_text(encoding="utf-8"))
 except ValueError:
     sys.exit(1)
 if not isinstance(settings, dict):
     sys.exit(1)
-wanted = with_claude_hook(settings, command) if mode == "install" else without_claude_hook(settings)
+wanted = without_claude_hook(settings)
 if wanted == settings:
     sys.exit(10)
 print(json.dumps(wanted, indent=2))
 PY
 }
 
-sync_claude_merge_guard() {
-  local mode="$1" file="$HOME/.claude/settings.json" content status=0
-  content="$(claude_settings_with_merge_guard "$mode" "$file")" || status=$?
+# Drop the guard entry an earlier version wrote into ~/.claude/settings.json.
+remove_claude_settings_merge_guard() {
+  local file="$HOME/.claude/settings.json" content status=0
+  [[ -f "$file" ]] && grep -qF pr_merge_guard.py "$file" || return 0
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; remove the pr_merge_guard.py hook from %s by hand\n' \
+      "$file" >&2
+    return 0
+  fi
+  content="$(claude_settings_without_merge_guard "$file")" || status=$?
   case "$status" in
     0) ;;
-    10)
-      [[ "$mode" == "install" ]] && printf '  ok        %s (PR merge guard hook)\n' "$file"
-      return 0
-      ;;
+    10) return 0 ;;
     *)
       printf '  WARN      %s is not a JSON object, leaving it untouched (PR merge guard)\n' \
         "$file" >&2
@@ -1038,27 +1068,25 @@ sync_claude_merge_guard() {
       ;;
   esac
   if ((DRY_RUN)); then
-    printf '[dry-run] %s PR merge guard hook in %s\n' "$mode" "$file"
+    printf '[dry-run] remove PR merge guard hook from %s\n' "$file"
     return 0
   fi
-  ensure_parent "${file%/*}"
   write_file_atomic "$file" "$content"
-  if [[ "$mode" == "install" ]]; then
-    printf '  updated   %s (PR merge guard hook)\n' "$file"
-  else
-    printf '  removed   PR merge guard hook from %s\n' "$file"
-  fi
+  printf '  removed   PR merge guard hook from %s (now the merge-guard plugin)\n' "$file"
 }
 
 install_merge_guard() {
   local target="$1" toml
+  if [[ "$target" == "claude" ]]; then
+    printf '  note      claude: claude plugin install %s\n' "$MERGE_GUARD_PLUGIN"
+    return 0
+  fi
   if ! command -v python3 >/dev/null 2>&1; then
     printf '  WARN      python3 not found; the PR merge guard needs it (skipping %s)\n' \
       "$target" >&2
     return 0
   fi
   case "$target" in
-    claude) sync_claude_merge_guard install ;;
     codex)
       if ! toml="$(
         python3 - "$REPO_ROOT/scripts" "$(merge_guard_command codex)" <<'PY'
@@ -1086,12 +1114,7 @@ PY
 uninstall_merge_guard() {
   case "$1" in
     claude)
-      if command -v python3 >/dev/null 2>&1; then
-        sync_claude_merge_guard remove
-      else
-        printf '  WARN      python3 not found; remove the pr_merge_guard.py hook from %s by hand\n' \
-          "$HOME/.claude/settings.json" >&2
-      fi
+      printf '  note      claude: claude plugin uninstall %s\n' "$MERGE_GUARD_PLUGIN"
       ;;
     codex)
       managed_block_remove "$(codex_config_path)" "$(merge_guard_begin_marker)" \
@@ -1155,23 +1178,21 @@ our_link_at() {
 # opencode loads skills from ~/.config/opencode/skills, ~/.claude/skills and
 # ~/.agents/skills (https://opencode.ai/docs/skills), and it expects every
 # name to be unique across them. So a skill whose link already sits in the
-# claude or codex skills root gets no opencode link of its own, and a duplicate
-# we created earlier is removed. A skill the claude and codex roots lack (a
-# `targets:` field excluding them, or a narrower --env or --category for those
-# targets) still gets its own opencode link.
+# codex skills root gets no opencode link of its own, and a duplicate we
+# created earlier is removed. A skill the codex root lacks (a `targets:` field
+# excluding codex, or a narrower --env or --category for codex) still gets its
+# own opencode link. ~/.claude/skills is no shared root any more: Claude takes
+# its skills from the plugins, and the claude migration empties that dir of our
+# links (handing each one to opencode, see migrate_claude_to_plugins).
 
 opencode_skills_dir() { target_dir_for opencode; }
 
-# Print the claude or codex skills root holding our link to src; fail if none.
+# Print the codex skills root if it holds our link to src; fail otherwise.
 opencode_shared_root_for() {
   local src="$1" root
-  for root in "$(target_dir_for claude)" "$(target_dir_for codex)"; do
-    if our_link_at "$src" "$root/${src##*/}"; then
-      printf '%s' "$root"
-      return 0
-    fi
-  done
-  return 1
+  root="$(target_dir_for codex)"
+  our_link_at "$src" "$root/${src##*/}" || return 1
+  printf '%s' "$root"
 }
 
 # Remove our opencode link to src, if any: opencode reads src from `root`.
@@ -1256,6 +1277,45 @@ cleanup_codex_skills_legacy() {
   done
 }
 
+# Claude gets skills, command skills, subagents and the merge guard from the
+# plugin marketplace (#567). Earlier versions linked skills into
+# ~/.claude/skills, command skills into ~/.claude/commands, and wrote the merge
+# guard into ~/.claude/settings.json; next to the plugins, every skill would
+# load twice (/tldr and /communication:tldr). Remove what we created, on install
+# and uninstall alike and regardless of --env/--category. Only symlinks into
+# this repo's skills/ (dangling ones included) are touched.
+# An earlier opencode install may have skipped a skill because opencode read it
+# from ~/.claude/skills. When opencode is installed (its skills dir exists),
+# each removed skill link is handed over: opencode gets its own link unless the
+# codex root still shares it.
+migrate_claude_to_plugins() {
+  local dir entry src
+  for dir in "$(target_dir_for claude)" "$(target_command_dir_for claude)"; do
+    [[ -d "$dir" ]] || continue
+    for entry in "$dir"/*; do
+      [[ -L "$entry" ]] || continue
+      src="$(readlink "$entry")"
+      [[ "$src" == "$REPO_ROOT/skills/"* ]] || continue
+      run rm "$entry"
+      printf '  removed   %s (now in the Claude plugins)\n' "$entry"
+      if [[ "$dir" == "$(target_dir_for claude)" && -f "$src/SKILL.md" ]]; then
+        hand_skill_to_opencode "$src"
+      fi
+    done
+  done
+  remove_claude_settings_merge_guard
+}
+
+# Give opencode its own link to a skill it used to read from ~/.claude/skills.
+hand_skill_to_opencode() {
+  local src="$1" opencode_dir
+  opencode_dir="$(opencode_skills_dir)"
+  [[ -d "$opencode_dir" ]] || return 0
+  skill_matches_target "$src/SKILL.md" opencode || return 0
+  opencode_shared_root_for "$src" >/dev/null && return 0
+  link_one "$src" "$opencode_dir/${src##*/}"
+}
+
 cleanup_codex_prompts_legacy() {
   local skills="$1"
   local legacy_dir="$HOME/.codex/prompts"
@@ -1271,6 +1331,79 @@ cleanup_codex_prompts_legacy() {
   done <<<"$skills"
 }
 
+# Link (or, with --uninstall, unlink) the selected skills for one target, then
+# prune links to skills the repo no longer ships.
+sync_skill_links() {
+  local target="$1" skills="$2" routed="$3"
+  local dest_dir cmd_dir="" cmd_dir_ready=0 shared_root
+  dest_dir="$(target_dir_for "$target")"
+  [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
+  if ((UNINSTALL == 0)); then
+    ensure_parent "$dest_dir"
+  fi
+  while IFS= read -r skill; do
+    local src dest activation category
+    activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
+    category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
+    if [[ "$activation" == "command" && "$target" != "codex" ]]; then
+      # User-invoked: link the single SKILL.md into the command directory.
+      src="$REPO_ROOT/skills/$skill/SKILL.md"
+      dest="$cmd_dir/$skill.md"
+      if ((UNINSTALL == 0)) && ((cmd_dir_ready == 0)); then
+        ensure_parent "$cmd_dir"
+        cmd_dir_ready=1
+      fi
+    elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
+      # Auto member of a routed category: it is nested under the router's
+      # members/ dir and loads lazily when routed to, so it is never linked
+      # at top level. Command skills bypass routing (handled above for
+      # non-codex; linked as skills for codex), so they are not skipped here.
+      # Codex discovers the nested member recursively anyway; it is disabled
+      # by path in ~/.codex/config.toml further down.
+      # Migration: before this category was routed, the member was linked
+      # flat here. That link still resolves, so prune_stale_skill_links (which
+      # only removes broken ones) leaves it, and the member keeps registering
+      # at top level — exactly what routing exists to prevent. Remove it on
+      # both paths. unlink_one only touches a symlink pointing at our own
+      # path, so foreign entries and real directories are left alone.
+      unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
+      continue
+    else
+      # A normal auto skill, or the router itself (linked as a whole dir so
+      # its nested members/ come along).
+      src="$REPO_ROOT/skills/$skill"
+      dest="$dest_dir/$skill"
+    fi
+    # A skill whose `targets:` field excludes this agent is never linked
+    # here; unlinking instead keeps the tree self-healing when the field is
+    # added to a skill that was already installed.
+    if ((UNINSTALL)) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
+      unlink_one "$src" "$dest"
+    elif [[ "$target" == "opencode" && "$dest" == "$dest_dir/"* ]] &&
+      shared_root="$(opencode_shared_root_for "$src")"; then
+      drop_opencode_duplicate "$src" "$shared_root"
+      printf '  shared    %s (opencode reads it from %s)\n' "$dest" "$shared_root"
+    else
+      link_one "$src" "$dest"
+      # Run in either order, claude/codex and opencode end up with one link.
+      if [[ "$target" != "opencode" && "$dest" == "$dest_dir/"* ]] &&
+        our_link_at "$src" "$dest"; then
+        drop_opencode_duplicate "$src" "$dest_dir"
+      fi
+    fi
+  done <<<"$skills"
+  # opencode loses the skills it read from this root; tell the user how to
+  # give it links of its own. --target=all removes opencode's links anyway.
+  if ((UNINSTALL)) && [[ "$TARGET" != "all" && "$target" != "opencode" ]] &&
+    [[ -d "$(opencode_skills_dir)" ]]; then
+    printf '  note      opencode read skills from %s; re-run --target=opencode to link them for it\n' \
+      "$dest_dir" >&2
+  fi
+  prune_stale_skill_links "$dest_dir"
+  [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
+  return 0
+}
+
 main() {
   local skills
   skills="$(list_skills)"
@@ -1282,76 +1415,21 @@ main() {
   routed="$(routed_categories)"
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
   [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
+  if [[ -n "$FILTER_FLAGS" && ("$TARGET" == "claude" || "$TARGET" == "all") ]]; then
+    printf '  WARN      %s: no effect for claude (its skills come from the plugin marketplace)\n' \
+      "${FILTER_FLAGS# }" >&2
+  fi
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    local dest_dir cmd_dir="" cmd_dir_ready=0 shared_root
-    dest_dir="$(target_dir_for "$target")"
-    [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
-    printf '%s: %s\n' "$target" "$dest_dir"
-    if ((UNINSTALL == 0)); then
-      ensure_parent "$dest_dir"
+    if [[ "$target" == "claude" ]]; then
+      printf 'claude: skills, commands and subagents come from the plugin marketplace\n'
+      migrate_claude_to_plugins
+      ((UNINSTALL)) || printf '  note      claude: claude plugin marketplace add %s\n' "$MARKETPLACE"
+    else
+      printf '%s: %s\n' "$target" "$(target_dir_for "$target")"
+      sync_skill_links "$target" "$skills" "$routed"
     fi
-    while IFS= read -r skill; do
-      local src dest activation category
-      activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
-      category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
-      if [[ "$activation" == "command" && "$target" != "codex" ]]; then
-        # User-invoked: link the single SKILL.md into the command directory.
-        src="$REPO_ROOT/skills/$skill/SKILL.md"
-        dest="$cmd_dir/$skill.md"
-        if ((UNINSTALL == 0)) && ((cmd_dir_ready == 0)); then
-          ensure_parent "$cmd_dir"
-          cmd_dir_ready=1
-        fi
-      elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
-        # Auto member of a routed category: it is nested under the router's
-        # members/ dir and loads lazily when routed to, so it is never linked
-        # at top level. Command skills bypass routing (handled above for
-        # non-codex; linked as skills for codex), so they are not skipped here.
-        # Codex discovers the nested member recursively anyway; it is disabled
-        # by path in ~/.codex/config.toml further down.
-        # Migration: before this category was routed, the member was linked
-        # flat here. That link still resolves, so prune_stale_skill_links (which
-        # only removes broken ones) leaves it, and the member keeps registering
-        # at top level — exactly what routing exists to prevent. Remove it on
-        # both paths. unlink_one only touches a symlink pointing at our own
-        # path, so foreign entries and real directories are left alone.
-        unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
-        continue
-      else
-        # A normal auto skill, or the router itself (linked as a whole dir so
-        # its nested members/ come along).
-        src="$REPO_ROOT/skills/$skill"
-        dest="$dest_dir/$skill"
-      fi
-      # A skill whose `targets:` field excludes this agent is never linked
-      # here; unlinking instead keeps the tree self-healing when the field is
-      # added to a skill that was already installed.
-      if ((UNINSTALL)) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
-        unlink_one "$src" "$dest"
-      elif [[ "$target" == "opencode" && "$dest" == "$dest_dir/"* ]] &&
-        shared_root="$(opencode_shared_root_for "$src")"; then
-        drop_opencode_duplicate "$src" "$shared_root"
-        printf '  shared    %s (opencode reads it from %s)\n' "$dest" "$shared_root"
-      else
-        link_one "$src" "$dest"
-        # Run in either order, claude/codex and opencode end up with one link.
-        if [[ "$target" != "opencode" && "$dest" == "$dest_dir/"* ]] &&
-          our_link_at "$src" "$dest"; then
-          drop_opencode_duplicate "$src" "$dest_dir"
-        fi
-      fi
-    done <<<"$skills"
-    # opencode loses the skills it read from this root; tell the user how to
-    # give it links of its own. --target=all removes opencode's links anyway.
-    if ((UNINSTALL)) && [[ "$TARGET" != "all" && "$target" != "opencode" ]] &&
-      [[ -d "$(opencode_skills_dir)" ]]; then
-      printf '  note      opencode read skills from %s; re-run --target=opencode to link them for it\n' \
-        "$dest_dir" >&2
-    fi
-    prune_stale_skill_links "$dest_dir"
-    [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
     if [[ "$target" == "codex" ]]; then
       cleanup_codex_skills_legacy
       cleanup_codex_prompts_legacy "$skills"
@@ -1364,7 +1442,7 @@ main() {
         remove_codex_member_overrides
       else
         install_codex_agents
-        codex_routed_members "$dest_dir" "$skills" | install_codex_member_overrides
+        codex_routed_members "$(target_dir_for codex)" "$skills" | install_codex_member_overrides
       fi
     fi
     if [[ "$target" == "opencode" ]]; then

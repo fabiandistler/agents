@@ -1,0 +1,1 @@
+../../../scripts/pr_merge_guard.py

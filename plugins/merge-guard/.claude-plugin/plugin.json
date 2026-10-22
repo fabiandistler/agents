@@ -1,0 +1,7 @@
+{
+  "name": "merge-guard",
+  "description": "PR merge guard: a model-free PreToolUse hook that blocks the agent from merging pull requests or enabling auto-merge, so only the human merges. Needs python3 on PATH.",
+  "author": {
+    "name": "Fabian Distler"
+  }
+}
