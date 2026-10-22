@@ -133,7 +133,7 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 DRY_RUN=0
 UNINSTALL=0
 INSTRUCTIONS=0
-MERGE_GUARD=0
+GUARDS=""
 TARGET=""
 ENV="all"
 CATEGORY="all"
@@ -161,7 +161,7 @@ for arg in "$@"; do
       ;;
     --dry-run) DRY_RUN=1 ;;
     --instructions) INSTRUCTIONS=1 ;;
-    --merge-guard) MERGE_GUARD=1 ;;
+    --merge-guard) GUARDS+=" merge" ;;
     --uninstall) UNINSTALL=1 ;;
     -h | --help)
       usage
@@ -1006,22 +1006,43 @@ remove_instructions() {
 # carry marker comments, so our entry is identified by the script name in its
 # command, and only that entry is ever removed.
 
-merge_guard_command() {
-  printf 'python3 "%s/scripts/pr_merge_guard.py" --harness %s' "$REPO_ROOT" "$1"
+# A guard is named by its key (merge); the script, plugin and opencode adapter
+# names derive from it.
+guard_script() {
+  case "$1" in
+    merge) printf 'pr_merge_guard' ;;
+  esac
 }
 
-merge_guard_begin_marker() {
-  printf '# >>> agents PR merge guard (managed by install.sh, do not edit) >>>'
+guard_label() {
+  case "$1" in
+    merge) printf 'PR merge guard' ;;
+  esac
 }
 
-merge_guard_end_marker() {
-  printf '# <<< agents PR merge guard <<<'
+guard_plugin() { printf '%s-guard@fabiandistler-agents' "$1"; }
+
+guard_opencode_file() {
+  local script
+  script="$(guard_script "$1")"
+  printf '%s.js' "${script//_/-}"
 }
 
-opencode_merge_guard_link() { printf '%s/.config/opencode/plugins/pr-merge-guard.js' "$HOME"; }
+guard_command() {
+  printf 'python3 "%s/scripts/%s.py" --harness %s' "$REPO_ROOT" "$(guard_script "$1")" "$2"
+}
+
+guard_begin_marker() {
+  printf '# >>> agents %s (managed by install.sh, do not edit) >>>' "$(guard_label "$1")"
+}
+
+guard_end_marker() { printf '# <<< agents %s <<<' "$(guard_label "$1")"; }
+
+opencode_guard_link() {
+  printf '%s/.config/opencode/plugins/%s' "$HOME" "$(guard_opencode_file "$1")"
+}
 
 MARKETPLACE="fabiandistler/agents"
-MERGE_GUARD_PLUGIN="merge-guard@fabiandistler-agents"
 
 # Print ~/.claude/settings.json without the guard entry. Exit 10: nothing to
 # change; exit 1: not a JSON object.
@@ -1075,53 +1096,60 @@ remove_claude_settings_merge_guard() {
   printf '  removed   PR merge guard hook from %s (now the merge-guard plugin)\n' "$file"
 }
 
-install_merge_guard() {
-  local target="$1" toml
+install_guard() {
+  local guard="$1" target="$2" label toml
+  label="$(guard_label "$guard")"
   if [[ "$target" == "claude" ]]; then
-    printf '  note      claude: claude plugin install %s\n' "$MERGE_GUARD_PLUGIN"
+    printf '  note      claude: claude plugin install %s\n' "$(guard_plugin "$guard")"
     return 0
   fi
   if ! command -v python3 >/dev/null 2>&1; then
-    printf '  WARN      python3 not found; the PR merge guard needs it (skipping %s)\n' \
-      "$target" >&2
+    printf '  WARN      python3 not found; the %s needs it (skipping %s)\n' \
+      "$label" "$target" >&2
     return 0
   fi
   case "$target" in
     codex)
       if ! toml="$(
-        python3 - "$REPO_ROOT/scripts" "$(merge_guard_command codex)" <<'PY'
+        python3 - "$REPO_ROOT/scripts" "$(guard_script "$guard")" \
+          "$(guard_command "$guard" codex)" <<'PY'
+import importlib
 import sys
 
 sys.path.insert(0, sys.argv[1])
 from pr_merge_guard import codex_hook_toml
 
-print(codex_hook_toml(sys.argv[2]))
+guard = importlib.import_module(sys.argv[2])
+print(codex_hook_toml(sys.argv[3], guard.HOOK_MATCHER, guard.HOOK_STATUS))
 PY
       )"; then
-        printf '  WARN      cannot render the Codex PR merge guard hook (skipping)\n' >&2
+        printf '  WARN      cannot render the Codex %s hook (skipping)\n' "$label" >&2
         return 0
       fi
-      managed_block_set "$(codex_config_path)" "$(merge_guard_begin_marker)" \
-        "$(merge_guard_end_marker)" "$toml" "PR merge guard hook"
+      managed_block_set "$(codex_config_path)" "$(guard_begin_marker "$guard")" \
+        "$(guard_end_marker "$guard")" "$toml" "$label hook"
       ;;
     opencode)
       ensure_parent "${HOME}/.config/opencode/plugins"
-      link_one "$REPO_ROOT/scripts/opencode/pr-merge-guard.js" "$(opencode_merge_guard_link)"
+      link_one "$REPO_ROOT/scripts/opencode/$(guard_opencode_file "$guard")" \
+        "$(opencode_guard_link "$guard")"
       ;;
   esac
 }
 
-uninstall_merge_guard() {
-  case "$1" in
+uninstall_guard() {
+  local guard="$1"
+  case "$2" in
     claude)
-      printf '  note      claude: claude plugin uninstall %s\n' "$MERGE_GUARD_PLUGIN"
+      printf '  note      claude: claude plugin uninstall %s\n' "$(guard_plugin "$guard")"
       ;;
     codex)
-      managed_block_remove "$(codex_config_path)" "$(merge_guard_begin_marker)" \
-        "$(merge_guard_end_marker)" "PR merge guard hook"
+      managed_block_remove "$(codex_config_path)" "$(guard_begin_marker "$guard")" \
+        "$(guard_end_marker "$guard")" "$(guard_label "$guard") hook"
       ;;
     opencode)
-      unlink_one "$REPO_ROOT/scripts/opencode/pr-merge-guard.js" "$(opencode_merge_guard_link)"
+      unlink_one "$REPO_ROOT/scripts/opencode/$(guard_opencode_file "$guard")" \
+        "$(opencode_guard_link "$guard")"
       ;;
   esac
 }
@@ -1457,13 +1485,13 @@ main() {
         if [[ "$target" == "claude" ]]; then install_claude_rules; fi
       fi
     fi
-    if ((MERGE_GUARD)); then
+    for guard in $GUARDS; do
       if ((UNINSTALL)); then
-        uninstall_merge_guard "$target"
+        uninstall_guard "$guard" "$target"
       else
-        install_merge_guard "$target"
+        install_guard "$guard" "$target"
       fi
-    fi
+    done
   done < <(resolve_targets)
 }
 
