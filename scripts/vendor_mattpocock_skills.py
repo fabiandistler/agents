@@ -33,6 +33,9 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+CLI_DESCRIPTION = (
+    "Vendor Matt Pocock's skills (github.com/mattpocock/skills) into `.claude/skills/`."
+)
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 VENDOR_DIR = REPO_ROOT / ".claude" / "vendor" / "mattpocock-skills"
 LOCK_PATH = VENDOR_DIR / "lock.json"
@@ -47,14 +50,18 @@ INCLUDED_IN_PROGRESS = ("chief-of-staff",)
 
 
 def git(*args: str, cwd: Path) -> str:
-    return subprocess.run(
-        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    return subprocess.run(  # noqa: S603 -- Git args select an intentional operation; no shell.
+        ["git", *args],  # noqa: S607 -- Git intentionally resolves from PATH.
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description=__doc__.splitlines()[0],
+        description=CLI_DESCRIPTION,
         epilog=f"Never vendored (EXCLUDED): {', '.join(sorted(EXCLUDED))}.",
     )
     parser.add_argument(

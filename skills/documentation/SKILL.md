@@ -2,7 +2,7 @@
 name: documentation
 category: communication
 environments: coding, chat
-description: Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes. Covers per-type skeletons, audience targeting, and keeping docs current instead of stale.
+description: Guides writing or revising technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes. Use when drafting or updating documentation for a specific audience.
 ---
 
 # Technical Documentation

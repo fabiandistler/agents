@@ -117,7 +117,7 @@ EVENTS = {"claude": claude_event, "codex": codex_event, "opencode": opencode_eve
 
 
 def run_guard(harness: str, event: object) -> subprocess.CompletedProcess:
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 -- test invokes its own script with argv, no shell.
         [sys.executable, str(SCRIPT), "--harness", harness],
         input=event if isinstance(event, str) else json.dumps(event),
         capture_output=True,
@@ -179,7 +179,7 @@ def test_usage_error_does_not_look_like_a_block() -> None:
 
 
 def test_help_is_short_and_names_exit_codes() -> None:
-    run = subprocess.run(
+    run = subprocess.run(  # noqa: S603 -- test invokes its own script with argv, no shell.
         [sys.executable, str(SCRIPT), "--help"], capture_output=True, text=True, check=True
     )
     assert "Exit:" in run.stdout and "Examples:" in run.stdout
@@ -224,8 +224,16 @@ try {{ await hook({{ tool: "bash", input: {{ command: "gh pr merge 7" }} }}); re
 catch (e) {{ results.push("block"); }}
 console.log(JSON.stringify([plugin.id, results]));
 """
-    run = subprocess.run(
-        ["node", "--input-type=module", "-e", probe], capture_output=True, text=True, check=True
+    run = subprocess.run(  # noqa: S603 -- fixed Node test probe is passed as argv, no shell.
+        [  # noqa: S607 -- Node intentionally resolves from PATH in the test environment.
+            "node",
+            "--input-type=module",
+            "-e",
+            probe,
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     )
     plugin_id, results = json.loads(run.stdout)
     assert plugin_id
@@ -247,8 +255,12 @@ def test_plugin_hook_command_blocks_from_the_plugin_root() -> None:
     command = command.replace("python3", shlex.quote(sys.executable), 1)
     env = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(MERGE_GUARD_PLUGIN)}
     for shell_command, expected in [("gh pr merge 7", guard.EXIT_BLOCK), ("ls", guard.EXIT_ALLOW)]:
-        run = subprocess.run(
-            ["sh", "-c", command],
+        run = subprocess.run(  # noqa: S603 -- exercises the generated hook shell command.
+            [  # noqa: S607 -- shell intentionally resolves from PATH.
+                "sh",
+                "-c",
+                command,
+            ],
             input=json.dumps(claude_event(shell_command)),
             env=env,
             capture_output=True,

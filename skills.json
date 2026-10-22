@@ -3,7 +3,7 @@
   "skills": [
     {
       "name": "ai-ml",
-      "summary": "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill. - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting, SDK/API syntax, or MCP server implementation.",
+      "summary": "Routes work on trained-model systems to the right sub-skill: LLM apps (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tuning) or classical ML projects (framing, baselines, model choice, missing data, deployment, retraining). - Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting, SDK/API syntax, or MCP server implementation.",
       "category": "ai-ml",
       "path": "skills/ai-ml/SKILL.md",
       "activation": "router",
@@ -53,7 +53,7 @@
     },
     {
       "name": "coupling-cohesion",
-      "summary": "Assess an existing codebase's coupling and cohesion — module cohesion and LCOM, codebase-wide coupling metrics and zones, or whether a single dependency is balanced (Khononov).",
+      "summary": "Assesses existing code for module cohesion and LCOM, codebase-wide coupling metrics and zones, or the balance of one dependency (Khononov).",
       "category": "architecture",
       "path": "skills/coupling-cohesion/SKILL.md",
       "compatibility": "The bundled scripts are stdlib-only Python 3.8+. LCOM analyzes Python (precise, via AST), R, and Bash (heuristic); the coupling and balance checks are language-agnostic. Dependency-graph extraction uses whatever tool fits the ecosystem (examples in the Mode B file for Python, JS/TS, Java, .NET, Go).",
@@ -73,7 +73,7 @@
     },
     {
       "name": "documentation",
-      "summary": "Writing or fixing technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes.",
+      "summary": "Guides writing or revising technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes.",
       "category": "communication",
       "path": "skills/documentation/SKILL.md",
       "environments": [
@@ -92,7 +92,7 @@
     },
     {
       "name": "html-artifacts",
-      "summary": "Produce a self-contained HTML file for deliverables the reader will keep, share, or manipulate; not for ordinary answers.",
+      "summary": "Produces a self-contained HTML file for deliverables the reader will keep, share, or manipulate; not for ordinary answers.",
       "category": "communication",
       "path": "skills/html-artifacts/SKILL.md",
       "environments": [
@@ -102,7 +102,7 @@
     },
     {
       "name": "hypertrophy-training",
-      "summary": "Evidence-based hypertrophy programming, auto-regulation and plateau diagnosis for experienced trainees, including training under elevated injury risk and the return after an injury.",
+      "summary": "Guides experienced trainees in hypertrophy programming, auto-regulation, and plateau diagnosis.",
       "category": "personal",
       "path": "skills/hypertrophy-training/SKILL.md",
       "environments": [
@@ -134,7 +134,7 @@
     },
     {
       "name": "logical-component-design",
-      "summary": "Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition.",
+      "summary": "Decomposes a NEW system or feature into named logical components; not for measuring an existing decomposition.",
       "category": "architecture",
       "path": "skills/logical-component-design/SKILL.md",
       "environments": [
@@ -143,7 +143,7 @@
     },
     {
       "name": "microservices-design",
-      "summary": "Design or review how services interact — boundaries, coupling, communication style, contract versioning, sagas, resiliency patterns.",
+      "summary": "Guides microservice interaction design and review — service boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns from Newman's *Building Microservices*.",
       "category": "architecture",
       "path": "skills/microservices-design/SKILL.md",
       "environments": [
@@ -163,7 +163,7 @@
     },
     {
       "name": "natural-planning",
-      "summary": "Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions) when it feels stuck, vague, or overwhelming.",
+      "summary": "Plans one multi-step project with GTD's Natural Planning Model (purpose, outcome, brainstorm, organize, next actions).",
       "category": "workflow",
       "path": "skills/natural-planning/SKILL.md",
       "environments": [
@@ -197,7 +197,7 @@
     },
     {
       "name": "problem-first-explanation",
-      "summary": "Output-form skill for explaining anything that solves a problem — a tool, method, concept, rule, or proposal — by leading with the concrete problem before the solution.",
+      "summary": "Structures explanations of tools, methods, concepts, rules, and proposals by leading with the concrete problem.",
       "category": "communication",
       "path": "skills/problem-first-explanation/SKILL.md",
       "environments": [
@@ -219,7 +219,7 @@
     },
     {
       "name": "refactoring",
-      "summary": "Finding where refactoring is worth starting in a codebase nobody knows well — ranks files by git churn (hotspots) and says how to read the ranking.",
+      "summary": "Finds where refactoring is worth starting in an unfamiliar codebase by ranking files by git churn (hotspots) and explaining the ranking.",
       "category": "refactoring",
       "path": "skills/refactoring/SKILL.md",
       "environments": [
@@ -252,7 +252,7 @@
     },
     {
       "name": "stakeholder-update",
-      "summary": "Drafts a weekly update, exec summary, escalation, or launch announcement for readers outside the working group — leadership, partners, or customers — where audience and update type decide the shape.",
+      "summary": "Drafts a weekly update, executive summary, escalation, or launch announcement for readers outside the working group.",
       "category": "communication",
       "path": "skills/stakeholder-update/SKILL.md",
       "environments": [

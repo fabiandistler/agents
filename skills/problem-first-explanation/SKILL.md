@@ -2,7 +2,7 @@
 name: problem-first-explanation
 category: communication
 environments: coding, chat
-description: Output-form skill for explaining anything that solves a problem — a tool, method, concept, rule, or proposal — by leading with the concrete problem before the solution. Not for whole-document structure (use documentation).
+description: Structures explanations of tools, methods, concepts, rules, and proposals by leading with the concrete problem. Use when explaining a solution; not for whole-document structure (use documentation).
 metadata:
   version: "1.0"
 ---

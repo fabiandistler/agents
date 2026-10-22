@@ -2,7 +2,7 @@
 name: logical-component-design
 category: architecture
 environments: coding
-description: Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. Use when asking what components a new system needs.
+description: Decomposes a NEW system or feature into named logical components; not for measuring an existing decomposition. Use when asking what components a new system needs.
 ---
 
 # Logical Component Design
@@ -35,7 +35,8 @@ domain", "how should I organize these user stories into components", or
 "identify the building blocks for my <app>", or is filling empty buckets,
 applying the Workflow or Actor/Action approach, or worrying about the Entity
 Trap — even without naming the book. Not for analyzing existing code
-(→ coupling-cohesion) or choosing system topology and folder layout
+(→ `members/coupling-cohesion/SKILL.md`, read via the `architecture` router) or
+choosing system topology and folder layout
 (→ `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router).
 
 ## Relation to siblings
@@ -101,7 +102,7 @@ rather than copying the code. Stories arrive over time, so this step recurs.
 ### 3. Analyze roles and responsibilities (cohesion)
 
 Check that each component's assigned work actually belongs together and that no
-component is doing too much. Write a one-paragraph **role and responsibility
+component is doing too much. Write a one-sentence **role and responsibility
 statement** for the component and read it critically:
 
 > The **conjunction test**: if the statement leans on *and*, *also*, *in
@@ -113,7 +114,7 @@ responsibility" is also literally "too much code in one place." Extract the
 strayed responsibilities into their own components (e.g. pull payment,
 inventory, and email out of an over-broad `Order Placement`). For a deeper,
 metric-backed split/merge/leave decision on a specific class or module, hand off
-to the **`coupling-cohesion`** skill.
+to **`members/coupling-cohesion/SKILL.md`**, read via the `architecture` router.
 
 ### 4. Analyze architectural characteristics
 
@@ -160,7 +161,8 @@ Once a candidate set of components exists, examine how they depend on each other
   catches this; surface it from the design and note it explicitly.
 
 For coupling **metrics on code that already exists** (instability, distance from
-the main sequence, zones of pain/uselessness), hand off to **`coupling-cohesion`**.
+the main sequence, zones of pain/uselessness), hand off to
+**`members/coupling-cohesion/SKILL.md`**, read via the `architecture` router.
 
 ## Refinement lens: Law of Demeter (Least Knowledge)
 

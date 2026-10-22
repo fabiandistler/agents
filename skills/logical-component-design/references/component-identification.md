@@ -232,7 +232,8 @@ this; it usually surfaces from design documents or shows up through error
 conditions. Note it explicitly during design.
 
 For coupling **metrics on realized code** — instability, abstractness, distance
-from the main sequence, zones of pain/uselessness — use `coupling-cohesion`.
+from the main sequence, zones of pain/uselessness — use
+`members/coupling-cohesion/SKILL.md`, read via the `architecture` router.
 
 ---
 

@@ -87,8 +87,22 @@ Then:
   done
   ```
 
-  For reviewed PRs, check each remaining one with
-  `gh api "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100" --jq '.[] | select(.user.login == "<login>" and .submitted_at >= "<date>") | .state'`.
+  For reviewed PRs, fetch each review page explicitly, using the raw response
+  length to stop at the first short page; filter each page by login and
+  submission date. Do not stop based on the number of matching reviews.
+
+  ```bash
+  page=1
+  while :; do
+    reviews=$(gh api "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100&page=$page") || break
+    count=$(printf '%s' "$reviews" | jq 'length') || break
+    printf '%s' "$reviews" |
+      jq -r --arg login "<login>" --arg date "<date>" \
+        '.[] | select(.user.login == $login and .submitted_at >= $date) | .state'
+    [ "$count" -lt 100 ] && break
+    page=$((page + 1))
+  done
+  ```
 - CI status: `gh run list --limit 5`
 
 Without the GitHub MCP tools or `gh`, fall back to git-only and structure what

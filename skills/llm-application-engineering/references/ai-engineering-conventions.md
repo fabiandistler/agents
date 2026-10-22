@@ -160,11 +160,12 @@ _Extends SKILL.md Part B step 5._
 
 _Extends SKILL.md Part B (the five-step build order)._
 
-- **Front the system with a small, cheap intent classifier, and answer
-  out-of-scope queries with stock responses — no LLM call.** (Ch. 10)
-- **Access all models through a gateway** (unified interface, key custody,
-  per-app access control, fallbacks, usage limits). **Never distribute raw
-  provider keys to applications.** (Ch. 10)
+- **When out-of-scope requests are common or need a separate path, front the
+  system with a small, cheap intent classifier and use stock responses where no
+  LLM call is needed.** (Ch. 10)
+- **When multiple models or providers need shared routing or controls, use a
+  gateway** for a unified interface, per-app access, fallbacks, and usage limits.
+  Keep provider keys out of application code. (Ch. 10)
 - **Before an unattended job calls a paid model API, give it a hard stop at
   the provider, not an alert:** a per-project or per-key spend cap where the
   provider has one; on Azure, where budgets only notify, the deployment's TPM
@@ -240,8 +241,9 @@ obvious — the cost of guessing wrong is high._
 - **Mask PII/sensitive data before any third-party API call; restore it via a
   reverse mapping after generation.** (Ch. 10)
 - **Execute generated code only in an isolated sandbox/VM.** (Ch. 5)
-- **Gate all mutating actions (UPDATE/DELETE/DROP, sending messages,
-  transactions) behind explicit human approval.** (Ch. 5, 10)
+- **Set approval gates by consequence and reversibility. Require explicit human
+  approval for high-impact or hard-to-reverse mutations**, such as destructive
+  SQL, external messages, or transactions. (Ch. 5, 10)
 - **Enforce an agent's database scope with database grants, never with the
   prompt or a query filter: connect it as a dedicated user with SELECT on
   approved views only — never through the developer's or an admin connection.
@@ -289,5 +291,3 @@ actually on that rung._
 - **Deduplicate before training.** Repeating 0.1% of data 100× measurably halved
   effective model capacity in a published study; duplicates also contaminate
   train/test splits. (Ch. 8)
-- **Order processing steps by cost — run the cheapest data-reducing step first,
-  and trial-run every script on a sample before the full dataset.** (Ch. 8)

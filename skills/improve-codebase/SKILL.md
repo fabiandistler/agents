@@ -141,9 +141,10 @@ For each candidate, render a card with:
 - **Files**: the files and modules involved.
 - **Evidence**: one line per finding, each with `path:line` or a metric value
   as the instrument printed it.
-- **Problem**: why the current shape causes friction.
-- **Solution**: in plain English, what would change.
-- **Benefits**: in terms of locality and leverage, and how tests would improve.
+- **Problem**: one sentence explaining the friction.
+- **Solution**: one sentence stating what changes.
+- **Wins**: bullets of six words or fewer, naming gains in locality, leverage,
+  or testing.
 - **Before / after diagram**: side by side, showing the shallowness and the
   deepening.
 - **Recommendation strength**: `Strong`, `Worth exploring`, or `Speculative`,

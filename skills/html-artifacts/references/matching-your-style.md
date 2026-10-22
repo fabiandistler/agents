@@ -15,7 +15,7 @@ Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact 
 ## Three rules of thumb
 
 1. **Restraint over decoration.** A calm typographic layout — system serif body, generous spacing, one or two restrained accent colors — beats a busy "dashboard" almost every time. If you're tempted to add a gradient, don't.
-2. **Use real type.** Default the body to a real serif (Charter, Iowan, Source Serif, Tinos, system serif fallback) for documents and explainers. Sans-serif (Inter, system-ui) for tools and editors. 16–18px body, 60–75ch line length, 1.5–1.6 line height. These numbers are not negotiable; they're table stakes.
+2. **Use real type.** Default the body to a real serif (Charter, Iowan, Source Serif, Tinos, system serif fallback) for documents and explainers. Sans-serif (Inter, system-ui) for tools and editors. For documents, start around 16–18px body text, 60–75ch line length, and 1.5–1.6 line height; adjust to fit the artifact. Editors below use a denser baseline.
 3. **Color carries meaning, not mood.** If a color appears in the artifact it should be doing work — severity, status, category, axis. If a color is there for vibe, remove it.
 
 ## The design-system-from-codebase trick
@@ -122,7 +122,7 @@ A shorthand list of the things to *not* default to:
 - Centered everything.
 - A header with a logo placeholder.
 
-If the artifact has any three of those, restart.
+When several appear, check whether each serves the content and revise the decorative defaults that do not.
 
 ## What good looks like
 

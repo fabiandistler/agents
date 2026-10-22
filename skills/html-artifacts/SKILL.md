@@ -2,16 +2,12 @@
 name: html-artifacts
 category: communication
 environments: coding, chat
-description: Produce a self-contained HTML file for deliverables the reader will keep, share, or manipulate; not for ordinary answers. Use when spatial layout, comparison, or interaction carries meaning.
+description: Produces a self-contained HTML file for deliverables the reader will keep, share, or manipulate; not for ordinary answers. Use when spatial layout, comparison, or interaction carries meaning.
 ---
 
 # HTML Artifacts
 
 ## When to use
-
-Markdown is the default agent output, but for anything longer than a handful of sentences it's a poor format. It can't show two options side by side, can't render a real diagram, can't be interactive, and can't be shared by link. HTML can do all of those — and when the artifact is the deliverable rather than something you'll skim and forget, the difference between "a document I'd skim" and "a document I'd actually read" is enormous.
-
-The use cases below are not the only places HTML helps, but they cover most of the territory. The pattern in every category is the same: the agent picks a layout that makes the *shape* of the content visible, instead of flattening it into linear prose.
 
 Default to a one-line offer and stay in markdown unless the user asked for HTML or the output is clearly a deliverable they will keep, share, or manipulate. Reach for HTML only when that deliverable test holds and one of the following is true.
 
@@ -22,8 +18,6 @@ Default to a one-line offer and stay in markdown unless the user asked for HTML 
 - **Color or hierarchy carries meaning.** Severity tags, status colors, syntax highlighting, design tokens.
 - **One-off editor.** The reader needs to manipulate a thing (drag tickets, toggle flags, tune a prompt) and round-trip the result back into a prompt or a commit.
 - **The reader will share it.** A spec going to leadership, a PR writeup going to reviewers, a status report going to a team. Readers often engage more with an HTML page than a markdown file.
-
-The heuristic, said another way: if the user is going to *do* something with the document — read it carefully, share it, refer back to it, hand it to an implementer, paste edits back in — offer HTML.
 
 The request rarely says "HTML" or "artifact." It says: doc, writeup, plan, spec, report, explainer, comparison, review, PR description, mockup, diagram, flowchart, deck, slides, status update, post-mortem, incident report, playground — or a one-off editor for triaging, reordering, or tuning something. A bare verb alone (explain, summarize, compare, explore options, brainstorm) without a keep/share/manipulate deliverable stays in markdown.
 
@@ -58,7 +52,7 @@ Every artifact this skill produces must satisfy all of these:
 3. **Mobile responsive.** Include `<meta name="viewport" content="width=device-width, initial-scale=1">` and a layout that survives a narrow viewport. The reader may open it on a phone.
 4. **Real layout, not stacked headers.** If the content is a comparison, lay it out in columns. If it's a timeline, draw a timeline. If it's a diff, render a diff. Don't translate markdown structure 1:1 into HTML — that's wasted effort.
 5. **Readable on its own.** Title at the top, a one-paragraph TL;DR or framing sentence right below, then the substance. The reader should know what they're looking at within five seconds.
-6. **Tasteful by default.** A neutral but considered design: legible serif or sans body, comfortable line length (60–75ch), generous spacing, restrained color, dark-mode-friendly if cheap. Resist the default-AI aesthetic of "everything is a card with a gradient." See `references/matching-your-style.md` if the user has an existing design system to match.
+6. **Tasteful by default.** A neutral but considered design: legible serif or sans body, comfortable line length, generous spacing, restrained color, dark-mode-friendly if cheap. Resist the default-AI aesthetic of "everything is a card with a gradient." See `references/matching-your-style.md` for document defaults and existing design systems.
 7. **Editors export back to text.** This one is non-negotiable for any artifact where the reader manipulates state. The artifact must end with a "copy as markdown" / "copy as JSON" / "copy as prompt" button that turns the UI state into something pasteable. The whole point of a throwaway editor is the round-trip.
 8. **Accessible and safe.** Set `lang`, use semantic landmarks (`header`/`main`/`nav`/`footer`), keep contrast readable, label every control and give every figure `alt` text or a caption. Keep every interaction keyboard-operable with a visible focus style, honor `prefers-reduced-motion`, give each figure unique IDs, offer a keyboard or button alternative to drag and swipe, and redact secrets and personal data before sharing.
 
@@ -97,15 +91,11 @@ Sandboxed preview panes are stricter than a local file. Guard storage access wit
 
 ## A note on token cost and time
 
-HTML artifacts cost roughly 2–4× the tokens of a markdown equivalent and take longer to generate. This is a real tradeoff. Default to a one-line offer ("I can render this as HTML — want it?") and stay in markdown unless the user says yes or the output is clearly a shareable deliverable. If the user is iterating fast on something disposable ("just summarize what's in this file"), a markdown reply is fine. Don't manufacture a use case for HTML where there isn't one.
+HTML artifacts cost roughly 2–4× the tokens of a markdown equivalent and take longer to generate. Account for that cost when deciding whether a deliverable warrants HTML; a disposable iteration such as "summarize this file" usually does not.
 
 ## A note on taste
 
 Bad-looking HTML is worse than good markdown. If the artifact would render as a wall of generic Tailwind cards with emoji headers, slow down. Read `references/matching-your-style.md` first. If the user has a design-system skill or design system file in the repo, lean on it. If not, default to a calm typographic layout — system serif body, restrained palette, real structure — rather than a busy "dashboard" look.
-
-## A note on what this skill is not
-
-This skill is not "always answer in HTML." The point is not the format; the point is that for many of the things people ask agents to produce — plans, comparisons, reviews, explainers, editors — the format markdown forces (linear text, no spatial layout, no color, no interactivity) actively obscures the content. HTML lifts that constraint. Where markdown is genuinely the better medium, use markdown.
 
 ## Credits
 

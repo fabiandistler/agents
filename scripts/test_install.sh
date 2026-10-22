@@ -22,6 +22,10 @@ PYTHON="${PYTHON:-python3}"
 . "$REPO_ROOT/scripts/require_python.sh"
 require_python test_install.sh "$PYTHON" || exit 2
 
+file_inode() {
+  "$PYTHON" -c 'import os, sys; print(os.stat(sys.argv[1]).st_ino)' "$1"
+}
+
 count_links() {
   # POSIX-portable: -L returns 0 only for symlinks.
   local dir="$1" n=0
@@ -192,7 +196,8 @@ migc_dry="$(HOME="$HOME_MIGC" "$INSTALL" --target=claude --dry-run 2>&1)"
 [[ "$(count_links "$HOME_MIGC/.claude/skills")" -eq 4 ]] || fail "dry-run removed claude skill links"
 diff -q "$HOME_MIGC/settings-before.json" "$HOME_MIGC/.claude/settings.json" >/dev/null ||
   fail "dry-run changed settings.json"
-grep -q 'remove PR merge guard hook' <<<"$migc_dry" || fail "dry-run did not plan the settings cleanup"
+grep -Fq "[dry-run] remove $HOME_MIGC/.claude/settings.json" <<<"$migc_dry" ||
+  fail "dry-run did not plan the settings cleanup"
 HOME="$HOME_MIGC" "$INSTALL" --target=claude >/dev/null
 for gone in skills/architecture skills/documentation skills/removed-skill commands/repo-status.md; do
   [[ ! -L "$HOME_MIGC/.claude/$gone" ]] || fail "migration left ~/.claude/$gone"
@@ -276,6 +281,18 @@ got="$(count_links "$HOME_A/.config/opencode/command")"
 [[ ! -e "$HOME_A/.agents/skills/repo-status" ]] || fail "codex uninstall left command skill repo-status behind"
 pass "all uninstall removes command-dir links"
 
+# 6aa. re-running an install keeps the existing skill symlink inode.
+HOME_LINK_IDEM="$(mktemp -d)"
+HOME="$HOME_LINK_IDEM" "$INSTALL" --target=opencode --category=workflow >/dev/null
+IDEM_LINK="$HOME_LINK_IDEM/.config/opencode/skills/natural-planning"
+link_inode_before="$(file_inode "$IDEM_LINK")"
+link_output="$(HOME="$HOME_LINK_IDEM" "$INSTALL" --target=opencode --category=workflow 2>&1)"
+[[ "$(file_inode "$IDEM_LINK")" == "$link_inode_before" ]] ||
+  fail "reinstall rewrote an unchanged skill link"
+grep -q '  ok .*natural-planning' <<<"$link_output" ||
+  fail "reinstall did not report the unchanged skill link as ok"
+echo "ok: unchanged skill links keep their inode"
+
 # 6f. opencode reads ~/.agents/skills too, and wants skill names unique across
 #     its roots (#564): with codex installed first, opencode links none of the
 #     shared skills but keeps its command links.
@@ -335,11 +352,22 @@ got="$(count_links "$HOME_OCE/.config/opencode/skills")"
 want=$((OPENCODE_EXPECTED - shared))
 [[ "$got" -eq "$want" ]] || fail "opencode with codex --env=chat: expected $want links, got $got"
 oc_dry="$(HOME="$(mktemp -d)" "$INSTALL" --target=all --dry-run 2>&1)"
-[[ "$(grep -c 'linked .*/\.config/opencode/skills/' <<<"$oc_dry")" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
+[[ "$(grep -c '^\[dry-run\] link .*/\.config/opencode/skills/' <<<"$oc_dry")" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
   fail "dry-run --target=all planned opencode links that codex shares"
 grep -q 'shared .*/\.config/opencode/skills/' <<<"$oc_dry" ||
   fail "dry-run --target=all did not report the shared skills"
 pass "opencode links what codex lacks, and dry-run plans the shared state"
+
+# 6h2. each planned write uses one normalized dry-run line.
+dry_action_lines="$(grep '^\[dry-run\]' <<<"$oc_dry")"
+if grep -Ev '^\[dry-run\] (link|write|remove) .+$' <<<"$dry_action_lines" >/dev/null; then
+  fail "dry-run emitted a non-normalized action line"
+fi
+if grep -Eq '^  (linked|removed|updated|agent) ' <<<"$oc_dry"; then
+  fail "dry-run emitted a second write status line"
+fi
+[[ "$(grep -c '^\[dry-run\] write .*/\.codex/agents/.*\.toml$' <<<"$oc_dry")" -eq 2 ]] ||
+  fail "dry-run did not report each agent TOML write once"
 
 # 6i. An earlier opencode install skipped the skills it read from
 #     ~/.claude/skills. The claude migration removes those links, so it hands
@@ -546,6 +574,17 @@ if HOME="$(mktemp -d)" "$INSTALL" --target=claude --category=bogus >/dev/null 2>
 fi
 pass "invalid --category is rejected"
 
+# 14a. an empty --category value reaches validation on Bash 3.2 with nounset.
+if empty_category_output="$(HOME="$(mktemp -d)" "$INSTALL" --target=claude --category= 2>&1)"; then
+  fail "empty --category was accepted"
+else
+  empty_category_status=$?
+fi
+[[ "$empty_category_status" -eq 2 ]] || fail "empty --category did not exit 2"
+[[ "$empty_category_output" == *"invalid --category= (expected one of:"* ]] ||
+  fail "empty --category did not reach validation"
+echo "ok: empty --category is rejected before Bash 3.2 nounset array expansion"
+
 # 18. a category without a router leaves config.toml alone (communication
 #     ships no router, so nothing managed is written to config.toml).
 HOME_NOMCP="$(mktemp -d)"
@@ -648,16 +687,40 @@ pass "override uninstall removes only our block"
 HOME_OV3="$(mktemp -d)"
 HOME="$HOME_OV3" "$INSTALL" --target=codex --category=ai-ml >/dev/null
 CONFIG_OV3="$HOME_OV3/.codex/config.toml"
-inode_before="$(stat -c %i "$CONFIG_OV3")"
+inode_before="$(file_inode "$CONFIG_OV3")"
 ov_output="$(HOME="$HOME_OV3" "$INSTALL" --target=codex --category=ai-ml 2>&1)"
-[[ "$(stat -c %i "$CONFIG_OV3")" == "$inode_before" ]] ||
+[[ "$(file_inode "$CONFIG_OV3")" == "$inode_before" ]] ||
   fail "reinstall rewrote an unchanged override block"
 grep -q '^  ok .*config.toml' <<<"$ov_output" ||
   fail "reinstall did not report the unchanged override block as ok"
 ov_dry="$(HOME="$HOME_OV3" "$INSTALL" --target=codex --category=ai-ml --dry-run 2>&1)"
-grep -q 'remove routed-member skill overrides' <<<"$ov_dry" &&
+grep -Fq "[dry-run] remove $CONFIG_OV3" <<<"$ov_dry" &&
   fail "dry-run planned removing an override block it would keep"
 pass "unchanged override block is neither rewritten nor planned for removal"
+
+# 21c2a. routed-member and guard blocks retain their order and inode on rerun.
+HOME_BLOCK_ORDER="$(mktemp -d)"
+HOME="$HOME_BLOCK_ORDER" "$INSTALL" --target=codex --category=architecture --merge-guard >/dev/null
+CONFIG_BLOCK_ORDER="$HOME_BLOCK_ORDER/.codex/config.toml"
+block_order() {
+  awk '
+    /^# >>> agents routed-member skill overrides/ { print "routed" }
+    /^# >>> agents PR merge guard/ { print "merge" }
+  ' "$1"
+}
+expected_block_order=$'routed\nmerge'
+[[ "$(block_order "$CONFIG_BLOCK_ORDER")" == "$expected_block_order" ]] ||
+  fail "managed blocks were written in the wrong order"
+block_content_before="$(cat "$CONFIG_BLOCK_ORDER")"
+block_inode_before="$(file_inode "$CONFIG_BLOCK_ORDER")"
+HOME="$HOME_BLOCK_ORDER" "$INSTALL" --target=codex --category=architecture --merge-guard >/dev/null
+[[ "$(cat "$CONFIG_BLOCK_ORDER")" == "$block_content_before" ]] ||
+  fail "reinstall changed managed block content or order"
+[[ "$(file_inode "$CONFIG_BLOCK_ORDER")" == "$block_inode_before" ]] ||
+  fail "reinstall rewrote unchanged managed blocks"
+[[ "$(block_order "$CONFIG_BLOCK_ORDER")" == "$expected_block_order" ]] ||
+  fail "reinstall changed managed block order"
+echo "ok: managed blocks retain their content, inode, and order"
 
 # 21c3. a narrower --category re-run keeps the overrides of routers still
 #       installed (#562): the full install links the architecture and ai-ml
@@ -737,9 +800,9 @@ dry_output="$(HOME="$HOME_LEGACY_UN" "$INSTALL" --target=codex --dry-run 2>&1)"
   fail "dry-run modified the legacy config"
 [[ -d "$HOME_LEGACY_UN/.codex/agents-mcp-runtime" ]] ||
   fail "dry-run removed the legacy runtime venv"
-[[ "$dry_output" == *"remove legacy architecture MCP servers"* ]] ||
+grep -Fq "[dry-run] remove $CONFIG_LEGACY_UN" <<<"$dry_output" ||
   fail "dry-run did not plan legacy block removal"
-[[ "$dry_output" == *"remove legacy MCP runtime venv"* ]] ||
+grep -Fq "[dry-run] remove $HOME_LEGACY_UN/.codex/agents-mcp-runtime" <<<"$dry_output" ||
   fail "dry-run did not plan legacy venv removal"
 HOME="$HOME_LEGACY_UN" "$INSTALL" --target=codex --uninstall >/dev/null
 assert_legacy_mcp_gone "$CONFIG_LEGACY_UN" "uninstall"
@@ -769,9 +832,12 @@ pass "codex install converts subagents to valid agent TOML"
 
 # 23. re-running leaves the agent files identical; foreign files survive.
 before="$(cat "$AGENTS_DIR/coupling-analyst.toml")"
+agent_inode_before="$(file_inode "$AGENTS_DIR/coupling-analyst.toml")"
 HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null
 [[ "$(cat "$AGENTS_DIR/coupling-analyst.toml")" == "$before" ]] ||
   fail "agent conversion is not idempotent"
+[[ "$(file_inode "$AGENTS_DIR/coupling-analyst.toml")" == "$agent_inode_before" ]] ||
+  fail "reinstall rewrote an unchanged agent TOML"
 printf 'name = "mine"\n' >"$AGENTS_DIR/cohesion-analyst.toml"
 HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
 grep -Fxq 'name = "mine"' "$AGENTS_DIR/cohesion-analyst.toml" ||
@@ -994,13 +1060,23 @@ HOME="$HOME_INS3" "$INSTALL" --target=claude --category=communication --instruct
 diff -q "$HOME_INS3/unbalanced-before.md" "$HOME_INS3/.claude/CLAUDE.md" >/dev/null ||
   fail "unbalanced markers did not protect the file"
 HOME_INS4="$(mktemp -d)"
-HOME="$HOME_INS4" "$INSTALL" --target=codex --category=communication --instructions --dry-run >/dev/null
+ins_dry_output="$(HOME="$HOME_INS4" "$INSTALL" --target=codex --category=communication --instructions --dry-run 2>&1)"
 [[ ! -e "$HOME_INS4/.codex/AGENTS.md" ]] || fail "dry-run wrote an instruction file"
+grep -Fq "[dry-run] write $HOME_INS4/.codex/AGENTS.md" <<<"$ins_dry_output" ||
+  fail "dry-run did not report the instruction block write"
 pass "unbalanced markers and dry-run never write instruction files"
 
 # 44. A fragment with `paths:` leaves Claude's block for a path-scoped rule
 #     under ~/.claude/rules/ (codex and opencode keep it inline), a foreign
 #     rule file is never touched, and --uninstall removes only ours.
+HOME_RULE_DRY="$(mktemp -d)"
+RULE_DRY_PATH="$HOME_RULE_DRY/.claude/rules/agents-40-r.md"
+rule_dry_output="$(HOME="$HOME_RULE_DRY" "$INSTALL" --target=all --category=communication --instructions --dry-run 2>&1)"
+[[ "$(grep -Fc "[dry-run] write $RULE_DRY_PATH" <<<"$rule_dry_output")" -eq 1 ]] ||
+  fail "dry-run did not report the Claude rule write exactly once"
+[[ ! -d "$HOME_RULE_DRY/.claude/rules" ]] ||
+  fail "dry-run created the Claude rules directory"
+
 HOME_RULES="$(mktemp -d)"
 mkdir -p "$HOME_RULES/.claude/rules"
 printf 'mine\n' >"$HOME_RULES/.claude/rules/own.md"
@@ -1014,6 +1090,15 @@ grep -q 'Namespace' "$R_RULE" || fail "R rule has no fragment body"
 for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
   grep -q 'Namespace' "$HOME_RULES/$f" || fail "$f lost the path-scoped fragment"
 done
+rule_content_before="$(cat "$R_RULE")"
+rule_inode_before="$(file_inode "$R_RULE")"
+rule_output="$(HOME="$HOME_RULES" "$INSTALL" --target=all --category=communication --instructions 2>&1)"
+[[ "$(cat "$R_RULE")" == "$rule_content_before" ]] ||
+  fail "reinstall changed an unchanged Claude rule"
+[[ "$(file_inode "$R_RULE")" == "$rule_inode_before" ]] ||
+  fail "reinstall rewrote an unchanged Claude rule"
+grep -q '  ok .*agents-40-r.md' <<<"$rule_output" ||
+  fail "reinstall did not report the unchanged Claude rule as ok"
 HOME="$HOME_RULES" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null 2>&1
 [[ ! -e "$R_RULE" ]] || fail "uninstall left the managed R rule"
 [[ -f "$HOME_RULES/.claude/rules/own.md" ]] || fail "uninstall removed a foreign rule file"

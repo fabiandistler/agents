@@ -18,8 +18,14 @@ def test_sets_up_a_scratch_repo(tmp_path):
 
 
 def _config_listing(git_dir: Path) -> str:
-    return subprocess.run(
-        ["git", "config", "--file", str(git_dir / "config"), "--list"],
+    return subprocess.run(  # noqa: S603 -- test reads a scratch repo with argv; no shell.
+        [  # noqa: S607 -- Git intentionally resolves from PATH.
+            "git",
+            "config",
+            "--file",
+            str(git_dir / "config"),
+            "--list",
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -35,7 +41,15 @@ def _run_inner_session(pytester, monkeypatch, decoy_git_dir: Path):
 
 def _make_decoy(tmp_path: Path) -> Path:
     decoy = tmp_path / "decoy"
-    subprocess.run(["git", "init", "-q", str(decoy)], check=True)
+    subprocess.run(  # noqa: S603 -- test initializes a temporary repository with argv.
+        [  # noqa: S607 -- Git intentionally resolves from PATH.
+            "git",
+            "init",
+            "-q",
+            str(decoy),
+        ],
+        check=True,
+    )
     return decoy / ".git"
 
 

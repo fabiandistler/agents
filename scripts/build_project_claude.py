@@ -46,6 +46,7 @@ from pathlib import Path
 from pr_merge_guard import with_claude_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+CLI_DESCRIPTION = "Mirror this repo's skills, subagents and instructions into `.claude/`."
 MANIFEST_PATH = REPO_ROOT / "skills.json"
 INSTRUCTIONS_DIR = REPO_ROOT / "instructions"
 PLUGINS_DIR = REPO_ROOT / "plugins"
@@ -91,7 +92,14 @@ def split_fragment(text: str) -> tuple[dict[str, str], str]:
 
 def tracked_files() -> list[str]:
     return subprocess.run(
-        ["git", "ls-files"], cwd=REPO_ROOT, check=True, capture_output=True, text=True
+        [  # noqa: S607 -- Git intentionally resolves from PATH.
+            "git",
+            "ls-files",
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.splitlines()
 
 
@@ -193,7 +201,7 @@ def sync(check: bool) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=CLI_DESCRIPTION)
     parser.add_argument("--check", action="store_true", help="exit 1 if .claude/ is out of date")
     args = parser.parse_args()
     drift = sync(check=args.check)

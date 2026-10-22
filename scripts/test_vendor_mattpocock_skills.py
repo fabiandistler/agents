@@ -31,8 +31,17 @@ def _fake_upstream(tmp_path: Path, *, with_in_progress: bool) -> Path:
     )
     (upstream / "LICENSE").write_text("MIT\n", encoding="utf-8")
     for args in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-qm", "fake"]):
-        subprocess.run(
-            ["git", "-c", "user.email=t@e", "-c", "user.name=t", *args], cwd=upstream, check=True
+        subprocess.run(  # noqa: S603 -- test creates a local fixture repository with argv.
+            [  # noqa: S607 -- Git intentionally resolves from PATH.
+                "git",
+                "-c",
+                "user.email=t@e",
+                "-c",
+                "user.name=t",
+                *args,
+            ],
+            cwd=upstream,
+            check=True,
         )
     return upstream
 

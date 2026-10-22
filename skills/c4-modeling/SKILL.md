@@ -82,7 +82,8 @@ asking.
 4. **Components** — only for containers picked in step 1; the major structural
    building blocks behind interfaces. If the user is *designing* this
    decomposition rather than describing an existing one, hand off to
-   `logical-component-design` and resume here with its component table.
+   `members/logical-component-design/SKILL.md`, read via the `architecture`
+   router, and resume here with its component table.
 5. **Relationships** — for every line: who calls whom, *why* (purpose, not
    "uses"), and over what technology (JSON/HTTPS, gRPC, SQL, AMQP…).
 

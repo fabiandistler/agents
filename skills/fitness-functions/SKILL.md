@@ -2,7 +2,7 @@
 name: fitness-functions
 category: architecture
 environments: coding
-description: Designs and implements architecture fitness functions — automated CI checks that fail the build when a characteristic such as modularity, layering, coupling, security, or resilience erodes.
+description: Designs and implements architecture fitness functions — automated CI checks that fail the build when a characteristic such as modularity, layering, coupling, security, or resilience erodes. Use when making CI enforce architecture rules.
 ---
 
 # Fitness Functions
@@ -66,11 +66,12 @@ patterns from the book cover most structural cases:
   import-linter's `acyclic_siblings` contract).
 - **Threshold on a metric** — e.g. every package's Distance from the Main
   Sequence within a project-dependent tolerance of the ideal. Thresholds are
-  legitimate; vibes are not. (To *measure and choose* the threshold on an
-  existing codebase, hand off to **`coupling-cohesion`** — its
+  legitimate; vibes are not. To *measure and choose* the threshold on an
+  existing codebase, read `members/coupling-cohesion/SKILL.md` via the
+  `architecture` router. Its
   `scripts/coupling_metrics.py <model.json> --json --threshold <D>` reports the
   per-component numbers to gate on — parse its `--json` output and fail the
-  build if any row's `zone` starts with `Zone`.)
+  build if any row's `zone` starts with `Zone`.
 - **Layer / boundary rules** — declare which layers may access which
   (ArchUnit's `layeredArchitecture()`, NetArchTest's
   `ShouldNot().HaveDependencyOn(...)`) and fail on violations.
@@ -140,21 +141,6 @@ governance suite. Deliver the check ready to commit, not as a proposal.
 
 ## Common mistakes
 
-- **Starting from a tool instead of a characteristic.** "Let's add ArchUnit"
-  governs nothing by itself; name what must not erode, then pick the tool.
-- **Subjective checks.** "Code should be clean" can't fail a build. If it
-  isn't objective and automatable, it's a review guideline, not a fitness
-  function.
-- **Writing it but not wiring it.** An unexecuted check protects nothing;
-  CI integration is part of the definition of done.
-- **Ivory-tower rules.** Imposing checks developers don't understand breeds
-  workarounds and resentment; explain the purpose first.
-- **Ignoring gameability.** Coverage without assertions is the classic;
-  ask "how would a rushed developer satisfy this without doing the work?"
-  and guard that path too.
-- **Only build-time thinking.** Some characteristics (resilience, conformity
-  of deployed services, cost hygiene) only exist in production — that's what
-  monitors and chaos-engineering fitness functions are for.
 - **Rules that can pass vacuously.** A contract whose selector matches
   nothing — a typo in a glob, a package renamed since the rule was written,
   a layer that moved — reports green forever and protects nothing. Prefer a
