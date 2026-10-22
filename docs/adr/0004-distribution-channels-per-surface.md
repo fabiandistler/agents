@@ -4,6 +4,10 @@
 
 Accepted (2026-09-13)
 
+Superseded in part (2026-10-22) by
+[ADR-0010](0010-claude-marketplace-hybrid.md): the `claude` row stands;
+`codex` and `opencode` keep the symlink channel.
+
 ## Context
 
 [#149](https://github.com/fabiandistler/agents/issues/149) asked whether to
