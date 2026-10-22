@@ -3,12 +3,14 @@
     "two services write the same Postgres table, ok?",
     "split our Django monolith?",
     "make CI fail on import cycles",
-    "draw how our system fits together"
+    "draw how our system fits together",
+    "How should I map bounded contexts between billing and fulfillment?",
+    "What components should a new appointment booking system have?"
   ],
   "should_not_trigger": [
     "which folder for this test fixture?",
     "add an index to speed up this query",
     "where should I start refactoring this legacy repo nobody knows?"
   ],
-  "expected_behavior": "Routes shared-table writes to microservices-design, monolith splits to architecture-pattern-advisor, CI import-cycle enforcement to fitness-functions, and a system overview drawing to c4-modeling; stays silent on single-file placement, routine query tuning, and where to start refactoring (the refactoring skill owns that)."
+  "expected_behavior": "Routes shared-table writes to microservices-design, monolith splits to architecture-pattern-advisor, CI import-cycle enforcement to fitness-functions, a system overview drawing to c4-modeling, bounded-context mapping to ddd, and new-system component decomposition to logical-component-design; stays silent on single-file placement, routine query tuning, and where to start refactoring (the refactoring skill owns that)."
 }

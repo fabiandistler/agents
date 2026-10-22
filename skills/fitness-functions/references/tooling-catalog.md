@@ -5,9 +5,9 @@ the source chapter, then modern equivalents. Pick the tool that already fits
 the project's test stack — a fitness function developers can read and run
 locally beats a more powerful one bolted on from outside.
 
-As of 2026-10, NetArchTest's last release was in 2021,
-ts-arch's in 2024-12, and ArchUnitPython's first release was in April 2026.
-Recheck the release pages before relying on any of them.
+Before making an optional tool a blocking CI dependency, check its current
+maintenance activity, support options, and adoption against the project's risk
+tolerance.
 
 ## Contents
 
@@ -46,9 +46,8 @@ ArchUnit also covers cycles (`slices().should().beFreeOfCycles()`), naming
 conventions, annotation rules, and anti-gaming checks such as requiring every
 test method to contain at least one assertion.
 
-**JDepend** — historical (unmaintained): the chapter's original metrics tool,
-kept because the book's canonical examples use it; new projects should use
-ArchUnit above. Cycle detection (Example 6-2 in the book):
+**JDepend** — retained to illustrate the book's original metrics example; for
+a new Java rule, use ArchUnit above. Cycle detection (Example 6-2 in the book):
 
 ```java
 public class CycleTest {
@@ -96,7 +95,7 @@ as the code is cleaned up.
 
 Recommended default: **ArchUnitNET**.
 
-**NetArchTest** — stale (no recent release; see the note below): fluent layer/dependency rules as ordinary unit tests
+**NetArchTest** — fluent layer/dependency rules as ordinary unit tests
 (Example 6-5):
 
 ```csharp
@@ -112,7 +111,8 @@ var result = Types.InCurrentDomain()
 
 **ArchUnitNET** — a .NET port of ArchUnit with the same rule vocabulary,
 including layered-architecture and cycle rules. Teams already on NetArchTest
-should move to its maintained continuation, **NetArchTest.eNhancedEdition**.
+can compare it with **NetArchTest.eNhancedEdition** against their project's
+current support and compatibility needs.
 
 Baselining legacy code: commit the current violation list and fail only on
 entries not already on it, shrinking the list as violations are fixed.
@@ -141,8 +141,8 @@ inside an existing ESLint setup; good when the team already treats lint
 failures as build failures. **ArchUnitTS** (npm `archunit`) offers
 ArchUnit-style assertions
 (`filesOfProject().inFolder("ui").shouldNot().dependOnFiles().inFolder("db")`)
-inside Jest/Vitest. **ts-arch** covers the same ground but shows no recent
-release, so prefer ArchUnitTS for new rules.
+inside Jest/Vitest. **ts-arch** covers the same ground; compare it with the
+project's existing lint and test setup before choosing another dependency.
 
 Baselining legacy code: generate a known-violations file (`depcruise-baseline`
 command, `baseline` reporter) and run CI with `depcruise --ignore-known`, so
@@ -200,10 +200,10 @@ works as a quick cycle gate.
 Rust-backed CLI. `tach check` fails the build on undeclared cross-module
 imports, `tach check-external` does the same for third-party packages, and
 `tach sync` writes the dependencies a codebase already has back into the
-config — so an existing project can be pinned as-is and tightened later.
-Closer to modular-monolith governance than to a pure import contract; still
-pre-1.0 (0.35.x), but the second most used option in this list by a wide
-margin.
+config — so an existing project can be pinned as-is and tightened later. It is
+closer to modular-monolith governance than to a pure import contract; choose it
+when explicit component boundaries and sync-based bootstrapping fit the
+project.
 
 **ArchUnitPython** — ArchUnit-style fluent rules living in the test suite
 rather than in config:
@@ -211,10 +211,9 @@ rather than in config:
 Also covers named layers (`project_layers()`), external modules, naming
 conventions, LCOM and distance metrics, and PlantUML component-diagram
 adherence in one API; zero runtime dependencies, works with pytest or
-unittest. Empty matches fail by default, which catches glob typos. Caveat:
-young project, one maintainer, roughly two orders of magnitude
-less adopted than import-linter — weigh that before it becomes a build
-blocker.
+unittest. Empty matches fail by default, which catches glob typos. Before
+making it the sole CI gate, compare its support requirements and rule coverage
+with the project's needs.
 
 Baselining legacy code: pin current violations with per-contract
 `ignore_imports` (import-linter) or `tach sync` (tach), then remove pinned
