@@ -53,6 +53,8 @@ repos:
     hooks:
       - id: shellcheck
         args: [-S, warning]
+        # Python >=3.13 rejects the Zscaler proxy root (no critical Basic Constraints) when the installer downloads.
+        language_version: "3.12"
         # Vendored upstream skills: re-vendoring overwrites any local fix.
         exclude: ^\.claude/skills/
 
@@ -61,13 +63,16 @@ repos:
     hooks:
       - id: shfmt
         args: [-i, '2', '-ci', --write]
+        # Python >=3.13 rejects the Zscaler proxy root (no critical Basic Constraints) when the installer downloads.
+        language_version: "3.12"
         exclude: ^\.claude/skills/
 
   # Secret scanning, included for every project type: the commit hook is the
   # last point before a secret lands in history. Mirrors the gitleaks job of
   # the CI gate. rev set by `prek update --cooldown-days 7` on 2026-10-12,
-  # never hand-pinned. language: golang, so prek fetches a Go toolchain and
-  # builds gitleaks on first run.
+  # never hand-pinned. language: golang, so prek builds gitleaks on first run
+  # with the Go on PATH, or fetches a toolchain from dl.google.com if none is
+  # found (blocked behind some corporate proxies: install Go locally first).
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
