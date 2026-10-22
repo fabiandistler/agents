@@ -6,9 +6,9 @@ audit issue can tell a new finding from one reported last week.
 
 Only judgement calls live here. What a script already decides conclusively —
 frontmatter schema, description budgets, catalogue/plugin/manifest drift,
-agent-specific vocabulary, reference TOCs, eval-file shape — is CI's job
-(`.github/workflows/ci.yml`); the audit runs those scripts once and never
-re-reports their findings per skill.
+agent-specific vocabulary, reference TOCs, dated claims, eval-file shape —
+is CI's job (`.github/workflows/ci.yml`); the audit runs those scripts once
+and never re-reports their findings per skill.
 
 Sources: this repo's conventions in `AGENTS.md` (*Conventions for skill
 authors*, *Scripts an agent runs*) and Anthropic's *Skill authoring best
@@ -94,7 +94,9 @@ Applies only to skills with `scripts/`.
   work as written. Verify against the tool's current docs or `--help` when
   the environment allows; otherwise mark the finding *unverified*. (error)
 - **C2** No time-sensitive statements ("before August 2025…", "the latest
-  version is…") outside an explicit *Old patterns* section. (warn)
+  version is…") outside an explicit *Old patterns* section. Date literals and
+  "as of / verified <year>" are CI's job (`scripts/check_dated_claims.py`);
+  judge the undated ones ("currently", "the latest", "recently"). (warn)
 - **C3** External links resolve and still say what the skill cites them
   for. Spot-check at most three per skill. (warn)
 - **C4** No internal contradiction between SKILL.md and its references. (error)
