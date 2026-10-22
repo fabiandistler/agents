@@ -546,6 +546,17 @@ if HOME="$(mktemp -d)" "$INSTALL" --target=claude --category=bogus >/dev/null 2>
 fi
 pass "invalid --category is rejected"
 
+# 14a. an empty --category value reaches validation on Bash 3.2 with nounset.
+if empty_category_output="$(HOME="$(mktemp -d)" "$INSTALL" --target=claude --category= 2>&1)"; then
+  fail "empty --category was accepted"
+else
+  empty_category_status=$?
+fi
+[[ "$empty_category_status" -eq 2 ]] || fail "empty --category did not exit 2"
+[[ "$empty_category_output" == *"invalid --category= (expected one of:"* ]] ||
+  fail "empty --category did not reach validation"
+echo "ok: empty --category is rejected before Bash 3.2 nounset array expansion"
+
 # 18. a category without a router leaves config.toml alone (communication
 #     ships no router, so nothing managed is written to config.toml).
 HOME_NOMCP="$(mktemp -d)"
