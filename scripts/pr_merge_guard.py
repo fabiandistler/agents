@@ -57,6 +57,7 @@ REASON = (
 # Hook entry shared by every config writer. Both Claude Code and Codex read
 # `matcher` as a regex on the tool name; the script decides the rest.
 HOOK_MATCHER = "^(Bash|mcp__.*)$"
+HOOK_STATUS = "Checking for PR merges"
 # Identifies our entry in a settings file that cannot carry marker comments.
 HOOK_ID = "pr_merge_guard.py"
 
@@ -97,7 +98,7 @@ CURL_DATA_FLAGS = {"-d", "--data", "--data-raw", "--data-binary", "--data-urlenc
 class UsageError(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         self.print_usage(sys.stderr)
-        sys.stderr.write(f"pr_merge_guard: {message}\n")
+        sys.stderr.write(f"{Path(self.prog).stem}: {message}\n")
         sys.exit(EXIT_USAGE)
 
 
@@ -309,8 +310,8 @@ def parse_event(harness: str, event: object) -> tuple[str, object, Path]:
 # --- Hook entry for the harness configs --------------------------------------
 
 
-def claude_hook_entry(command: str) -> dict:
-    return {"matcher": HOOK_MATCHER, "hooks": [{"type": "command", "command": command}]}
+def claude_hook_entry(command: str, matcher: str = HOOK_MATCHER) -> dict:
+    return {"matcher": matcher, "hooks": [{"type": "command", "command": command}]}
 
 
 def is_guard_entry(entry: object) -> bool:
@@ -342,14 +343,14 @@ def with_claude_hook(settings: dict, command: str) -> dict:
     return settings
 
 
-def codex_hook_toml(command: str) -> str:
+def codex_hook_toml(command: str, matcher: str = HOOK_MATCHER, status: str = HOOK_STATUS) -> str:
     """Inline `[hooks]` tables for ~/.codex/config.toml."""
     if "'" in command:
         raise ValueError("command must not contain a single quote")
     return (
-        f'[[hooks.PreToolUse]]\nmatcher = "{HOOK_MATCHER}"\n\n'
+        f'[[hooks.PreToolUse]]\nmatcher = "{matcher}"\n\n'
         f"[[hooks.PreToolUse.hooks]]\ntype = \"command\"\ncommand = '{command}'\n"
-        'statusMessage = "Checking for PR merges"'
+        f'statusMessage = "{status}"'
     )
 
 
