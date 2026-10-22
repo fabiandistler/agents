@@ -123,8 +123,8 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 | [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
 | [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing explanations — technical or not — that lead with the concrete problem before the solution. |
 | [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
-| [tldr](skills/tldr/SKILL.md) | Compressing something long into the few facts needed to decide or act — the last message and the work behind it, or a named file, PR, document, or thread. |
-| [was](skills/was/SKILL.md) | Re-pitching the last message in plain German when it did not land — a little context first, short active sentences, the repo's glossary terms kept verbatim. |
+| [tldr](skills/tldr/SKILL.md) | Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread. |
+| [was](skills/was/SKILL.md) | Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim. |
 
 ### Personal & knowledge (`personal`)
 
