@@ -28,11 +28,12 @@ Runs every CI check from the repo root; one PASS/FAIL/MISSING line per check.
   --output FILE  also write every check's full output to FILE
   --list         print the check names with the tools each needs, then exit
   -h, --help     show this help
-Env: PYTHON (default python3). The prek check runs ruff, ty, shellcheck, shfmt
+Env: PYTHON (default python3, must be 3.11 or newer). The prek check runs ruff, ty, shellcheck, shfmt
 and the secret scan at the versions pinned in .pre-commit-config.yaml; its
 hooks may rewrite files (ruff --fix, shfmt, whitespace).
 Exit: 0 all passed, 1 a check failed, 2 usage error,
-      3 nothing failed but a check could not run (tool missing).
+      3 nothing failed but a check could not run (tool missing),
+      4 PYTHON is missing or older than 3.11.
 Examples:
   scripts/check_all.sh
   scripts/check_all.sh --only prek,pytest --tail 0
@@ -166,15 +167,33 @@ for name in ${only//,/ } ${skip//,/ }; do
   esac
 done
 
+selected() {
+  if [ -n "$only" ]; then case ",$only," in *",$1,"*) ;; *) return 1 ;; esac fi
+  case ",$skip," in *",$1,"*) return 1 ;; esac
+}
+
 cd "$REPO_ROOT" || exit 2
+
+# Stop before the first check on an old interpreter; a pre-push run with the
+# system python3 would otherwise end in MISSING lines or tomllib tracebacks.
+# shellcheck source=scripts/require_python.sh
+. scripts/require_python.sh
+for name in "${CHECKS[@]}"; do
+  selected "$name" || continue
+  case " $(needs "$name") " in *" $PY "*)
+    require_python check_all.sh "$PY" || exit 4
+    break
+    ;;
+  esac
+done
+
 if [ -n "$output" ]; then : >"$output" || exit 2; fi
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
 failed=() missing=()
 for name in "${CHECKS[@]}"; do
-  if [ -n "$only" ]; then case ",$only," in *",$name,"*) ;; *) continue ;; esac fi
-  case ",$skip," in *",$name,"*) continue ;; esac
+  selected "$name" || continue
 
   absent=""
   for tool in $(needs "$name"); do have "$tool" || absent="$absent $tool"; done
