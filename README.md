@@ -201,9 +201,8 @@ scripts/check_all.sh --list   # the checks and the tools each needs
 
 A check whose tool is not installed is reported as `MISSING` and the script
 exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
-later as `python3` on `PATH` (CI uses 3.12): `PYTHON=` picks the interpreter
-for most checks, but the install smoke test calls `python3`. The mermaid check
-also needs Node.js (`npx`).
+later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
+newer interpreter. The mermaid check also needs Node.js (`npx`).
 
 The hooks in `.pre-commit-config.yaml` are run by
 [prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
