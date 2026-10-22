@@ -13,7 +13,7 @@ every command accepts `--dry-run`.
 | Target | Skills | Command skills (`activation: command`) |
 |---|---|---|
 | `claude` | `~/.claude/skills/<skill>` | `~/.claude/commands/<name>.md` |
-| `codex` | `~/.codex/skills/<skill>` | `~/.codex/skills/<skill>` (see below) |
+| `codex` | `~/.agents/skills/<skill>` | `~/.agents/skills/<skill>` (see below) |
 | `opencode` | `~/.config/opencode/skills/<skill>` | `~/.config/opencode/command/<name>.md` |
 
 Only top-level skills are linked. A category with a router (`architecture`,
@@ -165,11 +165,24 @@ equivalent.
 ([openai/codex#22275](https://github.com/openai/codex/issues/22275)), so each
 `members/<name>/SKILL.md` would otherwise register as its own skill and the
 router's progressive disclosure would be lost. The installer therefore disables
-every nested member by name in `~/.codex/config.toml`, via a marker-delimited
-`[[skills.config]]` block (`enabled = false`). `--uninstall` removes the block.
+every nested member in `~/.codex/config.toml`, via a marker-delimited
+`[[skills.config]]` block (`enabled = false`). Each entry selects the member by
+`path`, the selector the [config
+reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+documents, so a skill of your own with the same name stays enabled. The path
+points into this clone, so re-run the install after moving it. `--uninstall`
+removes the block.
+
+**Skills directory.** Codex skills are linked into `~/.agents/skills/`, the
+user scope [Codex documents](https://developers.openai.com/codex/skills);
+`~/.codex/skills/` is read only for backward compatibility. Other tools install
+into `~/.agents/skills/` too, so a skill name that is already taken there is
+reported with a `WARN` line and skipped, never overwritten. Every Codex install
+and uninstall removes the links an older version left in `~/.codex/skills/`
+(only links that point into this repo), so no skill loads twice.
 
 **Command skills.** Codex custom prompts are deprecated, so `activation:
-command` skills install as regular skills under `~/.codex/skills/`. Each
+command` skills install as regular skills under `~/.agents/skills/`. Each
 carries an `agents/openai.yaml` sidecar with
 `policy.allow_implicit_invocation: false`, so Codex runs them only on an
 explicit `$skill-name`, never on its own. The installer also removes any

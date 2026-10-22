@@ -180,16 +180,16 @@ got="$(count_links "$HOME_A/.claude/skills")"
 got="$(count_links "$HOME_A/.config/opencode/skills")"
 [[ "$got" -eq "$OPENCODE_EXPECTED" ]] ||
   fail "all install: opencode skills has $got links, expected $OPENCODE_EXPECTED"
-got="$(count_links "$HOME_A/.codex/skills")"
+got="$(count_links "$HOME_A/.agents/skills")"
 [[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] ||
-  fail "all install: .codex/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
+  fail "all install: .agents/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
 got="$(count_links "$HOME_A/.claude/commands")"
 [[ "$got" -eq "$CMD_EXPECTED" ]] || fail "all install: claude commands has $got links, expected $CMD_EXPECTED"
 got="$(count_links "$HOME_A/.config/opencode/command")"
 [[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] ||
   fail "all install: opencode command has $got links, expected $OPENCODE_CMD_EXPECTED"
-[[ -L "$HOME_A/.codex/skills/repo-status" ]] || fail "codex: command skill repo-status not linked into skills/"
-[[ -f "$HOME_A/.codex/skills/repo-status/agents/openai.yaml" ]] ||
+[[ -L "$HOME_A/.agents/skills/repo-status" ]] || fail "codex: command skill repo-status not linked into skills/"
+[[ -f "$HOME_A/.agents/skills/repo-status/agents/openai.yaml" ]] ||
   fail "codex: command skill repo-status missing its openai.yaml sidecar"
 [[ ! -e "$HOME_A/.codex/prompts/repo-status.md" ]] || fail "codex: command skill repo-status leaked into deprecated prompts/"
 pass "all install populates claude, codex, opencode (codex commands as skills)"
@@ -200,7 +200,7 @@ for sub in ".claude/commands" ".config/opencode/command"; do
   got="$(count_links "$HOME_A/$sub")"
   [[ "$got" -eq 0 ]] || fail "all uninstall: $sub still has $got command links"
 done
-[[ ! -e "$HOME_A/.codex/skills/repo-status" ]] || fail "codex uninstall left command skill repo-status behind"
+[[ ! -e "$HOME_A/.agents/skills/repo-status" ]] || fail "codex uninstall left command skill repo-status behind"
 pass "all uninstall removes command-dir links"
 
 # 6c. codex install migrates our symlinks out of the deprecated prompts dir
@@ -224,6 +224,54 @@ HOME="$HOME_CX" "$INSTALL" --target=codex >/dev/null
 [[ ! -L "$legacy_prompts/$first_command.md" ]] || fail "deprecated codex prompt for $first_command not migrated"
 [[ -L "$legacy_prompts/foreign-prompt.md" ]] || fail "codex prompt cleanup removed a foreign symlink"
 pass "codex install cleans the deprecated prompts dir"
+
+# 6d. codex links into ~/.agents/skills (#565) and migrates our links out of the
+#     deprecated ~/.codex/skills, still-valid and dangling ones alike, whatever
+#     --category says; foreign entries there survive, and a dry-run keeps all.
+HOME_CXS="$(mktemp -d)"
+legacy_skills="$HOME_CXS/.codex/skills"
+mkdir -p "$legacy_skills/hand-made"
+ln -s "$REPO_ROOT/skills/documentation" "$legacy_skills/documentation"
+ln -s "$REPO_ROOT/skills/architecture" "$legacy_skills/architecture"
+ln -s "$REPO_ROOT/skills/removed-skill" "$legacy_skills/removed-skill"
+foreign_codex_skill="$(mktemp -d)/foreign-skill"
+mkdir "$foreign_codex_skill"
+ln -s "$foreign_codex_skill" "$legacy_skills/foreign-skill"
+HOME="$HOME_CXS" "$INSTALL" --target=codex --category=communication --dry-run >/dev/null
+[[ -L "$legacy_skills/documentation" ]] || fail "dry-run migrated a ~/.codex/skills link"
+HOME="$HOME_CXS" "$INSTALL" --target=codex --category=communication >/dev/null
+for name in documentation architecture removed-skill; do
+  [[ ! -L "$legacy_skills/$name" ]] || fail "our ~/.codex/skills/$name link was not migrated"
+done
+[[ -L "$legacy_skills/foreign-skill" ]] || fail "codex migration removed a foreign symlink"
+[[ -d "$legacy_skills/hand-made" ]] || fail "codex migration removed a foreign directory"
+[[ -L "$HOME_CXS/.agents/skills/documentation" ]] || fail "codex did not link into ~/.agents/skills"
+ln -s "$REPO_ROOT/skills/documentation" "$legacy_skills/documentation"
+HOME="$HOME_CXS" "$INSTALL" --target=codex --category=communication --uninstall >/dev/null
+[[ ! -L "$legacy_skills/documentation" ]] || fail "codex uninstall left our ~/.codex/skills link"
+[[ ! -e "$HOME_CXS/.agents/skills/documentation" ]] || fail "codex uninstall left ~/.agents/skills link"
+pass "codex links into ~/.agents/skills and migrates out of ~/.codex/skills"
+
+# 6e. other tools write to ~/.agents/skills too: a name already taken there is
+#     warned about and left alone, never overwritten (#565).
+HOME_COL="$(mktemp -d)"
+mkdir -p "$HOME_COL/.agents/skills/documentation"
+printf 'theirs\n' >"$HOME_COL/.agents/skills/documentation/SKILL.md"
+foreign_tldr="$(mktemp -d)/tldr"
+mkdir "$foreign_tldr"
+ln -s "$foreign_tldr" "$HOME_COL/.agents/skills/tldr"
+col_err="$(HOME="$HOME_COL" "$INSTALL" --target=codex --category=communication 2>&1 >/dev/null)"
+grep -Fxq 'theirs' "$HOME_COL/.agents/skills/documentation/SKILL.md" ||
+  fail "codex install overwrote a foreign skill in ~/.agents/skills"
+[[ "$(readlink "$HOME_COL/.agents/skills/tldr")" == "$foreign_tldr" ]] ||
+  fail "codex install replaced a foreign symlink in ~/.agents/skills"
+grep -q 'WARN.*agents/skills/documentation' <<<"$col_err" ||
+  fail "no warning for the name collision on documentation"
+grep -q 'WARN.*agents/skills/tldr' <<<"$col_err" ||
+  fail "no warning for the name collision on tldr"
+[[ -L "$HOME_COL/.agents/skills/communication-analysis" ]] ||
+  fail "a collision stopped the remaining codex links"
+pass "name collisions in ~/.agents/skills warn and keep the foreign entry"
 
 # 6b. opencode install migrates our symlinks out of the legacy agent dir
 # (~/.config/opencode/agent) while preserving foreign entries there.
@@ -357,18 +405,31 @@ HOME="$HOME_OV" "$INSTALL" --target=codex --category=architecture >/dev/null
 CONFIG_OV="$HOME_OV/.codex/config.toml"
 [[ -f "$CONFIG_OV" ]] || fail "codex install did not create config.toml for overrides"
 # Every nested member of the architecture router must be disabled; the router
-# itself must not be.
-declare -A OV_DISABLED=()
-while IFS= read -r name; do OV_DISABLED["$name"]=1; done < <(
-  python3 - "$CONFIG_OV" <<'PY'
+# itself must not be. Members are selected by the documented `path` selector
+# (#565): the SKILL.md of the member in this repo, never by `name`.
+ov_members="$(
+  python3 - "$CONFIG_OV" "$REPO_ROOT" <<'PY'
 import sys, tomllib
+from pathlib import Path
 with open(sys.argv[1], "rb") as f:
     cfg = tomllib.load(f)
+skills_dir = Path(sys.argv[2]) / "skills"
 for entry in cfg.get("skills", {}).get("config", []):
-    if entry.get("enabled") is False and "name" in entry:
-        print(entry["name"])
+    if "name" in entry:
+        sys.exit(f"override uses the name selector: {entry}")
+    path = Path(entry["path"])
+    if entry.get("enabled") is not False or not path.is_file():
+        sys.exit(f"override does not disable an existing SKILL.md: {entry}")
+    if path.name != "SKILL.md" or path.parent.parent != skills_dir:
+        sys.exit(f"override path is not a skill in this repo: {entry}")
+    print(path.parent.name)
 PY
-)
+)" || fail "override block is malformed"
+declare -A OV_DISABLED=()
+while IFS= read -r name; do
+  [[ -n "$name" ]] && OV_DISABLED["$name"]=1
+done <<<"$ov_members"
+[[ "${#OV_DISABLED[@]}" -ge 1 ]] || fail "override block selects no member by path"
 for d in "$REPO_ROOT"/skills/*/; do
   [[ -f "$d/SKILL.md" ]] || continue
   [[ "$(skill_dir_category "$d")" == "architecture" ]] || continue
@@ -665,7 +726,7 @@ ln -s "$TGT_FIXTURE" "$HOME_TGT/.claude/skills/zz-targets-fixture"
 HOME="$HOME_TGT" "$INSTALL" --target=all --category=communication >/dev/null
 [[ ! -e "$HOME_TGT/.claude/skills/zz-targets-fixture" ]] ||
   fail "targets: fixture installed for claude"
-[[ -f "$HOME_TGT/.codex/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
+[[ -f "$HOME_TGT/.agents/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
   fail "targets: fixture missing (or incomplete) under codex"
 [[ -f "$HOME_TGT/.config/opencode/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
   fail "targets: fixture missing (or incomplete) under opencode"

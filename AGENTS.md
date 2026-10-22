@@ -64,7 +64,7 @@ Claude registers only top-level skills, so the members stay hidden there. Codex
 discovers skills recursively and follows symlinks
 ([openai/codex#22275](https://github.com/openai/codex/issues/22275)), so it
 would otherwise register each nested `members/<name>/SKILL.md` as its own skill;
-`install.sh --target=codex` therefore disables every nested member by name in
+`install.sh --target=codex` therefore disables every nested member by path in
 `~/.codex/config.toml` (a managed `[[skills.config]]` block, `enabled = false`),
 dropping them from the model's skill list. `--uninstall` removes the block.
 
@@ -160,7 +160,7 @@ machine consumption prefer `skills.json`.
     (`~/.claude/commands`, `~/.config/opencode/command`) as `<name>.md`
     instead of the skills directory, keeping them out of the auto-trigger
     metadata. Codex custom prompts are deprecated, so under codex they install
-    into `~/.codex/skills/` like any skill, gated by an `agents/openai.yaml`
+    into `~/.agents/skills/` like any skill, gated by an `agents/openai.yaml`
     sidecar (`policy.allow_implicit_invocation: false`) that keeps Codex from
     auto-triggering them. That sidecar is committed per skill, at
     `skills/<name>/agents/openai.yaml` — `install.sh` links it, it does not

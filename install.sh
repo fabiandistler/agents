@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./install.sh --target=claude              # ~/.claude/skills/<skill>
-#   ./install.sh --target=codex               # ~/.codex/skills/<skill>
+#   ./install.sh --target=codex               # ~/.agents/skills/<skill>
 #   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
 #   ./install.sh --target=all --dry-run       # show what would happen
@@ -50,9 +50,15 @@
 # Codex, however, discovers skills recursively and follows symlinks
 # (openai/codex#22275), so it would register each nested members/<name>/SKILL.md
 # as its own skill. To preserve the router's progressive disclosure under codex,
-# install additionally disables every nested member by name in
+# install additionally disables every nested member by path in
 # ~/.codex/config.toml via a managed [[skills.config]] block (enabled = false),
 # which drops them from the model's skill list; --uninstall removes the block.
+#
+# Codex skills go to ~/.agents/skills, Codex's documented user scope;
+# ~/.codex/skills is kept by Codex only for backward compatibility. Other tools
+# write to ~/.agents/skills too, so a name already taken there is reported and
+# skipped, never overwritten. Codex install and uninstall both remove our own
+# links (those pointing into this repo) from ~/.codex/skills.
 #
 # The codex target additionally installs the full plugins, not just the
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
@@ -172,7 +178,7 @@ fi
 target_dir_for() {
   case "$1" in
     claude) printf '%s/.claude/skills\n' "$HOME" ;;
-    codex) printf '%s/.codex/skills\n' "$HOME" ;;
+    codex) printf '%s/.agents/skills\n' "$HOME" ;;
     opencode) printf '%s/.config/opencode/skills\n' "$HOME" ;;
     *)
       echo "unknown target: $1" >&2
@@ -471,10 +477,13 @@ remove_legacy_codex_mcp() {
 # members/ dir get registered as independent skills — defeating the router's
 # progressive disclosure. (Claude registers only top-level skills, so it is
 # unaffected.) To keep the members hidden under codex, disable each nested
-# member by name in ~/.codex/config.toml via a [[skills.config]] entry
-# (enabled = false), which drops it from the model's skill list. The block is
-# marker-delimited so install and uninstall stay idempotent and never touch
-# config we do not own.
+# member in ~/.codex/config.toml via a [[skills.config]] entry (enabled =
+# false), which drops it from the model's skill list. The entry selects the
+# member by `path`, the only selector the Codex config reference documents.
+# Codex canonicalizes both sides, so the repo path matches the member it
+# discovers through the router's symlinks, and a foreign skill that happens to
+# share the member's name stays enabled. The block is marker-delimited so
+# install and uninstall stay idempotent and never touch config we do not own.
 
 skill_override_begin_marker() {
   printf '# >>> agents routed-member skill overrides (managed by install.sh, do not edit) >>>'
@@ -484,9 +493,13 @@ skill_override_end_marker() {
   printf '# <<< agents routed-member skill overrides <<<'
 }
 
-# Render one [[skills.config]] disable table per member name read on stdin.
+# Render one [[skills.config]] disable table per member name read on stdin,
+# selecting the member by the path of its SKILL.md in this repo.
 render_skill_override_toml() {
-  local name first=1
+  local name first=1 root
+  # The clone path lands in a TOML basic string, so escape \ and ".
+  root="${REPO_ROOT//\\/\\\\}"
+  root="${root//\"/\\\"}"
   while IFS= read -r name; do
     [[ -n "$name" ]] || continue
     if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]]; then
@@ -496,7 +509,8 @@ render_skill_override_toml() {
     fi
     ((first)) || printf '\n'
     first=0
-    printf '[[skills.config]]\nname = "%s"\nenabled = false\n' "$name"
+    printf '[[skills.config]]\npath = "%s/skills/%s/SKILL.md"\nenabled = false\n' \
+      "$root" "$name"
   done
 }
 
@@ -1173,6 +1187,23 @@ cleanup_opencode_legacy() {
   done <<<"$skills"
 }
 
+# Earlier versions linked Codex skills into ~/.codex/skills, which Codex still
+# reads for backward compatibility; left there, every skill would load twice
+# next to ~/.agents/skills. Remove all our links from there, whatever --env or
+# --category says, on install (migration) and uninstall alike. A link counts as
+# ours when its target lies inside this repo's skills/ directory, so links
+# other tools put there are never touched.
+cleanup_codex_skills_legacy() {
+  local legacy_dir="$HOME/.codex/skills" entry
+  [[ -d "$legacy_dir" ]] || return 0
+  for entry in "$legacy_dir"/*; do
+    [[ -L "$entry" ]] || continue
+    [[ "$(readlink "$entry")" == "$REPO_ROOT/skills/"* ]] || continue
+    run rm "$entry"
+    printf '  removed   %s (deprecated codex skills dir)\n' "$entry"
+  done
+}
+
 cleanup_codex_prompts_legacy() {
   local skills="$1"
   local legacy_dir="$HOME/.codex/prompts"
@@ -1227,7 +1258,7 @@ main() {
         # at top level. Command skills bypass routing (handled above for
         # non-codex; linked as skills for codex), so they are not skipped here.
         # Codex discovers the nested member recursively anyway; it is disabled
-        # by name in ~/.codex/config.toml further down.
+        # by path in ~/.codex/config.toml further down.
         # Migration: before this category was routed, the member was linked
         # flat here. That link still resolves, so prune_stale_skill_links (which
         # only removes broken ones) leaves it, and the member keeps registering
@@ -1254,6 +1285,7 @@ main() {
     prune_stale_skill_links "$dest_dir"
     [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
     if [[ "$target" == "codex" ]]; then
+      cleanup_codex_skills_legacy
       cleanup_codex_prompts_legacy "$skills"
       # Runs on both paths: an upgrade must drop a managed block left by a
       # version that still registered the knowledge-base MCP servers.
