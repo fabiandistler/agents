@@ -196,6 +196,12 @@ case "$ENV" in
     ;;
 esac
 
+if [[ -z "$CATEGORY" ]]; then
+  echo "invalid --category= (expected one of: ${CATEGORIES// /|}|all)" >&2
+  usage >&2
+  exit 2
+fi
+
 if [[ "$CATEGORY" != "all" ]]; then
   IFS=',' read -ra _cats <<<"$CATEGORY"
   for c in "${_cats[@]}"; do
