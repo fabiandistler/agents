@@ -63,8 +63,8 @@ DIRECTION = (
     "curl -H @<(printf 'Authorization: Bearer %s\\n' \"$TOKEN\"))"
 )
 
-SECRET_NAME = r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY)[A-Z0-9_]*|(?:[A-Z0-9_]*_)?PAT(?:_[A-Z0-9_]*)?"
-SECRET_VAR = re.compile(rf"\$\{{?(?:{SECRET_NAME})\b")
+CREDENTIAL_NAME_PATTERN = r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY)[A-Z0-9_]*|(?:[A-Z0-9_]*_)?PAT(?:_[A-Z0-9_]*)?"
+SECRET_VAR = re.compile(rf"\$\{{?(?:{CREDENTIAL_NAME_PATTERN})\b")
 FLAG_EDGE = r"(?<![\w-])"
 # A value that is plainly data, not the next word of a sentence: a variable,
 # a command substitution, a quoted string, a placeholder, or a long literal.

@@ -9,7 +9,7 @@ LCOM = Path(__file__).with_name("lcom.py")
 
 
 def run(*args):
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 -- test invokes its own script with argv, no shell.
         [sys.executable, str(LCOM), *args],
         capture_output=True,
         text=True,

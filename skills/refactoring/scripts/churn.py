@@ -132,8 +132,8 @@ class FileChurn:
 def run_git(root: Path, args: list[str]) -> str:
     """Run a git command under `root` and return stdout, or raise GitError."""
     try:
-        proc = subprocess.run(
-            ["git", "-C", str(root), *args],
+        proc = subprocess.run(  # noqa: S603 -- validated Git argv; no shell.
+            ["git", "-C", str(root), *args],  # noqa: S607 -- Git intentionally resolves from PATH.
             capture_output=True,
             check=False,
         )
@@ -247,11 +247,11 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
         tokens = body.replace("\n", "\0").split("\0")
         idx = 0
         while idx < len(tokens):
-            token = tokens[idx].strip()
+            status_entry = tokens[idx].strip()
             idx += 1
-            if not token:
+            if not status_entry:
                 continue
-            if len(token) > 1 and token[0] == "R" and token[1:].isdigit():
+            if len(status_entry) > 1 and status_entry[0] == "R" and status_entry[1:].isdigit():
                 if idx + 1 < len(tokens):
                     old = tokens[idx].strip()
                     new = tokens[idx + 1].strip()
@@ -260,21 +260,21 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
                         renames[old] = new
                         files.setdefault(new, FileChurn(new)).record(author, when)
                 continue
-            if len(token) > 1 and token[0] == "C" and token[1:].isdigit():
+            if len(status_entry) > 1 and status_entry[0] == "C" and status_entry[1:].isdigit():
                 if idx + 1 < len(tokens):
                     new = tokens[idx + 1].strip()
                     idx += 2
                     if new:
                         files.setdefault(new, FileChurn(new)).record(author, when)
                 continue
-            if len(token) == 1 and token in "ADMRTUXB":
+            if len(status_entry) == 1 and status_entry in "ADMRTUXB":
                 if idx < len(tokens):
                     name = tokens[idx].strip()
                     idx += 1
                     if name:
                         files.setdefault(name, FileChurn(name)).record(author, when)
                 continue
-            files.setdefault(token, FileChurn(token)).record(author, when)
+            files.setdefault(status_entry, FileChurn(status_entry)).record(author, when)
 
     def resolve(path: str) -> str:
         seen: set[str] = set()

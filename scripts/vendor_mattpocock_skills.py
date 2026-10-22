@@ -47,8 +47,12 @@ INCLUDED_IN_PROGRESS = ("chief-of-staff",)
 
 
 def git(*args: str, cwd: Path) -> str:
-    return subprocess.run(
-        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    return subprocess.run(  # noqa: S603 -- Git args select an intentional operation; no shell.
+        ["git", *args],  # noqa: S607 -- Git intentionally resolves from PATH.
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
 
 

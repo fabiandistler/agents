@@ -91,7 +91,14 @@ def split_fragment(text: str) -> tuple[dict[str, str], str]:
 
 def tracked_files() -> list[str]:
     return subprocess.run(
-        ["git", "ls-files"], cwd=REPO_ROOT, check=True, capture_output=True, text=True
+        [  # noqa: S607 -- Git intentionally resolves from PATH.
+            "git",
+            "ls-files",
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.splitlines()
 
 

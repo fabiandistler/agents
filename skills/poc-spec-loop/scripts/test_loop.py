@@ -55,7 +55,11 @@ PRD = {"approved": True, "language": "bash", "target": "cli"}
 
 
 def git(repo, *args):
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+    subprocess.run(  # noqa: S603 -- fixture Git commands use argv; no shell.
+        ["git", "-C", str(repo), *args],  # noqa: S607 -- Git intentionally resolves from PATH.
+        check=True,
+        capture_output=True,
+    )
 
 
 def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
@@ -71,7 +75,16 @@ def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
     log_dir = parent / "log"
     for d in (repo, bin_dir, log_dir):
         d.mkdir()
-    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+    subprocess.run(  # noqa: S603 -- test creates a temporary bare repository with argv.
+        [  # noqa: S607 -- PATH lookup is intentional.
+            "git",
+            "init",
+            "-q",
+            "--bare",
+            str(origin),
+        ],
+        check=True,
+    )
     git(repo, "init", "-q", "-b", "main")
     # Per-repo identity: CI runners have no global one, and loop.sh commits too.
     git(repo, "config", "user.name", "t")
@@ -104,20 +117,40 @@ def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
 
 
 def run_loop(repo, env):
-    return subprocess.run(
-        ["bash", str(LOOP)], cwd=repo, env=env, capture_output=True, text=True, check=False
+    return subprocess.run(  # noqa: S603 -- test runs the repo's loop against controlled stubs.
+        ["bash", str(LOOP)],  # noqa: S607 -- Bash resolves from PATH in the test environment.
+        cwd=repo,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
 def committed(repo, path):
-    return subprocess.run(
-        ["git", "-C", str(repo), "show", f"HEAD:{path}"], check=True, capture_output=True, text=True
+    return subprocess.run(  # noqa: S603 -- test reads a temporary repository with argv.
+        [  # noqa: S607 -- PATH lookup is intentional.
+            "git",
+            "-C",
+            str(repo),
+            "show",
+            f"HEAD:{path}",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout
 
 
 def current_branch(repo):
-    return subprocess.run(
-        ["git", "-C", str(repo), "branch", "--show-current"],
+    return subprocess.run(  # noqa: S603 -- test reads a temporary repository with argv.
+        [  # noqa: S607 -- PATH lookup is intentional.
+            "git",
+            "-C",
+            str(repo),
+            "branch",
+            "--show-current",
+        ],
         check=True,
         capture_output=True,
         text=True,
