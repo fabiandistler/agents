@@ -60,6 +60,13 @@
 # skipped, never overwritten. Codex install and uninstall both remove our own
 # links (those pointing into this repo) from ~/.codex/skills.
 #
+# opencode also reads ~/.claude/skills and ~/.agents/skills and wants skill
+# names unique across all its roots. A skill we already linked into either of
+# them gets no ~/.config/opencode/skills link (an old one is removed), whichever
+# target runs first. Only skills missing there, through `targets:`, --env or
+# --category, get their own opencode link. After uninstalling claude or codex
+# alone, re-run --target=opencode to give opencode its own links back.
+#
 # The codex target additionally installs the full plugins, not just the
 # skills. Requires python3 (skipped with a warning otherwise); --uninstall
 # reverses it. --env only filters skills; the plugin extras follow
@@ -1128,7 +1135,52 @@ link_one() {
     return 0
   fi
   run ln -s "$src" "$dest"
+  ((DRY_RUN)) && PLANNED_LINKS+="$dest"$'\n'
   printf '  linked    %s -> %s\n' "$dest" "$src"
+}
+
+# Links a dry-run planned but did not create, one per line, so a later target
+# in the same dry-run sees the state the real run would leave.
+PLANNED_LINKS=""
+
+# True if dest is our link to src, or this dry-run planned it.
+our_link_at() {
+  local src="$1" dest="$2"
+  [[ "$(readlink "$dest" 2>/dev/null)" == "$src" ]] ||
+    [[ $'\n'"$PLANNED_LINKS" == *$'\n'"$dest"$'\n'* ]]
+}
+
+# --- Skill roots opencode shares ----------------------------------------------
+#
+# opencode loads skills from ~/.config/opencode/skills, ~/.claude/skills and
+# ~/.agents/skills (https://opencode.ai/docs/skills), and it expects every
+# name to be unique across them. So a skill whose link already sits in the
+# claude or codex skills root gets no opencode link of its own, and a duplicate
+# we created earlier is removed. A skill the claude and codex roots lack (a
+# `targets:` field excluding them, or a narrower --env or --category for those
+# targets) still gets its own opencode link.
+
+opencode_skills_dir() { target_dir_for opencode; }
+
+# Print the claude or codex skills root holding our link to src; fail if none.
+opencode_shared_root_for() {
+  local src="$1" root
+  for root in "$(target_dir_for claude)" "$(target_dir_for codex)"; do
+    if our_link_at "$src" "$root/${src##*/}"; then
+      printf '%s' "$root"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Remove our opencode link to src, if any: opencode reads src from `root`.
+drop_opencode_duplicate() {
+  local src="$1" root="$2" dest
+  dest="$(opencode_skills_dir)/${src##*/}"
+  [[ "$(readlink "$dest" 2>/dev/null)" == "$src" ]] || return 0
+  run rm "$dest"
+  printf '  removed   %s (opencode reads it from %s)\n' "$dest" "$root"
 }
 
 unlink_one() {
@@ -1233,7 +1285,7 @@ main() {
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    local dest_dir cmd_dir="" cmd_dir_ready=0
+    local dest_dir cmd_dir="" cmd_dir_ready=0 shared_root
     dest_dir="$(target_dir_for "$target")"
     [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
     printf '%s: %s\n' "$target" "$dest_dir"
@@ -1278,10 +1330,26 @@ main() {
       # added to a skill that was already installed.
       if ((UNINSTALL)) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
         unlink_one "$src" "$dest"
+      elif [[ "$target" == "opencode" && "$dest" == "$dest_dir/"* ]] &&
+        shared_root="$(opencode_shared_root_for "$src")"; then
+        drop_opencode_duplicate "$src" "$shared_root"
+        printf '  shared    %s (opencode reads it from %s)\n' "$dest" "$shared_root"
       else
         link_one "$src" "$dest"
+        # Run in either order, claude/codex and opencode end up with one link.
+        if [[ "$target" != "opencode" && "$dest" == "$dest_dir/"* ]] &&
+          our_link_at "$src" "$dest"; then
+          drop_opencode_duplicate "$src" "$dest_dir"
+        fi
       fi
     done <<<"$skills"
+    # opencode loses the skills it read from this root; tell the user how to
+    # give it links of its own. --target=all removes opencode's links anyway.
+    if ((UNINSTALL)) && [[ "$TARGET" != "all" && "$target" != "opencode" ]] &&
+      [[ -d "$(opencode_skills_dir)" ]]; then
+      printf '  note      opencode read skills from %s; re-run --target=opencode to link them for it\n' \
+        "$dest_dir" >&2
+    fi
     prune_stale_skill_links "$dest_dir"
     [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
     if [[ "$target" == "codex" ]]; then

@@ -16,6 +16,17 @@ every command accepts `--dry-run`.
 | `codex` | `~/.agents/skills/<skill>` | `~/.agents/skills/<skill>` (see below) |
 | `opencode` | `~/.config/opencode/skills/<skill>` | `~/.config/opencode/command/<name>.md` |
 
+opencode also reads `~/.claude/skills/` and `~/.agents/skills/`, and it expects
+skill names to be unique across all its roots
+([opencode skills](https://opencode.ai/docs/skills)). So when claude or codex
+already has our link to a skill, opencode gets no link of its own for it, and
+the installer removes one an earlier run created. Run order does not matter.
+opencode still links a skill itself when neither of those roots has it: the
+skill's `targets` field excludes claude and codex is not installed, or claude
+and codex were installed with a narrower `--env` or `--category`. After
+`--uninstall` of claude or codex alone, re-run `--target=opencode` so opencode
+gets its own links back; the uninstall prints a reminder.
+
 Only top-level skills are linked. A category with a router (`architecture`,
 `ai-ml`) links the router alone — its members live under `members/` and load
 lazily when the router routes to them.

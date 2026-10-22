@@ -121,6 +121,18 @@ CODEX_EXPECTED="$(skill_count all codex)"
 OPENCODE_EXPECTED="$(skill_count all opencode)"
 CODEX_CMD_EXPECTED="$(command_count all codex)"
 OPENCODE_CMD_EXPECTED="$(command_count all opencode)"
+# Skills opencode links itself under --target=all: those that skip both claude
+# and codex, so no shared root opencode reads holds them.
+OPENCODE_ONLY_EXPECTED=0
+for _d in "$REPO_ROOT"/skills/*/; do
+  [[ -f "$_d/SKILL.md" ]] || continue
+  skill_is_command "$_d" && continue
+  skill_is_nested_member "$_d" && continue
+  skill_matches_target "$_d" opencode || continue
+  skill_matches_target "$_d" claude && continue
+  skill_matches_target "$_d" codex && continue
+  OPENCODE_ONLY_EXPECTED=$((OPENCODE_ONLY_EXPECTED + 1))
+done
 
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
@@ -177,9 +189,11 @@ HOME_A="$(mktemp -d)"
 HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
 got="$(count_links "$HOME_A/.claude/skills")"
 [[ "$got" -eq "$EXPECTED" ]] || fail "all install: .claude/skills has $got links, expected $EXPECTED"
+# opencode also reads ~/.claude/skills and ~/.agents/skills (#564), so it keeps
+# links only for skills that neither claude nor codex installs.
 got="$(count_links "$HOME_A/.config/opencode/skills")"
-[[ "$got" -eq "$OPENCODE_EXPECTED" ]] ||
-  fail "all install: opencode skills has $got links, expected $OPENCODE_EXPECTED"
+[[ "$got" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
+  fail "all install: opencode skills has $got links, expected $OPENCODE_ONLY_EXPECTED"
 got="$(count_links "$HOME_A/.agents/skills")"
 [[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] ||
   fail "all install: .agents/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
@@ -202,6 +216,68 @@ for sub in ".claude/commands" ".config/opencode/command"; do
 done
 [[ ! -e "$HOME_A/.agents/skills/repo-status" ]] || fail "codex uninstall left command skill repo-status behind"
 pass "all uninstall removes command-dir links"
+
+# 6f. opencode reads ~/.claude/skills and ~/.agents/skills too, and wants skill
+#     names unique across them (#564): with claude installed first, opencode
+#     links none of the shared skills but keeps its command links.
+HOME_OCS="$(mktemp -d)"
+OCS_SKILLS="$HOME_OCS/.config/opencode/skills"
+HOME="$HOME_OCS" "$INSTALL" --target=claude >/dev/null
+HOME="$HOME_OCS" "$INSTALL" --target=opencode >/dev/null
+got="$(count_links "$OCS_SKILLS")"
+[[ "$got" -eq 0 ]] || fail "opencode after claude: $got duplicate skill links"
+got="$(count_links "$HOME_OCS/.config/opencode/command")"
+[[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] ||
+  fail "opencode after claude: expected $OPENCODE_CMD_EXPECTED command links, got $got"
+pass "opencode skips skills claude already links"
+
+# 6g. the reverse order ends in the same state: a claude install removes the
+#     opencode links it now shadows, a foreign entry there survives, and an
+#     opencode-only run keeps its links.
+HOME_OCR="$(mktemp -d)"
+OCR_SKILLS="$HOME_OCR/.config/opencode/skills"
+HOME="$HOME_OCR" "$INSTALL" --target=opencode >/dev/null
+got="$(count_links "$OCR_SKILLS")"
+[[ "$got" -eq "$OPENCODE_EXPECTED" ]] || fail "opencode alone: expected $OPENCODE_EXPECTED links, got $got"
+foreign_oc="$(mktemp -d)/foreign"
+mkdir "$foreign_oc"
+ln -s "$foreign_oc" "$OCR_SKILLS/foreign-skill"
+HOME="$HOME_OCR" "$INSTALL" --target=claude --dry-run >/dev/null
+got="$(count_links "$OCR_SKILLS")"
+[[ "$got" -eq $((OPENCODE_EXPECTED + 1)) ]] || fail "dry-run removed opencode links"
+HOME="$HOME_OCR" "$INSTALL" --target=claude >/dev/null
+got="$(count_links "$OCR_SKILLS")"
+[[ "$got" -eq 1 && -L "$OCR_SKILLS/foreign-skill" ]] ||
+  fail "claude after opencode: expected only the foreign link, found $got links"
+# A codex-only root counts too: drop the claude links, codex re-shares them.
+oc_note="$(HOME="$HOME_OCR" "$INSTALL" --target=claude --uninstall 2>&1 >/dev/null)"
+grep -q 'note .*re-run --target=opencode' <<<"$oc_note" ||
+  fail "claude uninstall did not tell how to restore opencode's links"
+HOME="$HOME_OCR" "$INSTALL" --target=codex >/dev/null
+HOME="$HOME_OCR" "$INSTALL" --target=opencode >/dev/null
+got="$(count_links "$OCR_SKILLS")"
+[[ "$got" -eq 1 ]] || fail "opencode after codex: $got links, expected only the foreign one"
+pass "claude or codex, in either order, leave opencode no duplicate links"
+
+# 6h. a narrower --env for claude leaves the rest to opencode's own links, and
+#     a whole-tree dry-run plans exactly what the real run does.
+HOME_OCE="$(mktemp -d)"
+HOME="$HOME_OCE" "$INSTALL" --target=claude --env=chat >/dev/null
+HOME="$HOME_OCE" "$INSTALL" --target=opencode >/dev/null
+for link in "$HOME_OCE/.config/opencode/skills"/*; do
+  [[ -L "$link" ]] || continue
+  [[ ! -e "$HOME_OCE/.claude/skills/${link##*/}" ]] ||
+    fail "opencode linked ${link##*/} although claude has it"
+done
+got="$(count_links "$HOME_OCE/.config/opencode/skills")"
+want=$((OPENCODE_EXPECTED - $(count_links "$HOME_OCE/.claude/skills")))
+[[ "$got" -eq "$want" ]] || fail "opencode with claude --env=chat: expected $want links, got $got"
+oc_dry="$(HOME="$(mktemp -d)" "$INSTALL" --target=all --dry-run 2>&1)"
+grep -q 'linked .*/\.config/opencode/skills/' <<<"$oc_dry" &&
+  fail "dry-run --target=all planned opencode links that claude and codex share"
+grep -q 'shared .*/\.config/opencode/skills/' <<<"$oc_dry" ||
+  fail "dry-run --target=all did not report the shared skills"
+pass "opencode links what claude lacks, and dry-run plans the shared state"
 
 # 6c. codex install migrates our symlinks out of the deprecated prompts dir
 # (~/.codex/prompts) while preserving foreign entries there.
@@ -728,11 +804,21 @@ HOME="$HOME_TGT" "$INSTALL" --target=all --category=communication >/dev/null
   fail "targets: fixture installed for claude"
 [[ -f "$HOME_TGT/.agents/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
   fail "targets: fixture missing (or incomplete) under codex"
-[[ -f "$HOME_TGT/.config/opencode/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
-  fail "targets: fixture missing (or incomplete) under opencode"
+# opencode reads the fixture from ~/.agents/skills, so it links no copy (#564).
+[[ ! -e "$HOME_TGT/.config/opencode/skills/zz-targets-fixture" ]] ||
+  fail "targets: fixture linked twice for opencode (also in ~/.agents/skills)"
 # Its category-mates are unaffected and keep their bundled files.
 [[ -f "$HOME_TGT/.claude/skills/documentation/SKILL.md" ]] ||
   fail "documentation not installed as a whole directory for claude"
+# Without codex, the fixture is in no root opencode shares, so opencode links
+# it itself next to claude (#564).
+HOME_TGT2="$(mktemp -d)"
+HOME="$HOME_TGT2" "$INSTALL" --target=claude --category=communication >/dev/null
+HOME="$HOME_TGT2" "$INSTALL" --target=opencode --category=communication >/dev/null
+[[ -f "$HOME_TGT2/.config/opencode/skills/zz-targets-fixture/scripts/bundled.txt" ]] ||
+  fail "targets: fixture excluded from claude got no opencode link"
+[[ ! -e "$HOME_TGT2/.config/opencode/skills/documentation" ]] ||
+  fail "opencode duplicated documentation, which claude already links"
 rm_tgt_fixture
 trap - EXIT
 pass "targets: skips excluded agents and prunes a stale link"
@@ -829,7 +915,7 @@ grep -q 'Namespace' "$R_RULE" || fail "R rule has no fragment body"
 for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
   grep -q 'Namespace' "$HOME_RULES/$f" || fail "$f lost the path-scoped fragment"
 done
-HOME="$HOME_RULES" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null
+HOME="$HOME_RULES" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null 2>&1
 [[ ! -e "$R_RULE" ]] || fail "uninstall left the managed R rule"
 [[ -f "$HOME_RULES/.claude/rules/own.md" ]] || fail "uninstall removed a foreign rule file"
 pass "paths: fragments become path-scoped Claude rules only"
