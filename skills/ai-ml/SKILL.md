@@ -3,7 +3,7 @@ name: ai-ml
 category: ai-ml
 activation: router
 environments: coding
-description: "Use when building, debugging, or shipping anything with a trained model: an app on top of an LLM (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tune vs. retrieve) or a classical ML project (framing, baselines, model choice, missing data, deployment, retraining). Routes to a sub-skill."
+description: "Routes work on trained-model systems to the right sub-skill: LLM apps (prompting, RAG/retrieval, agents and tool use, evals and LLM judges, guardrails, fine-tuning) or classical ML projects (framing, baselines, model choice, missing data, deployment, retraining)."
 when_to_use: "Use even when no ML jargon is used: the chatbot makes things up or ignores instructions, should we fine-tune, how do I test prompt changes, the agent loops or calls the wrong tool, how do we know it still works in production, is this model good enough to ship, which model for this tabular or image data, accuracy dropped after launch, when should we retrain. Not for generic data wrangling or plotting, SDK/API syntax, or MCP server implementation."
 ---
 

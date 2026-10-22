@@ -2,7 +2,7 @@
 name: refactoring
 category: refactoring
 environments: coding
-description: Finding where refactoring is worth starting in a codebase nobody knows well — ranks files by git churn (hotspots) and says how to read the ranking. Use when the user asks which code to refactor first or where to begin cleaning up a legacy repo.
+description: Finds where refactoring is worth starting in an unfamiliar codebase by ranking files by git churn (hotspots) and explaining the ranking. Use when deciding which code to refactor first or where to start cleaning up a legacy repository.
 metadata:
   version: "4.1"
 ---

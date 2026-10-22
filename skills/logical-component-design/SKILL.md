@@ -2,7 +2,7 @@
 name: logical-component-design
 category: architecture
 environments: coding
-description: Decompose a NEW system or feature into named logical components; not for measuring an existing decomposition. Use when asking what components a new system needs.
+description: Decomposes a NEW system or feature into named logical components; not for measuring an existing decomposition. Use when asking what components a new system needs.
 ---
 
 # Logical Component Design
