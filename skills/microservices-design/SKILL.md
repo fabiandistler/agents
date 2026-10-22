@@ -2,7 +2,7 @@
 name: microservices-design
 category: architecture
 environments: coding
-description: Guides microservice interaction design and review — service boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns from Newman's *Building Microservices*. Use when designing or reviewing how services communicate.
+description: Guides microservice interaction design and review — boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns from Newman's *Building Microservices*. Use when designing or reviewing how services communicate.
 metadata:
   version: "1.0"
 ---

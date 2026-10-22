@@ -40,7 +40,7 @@ model's trigger surface.
 | ddd | Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing. | `members/ddd/SKILL.md` |
 | fitness-functions | Designs and implements architecture fitness functions — automated CI checks that fail the build when a characteristic such as modularity, layering, coupling, security, or resilience erodes. | `members/fitness-functions/SKILL.md` |
 | logical-component-design | Decomposes a NEW system or feature into named logical components; not for measuring an existing decomposition. | `members/logical-component-design/SKILL.md` |
-| microservices-design | Guides microservice interaction design and review — service boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns from Newman's *Building Microservices*. | `members/microservices-design/SKILL.md` |
+| microservices-design | Guides microservice interaction design and review — boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns from Newman's *Building Microservices*. | `members/microservices-design/SKILL.md` |
 <!-- END generated:members -->
 
 The table above is generated from `skills.json` by

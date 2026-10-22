@@ -143,7 +143,7 @@
     },
     {
       "name": "microservices-design",
-      "summary": "Guides microservice interaction design and review — service boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns from Newman's *Building Microservices*.",
+      "summary": "Guides microservice interaction design and review — boundaries, coupling, communication style, contract versioning, sagas, and resiliency patterns from Newman's *Building Microservices*.",
       "category": "architecture",
       "path": "skills/microservices-design/SKILL.md",
       "environments": [
