@@ -170,6 +170,48 @@ Limits:
   recognize (a `gh` alias, a script file that calls `gh pr merge`) gets
   through. A required status check on `main` is still the backstop.
 
+## Secret read guard (`--secret-guard`)
+
+Whatever a tool call prints lands in the agent's context and session log, so
+one `cat .env` hands every secret in it to the model. The secret read guard is
+a second model-free pre-tool hook, installed exactly like the merge guard:
+[`scripts/secret_read_guard.py`](../scripts/secret_read_guard.py) blocks the
+call and tells the agent to ask you to run the command or to provide a
+sanitized value.
+
+```sh
+./install.sh --target=all --secret-guard             # Codex and opencode
+./install.sh --target=all --secret-guard --uninstall # remove it again
+claude plugin install secret-guard@fabiandistler-agents  # Claude Code
+```
+
+It blocks reading these files through a shell command or a file tool (Claude
+`Read`, `Edit`, `Grep`; opencode `read`, `edit`, `grep`; MCP tools with a
+`path`): `.env` and `.env.*` (but not `.env.example`, `.env.sample`,
+`.env.template`), `.Renviron`, `.git-credentials`, `.netrc`, `.npmrc`,
+`.pypirc`, `.envrc`, `.aws/credentials`, `.docker/config.json`,
+`.kube/config` (also as `--kubeconfig`), `gh/hosts.yml`, private SSH keys
+(`.ssh/id_*` without `.pub`), `~/.claude.json`, `.claude/.credentials.json`,
+`.codex/auth.json`, opencode's `auth.json` and `mcp-auth.json`, the `pass`
+store, gpg secret keys. Globs count (`cat ~/.ssh/*`). Some of these files often
+hold no secret (a registry-only `.npmrc`); they are blocked anyway, because an
+over-block costs one question and a leaked token a rotation. It also blocks
+environment dumps: bare `env`, `printenv` without a name or with a secret-looking
+one (`*_TOKEN`, `*_KEY`, `*SECRET*`, ...), `export -p`, `declare -x`/`-p`, bare
+`set`, `/proc/<pid>/environ`, plus `pass show`, `gopass show`, `sops -d` and
+`gpg --decrypt`.
+
+It lets through what only names, writes or consumes a secret file: `ls`, `rm`,
+`test -f`, `git add`/`rm`/`check-ignore`, `source .env`, `--env-file .env`,
+`cp .env.example .env`, `ssh -i ~/.ssh/id_ed25519`; `env FOO=bar cmd` (the
+command is checked) and `printenv PATH`. Listing file names (`Glob`, `ls`)
+passes too. Malformed hook input fails open (exit 3), as with the merge guard.
+
+The table above applies with `secret-guard`, `secret-read-guard.js` and the
+`secret read guard` markers. Limits: it keeps secrets out of the context by
+accident, it does not sandbox a determined agent. `echo $TOKEN`, a script or
+`python -c` that opens `.env`, or `grep -r TOKEN .` get through.
+
 ## Codex CLI specifics
 
 For Codex, `--target=codex` covers the full plugins, not just the skills. It
@@ -225,7 +267,8 @@ Restart Codex to pick up the new agents.
 ## Claude Code: plugins only
 
 The repo doubles as a Claude plugin marketplace: every category is packaged as
-one plugin, plus the hook-only `merge-guard` plugin (see `plugins/` and
+one plugin, plus the hook-only `merge-guard` and `secret-guard` plugins (see
+`plugins/` and
 [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json)), so
 you can install exactly the domains you want. Plugin skills are namespaced
 (`communication:documentation`); a routed category registers only its router,
@@ -237,6 +280,7 @@ so there it is the router that carries the namespace
 claude plugin marketplace add fabiandistler/agents
 claude plugin install architecture@fabiandistler-agents
 claude plugin install merge-guard@fabiandistler-agents
+claude plugin install secret-guard@fabiandistler-agents
 ```
 
 For Claude, `install.sh` installs no skills, commands or hooks any more (#567).

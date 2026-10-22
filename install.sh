@@ -14,6 +14,7 @@
 #   ./install.sh --target=codex --category=architecture,refactoring
 #   ./install.sh --target=all --instructions   # also sync the rule files
 #   ./install.sh --target=all --merge-guard    # also block agent PR merges
+#   ./install.sh --target=all --secret-guard   # also block credential reads
 #
 # Claude gets skills, command skills, subagents and the PR merge guard from the
 # plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
@@ -108,6 +109,10 @@
 # hook). --merge-guard --uninstall removes exactly these, leaving other
 # settings and hooks alone.
 #
+# --secret-guard (off by default) installs scripts/secret_read_guard.py the same
+# way (secret-guard plugin for claude): it blocks reading credential files
+# (.env, SSH keys, cloud and agent auth files) and dumping the environment.
+#
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
 #   - Symlink pointing elsewhere:      skip with a warning, never overwrite.
@@ -162,6 +167,7 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=1 ;;
     --instructions) INSTRUCTIONS=1 ;;
     --merge-guard) GUARDS+=" merge" ;;
+    --secret-guard) GUARDS+=" secret" ;;
     --uninstall) UNINSTALL=1 ;;
     -h | --help)
       usage
@@ -995,7 +1001,7 @@ remove_instructions() {
     "$(instructions_end_marker)" "instructions block"
 }
 
-# --- PR merge guard -----------------------------------------------------------
+# --- Pre-tool guards (PR merge guard, secret read guard) ----------------------
 #
 # Agents act under the user's GitHub account, so branch rules cannot stop them
 # from merging; a pre-tool hook can. The decision and the hook entry both live
@@ -1005,18 +1011,24 @@ remove_instructions() {
 # Claude migration below removes that entry. settings.json is JSON and cannot
 # carry marker comments, so our entry is identified by the script name in its
 # command, and only that entry is ever removed.
+#
+# The secret read guard (scripts/secret_read_guard.py) is installed the same
+# way: it keeps credential files and environment dumps out of the agent's
+# context. Claude gets it from the secret-guard plugin.
 
-# A guard is named by its key (merge); the script, plugin and opencode adapter
-# names derive from it.
+# A guard is named by its key (merge, secret); the script, plugin and opencode
+# adapter names derive from it.
 guard_script() {
   case "$1" in
     merge) printf 'pr_merge_guard' ;;
+    secret) printf 'secret_read_guard' ;;
   esac
 }
 
 guard_label() {
   case "$1" in
     merge) printf 'PR merge guard' ;;
+    secret) printf 'secret read guard' ;;
   esac
 }
 

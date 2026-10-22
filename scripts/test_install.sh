@@ -1058,4 +1058,39 @@ diff -q "$HOME_MG/codex-before.toml" "$HOME_MG/.codex/config.toml" >/dev/null ||
 [[ ! -e "$HOME_MG/.config/opencode/plugins/pr-merge-guard.js" ]] || fail "uninstall left the plugin"
 pass "--merge-guard installs per agent, idempotently, and uninstalls cleanly"
 
+# 46. --secret-guard installs next to --merge-guard: two Codex hook entries in
+#     one valid config.toml, its own opencode link and plugin hint, idempotent,
+#     and --secret-guard --uninstall leaves the merge guard in place.
+HOME_SG="$(mktemp -d)"
+mkdir -p "$HOME_SG/.codex"
+printf 'model = "o3"\n' >"$HOME_SG/.codex/config.toml"
+HOME="$HOME_SG" "$INSTALL" --target=all --category=communication --merge-guard >/dev/null
+cp "$HOME_SG/.codex/config.toml" "$HOME_SG/merge-only.toml"
+sg_output="$(HOME="$HOME_SG" "$INSTALL" --target=all --category=communication \
+  --merge-guard --secret-guard)"
+grep -q 'claude plugin install secret-guard@fabiandistler-agents' <<<"$sg_output" ||
+  fail "--secret-guard did not point claude at the secret-guard plugin"
+"$PYTHON" - "$HOME_SG" <<'PY' || fail "secret guard entry missing next to the merge guard"
+import sys, tomllib
+codex = tomllib.load(open(f"{sys.argv[1]}/.codex/config.toml", "rb"))
+commands = [e["hooks"][0]["command"] for e in codex["hooks"]["PreToolUse"]]
+assert [c.split("/")[-1] for c in commands] == [
+    'pr_merge_guard.py" --harness codex', 'secret_read_guard.py" --harness codex'
+], commands
+PY
+[[ -L "$HOME_SG/.config/opencode/plugins/secret-read-guard.js" ]] ||
+  fail "opencode secret guard plugin not linked"
+cp "$HOME_SG/.codex/config.toml" "$HOME_SG/both.toml"
+HOME="$HOME_SG" "$INSTALL" --target=all --category=communication --merge-guard --secret-guard >/dev/null
+diff -q "$HOME_SG/both.toml" "$HOME_SG/.codex/config.toml" >/dev/null ||
+  fail "second --secret-guard run changed config.toml"
+HOME="$HOME_SG" "$INSTALL" --target=all --category=communication --secret-guard --uninstall >/dev/null
+diff -q "$HOME_SG/merge-only.toml" "$HOME_SG/.codex/config.toml" >/dev/null ||
+  fail "--secret-guard --uninstall did not leave just the merge guard"
+[[ ! -e "$HOME_SG/.config/opencode/plugins/secret-read-guard.js" ]] ||
+  fail "uninstall left the secret guard plugin"
+[[ -L "$HOME_SG/.config/opencode/plugins/pr-merge-guard.js" ]] ||
+  fail "--secret-guard --uninstall removed the merge guard plugin"
+pass "--secret-guard installs next to the merge guard and uninstalls on its own"
+
 echo "all install.sh tests passed"
