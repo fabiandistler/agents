@@ -6,7 +6,8 @@ audit issue can tell a new finding from one reported last week.
 
 Only judgement calls live here. What a script already decides conclusively —
 frontmatter schema, description budgets, catalogue/plugin/manifest drift,
-agent-specific vocabulary, reference TOCs, dated claims, eval-file shape —
+agent-specific vocabulary, reference TOCs, dated claims, dead skill paths,
+eval-file shape —
 is CI's job (`.github/workflows/ci.yml`); the audit runs those scripts once
 and never re-reports their findings per skill.
 
@@ -68,6 +69,8 @@ rather than applying it ad hoc.
 ## R — References and bundled files
 
 - **R1** Every relative path in SKILL.md and its references exists. (error)
+  Existence is CI's job (`scripts/check_skill_paths.py`); judge only a path
+  that exists but points at the wrong file for what the text says it holds.
 - **R2** References are one level deep: SKILL.md links each file it needs;
   a reference does not send the agent on to a further reference. (warn)
 - **R3** SKILL.md names each reference with a one-line cue for when to open
