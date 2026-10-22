@@ -1271,6 +1271,79 @@ cleanup_codex_prompts_legacy() {
   done <<<"$skills"
 }
 
+# Link (or, with --uninstall, unlink) the selected skills for one target, then
+# prune links to skills the repo no longer ships.
+sync_skill_links() {
+  local target="$1" skills="$2" routed="$3"
+  local dest_dir cmd_dir="" cmd_dir_ready=0 shared_root
+  dest_dir="$(target_dir_for "$target")"
+  [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
+  if ((UNINSTALL == 0)); then
+    ensure_parent "$dest_dir"
+  fi
+  while IFS= read -r skill; do
+    local src dest activation category
+    activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
+    category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
+    if [[ "$activation" == "command" && "$target" != "codex" ]]; then
+      # User-invoked: link the single SKILL.md into the command directory.
+      src="$REPO_ROOT/skills/$skill/SKILL.md"
+      dest="$cmd_dir/$skill.md"
+      if ((UNINSTALL == 0)) && ((cmd_dir_ready == 0)); then
+        ensure_parent "$cmd_dir"
+        cmd_dir_ready=1
+      fi
+    elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
+      # Auto member of a routed category: it is nested under the router's
+      # members/ dir and loads lazily when routed to, so it is never linked
+      # at top level. Command skills bypass routing (handled above for
+      # non-codex; linked as skills for codex), so they are not skipped here.
+      # Codex discovers the nested member recursively anyway; it is disabled
+      # by path in ~/.codex/config.toml further down.
+      # Migration: before this category was routed, the member was linked
+      # flat here. That link still resolves, so prune_stale_skill_links (which
+      # only removes broken ones) leaves it, and the member keeps registering
+      # at top level — exactly what routing exists to prevent. Remove it on
+      # both paths. unlink_one only touches a symlink pointing at our own
+      # path, so foreign entries and real directories are left alone.
+      unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
+      continue
+    else
+      # A normal auto skill, or the router itself (linked as a whole dir so
+      # its nested members/ come along).
+      src="$REPO_ROOT/skills/$skill"
+      dest="$dest_dir/$skill"
+    fi
+    # A skill whose `targets:` field excludes this agent is never linked
+    # here; unlinking instead keeps the tree self-healing when the field is
+    # added to a skill that was already installed.
+    if ((UNINSTALL)) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
+      unlink_one "$src" "$dest"
+    elif [[ "$target" == "opencode" && "$dest" == "$dest_dir/"* ]] &&
+      shared_root="$(opencode_shared_root_for "$src")"; then
+      drop_opencode_duplicate "$src" "$shared_root"
+      printf '  shared    %s (opencode reads it from %s)\n' "$dest" "$shared_root"
+    else
+      link_one "$src" "$dest"
+      # Run in either order, claude/codex and opencode end up with one link.
+      if [[ "$target" != "opencode" && "$dest" == "$dest_dir/"* ]] &&
+        our_link_at "$src" "$dest"; then
+        drop_opencode_duplicate "$src" "$dest_dir"
+      fi
+    fi
+  done <<<"$skills"
+  # opencode loses the skills it read from this root; tell the user how to
+  # give it links of its own. --target=all removes opencode's links anyway.
+  if ((UNINSTALL)) && [[ "$TARGET" != "all" && "$target" != "opencode" ]] &&
+    [[ -d "$(opencode_skills_dir)" ]]; then
+    printf '  note      opencode read skills from %s; re-run --target=opencode to link them for it\n' \
+      "$dest_dir" >&2
+  fi
+  prune_stale_skill_links "$dest_dir"
+  [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
+  return 0
+}
+
 main() {
   local skills
   skills="$(list_skills)"
@@ -1285,73 +1358,10 @@ main() {
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
-    local dest_dir cmd_dir="" cmd_dir_ready=0 shared_root
+    local dest_dir
     dest_dir="$(target_dir_for "$target")"
-    [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
     printf '%s: %s\n' "$target" "$dest_dir"
-    if ((UNINSTALL == 0)); then
-      ensure_parent "$dest_dir"
-    fi
-    while IFS= read -r skill; do
-      local src dest activation category
-      activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
-      category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
-      if [[ "$activation" == "command" && "$target" != "codex" ]]; then
-        # User-invoked: link the single SKILL.md into the command directory.
-        src="$REPO_ROOT/skills/$skill/SKILL.md"
-        dest="$cmd_dir/$skill.md"
-        if ((UNINSTALL == 0)) && ((cmd_dir_ready == 0)); then
-          ensure_parent "$cmd_dir"
-          cmd_dir_ready=1
-        fi
-      elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
-        # Auto member of a routed category: it is nested under the router's
-        # members/ dir and loads lazily when routed to, so it is never linked
-        # at top level. Command skills bypass routing (handled above for
-        # non-codex; linked as skills for codex), so they are not skipped here.
-        # Codex discovers the nested member recursively anyway; it is disabled
-        # by path in ~/.codex/config.toml further down.
-        # Migration: before this category was routed, the member was linked
-        # flat here. That link still resolves, so prune_stale_skill_links (which
-        # only removes broken ones) leaves it, and the member keeps registering
-        # at top level — exactly what routing exists to prevent. Remove it on
-        # both paths. unlink_one only touches a symlink pointing at our own
-        # path, so foreign entries and real directories are left alone.
-        unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
-        continue
-      else
-        # A normal auto skill, or the router itself (linked as a whole dir so
-        # its nested members/ come along).
-        src="$REPO_ROOT/skills/$skill"
-        dest="$dest_dir/$skill"
-      fi
-      # A skill whose `targets:` field excludes this agent is never linked
-      # here; unlinking instead keeps the tree self-healing when the field is
-      # added to a skill that was already installed.
-      if ((UNINSTALL)) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
-        unlink_one "$src" "$dest"
-      elif [[ "$target" == "opencode" && "$dest" == "$dest_dir/"* ]] &&
-        shared_root="$(opencode_shared_root_for "$src")"; then
-        drop_opencode_duplicate "$src" "$shared_root"
-        printf '  shared    %s (opencode reads it from %s)\n' "$dest" "$shared_root"
-      else
-        link_one "$src" "$dest"
-        # Run in either order, claude/codex and opencode end up with one link.
-        if [[ "$target" != "opencode" && "$dest" == "$dest_dir/"* ]] &&
-          our_link_at "$src" "$dest"; then
-          drop_opencode_duplicate "$src" "$dest_dir"
-        fi
-      fi
-    done <<<"$skills"
-    # opencode loses the skills it read from this root; tell the user how to
-    # give it links of its own. --target=all removes opencode's links anyway.
-    if ((UNINSTALL)) && [[ "$TARGET" != "all" && "$target" != "opencode" ]] &&
-      [[ -d "$(opencode_skills_dir)" ]]; then
-      printf '  note      opencode read skills from %s; re-run --target=opencode to link them for it\n' \
-        "$dest_dir" >&2
-    fi
-    prune_stale_skill_links "$dest_dir"
-    [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
+    sync_skill_links "$target" "$skills" "$routed"
     if [[ "$target" == "codex" ]]; then
       cleanup_codex_skills_legacy
       cleanup_codex_prompts_legacy "$skills"
