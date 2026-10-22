@@ -542,6 +542,25 @@ HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=workflow >/dev/null
   fail "category=workflow created an agents directory"
 pass "category without subagents leaves agents directory alone"
 
+# 25b. a generated agent whose source is gone (renamed or deleted subagent) is
+#      pruned on the next codex run, whatever --category says; foreign files
+#      and generated agents whose source still exists stay.
+HOME_PRUNE="$(mktemp -d)"
+HOME="$HOME_PRUNE" "$INSTALL" --target=codex --category=architecture >/dev/null
+PRUNE_DIR="$HOME_PRUNE/.codex/agents"
+sed 's/coupling-analyst/retired-analyst/' "$PRUNE_DIR/coupling-analyst.toml" \
+  >"$PRUNE_DIR/retired-analyst.toml"
+printf 'name = "hand-written"\n' >"$PRUNE_DIR/hand-written.toml"
+HOME="$HOME_PRUNE" "$INSTALL" --target=codex --category=workflow --dry-run >/dev/null
+[[ -f "$PRUNE_DIR/retired-analyst.toml" ]] || fail "dry-run pruned a stale agent file"
+HOME="$HOME_PRUNE" "$INSTALL" --target=codex --category=workflow >/dev/null
+[[ ! -e "$PRUNE_DIR/retired-analyst.toml" ]] ||
+  fail "generated agent without a source was not pruned"
+[[ -f "$PRUNE_DIR/hand-written.toml" ]] || fail "prune removed a foreign agent file"
+[[ -f "$PRUNE_DIR/coupling-analyst.toml" ]] ||
+  fail "prune removed an agent whose source still exists"
+pass "stale generated agent files are pruned, foreign and live ones kept"
+
 # 36. A routed category links only its router at top level; the auto members
 #     ride nested under the router's members/ dir (readable, not registered),
 #     and none of them leak into the skills directory.

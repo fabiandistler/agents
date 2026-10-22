@@ -675,6 +675,26 @@ uninstall_codex_agents() {
   done < <(agent_categories)
 }
 
+# Remove generated agent files whose subagent no longer exists in this repo
+# (renamed or deleted): uninstall_codex_agents only walks the agents the repo
+# currently ships, so those files would linger forever. The agents counterpart
+# of prune_stale_skill_links. A source anywhere under plugins/*/agents/ keeps
+# its file, so a --category run never prunes another category's agents; files
+# without our marker are never touched.
+prune_stale_codex_agents() {
+  local agents_dir dest name
+  agents_dir="$(codex_agents_dir)"
+  [[ -d "$agents_dir" ]] || return 0
+  for dest in "$agents_dir"/*.toml; do
+    [[ -f "$dest" ]] || continue
+    name="$(basename "$dest" .toml)"
+    compgen -G "$REPO_ROOT/plugins/*/agents/$name.md" >/dev/null && continue
+    grep -qF "$AGENT_MARKER" "$dest" || continue
+    run rm "$dest"
+    printf '  removed   %s (agent no longer in repo)\n' "$dest"
+  done
+}
+
 # --- Agent instruction files ------------------------------------------------
 #
 # instructions/*.md are single-topic rule fragments composed into one managed
@@ -1217,6 +1237,7 @@ main() {
       # Runs on both paths: an upgrade must drop a managed block left by a
       # version that still registered the knowledge-base MCP servers.
       remove_legacy_codex_mcp
+      prune_stale_codex_agents
       if ((UNINSTALL)); then
         uninstall_codex_agents
         remove_codex_member_overrides

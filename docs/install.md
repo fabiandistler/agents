@@ -155,7 +155,9 @@ filters skills only, while the extras follow `--category`.
 agents](https://developers.openai.com/codex/subagents) under
 `~/.codex/agents/<name>.toml`. The generated files carry a marker comment;
 files you created yourself are never overwritten, and `--uninstall` removes
-only marker-carrying files. Model and sandbox are inherited from your Codex
+only marker-carrying files. Every Codex run also removes marker-carrying
+files whose subagent no longer exists in the repo (renamed or deleted).
+Model and sandbox are inherited from your Codex
 session — the Claude-specific `model:` and `tools:` fields have no Codex
 equivalent.
 
