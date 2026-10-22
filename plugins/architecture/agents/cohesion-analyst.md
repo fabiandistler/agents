@@ -46,6 +46,8 @@ Report back per analyzed module, in the skill's output format:
    Trade-offs: <one line per step-5 question>
    Next step: <seam to extract | fold-back target | reason to leave> — <concrete action>
 
+Include the Trade-offs line only when a split or merge was on the table.
+
 Report at most the top 3 findings; summarize the remainder in one line.
 
 Keep it proportional: a clean module needs a sentence, not a report.

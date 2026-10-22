@@ -86,8 +86,10 @@ three trade-off questions from the source's Customer/Order Maintenance example
 
 ### 6. Recommend: split, merge, or leave — with the refactor
 
-Close every recommendation with the step-5 trade-off questions, then give one
-concrete outcome:
+When a split or merge is on the table (2+ groups, or an over-extracted module
+that re-couples), answer the step-5 trade-off questions before giving the
+outcome. When nothing is up for extraction, there is no trade-off to weigh:
+leave with the reason. Give one concrete outcome:
 - **Split with seam** — name the group to extract and the module it becomes;
   show the seam. (If this is a significant structural decision, record it in
   an ADR.)
@@ -108,6 +110,9 @@ Trade-offs: <one line per step-5 question: too small? remaining module growing? 
 Next step: <seam to extract | fold-back target | reason to leave> — <concrete action>
 ```
 
+Include the `Trade-offs:` line only when a split or merge was on the table;
+for a module with nothing to extract, drop it.
+
 ## Cohesion — worked contrast
 
 Groups decide, scores only bracketed. Two file-level shapes recur:
@@ -126,7 +131,7 @@ Trust the group count, not the raw score.
 
 - **Treating LCOM as the answer.** It finds only *structural* lack of cohesion;
   it cannot tell whether parts belong together logically. Why matters more than
-  how. Always close with the step-5 judgment.
+  how. When it flags a split, the step-5 judgment decides.
 - **Splitting reflexively on a high score.** A constructor or a shared cache can
   hide a real split, and a high score can flag a split that would just re-couple
   the pieces. Constantine's warning cuts both ways.
