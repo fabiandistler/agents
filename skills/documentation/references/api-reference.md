@@ -53,7 +53,7 @@ error codes it can return.
 
 ```console
 $ curl -s https://api.example.com/v1/orders?limit=2 \
-    -H "Authorization: Bearer $API_TOKEN"
+    -H @<(printf 'Authorization: Bearer %s\n' "$API_TOKEN")
 {
   "items": [
     {"id": "ord_8Kd2", "total_cents": 4200, "status": "shipped"},
@@ -62,6 +62,9 @@ $ curl -s https://api.example.com/v1/orders?limit=2 \
   "next_cursor": "eyJvIjoyfQ"
 }
 ```
+
+The header is read from a file descriptor, so the token stays out of shell
+history and `ps`; readers copy the example as shown.
 
 Use realistic values — `ord_8Kd2`, not `string`. Readers pattern-match off
 examples far more than off type tables.
