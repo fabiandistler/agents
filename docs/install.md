@@ -189,13 +189,17 @@ It blocks reading these files through a shell command or a file tool (Claude
 `Read`, `Edit`, `Grep`; opencode `read`, `edit`, `grep`; MCP tools with a
 `path`): `.env` and `.env.*` (but not `.env.example`, `.env.sample`,
 `.env.template`), `.Renviron`, `.git-credentials`, `.netrc`, `.npmrc`,
-`.pypirc`, `.aws/credentials`, `.docker/config.json`, `.kube/config`, private
-SSH keys (`.ssh/id_*` without `.pub`), `.claude/.credentials.json`,
+`.pypirc`, `.envrc`, `.aws/credentials`, `.docker/config.json`,
+`.kube/config` (also as `--kubeconfig`), `gh/hosts.yml`, private SSH keys
+(`.ssh/id_*` without `.pub`), `~/.claude.json`, `.claude/.credentials.json`,
 `.codex/auth.json`, opencode's `auth.json` and `mcp-auth.json`, the `pass`
-store, gpg secret keys. Globs count (`cat ~/.ssh/*`). It also blocks
+store, gpg secret keys. Globs count (`cat ~/.ssh/*`). Some of these files often
+hold no secret (a registry-only `.npmrc`); they are blocked anyway, because an
+over-block costs one question and a leaked token a rotation. It also blocks
 environment dumps: bare `env`, `printenv` without a name or with a secret-looking
 one (`*_TOKEN`, `*_KEY`, `*SECRET*`, ...), `export -p`, `declare -x`/`-p`, bare
-`set`, `/proc/<pid>/environ`, plus `pass show` and `gpg --decrypt`.
+`set`, `/proc/<pid>/environ`, plus `pass show`, `gopass show`, `sops -d` and
+`gpg --decrypt`.
 
 It lets through what only names, writes or consumes a secret file: `ls`, `rm`,
 `test -f`, `git add`/`rm`/`check-ignore`, `source .env`, `--env-file .env`,

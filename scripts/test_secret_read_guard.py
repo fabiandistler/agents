@@ -69,6 +69,19 @@ BLOCKED_COMMANDS = [
     "bash <<'EOF'\ncat .env\nEOF",
     "env FOO=bar cat .env",
     "timeout 5 cat ~/.netrc",
+    "cat ~/.config/gh/hosts.yml",
+    "cat .envrc",
+    "jq .oauthAccount ~/.claude.json",
+    "cat ~/.claude.json",
+    "gopass show github/token",
+    "gopass github/token",
+    "sops -d secrets.enc.yaml",
+    "sops --decrypt secrets.enc.yaml",
+    "sops decrypt secrets.enc.yaml",
+    # Over-blocked on purpose: these files often hold no secret, but may.
+    "cat .npmrc",
+    "kubectl --kubeconfig ~/.kube/config get pods",
+    "kubectl --kubeconfig=/home/me/.kube/config get pods",
 ]
 
 ALLOWED_COMMANDS = [
@@ -111,6 +124,13 @@ ALLOWED_COMMANDS = [
     "pass",
     "pass ls",
     "pass find github",
+    "gopass ls",
+    "gopass find github",
+    "sops -e -i secrets.yaml",
+    "sops exec-env secrets.enc.yaml ./deploy.sh",
+    "ls ~/.config/gh",
+    "cat ~/.config/gh/config.yml",
+    "direnv allow .",
     "gpg --list-keys",
     "python3 - <<'EOF'\nprint(open('.env.example').read())\nEOF",
     "git commit -F - <<EOF\nIgnore .env\nEOF",
@@ -128,6 +148,9 @@ BLOCKED_TOOLS = [
     ("codex", {"tool_name": "Bash", "tool_input": {"command": "printenv"}}),
     ("opencode", {"tool": "read", "args": {"filePath": "/home/me/.aws/credentials"}}),
     ("opencode", {"tool": "grep", "args": {"pattern": "x", "include": ".env.*"}}),
+    ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/home/me/.claude.json"}}),
+    ("opencode", {"tool": "read", "args": {"filePath": "/home/me/.config/gh/hosts.yml"}}),
+    ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/repo/.envrc"}}),
     ("opencode", {"tool": "bash", "args": {"command": "env"}}),
 ]
 

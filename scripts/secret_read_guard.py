@@ -11,9 +11,10 @@ ask the user instead.
 
 Blocked: reading `.env`/`.env.*` (not `.env.example`, `.env.sample`,
 `.env.template`), `.Renviron`, `.git-credentials`, `.netrc`, `.npmrc`,
-`.pypirc`, `.aws/credentials`, `.docker/config.json`, `.kube/config`, private
-SSH keys, the Claude, Codex and opencode auth files, the `pass` store and gpg
-secret keys, through a shell command or a file tool (Read, Edit, Grep, MCP
+`.pypirc`, `.envrc`, `.claude.json`, `gh/hosts.yml`, `.aws/credentials`,
+`.docker/config.json`, `.kube/config`, private SSH keys, the Claude, Codex and
+opencode auth files, the `pass` store and gpg secret keys (also via `gopass`,
+`sops -d`), through a shell command or a file tool (Read, Edit, Grep, MCP
 tools with a path); dumping the environment with bare `env`, `printenv`,
 `export -p`, `declare -x`/`-p`, bare `set` or `/proc/<pid>/environ`.
 Allowed: `env FOO=bar cmd` (a launcher), `printenv NAME` for a name that does
@@ -69,9 +70,14 @@ HOOK_MATCHER = "^(Bash|Read|Edit|Grep|mcp__.*)$"
 HOOK_STATUS = "Checking for secret reads"
 
 DOTENV_TEMPLATES = {"example", "sample", "template"}
-SECRET_NAMES = {".Renviron", ".git-credentials", ".netrc", ".npmrc", ".pypirc"}
+# Blocked even where a copy holds no secret (a registry-only .npmrc, a local
+# kubeconfig): an over-block costs one question, a leaked token a rotation.
+SECRET_NAMES = {
+    ".Renviron", ".git-credentials", ".netrc", ".npmrc", ".pypirc", ".envrc", ".claude.json",
+}  # fmt: skip
 # (parent directory, file name) pairs.
 SECRET_FILES = {
+    ("gh", "hosts.yml"): "GitHub CLI credentials",
     (".aws", "credentials"): "AWS credentials",
     (".docker", "config.json"): "Docker registry credentials",
     (".kube", "config"): "a kubeconfig",
@@ -98,7 +104,9 @@ GIT_NAME_ONLY = {"add", "rm", "mv", "check-ignore", "ls-files", "status"}
 NAME_ONLY_TOOLS = {"write", "glob", "list", "ls"}
 PATH_KEYS = ("file_path", "filePath", "path", "notebook_path")
 GREP_FILTER_KEYS = ("glob", "include")
-PASS_LISTING = {"find", "search", "help", "version", "git", "init"}
+PASS_LISTING = {"find", "search", "help", "version", "git", "init", "sync"}
+PASS_STORES = {"pass", "gopass"}
+SOPS_DECRYPT = {"-d", "--decrypt", "decrypt"}
 GPG_SECRET_FLAGS = {"-d", "--decrypt", "--decrypt-files"}
 SECRET_VAR_PARTS = (
     "TOKEN", "SECRET", "KEY", "PASSWORD", "PASSWD", "PASS", "PAT", "CREDENTIAL",
@@ -163,8 +171,10 @@ def check_env_dump(program: str, args: list[str]) -> str | None:
 def check_secret_store(program: str, args: list[str]) -> str | None:
     names = [a for a in args if not a.startswith("-")]
     listing = not names or names in (["ls"], ["list"]) or names[0] in PASS_LISTING
-    if program == "pass" and not listing:
-        return "`pass` decrypts an entry of the password store"
+    if program in PASS_STORES and not listing:
+        return f"`{program}` decrypts an entry of the password store"
+    if program == "sops" and (SOPS_DECRYPT & set(args)):
+        return "`sops` decrypts a file"
     if program in {"gpg", "gpg2"} and any(
         a in GPG_SECRET_FLAGS or a.startswith("--export-secret") for a in args
     ):
@@ -186,6 +196,12 @@ def check_file_args(program: str, args: list[str]) -> str | None:
             skip = False
         elif word.endswith(">") or word == "--env-file":
             skip = True  # a redirect target or a file the program loads
+        elif word.startswith("--env-file="):
+            continue
+        elif word.startswith("-") and "=" in word:
+            # `--kubeconfig=~/.kube/config` names the file as an option value.
+            if kind := secret_file(word.split("=", 1)[1]):
+                return f"the command reads {kind}"
         elif not word.startswith("-") and (kind := secret_file(word)):
             return f"the command reads {kind}"
     return None
