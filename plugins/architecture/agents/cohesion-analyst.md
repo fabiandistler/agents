@@ -18,7 +18,8 @@ The skill you work from lives at
 ${CLAUDE_PLUGIN_ROOT}/skills/architecture/members/coupling-cohesion/ — written
 as <skill>/ below.
 
-First read <skill>/SKILL.md and follow its Mode A (cohesion) workflow exactly:
+First read <skill>/SKILL.md, then follow its Mode A (cohesion) workflow in
+<skill>/references/mode-a-cohesion.md exactly:
 scope the unit, inventory the parts and what binds them, classify the dominant
 cohesion type on the skill's scale, then get the structural signal with:
 
