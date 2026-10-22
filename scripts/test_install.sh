@@ -2,6 +2,8 @@
 # Smoke test for install.sh. Uses an isolated $HOME under mktemp.
 #
 # Run: ./scripts/test_install.sh
+# Env: PYTHON (default python3), must be >= 3.11 for tomllib.
+# Exit: 0 all passed, 1 an assertion failed, 2 PYTHON is missing or too old.
 
 set -euo pipefail
 
@@ -13,6 +15,15 @@ fail() {
   exit 1
 }
 pass() { echo "ok: $*"; }
+
+# The TOML assertions need tomllib (3.11+). Check up front so an old
+# interpreter stops the suite with one clear line instead of failing, or
+# passing, deep inside an assertion.
+PYTHON="${PYTHON:-python3}"
+"$PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null || {
+  echo "test_install.sh: PYTHON=$PYTHON is missing or older than 3.11 (needs tomllib); set PYTHON=python3.11 or newer" >&2
+  exit 2
+}
 
 count_links() {
   # POSIX-portable: -L returns 0 only for symlinks.
@@ -162,7 +173,7 @@ make_claude_symlink_home() {
   ln -s "$REPO_ROOT/skills/repo-status/SKILL.md" "$home/.claude/commands/repo-status.md"
   ln -s "$foreign_src" "$home/.claude/skills/foreign-skill"
   ln -s "$foreign_src" "$home/.claude/commands/foreign.md"
-  python3 - "$home/.claude/settings.json" "$REPO_ROOT" <<'PY'
+  "$PYTHON" - "$home/.claude/settings.json" "$REPO_ROOT" <<'PY'
 import json, sys
 guard = f'python3 "{sys.argv[2]}/scripts/pr_merge_guard.py" --harness claude'
 settings = {
@@ -191,7 +202,7 @@ for gone in skills/architecture skills/documentation skills/removed-skill comman
 done
 [[ -L "$HOME_MIGC/.claude/skills/foreign-skill" ]] || fail "migration removed a foreign skill link"
 [[ -L "$HOME_MIGC/.claude/commands/foreign.md" ]] || fail "migration removed a foreign command link"
-python3 - "$HOME_MIGC/.claude/settings.json" <<'PY' || fail "migration mangled settings.json"
+"$PYTHON" - "$HOME_MIGC/.claude/settings.json" <<'PY' || fail "migration mangled settings.json"
 import json, sys
 settings = json.load(open(sys.argv[1]))
 assert settings["model"] == "opus" and settings["hooks"]["Stop"]
@@ -575,7 +586,7 @@ CONFIG_OV="$HOME_OV/.codex/config.toml"
 # itself must not be. Members are selected by the documented `path` selector
 # (#565): the SKILL.md of the member in this repo, never by `name`.
 ov_members="$(
-  python3 - "$CONFIG_OV" "$REPO_ROOT" <<'PY'
+  "$PYTHON" - "$CONFIG_OV" "$REPO_ROOT" <<'PY'
 import sys, tomllib
 from pathlib import Path
 with open(sys.argv[1], "rb") as f:
@@ -607,7 +618,7 @@ for d in "$REPO_ROOT"/skills/*/; do
     [[ -n "${OV_DISABLED[$name]:-}" ]] || fail "nested member $name not disabled in config.toml"
   fi
 done
-python3 - "$CONFIG_OV" <<'PY' || fail "override block is not valid TOML"
+"$PYTHON" - "$CONFIG_OV" <<'PY' || fail "override block is not valid TOML"
 import sys, tomllib
 with open(sys.argv[1], "rb") as f:
     tomllib.load(f)
@@ -709,7 +720,7 @@ HOME="$HOME_LEGACY" "$INSTALL" --target=codex --category=ai-ml >/dev/null
 assert_legacy_mcp_gone "$CONFIG_LEGACY" "install"
 [[ -d "$HOME_LEGACY/.codex/agents-mcp-runtime" ]] &&
   fail "install left the legacy MCP runtime venv behind"
-python3 - "$CONFIG_LEGACY" <<'PY' || fail "legacy cleanup left invalid TOML"
+"$PYTHON" - "$CONFIG_LEGACY" <<'PY' || fail "legacy cleanup left invalid TOML"
 import sys, tomllib
 with open(sys.argv[1], "rb") as f:
     tomllib.load(f)
@@ -746,7 +757,7 @@ AGENTS_DIR="$HOME_AG/.codex/agents"
 for agent in coupling-analyst cohesion-analyst; do
   [[ -f "$AGENTS_DIR/$agent.toml" ]] || fail "missing $agent.toml"
 done
-python3 - "$AGENTS_DIR" <<'PY' || fail "agent TOML is invalid or incomplete"
+"$PYTHON" - "$AGENTS_DIR" <<'PY' || fail "agent TOML is invalid or incomplete"
 import sys, tomllib
 from pathlib import Path
 for name in ("coupling-analyst", "cohesion-analyst"):
@@ -1030,7 +1041,7 @@ grep -q 'claude plugin install merge-guard@fabiandistler-agents' <<<"$mg_output"
   fail "--merge-guard did not point claude at the merge-guard plugin"
 diff -q "$HOME_MG/claude-before.json" "$HOME_MG/.claude/settings.json" >/dev/null ||
   fail "--merge-guard wrote into ~/.claude/settings.json"
-python3 - "$HOME_MG" <<'PY' || fail "merge guard entries missing or foreign settings lost"
+"$PYTHON" - "$HOME_MG" <<'PY' || fail "merge guard entries missing or foreign settings lost"
 import sys, tomllib
 home = sys.argv[1]
 codex = tomllib.load(open(f"{home}/.codex/config.toml", "rb"))
