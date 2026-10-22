@@ -202,8 +202,9 @@ _Extends SKILL.md Part B step 1. Minimize first, then enhance._
 ## Result surface
 
 _How a model result is shown to the person who acts on it. Source: Apple HIG
-"Machine Learning" (rev. 2026-06-08), consumer-app guidance re-cut for
-expert/B2B tools; forge 2026-09-24._
+"Machine Learning", consumer-app guidance re-cut for expert/B2B tools._
+
+As of 2026-09-24, distilled from the HIG revision of 2026-06-08.
 
 - **Show a confidence value only after its correlation with result quality is
   verified across several thresholds and re-checked per model version.

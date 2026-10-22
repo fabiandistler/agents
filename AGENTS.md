@@ -242,6 +242,12 @@ machine consumption prefer `skills.json`.
 - A reference file over 100 lines carries a `## Contents` heading with
   section links within its first 20 lines, so a partial read still shows its
   scope. CI enforces this with `python3 scripts/check_reference_tocs.py`.
+- A SKILL.md or reference states no dated facts (ISO dates, "as of 2026",
+  "verified 2026-09-07"): they turn false without notice. Dated provenance
+  (when a version was verified, a source revision, a re-check deadline) goes
+  into one paragraph per file that starts `As of 20YY-MM[-DD]`. Code spans,
+  code blocks and URLs are exempt. CI enforces this with
+  `python3 scripts/check_dated_claims.py`.
 - A GitHub step an agent executes names the operation (list open issues,
   read an issue with comments, create a PR), then uses this canonical
   sentence, keeping the `gh` command as the fallback for agents without the

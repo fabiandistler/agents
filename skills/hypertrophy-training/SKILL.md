@@ -436,7 +436,9 @@ the outcome by roughly ±50%.
 Principles of Hypertrophy Training* (Renaissance Periodization), pp. 352–357.
 Unlike Parts A and B, it rests on a single expert-practice source rather than
 meta-analytic evidence — treat its numbers as one coherent scheme rather than
-as measured optima. Reviewed 2026-09-01; re-check by 2028-09-01. **Retire or
+as measured optima.
+
+As of 2026-09-01, Part C was reviewed; re-check it by 2028-09-01. **Retire or
 revise Part C** if controlled evidence contradicts the load and RIR caps in
 C.1, or if the return-to-training progression in C.2 is superseded by
 clinical return-to-sport guidance.

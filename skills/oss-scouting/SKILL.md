@@ -304,7 +304,7 @@ Do not offer to submit.
 
 ## Provenance and teardown
 
-Written 2026-09-02. The guardrails come from the 2026 AI-slop debate in open
+As of 2026-09-02, the guardrails come from the 2026 AI-slop debate in open
 source — curl shut its paid bug bounty
 (<https://daniel.haxx.se/blog/2026/01/26/the-end-of-the-curl-bug-bounty/>), Ghostty gated first-time contributors behind vouching
 (<https://github.com/ghostty-org/ghostty/blob/main/CONTRIBUTING.md>), tldraw

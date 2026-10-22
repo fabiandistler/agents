@@ -1,6 +1,6 @@
 # R packages
 
-Verified 2026-09-19 against usethis 3.2.2, devtools 2.5.2, r-lib/actions v2,
+As of 2026-09-19, verified against usethis 3.2.2, devtools 2.5.2, r-lib/actions v2,
 rhub 2.0.1. Function names below are stable across those versions; re-check
 `?usethis::use_version` when a newer major appears.
 

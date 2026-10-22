@@ -1,6 +1,6 @@
 # Python packages
 
-Verified 2026-09-19 against uv 0.12.17, twine 7.0.0,
+As of 2026-09-19, verified against uv 0.12.17, twine 7.0.0,
 pypa/gh-action-pypi-publish v1.14.2, towncrier 26.9.0, git-cliff 2.14.2,
 Keep a Changelog 2.0.0. Re-check `uv version --help` when uv changes major.
 
