@@ -16,14 +16,11 @@ fail() {
 }
 pass() { echo "ok: $*"; }
 
-# The TOML assertions need tomllib (3.11+). Check up front so an old
-# interpreter stops the suite with one clear line instead of failing, or
-# passing, deep inside an assertion.
+# The TOML assertions need tomllib (3.11+).
 PYTHON="${PYTHON:-python3}"
-"$PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null || {
-  echo "test_install.sh: PYTHON=$PYTHON is missing or older than 3.11 (needs tomllib); set PYTHON=python3.11 or newer" >&2
-  exit 2
-}
+# shellcheck source=scripts/require_python.sh
+. "$REPO_ROOT/scripts/require_python.sh"
+require_python test_install.sh "$PYTHON" || exit 2
 
 count_links() {
   # POSIX-portable: -L returns 0 only for symlinks.
