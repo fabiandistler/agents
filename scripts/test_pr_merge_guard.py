@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -13,6 +15,7 @@ import tomllib
 
 SCRIPT = Path(__file__).resolve().parent / "pr_merge_guard.py"
 PLUGIN = Path(__file__).resolve().parent / "opencode" / "pr-merge-guard.js"
+MERGE_GUARD_PLUGIN = Path(__file__).resolve().parent.parent / "plugins" / "merge-guard"
 
 BLOCKED_COMMANDS = [
     "gh pr merge 7 --squash",
@@ -227,3 +230,29 @@ console.log(JSON.stringify([plugin.id, results]));
     plugin_id, results = json.loads(run.stdout)
     assert plugin_id
     assert results == ["block", "block", "allow", "block"]
+
+
+def test_plugin_hooks_json_carries_the_guard_entry() -> None:
+    hooks = json.loads((MERGE_GUARD_PLUGIN / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    command = 'python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pr_merge_guard.py" --harness claude'
+    assert hooks == {"hooks": {"PreToolUse": [guard.claude_hook_entry(command)]}}
+
+
+def test_plugin_hook_command_blocks_from_the_plugin_root() -> None:
+    # Claude copies the plugin into its cache and dereferences this symlink,
+    # so ${CLAUDE_PLUGIN_ROOT} must reach the script through it.
+    assert (MERGE_GUARD_PLUGIN / "scripts" / "pr_merge_guard.py").resolve() == SCRIPT
+    hooks = json.loads((MERGE_GUARD_PLUGIN / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    command = hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    command = command.replace("python3", shlex.quote(sys.executable), 1)
+    env = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(MERGE_GUARD_PLUGIN)}
+    for shell_command, expected in [("gh pr merge 7", guard.EXIT_BLOCK), ("ls", guard.EXIT_ALLOW)]:
+        run = subprocess.run(
+            ["sh", "-c", command],
+            input=json.dumps(claude_event(shell_command)),
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert run.returncode == expected, (shell_command, run.stderr)

@@ -17,6 +17,8 @@ Checked invariants:
     excludes `claude` are left out — the plugins are the Claude distribution.
   - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
     `name:` (matching the filename stem) and `description:`.
+  - A hook plugin (`HOOK_PLUGINS`, today only `merge-guard`) has a parsable
+    `hooks/hooks.json` and ships no skills or agents.
 
 Each skill's category, activation and targets come from `skills.json` via
 `catalogue.py`, not from crawling `skills/`, so a stale manifest makes this
@@ -36,6 +38,9 @@ from catalogue import load_catalogue, routed_categories
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PLUGINS_DIR = REPO_ROOT / "plugins"
 MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
+# Plugins that ship only hooks, outside the one-plugin-per-category scheme, so
+# installing one stays a choice of its own.
+HOOK_PLUGINS = frozenset({"merge-guard"})
 
 
 def check_marketplace(errors: list[str]) -> list[str]:
@@ -121,6 +126,22 @@ def check_agents(plugin: str, errors: list[str]) -> None:
             errors.append(f"{rel}: frontmatter has no 'description'")
 
 
+def check_hook_plugin(plugin: str, errors: list[str]) -> None:
+    """A hook plugin ships hooks/hooks.json and no skills or agents."""
+    root = PLUGINS_DIR / plugin
+    hooks = root / "hooks" / "hooks.json"
+    if not hooks.is_file():
+        errors.append(f"{plugin}: missing plugins/{plugin}/hooks/hooks.json")
+    else:
+        try:
+            json.loads(hooks.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            errors.append(f"plugins/{plugin}/hooks/hooks.json: invalid JSON: {e}")
+    for component in ("skills", "agents"):
+        if (root / component).exists():
+            errors.append(f"{plugin}: hook plugin must not ship {component}/")
+
+
 def main() -> int:
     errors: list[str] = []
     catalogue = load_catalogue()
@@ -134,6 +155,9 @@ def main() -> int:
                 errors.append(f"plugins/{child.name}/ exists but is not in marketplace.json")
 
     for plugin in plugins:
+        if plugin in HOOK_PLUGINS:
+            check_hook_plugin(plugin, errors)
+            continue
         check_agents(plugin, errors)
         bundled = plugin_skills(plugin, errors)
         members = [entry for entry in catalogue if entry.category == plugin]

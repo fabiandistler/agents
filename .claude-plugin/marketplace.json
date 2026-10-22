@@ -36,6 +36,11 @@
       "name": "personal",
       "source": "./plugins/personal",
       "description": "Personal-domain skills: hypertrophy training programming."
+    },
+    {
+      "name": "merge-guard",
+      "source": "./plugins/merge-guard",
+      "description": "PR merge guard: a model-free PreToolUse hook that blocks the agent from merging pull requests or enabling auto-merge, so only the human merges. Needs python3 on PATH."
     }
   ]
 }
