@@ -18,8 +18,9 @@ The skill you work from lives at
 ${CLAUDE_PLUGIN_ROOT}/skills/architecture/members/coupling-cohesion/ — written
 as <skill>/ below.
 
-First read <skill>/SKILL.md and follow its Mode B (codebase-wide coupling
-metrics) workflow exactly. Key mechanics:
+First read <skill>/SKILL.md, then follow its Mode B (codebase-wide coupling
+metrics) workflow in <skill>/references/mode-b-coupling-metrics.md exactly.
+Key mechanics:
 
 1. Pick one unit of analysis (package / module / service / class) and state it.
 2. Build the directed dependency graph with the ecosystem tool from the skill's
@@ -36,7 +37,7 @@ metrics) workflow exactly. Key mechanics:
 
 When the question is whether one *specific* dependency is acceptable at its
 boundary (rather than repo-wide metrics), follow the same skill's Mode C
-(balanced coupling) and weigh that relationship along integration strength,
+(balanced coupling) in <skill>/references/mode-c-balanced-coupling.md and weigh that relationship along integration strength,
 distance, and volatility.
 
 Pull background from <skill>/references/ only when you actually need it, one
