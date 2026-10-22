@@ -44,8 +44,8 @@ def skill_names() -> list[str]:
 
 def changed_skills(since_days: int, known: set[str]) -> list[str]:
     """Skills touched in the window, most churned (added + deleted lines) first."""
-    out = subprocess.run(
-        [
+    out = subprocess.run(  # noqa: S603 -- validated Git argv; no shell.
+        [  # noqa: S607 -- Git intentionally resolves from PATH.
             "git",
             "log",
             f"--since={since_days} days ago",
@@ -95,7 +95,7 @@ def main() -> int:
         # A shallow clone silently truncates `git log --since`; warn only when
         # the oldest reachable commit is younger than the window.
         stamps = subprocess.run(
-            ["git", "log", "--format=%ct"],
+            ["git", "log", "--format=%ct"],  # noqa: S607 -- Git intentionally resolves from PATH.
             capture_output=True,
             text=True,
             check=True,

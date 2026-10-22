@@ -10,7 +10,7 @@ EXAMPLE = Path(__file__).with_name("coupling_metrics.example.json")
 
 
 def run(*args):
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 -- test invokes its own script with argv, no shell.
         [sys.executable, str(SCRIPT), *args],
         capture_output=True,
         text=True,

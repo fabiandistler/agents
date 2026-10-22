@@ -46,8 +46,8 @@ BULLET = "- Something (#1).\n"
 
 
 def git(repo, *args):
-    subprocess.run(
-        ["git", "-C", str(repo), *args],
+    subprocess.run(  # noqa: S603 -- fixture Git commands use argv; no shell.
+        ["git", "-C", str(repo), *args],  # noqa: S607 -- Git intentionally resolves from PATH.
         check=True,
         capture_output=True,
         text=True,
@@ -71,7 +71,7 @@ def make_repo(base, files, tag=None):
 
 
 def run(repo, *args):
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 -- test invokes release_state.py with argv, no shell.
         [sys.executable, str(SCRIPT), "--repo", str(repo), *args],
         capture_output=True,
         text=True,

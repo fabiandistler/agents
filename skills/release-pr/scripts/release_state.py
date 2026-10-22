@@ -77,8 +77,16 @@ def normalize_python(version: str | None) -> str:
 def tag_exact(repo: Path, candidate: str) -> bool:
     if not candidate:
         return False
-    out = subprocess.run(
-        ["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"refs/tags/{candidate}"],
+    out = subprocess.run(  # noqa: S603 -- read-only Git argv; no shell.
+        [  # noqa: S607 -- Git intentionally resolves from PATH.
+            "git",
+            "-C",
+            str(repo),
+            "rev-parse",
+            "-q",
+            "--verify",
+            f"refs/tags/{candidate}",
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -93,8 +101,8 @@ def usage_error(msg: str) -> None:
 
 def git(repo: Path, *args: str) -> str:
     try:
-        out = subprocess.run(
-            ["git", "-C", str(repo), *args],
+        out = subprocess.run(  # noqa: S603 -- internal read-only Git argv; no shell.
+            ["git", "-C", str(repo), *args],  # noqa: S607 -- Git intentionally resolves from PATH.
             capture_output=True,
             text=True,
             check=True,
@@ -322,8 +330,19 @@ def removed_exports(repo: Path, tag: str | None) -> list[str]:
 def version_mentions(repo: Path, version: str | None, skip: set[str]) -> tuple[list[dict], bool]:
     if not version:
         return [], False
-    out = subprocess.run(
-        ["git", "-C", str(repo), "grep", "-n", "-F", "-e", version, "--", "."],
+    out = subprocess.run(  # noqa: S603 -- version is a `-e` argument; path is after `--`.
+        [  # noqa: S607 -- Git intentionally resolves from PATH.
+            "git",
+            "-C",
+            str(repo),
+            "grep",
+            "-n",
+            "-F",
+            "-e",
+            version,
+            "--",
+            ".",
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -345,8 +364,15 @@ def version_mentions(repo: Path, version: str | None, skip: set[str]) -> tuple[l
 def forge(repo: Path, remote: str) -> str:
     """Classify the remote's host; never echo the URL (it may carry a token)."""
     url = (
-        subprocess.run(
-            ["git", "-C", str(repo), "remote", "get-url", remote],
+        subprocess.run(  # noqa: S603 -- read-only Git argv; no shell.
+            [  # noqa: S607 -- Git intentionally resolves from PATH.
+                "git",
+                "-C",
+                str(repo),
+                "remote",
+                "get-url",
+                remote,
+            ],
             capture_output=True,
             text=True,
             check=False,

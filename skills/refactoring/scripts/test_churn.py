@@ -14,7 +14,7 @@ def run(*args, env=None):
     if env is not None:
         base = dict(os.environ)
         base.update(env)
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 -- test invokes churn.py with argv, no shell.
         [sys.executable, str(CHURN), *args],
         capture_output=True,
         text=True,
@@ -24,8 +24,13 @@ def run(*args, env=None):
 
 
 def git(repo, *args):
-    result = subprocess.run(
-        ["git", "-C", str(repo), *args],
+    result = subprocess.run(  # noqa: S603 -- fixture Git commands use argv; no shell.
+        [  # noqa: S607 -- PATH lookup is intentional.
+            "git",
+            "-C",
+            str(repo),
+            *args,
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -127,8 +132,17 @@ class TestShallowWorktree(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             src = make_repo(tmp)
             shallow = Path(tmp) / "shallow"
-            clone = subprocess.run(
-                ["git", "clone", "-q", "--depth", "1", "--no-local", str(src), str(shallow)],
+            clone = subprocess.run(  # noqa: S603 -- local fixture clone uses argv; no shell.
+                [  # noqa: S607 -- PATH lookup is intentional.
+                    "git",
+                    "clone",
+                    "-q",
+                    "--depth",
+                    "1",
+                    "--no-local",
+                    str(src),
+                    str(shallow),
+                ],
                 capture_output=True,
                 text=True,
                 check=False,
