@@ -210,7 +210,10 @@ the secret scanner. The shellcheck and shfmt hooks install under Python 3.12,
 and the secret scanner builds with the Go on `PATH` (prek downloads a
 toolchain only when none is found). Run `prek install` once and they fire on
 every commit; `check_all.sh` runs them too, so a skipped hook fails the build
-rather than landing on `main`.
+rather than landing on `main`. The same install adds a commit-msg hook that
+rejects subjects outside Conventional Commits and a pre-push hook that runs
+`check_all.sh` without its prek, mermaid and install-smoke checks (export
+`PYTHON=` as above, or the push stops with exit 4).
 
 `build_manifest.py --check` runs first for a reason: the catalogue and plugin
 checks read `skills.json`, so a stale manifest makes them answer from stale

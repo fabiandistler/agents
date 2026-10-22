@@ -223,6 +223,10 @@ machine consumption prefer `skills.json`.
   `python3 scripts/build_manifest.py`, `python3 scripts/build_routers.py`,
   `python3 scripts/build_project_claude.py`. CI's `--check` gates catch
   whatever slips through.
+- `prek install` also installs a commit-msg hook (`scripts/check_commit_msg.py`,
+  Conventional Commits subjects) and a pre-push hook that runs
+  `scripts/check_all.sh --skip prek,mermaid,install-smoke`; set `PYTHON=` to a
+  3.11+ interpreter, or the push stops with exit 4.
 - The catalogue and plugin checks below read `skills.json`, not the
   `SKILL.md` files, so a stale manifest makes them answer from stale
   metadata — regenerate it before running them locally, and that is why
