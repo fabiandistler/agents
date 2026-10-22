@@ -17,7 +17,7 @@ Checked invariants:
     excludes `claude` are left out — the plugins are the Claude distribution.
   - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
     `name:` (matching the filename stem) and `description:`.
-  - A hook plugin (`HOOK_PLUGINS`, today only `merge-guard`) has a parsable
+  - A hook plugin (`HOOK_PLUGINS`: `merge-guard`, `secret-guard`) has a parsable
     `hooks/hooks.json` and ships no skills or agents.
 
 Each skill's category, activation and targets come from `skills.json` via
@@ -40,7 +40,7 @@ PLUGINS_DIR = REPO_ROOT / "plugins"
 MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 # Plugins that ship only hooks, outside the one-plugin-per-category scheme, so
 # installing one stays a choice of its own.
-HOOK_PLUGINS = frozenset({"merge-guard"})
+HOOK_PLUGINS = frozenset({"merge-guard", "secret-guard"})
 
 
 def check_marketplace(errors: list[str]) -> list[str]:

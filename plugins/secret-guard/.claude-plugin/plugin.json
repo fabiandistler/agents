@@ -1,0 +1,7 @@
+{
+  "name": "secret-guard",
+  "description": "Secret read guard: a model-free PreToolUse hook that blocks the agent from reading credential files (.env, SSH keys, cloud and agent auth files) or dumping the environment, so secret values stay out of its context. Needs python3 on PATH.",
+  "author": {
+    "name": "Fabian Distler"
+  }
+}

@@ -1,0 +1,1 @@
+../../../scripts/secret_read_guard.py

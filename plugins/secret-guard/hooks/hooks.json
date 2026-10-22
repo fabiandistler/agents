@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|Read|Edit|Grep|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/secret_read_guard.py\" --harness claude"
+          }
+        ]
+      }
+    ]
+  }
+}
