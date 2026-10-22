@@ -24,8 +24,10 @@ Under `Rscript` (non-interactive) `use_version()` edits `Version:` in
 a top heading `# pkg (development version)` is **replaced** by `# pkg X.Y.Z`;
 a concrete top heading gets a new `# pkg X.Y.Z` heading **inserted above**
 it. It does not prompt and does not commit outside an interactive session,
-so the commit is yours. Called with no argument it prompts, which fails under
-`Rscript` — always spell the component out.
+so the commit is yours. It does abort when tracked files have uncommitted
+changes, so commit the branch's work first. Called with no argument under
+`Rscript` it returns `FALSE` and changes nothing — always spell the component
+out.
 
 For an explicit number the tool is `desc`, and the heading is added by hand
 in the same shape:
@@ -83,17 +85,21 @@ form runs once before the push.
 
 ## Tag and GitHub release
 
-On another forge, use `forges.md`. `use_github_release()` works only on
-GitHub. On GitHub, either form works. The `tag` procedure in `SKILL.md`
-uses the `gh` form, and the usethis form does the same from inside R:
+The `tag` procedure in `SKILL.md` uses the `gh` form on GitHub; on another
+forge, use `forges.md`. `usethis::use_github_release()` is no substitute for
+it: it pushes the current branch without asking, skips the CI and
+`release_state.py` gates, and always tags `v{Version}`, whatever
+`tag_prefix` the existing tags use.
+
+Its one place is after a CRAN acceptance (see [CRAN](#cran-only-when-the-package-is-on-cran-or-the-user-says-cran)):
+it tags the SHA recorded in `CRAN-SUBMISSION` instead of `HEAD`, takes the
+release body from the matching `NEWS.md` section, and deletes the file. Run
+it there only when `tag_prefix` is `v`, after the `tag` procedure's steps 1–2
+passed, and after the user confirmed both the push and the release:
 
 ```bash
 Rscript -e 'usethis::use_github_release(publish = TRUE)'
 ```
-
-`use_github_release()` tags `v{Version}` at `HEAD` (or at the SHA recorded
-in a `CRAN-SUBMISSION` file if one exists), and takes the release body from
-the matching `NEWS.md` section. Both forms produce the same release.
 
 **r-universe** rebuilds from the default branch on its own within about an
 hour of a push; a GitHub release is not required. Only a `packages.json`
@@ -128,6 +134,7 @@ package not yet on CRAN. `devtools::release()` is deprecated in favour of it
 
 Submission itself is `devtools::submit_cran()`, run by the user: it uploads
 the tarball with `cran-comments.md` and writes `CRAN-SUBMISSION`. After CRAN
-accepts, `use_github_release()` tags the submitted SHA. The tidyverse then
+accepts, `use_github_release()` tags the submitted SHA, under the conditions
+in [Tag and GitHub release](#tag-and-github-release). The tidyverse then
 runs `use_dev_version()`; under this skill's version model that step is
 skipped — the next PR bumps.
