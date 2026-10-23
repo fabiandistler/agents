@@ -18,8 +18,8 @@ on:
         required: true
         type: string
       dry_run:
-        # Every run of this slice is a dry run; the flag is the switch the
-        # write path will read once it exists.
+        # A manual run plans only unless this is set to false; then it writes
+        # exactly what a pull request event would.
         description: Print the planned actions instead of applying them
         required: false
         type: boolean
