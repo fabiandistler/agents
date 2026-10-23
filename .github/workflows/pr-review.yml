@@ -1,0 +1,177 @@
+# pr-review - the three-stage pull request review pipeline: assess (model-free),
+# review (model key, read-only token) and publish (write token, no model key).
+#
+# The workflow runs from the base commit on pull_request_target and never
+# checks out or executes the pull request head: metadata, diff and base file
+# contents arrive through the REST API. Every job holds only the credential its
+# stage needs, and publish consumes the earlier stages as artifacts. This slice
+# is a dry run: publish prints the plan it would apply and changes nothing.
+name: pr-review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: string
+      dry_run:
+        # Every run of this slice is a dry run; the flag is the switch the
+        # write path will read once it exists.
+        description: Print the planned actions instead of applying them
+        required: false
+        type: boolean
+        default: true
+
+# No scope by default; each job below opts in to exactly what it needs.
+permissions: {}
+
+# A new push supersedes the run still reviewing the previous head.
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: true
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    # Read-only: the policy needs the pull request, its comments, its check
+    # runs and the base file contents. Nothing here may write.
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      checks: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Fetch the pull request context
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/pr_github.py \
+            --pr "${{ github.event.pull_request.number || inputs.pr }}" \
+            --repo "${{ github.repository }}" \
+            --output context.json
+
+      - name: Upload the context
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-context
+          path: context.json
+          if-no-files-found: error
+
+      - name: Classify the risk
+        run: python3 scripts/pr_risk.py --context context.json --output assessment.json
+
+      - name: Upload the assessment
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-assessment
+          path: assessment.json
+          if-no-files-found: error
+
+  review:
+    needs: assess
+    # Drafts are assessed but not reviewed until they are marked ready. A fork
+    # pull request is assessed too, but its diff never reaches the model: the
+    # job holds a secret and the diff is untrusted input. A manual run reviews
+    # whatever pull request it is pointed at.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    # The base checkout is the only thing the review reads; the model response
+    # leaves the job as an artifact, never as a GitHub write.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Download the context
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-context
+
+      - name: Review the diff
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          PR_REVIEW_MODEL: ${{ vars.PR_REVIEW_MODEL }}
+        run: python3 scripts/pr_review.py --context context.json > review.json
+
+      - name: Upload the review
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-review
+          path: review.json
+          if-no-files-found: error
+
+  publish:
+    needs: [assess, review]
+    # A skipped review (draft, fork) still publishes the assessment, and a
+    # failed review still publishes `review:unavailable`. Only a failed
+    # assessment leaves nothing to publish.
+    if: >-
+      always() && needs.assess.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Download the context
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-context
+
+      - name: Download the assessment
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-assessment
+
+      - name: Download the review
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-review
+        # The review job is skipped for drafts and forks, so its artifact is
+        # legitimately absent.
+        continue-on-error: true
+
+      - name: Reconstruct the review when the review job was skipped
+        # Without the model key this yields `skipped` for a draft or fork and
+        # `unavailable` otherwise, so a missing review can never look like a pass.
+        run: |
+          if [ -s review.json ]; then
+            exit 0
+          fi
+          python3 scripts/pr_review.py --context context.json > review.json
+
+      - name: Print the planned actions
+        run: |
+          python3 scripts/pr_publish.py \
+            --context context.json \
+            --assessment assessment.json \
+            --review review.json > plan.json
+          cat plan.json
+          {
+            echo '### PR review plan'
+            echo
+            echo '```json'
+            cat plan.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
