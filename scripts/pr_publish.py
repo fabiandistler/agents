@@ -17,6 +17,7 @@ import re
 import sys
 from pathlib import Path
 
+import pr_apply
 import pr_github
 import pr_risk
 
@@ -40,9 +41,11 @@ VERDICTS = ("pass", "concerns", "block")
 SEVERITIES = ("info", "warning", "blocker")
 
 EXIT_OK = 0
+EXIT_ACTION_FAILED = 1
 EXIT_USAGE = 2
 EXIT_BAD_INPUT = 3
 EXIT_LIVE_FAILED = 4
+EXIT_OUTSIDE_ACTIONS = 5
 
 
 class ArtifactError(ValueError):
@@ -62,6 +65,9 @@ def _require_mapping(value: object, name: str) -> dict:
 
 def _validate_context(context: object) -> dict:
     context = _require_mapping(context, "context")
+    repo = context.get("repo")
+    if not isinstance(repo, str) or not pr_github.REPO_PATTERN.fullmatch(repo):
+        raise ArtifactError("context is missing repo as OWNER/REPO")
     number = context.get("number")
     if isinstance(number, bool) or not isinstance(number, int):
         raise ArtifactError("context is missing an integer number")
@@ -343,14 +349,40 @@ def _comment_action(context: dict, risk: str, policy: dict, review: dict) -> dic
 # --- Plan --------------------------------------------------------------------
 
 
-def _plan(context: dict, status: str, abort_reason: str | None, actions: list[dict]) -> dict:
+def _plan(
+    context: dict,
+    status: str,
+    abort_reason: str | None,
+    actions: list[dict],
+    decision: dict,
+) -> dict:
     return {
         "schema_version": SCHEMA_VERSION,
+        "repo": context["repo"],
         "number": context["number"],
         "head_sha": context["head_sha"],
         "status": status,
         "abort_reason": abort_reason,
+        "decision": decision,
         "actions": actions,
+    }
+
+
+def _decision(risk: str, review: dict, auto_merge: str) -> dict:
+    return {
+        "risk": risk,
+        "review_status": review["status"],
+        "verdict": review.get("verdict") if review["status"] == "ok" else None,
+        "auto_merge": auto_merge,
+    }
+
+
+def _aborted_decision(review: dict) -> dict:
+    return {
+        "risk": None,
+        "review_status": review["status"],
+        "verdict": None,
+        "auto_merge": "off",
     }
 
 
@@ -376,7 +408,13 @@ def plan_publish(
     review = _validate_review(review)
 
     if _is_stale(assessment, review, context["head_sha"]):
-        return _plan(context, "aborted", "head_sha_changed", [])
+        return _plan(
+            context,
+            "aborted",
+            "head_sha_changed",
+            [],
+            _aborted_decision(review),
+        )
 
     risk, policy = _effective_risk(context, review)
     enable_auto_merge = not _auto_merge_blocked(
@@ -400,18 +438,86 @@ def plan_publish(
                 "delete_branch": AUTO_MERGE_DELETE_BRANCH,
             }
         )
+        auto_merge_state = "enabled"
     elif disable_auto_merge:
         actions.append({"kind": "disable_auto_merge"})
-    return _plan(context, "planned", None, actions)
+        auto_merge_state = "disabled"
+    else:
+        auto_merge_state = "off"
+    return _plan(
+        context,
+        "planned",
+        None,
+        actions,
+        _decision(risk, review, auto_merge_state),
+    )
+
+
+def _aborted_write_plan(plan: dict, fresh: dict) -> dict:
+    head_sha = fresh.get("head_sha")
+    return {
+        **plan,
+        "head_sha": head_sha if isinstance(head_sha, str) and head_sha else plan["head_sha"],
+        "status": "aborted",
+        "abort_reason": "head_sha_changed",
+        "decision": {**plan["decision"], "risk": None, "verdict": None, "auto_merge": "off"},
+        "actions": [],
+    }
+
+
+def _fetch_context(repo: str, number: int, token: str | None, client=None) -> dict:
+    if client is None:
+        return pr_github.fetch_context(repo, number, token=token)
+    return pr_github.fetch_context(repo, number, token=token, client=client)
+
+
+def publish_live(
+    repo: str,
+    number: int,
+    assessment: dict,
+    review: dict,
+    write: bool = False,
+    client=None,
+):
+    """Fetch, plan and optionally apply one pull request.
+
+    Without ``write`` the return value is the plan. With ``write`` it is the
+    plan when the plan aborts, otherwise the results wrapper. ``client`` is a
+    ``GitHubClient`` or a fake implementing ``get/post/patch/delete``; both
+    fetches and the writes use it, so tests never touch the network.
+    """
+    assessment = _validate_assessment(assessment)
+    review = _validate_review(review)
+    token = os.environ.get("GITHUB_TOKEN") or None
+    if write and client is None and token is None:
+        raise pr_github.MissingTokenError("GITHUB_TOKEN is not set")
+
+    context = _fetch_context(repo, number, token, client)
+    plan = plan_publish(context, assessment, review, auto_merge=os.environ.get(AUTO_MERGE_ENV))
+    if not write or plan["status"] == "aborted":
+        return plan
+
+    fresh = _fetch_context(repo, number, token, client)
+    if fresh.get("head_sha") != plan["head_sha"]:
+        return _aborted_write_plan(plan, fresh)
+
+    writer = client if client is not None else pr_github.GitHubClient(token)
+    results = pr_apply.apply_plan(plan, writer)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "plan": plan,
+        "results": results,
+        "ok": all(result["ok"] for result in results),
+    }
 
 
 # --- CLI ---------------------------------------------------------------------
 
 USAGE = """usage: pr_publish.py --context FILE --assessment FILE --review FILE
-       pr_publish.py --live --repo OWNER/REPO --pr N --assessment FILE --review FILE
+       pr_publish.py --live --repo OWNER/REPO --pr N --assessment FILE --review FILE [--write]
 
 Plan the labels, the sticky comment, the reviewer and the auto-merge decision
-for one pull request. Prints the plan JSON on stdout; writes nothing.
+for one pull request. Prints JSON on stdout; --write applies the plan.
 
   --context FILE      fresh context JSON from pr_github.py
   --assessment FILE   risk decision JSON from pr_risk.py
@@ -419,6 +525,7 @@ for one pull request. Prints the plan JSON on stdout; writes nothing.
   --live              re-fetch the context from GitHub; needs GITHUB_TOKEN
   --repo O/R          repository as OWNER/REPO (with --live)
   --pr N              pull request number (with --live)
+  --write             apply the plan; needs --live and GITHUB_ACTIONS=true
   -h, --help          show this message
 
 env: PR_AUTO_MERGE=true enables auto-merge planning; any other value keeps it off.
@@ -426,9 +533,10 @@ env: PR_AUTO_MERGE=true enables auto-merge planning; any other value keeps it of
 examples:
   python3 scripts/pr_publish.py --context c.json --assessment a.json --review r.json
   python3 scripts/pr_publish.py --live --repo fabiandistler/agents --pr 42 \\
-      --assessment a.json --review r.json
+      --assessment a.json --review r.json --write
 
-exit: 0 plan produced | 2 usage | 3 input or artifact malformed | 4 live fetch failed
+exit: 0 plan or write result | 1 a write action failed | 2 usage |
+      3 bad input/artifact | 4 live fetch failed | 5 --write outside GitHub Actions
 """
 
 VALUE_FLAGS = ("--context", "--pr", "--repo", "--assessment", "--review")
@@ -446,6 +554,7 @@ def _parse_arguments(argv: list[str]) -> dict:
         "repo": None,
         "assessment": None,
         "review": None,
+        "write": False,
     }
     index = 0
     while index < len(argv):
@@ -457,6 +566,12 @@ def _parse_arguments(argv: list[str]) -> dict:
             if separator:
                 raise UsageError("--live takes no value")
             options["live"] = True
+            index += 1
+            continue
+        if name == "--write":
+            if separator:
+                raise UsageError("--write takes no value")
+            options["write"] = True
             index += 1
             continue
         if name not in VALUE_FLAGS:
@@ -483,6 +598,8 @@ def _parse_arguments(argv: list[str]) -> dict:
         raise UsageError("--context and --live are mutually exclusive")
     if not has_context and not has_live:
         raise UsageError("one of --context or --live is required")
+    if options["write"] is True and not has_live:
+        raise UsageError("--write requires --live")
     if not has_live:
         if options["pr"] is not None or options["repo"] is not None:
             raise UsageError("--pr and --repo are only valid with --live")
@@ -516,7 +633,7 @@ def _read_json(path: str, flag: str) -> dict:
     return payload
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, client=None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
         options = _parse_arguments(arguments)
@@ -528,32 +645,44 @@ def main(argv: list[str] | None = None) -> int:
         print(USAGE, end="")
         return EXIT_OK
 
+    if options["write"] is True and os.environ.get("GITHUB_ACTIONS") != "true":
+        print(
+            "pr_publish.py: --write is only available inside GitHub Actions",
+            file=sys.stderr,
+        )
+        return EXIT_OUTSIDE_ACTIONS
+
     try:
         assessment = _read_json(str(options["assessment"]), "--assessment")
         review = _read_json(str(options["review"]), "--review")
         if options["live"] is True:
             try:
-                context = pr_github.fetch_context(
+                payload = publish_live(
                     str(options["repo"]),
                     int(options["pr"]),
-                    token=os.environ.get("GITHUB_TOKEN") or None,
+                    assessment,
+                    review,
+                    write=options["write"] is True,
+                    client=client,
                 )
             except pr_github.FetchError as error:
                 print(f"pr_publish.py: live fetch failed: {error}", file=sys.stderr)
                 return EXIT_LIVE_FAILED
         else:
             context = _read_json(str(options["context"]), "--context")
-        plan = plan_publish(
-            context,
-            assessment,
-            review,
-            auto_merge=os.environ.get(AUTO_MERGE_ENV),
-        )
-    except ArtifactError as error:
+            payload = plan_publish(
+                context,
+                assessment,
+                review,
+                auto_merge=os.environ.get(AUTO_MERGE_ENV),
+            )
+    except (ArtifactError, pr_apply.PlanError) as error:
         print(f"pr_publish.py: {error}", file=sys.stderr)
         return EXIT_BAD_INPUT
 
-    sys.stdout.write(json.dumps(plan, indent=2) + "\n")
+    sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+    if options["write"] is True and payload.get("ok") is False:
+        return EXIT_ACTION_FAILED
     return EXIT_OK
 
 
