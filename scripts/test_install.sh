@@ -147,7 +147,7 @@ done
 
 run_check_tests() {
   local check_home report check_output check_status expected_row clean_home stale_home \
-    agent_home foreign_home duplicate_home config_file instruction_file \
+    agent_home guard_home untrusted_home foreign_home duplicate_home config_file instruction_file \
     output_file begin_marker end_marker all_home all_report expected_all_row
   capture_check() {
     local captured_home="$1"
@@ -215,6 +215,157 @@ PY
   expected_row=$'codex\tcodex-agent\t'"$agent_home/.codex/agents/coupling-analyst.toml"$'\tstale'
   grep -Fq "$expected_row" "$output_file" || fail "--check missed moved-root Codex agent TOML"
   pass "--check detects moved-root paths in Codex agent TOMLs"
+
+  guard_home="$(mktemp -d)"
+  HOME="$guard_home" "$INSTALL" --target=codex --category=communication --merge-guard >/dev/null
+  config_file="$guard_home/.codex/config.toml"
+  "$PYTHON" - "$config_file" "$REPO_ROOT" <<'PY'
+from pathlib import Path
+import hashlib
+import json
+import sys
+import tomllib
+
+path = Path(sys.argv[1])
+path.write_text(path.read_text(encoding="utf-8").replace(sys.argv[2], "/old/checkout/agents"))
+config_text = path.read_text(encoding="utf-8")
+config = tomllib.loads(config_text)
+group = config["hooks"]["PreToolUse"][0]
+handler = group["hooks"][0]
+normalized = {
+    "type": "command",
+    "command": handler["command"],
+    "timeout": handler.get("timeout", 600),
+    "async": handler.get("async", False),
+}
+for field in ("commandWindows", "statusMessage", "additionalContextLimit"):
+    if handler.get(field) is not None:
+        normalized[field] = handler[field]
+identity = {
+    "event_name": "pre_tool_use",
+    "matcher": group.get("matcher"),
+    "hooks": [normalized],
+}
+trusted_hash = "sha256:" + hashlib.sha256(
+    json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+).hexdigest()
+key = f"{path.resolve()}:pre_tool_use:0:0"
+path.write_text(config_text + f'\n[hooks.state]\n{json.dumps(key)} = {{ trusted_hash = "{trusted_hash}" }}\n')
+PY
+  output_file="$guard_home/guards.tsv"
+  capture_check "$guard_home" --target=codex --category=communication --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] || fail "moved-root merge guard did not produce drift exit 3"
+  expected_row=$'codex\tmerge-guard\t'"$config_file"$'\tstale'
+  grep -Fq "$expected_row" "$output_file" || fail "--check missed moved-root Codex merge guard"
+  ! grep -Fq $'codex\tmerge-guard\t'"$config_file"$'\tuntrusted-hook' "$output_file" ||
+    fail "the saved trust hash for the old-root hook was not recognized"
+  pass "--check detects moved-root Codex merge hooks"
+
+  untrusted_home="$(mktemp -d)"
+  HOME="$untrusted_home" "$INSTALL" --target=codex --category=communication \
+    --merge-guard --secret-guard >/dev/null
+  config_file="$untrusted_home/.codex/config.toml"
+  output_file="$untrusted_home/untrusted-hooks.tsv"
+  "$PYTHON" - "$config_file" <<'PY'
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+config_text = config_path.read_text(encoding="utf-8")
+config = tomllib.loads(config_text)
+guard_files = {"merge": "pr_merge_guard.py", "secret": "secret_read_guard.py"}
+state_entries = []
+for group_index, group in enumerate(config["hooks"]["PreToolUse"]):
+    for handler_index, handler in enumerate(group["hooks"]):
+        for guard, filename in guard_files.items():
+            if filename in handler["command"]:
+                key = f"{config_path.absolute()}:pre_tool_use:{group_index}:{handler_index}"
+                state_entries.append((guard, key, False))
+assert {guard for guard, _, _ in state_entries} == set(guard_files)
+state_entries.extend(
+    (None, f"/tmp/unrelated-{index}:pre_tool_use:0:0", False)
+    for index in range(3)
+)
+state_entries.append((None, "/tmp/unrelated-enabled:pre_tool_use:0:0", True))
+lines = [config_text, "", "[hooks.state]"]
+for _, key, has_enabled in state_entries:
+    lines.extend(["", f"[hooks.state.{json.dumps(key)}]", 'trusted_hash = "sha256:fixture-mismatch"'])
+    if has_enabled:
+        lines.append("enabled = true")
+config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+  capture_check "$untrusted_home" --target=codex --category=communication \
+    --merge-guard --secret-guard --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] || fail "untrusted Codex hook did not produce drift exit 3"
+  [[ "$check_output" == *'untrusted-hook=2)'* ]] || fail "summary did not count both untrusted Codex hooks"
+  expected_row=$'codex\tmerge-guard\t'"$config_file"$'\tuntrusted-hook'
+  grep -Fqx "$expected_row" "$output_file" || fail "--check missed untrusted Codex merge hook"
+  expected_row=$'codex\tsecret-guard\t'"$config_file"$'\tuntrusted-hook'
+  grep -Fqx "$expected_row" "$output_file" || fail "--check missed untrusted Codex secret hook"
+  [[ "$(grep -Fc $'\tuntrusted-hook' "$output_file")" -eq 2 ]] ||
+    fail "--check did not report exactly two untrusted Codex hooks"
+  pass "--check reports merge and secret hooks Codex will skip until trusted"
+
+  "$PYTHON" - "$config_file" <<'PY'
+import hashlib
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+config_text = config_path.read_text(encoding="utf-8")
+config = tomllib.loads(config_text)
+for group_index, group in enumerate(config["hooks"]["PreToolUse"]):
+    for handler_index, handler in enumerate(group["hooks"]):
+        if "secret_read_guard.py" not in handler["command"]:
+            continue
+        normalized = {
+            "type": "command",
+            "command": handler["command"],
+            "timeout": handler.get("timeout", 600),
+            "async": handler.get("async", False),
+        }
+        if handler.get("statusMessage") is not None:
+            normalized["statusMessage"] = handler["statusMessage"]
+        identity = {
+            "event_name": "pre_tool_use",
+            "matcher": group.get("matcher"),
+            "hooks": [normalized],
+        }
+        trusted_hash = "sha256:" + hashlib.sha256(
+            json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        state_key = f"{config_path.absolute()}:pre_tool_use:{group_index}:{handler_index}"
+        state_header = f"[hooks.state.{json.dumps(state_key)}]"
+        lines = config_text.splitlines()
+        in_secret_state = False
+        replaced = False
+        for line_index, line in enumerate(lines):
+            if line.startswith("[hooks.state.") or line == "[hooks.state]":
+                in_secret_state = line == state_header
+            elif line.startswith("["):
+                in_secret_state = False
+            elif in_secret_state and line.strip().startswith("trusted_hash ="):
+                lines[line_index] = f"trusted_hash = {json.dumps(trusted_hash)}"
+                replaced = True
+                break
+        assert replaced
+        config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        raise SystemExit(0)
+raise AssertionError("secret guard entry was not found")
+PY
+  capture_check "$untrusted_home" --target=codex --category=communication \
+    --merge-guard --secret-guard --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] ||
+    fail "one untrusted Codex hook expected exit 3, got $check_status: $check_output"
+  expected_row=$'codex\tmerge-guard\t'"$config_file"$'\tuntrusted-hook'
+  grep -Fqx "$expected_row" "$output_file" || fail "--check missed the lone untrusted Codex hook"
+  [[ "$(grep -Fc $'\tuntrusted-hook' "$output_file")" -eq 1 ]] ||
+    fail "--check did not report exactly one untrusted Codex hook"
+  pass "--check handles partial Codex guard trust state"
 
   foreign_home="$(mktemp -d)"
   mkdir -p "$foreign_home/.agents/skills/communication-analysis"

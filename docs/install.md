@@ -36,8 +36,12 @@ TSV report (`target`, `kind`, `path`, `state` columns):
 The report states are `missing` (expected managed state is absent), `stale`
 (managed content no longer matches this checkout), `foreign` (an unmanaged
 file or unbalanced marker blocks the managed path), `duplicate` (more than one
-managed block or link occupies the selected state).
-Passing a guard flag makes that guard part of the expected state. Pass `--instructions`, `--merge-guard`, and
+managed block or link occupies the selected state), and `untrusted-hook` (Codex
+will skip a guard that is disabled or whose saved trust hash does not match its
+current hook).
+Passing a guard flag makes that guard part of the expected state; existing
+Codex guard blocks are checked for stale checkout paths and hook trust even
+without a guard flag. Pass `--instructions`, `--merge-guard`, and
 `--secret-guard` to include those optional components in the expected state.
 
 ## What gets linked where
