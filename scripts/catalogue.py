@@ -12,7 +12,9 @@ as its first gate for that reason — and a missing manifest raises rather than
 reporting an empty catalogue.
 
 `build_manifest.py` stays the sole writer of `skills.json`; this module is the
-sole parser of SKILL.md frontmatter. Stdlib-only.
+sole parser of SKILL.md frontmatter and owns the selection rules (routed
+members, top-level entries, per-target and per-environment subsets), while
+callers decide where selected entries are placed. Stdlib-only.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ import re
 import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
@@ -87,6 +89,11 @@ class SkillEntry:
     def is_router(self) -> bool:
         """Whether this skill routes to its category's nested members."""
         return self.activation == "router"
+
+    @property
+    def is_command(self) -> bool:
+        """Whether this skill is user-invoked rather than model-triggered."""
+        return self.activation == "command"
 
     def in_environment(self, environment: str) -> bool:
         """Whether the skill is available in `environment` (all if undeclared)."""
@@ -159,6 +166,7 @@ def entry_from_skill_file(skill_md: Path, repo_root: Path = REPO_ROOT) -> SkillE
         )
 
     activation = _validated_activation(fields.get("activation", "auto"), skill_md)
+    _validate_router_identity(name, category, activation, skill_md)
 
     when_to_use = fields.get("when_to_use")
     if isinstance(when_to_use, str) and when_to_use.strip() and activation != "router":
@@ -209,27 +217,50 @@ def entry_from_skill_file(skill_md: Path, repo_root: Path = REPO_ROOT) -> SkillE
 
 
 def load_catalogue(manifest_path: Path = MANIFEST_PATH) -> list[SkillEntry]:
-    """Every catalogued skill, in manifest order."""
+    """Load validated entries in manifest order; missing or malformed input fails."""
     if not manifest_path.is_file():
         raise FileNotFoundError(
             f"{manifest_path}: skill manifest not found. Run: python3 scripts/build_manifest.py"
         )
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    entries = []
-    for entry in manifest["skills"]:
-        environments = entry.get("environments")
-        targets = entry.get("targets")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{manifest_path}: invalid skills.json: {error.msg}") from error
+    if not isinstance(manifest, dict):
+        raise TypeError(f"{manifest_path}: skills.json must be an object")
+    if "skills" not in manifest:
+        raise ValueError(f"{manifest_path}: skills.json must contain a 'skills' array")
+    if not isinstance(manifest["skills"], list):
+        raise TypeError(f"{manifest_path}: skills.json 'skills' field must be an array")
+
+    entries: list[SkillEntry] = []
+    names: set[str] = set()
+    for index, raw_entry in enumerate(manifest["skills"]):
+        location = f"{manifest_path}: skills[{index}]"
+        if not isinstance(raw_entry, dict):
+            raise TypeError(f"{location} must be an object")
+        name = _required_string(raw_entry, "name", location)
+        summary = _required_string(raw_entry, "summary", location)
+        category = _validated_category(_required_string(raw_entry, "category", location), location)
+        path = _required_string(raw_entry, "path", location)
+        activation_value = _validated_activation(raw_entry.get("activation", "auto"), location)
+        _validate_manifest_path(path, name, location)
+        _validate_router_identity(name, category, activation_value, location)
+        if name in names:
+            raise ValueError(f"{location}: duplicate skill name {name!r}")
+        names.add(name)
+
         entries.append(
             SkillEntry(
-                name=entry["name"],
-                summary=entry["summary"],
-                category=entry["category"],
-                path=entry["path"],
-                activation=entry.get("activation", "auto"),
-                compatibility=entry.get("compatibility"),
-                environments=tuple(environments) if environments is not None else None,
-                targets=tuple(targets) if targets is not None else None,
-                version=entry.get("version"),
+                name=name,
+                summary=summary,
+                category=category,
+                path=path,
+                activation=activation_value,
+                compatibility=_manifest_optional_string(raw_entry, "compatibility", location),
+                environments=_manifest_list(raw_entry, "environments", ENVIRONMENTS, location),
+                targets=_manifest_list(raw_entry, "targets", TARGETS, location),
+                version=_manifest_optional_string(raw_entry, "version", location),
             )
         )
     return entries
@@ -245,6 +276,39 @@ def routed_categories(catalogue: Iterable[SkillEntry]) -> set[str]:
     `build_routers.py --check` validates the nested `members/` symlinks.
     """
     return {entry.category for entry in catalogue if entry.is_router}
+
+
+def router_members(catalogue: Iterable[SkillEntry], category: str) -> list[SkillEntry]:
+    """Auto skills nested under the router for `category`, in manifest order."""
+    entries = tuple(catalogue)
+    if category not in routed_categories(entries):
+        raise ValueError(f"category {category!r} has no router in the skill catalogue")
+    return [entry for entry in entries if entry.category == category and entry.activation == "auto"]
+
+
+def top_level_entries(catalogue: Iterable[SkillEntry]) -> list[SkillEntry]:
+    """Entries registered flat; auto skills in routed categories stay nested."""
+    entries = tuple(catalogue)
+    routed = routed_categories(entries)
+    return [
+        entry for entry in entries if not (entry.category in routed and entry.activation == "auto")
+    ]
+
+
+def entries_for_target(catalogue: Iterable[SkillEntry], target: str) -> list[SkillEntry]:
+    """Entries that ship for one named runtime target, preserving order."""
+    if target not in TARGETS:
+        raise ValueError(f"unknown target {target!r}; expected one of {', '.join(TARGETS)}")
+    return [entry for entry in catalogue if entry.in_target(target)]
+
+
+def entries_for_environment(catalogue: Iterable[SkillEntry], environment: str) -> list[SkillEntry]:
+    """Entries available in one named work environment, preserving order."""
+    if environment not in ENVIRONMENTS:
+        raise ValueError(
+            f"unknown environment {environment!r}; expected one of {', '.join(ENVIRONMENTS)}"
+        )
+    return [entry for entry in catalogue if entry.in_environment(environment)]
 
 
 def first_sentence(text: str) -> str:
@@ -376,6 +440,15 @@ def _validated_activation(value: object, source: Path | str) -> str:
     return value
 
 
+def _validate_router_identity(
+    name: str, category: str, activation: str, source: Path | str
+) -> None:
+    if activation == "router" and name != category:
+        raise ValueError(
+            f"{source}: a router's name ({name!r}) must equal its category ({category!r})"
+        )
+
+
 def _required_string(fields: Mapping[str, object], key: str, source: Path | str) -> str:
     if key not in fields:
         raise ValueError(f"{source}: missing '{key}'")
@@ -431,6 +504,47 @@ def _metadata_version(fields: Mapping[str, object], source: Path | str) -> str |
     if not isinstance(version, str):
         raise TypeError(f"{source}: 'metadata.version' must be a string")
     return version
+
+
+def _manifest_optional_string(entry: Mapping[str, object], key: str, location: str) -> str | None:
+    value = entry.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TypeError(f"{location}: '{key}' must be a string")
+    return value or None
+
+
+def _manifest_list(
+    entry: Mapping[str, object],
+    key: str,
+    allowed: tuple[str, ...],
+    location: str,
+) -> tuple[str, ...] | None:
+    value = entry.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise TypeError(f"{location}: '{key}' must be an array of strings")
+    if any(not isinstance(item, str) for item in value):
+        raise TypeError(f"{location}: '{key}' must contain only strings")
+    if any(not item for item in value):
+        raise ValueError(f"{location}: '{key}' must not contain empty strings")
+    unknown = [item for item in value if item not in allowed]
+    if unknown:
+        raise ValueError(
+            f"{location}: '{key}' has unknown value(s) {', '.join(unknown)}"
+            f" (allowed: {', '.join(allowed)})"
+        )
+    return tuple(value)
+
+
+def _validate_manifest_path(path: str, name: str, location: str) -> None:
+    parsed = PurePosixPath(path)
+    if parsed.is_absolute() or parsed.parts != ("skills", name, "SKILL.md"):
+        raise ValueError(
+            f"{location}: 'path' must be the relative source path skills/{name}/SKILL.md"
+        )
 
 
 def _strip_quotes(value: str) -> str:

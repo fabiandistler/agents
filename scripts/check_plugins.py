@@ -33,7 +33,7 @@ import re
 import sys
 from pathlib import Path
 
-from catalogue import load_catalogue, routed_categories
+from catalogue import entries_for_target, load_catalogue, top_level_entries
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PLUGINS_DIR = REPO_ROOT / "plugins"
@@ -146,7 +146,7 @@ def main() -> int:
     errors: list[str] = []
     catalogue = load_catalogue()
     categories = {entry.name: entry.category for entry in catalogue}
-    routed = routed_categories(catalogue)
+    top_level = top_level_entries(catalogue)
     plugins = check_marketplace(errors)
 
     if PLUGINS_DIR.is_dir():
@@ -160,14 +160,10 @@ def main() -> int:
             continue
         check_agents(plugin, errors)
         bundled = plugin_skills(plugin, errors)
-        members = [entry for entry in catalogue if entry.category == plugin]
-        if plugin in routed:
-            # Only the router and any command skills register at top level;
-            # auto members ride nested under the router.
-            members = [e for e in members if e.activation in ("router", "command")]
+        members = [entry for entry in top_level if entry.category == plugin]
         # Plugins are the Claude distribution, so a skill that opts out of the
         # claude target ships in neither.
-        expected = {e.name for e in members if e.in_target("claude")}
+        expected = {entry.name for entry in entries_for_target(members, "claude")}
         for s in sorted(expected - bundled):
             errors.append(
                 f"{plugin}: skills/{s} has category: {plugin} but no symlink in plugins/{plugin}/skills/"
