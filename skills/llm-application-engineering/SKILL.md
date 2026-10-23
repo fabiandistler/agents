@@ -2,7 +2,7 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring. Use when building or debugging an app on top of an LLM."
+description: "Engineers LLM applications for output quality, retrieval, fine-tuning, evals, agents, guardrails, and monitoring; use when building or debugging an app on an LLM."
 metadata:
   version: "1.2"
 ---

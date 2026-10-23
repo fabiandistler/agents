@@ -40,16 +40,16 @@ For *greenfield* decomposition of a system that doesn't exist yet, use
 
 **Not for:** a single function's cyclomatic complexity, choosing an architecture
 from scratch (use `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router), or greenfield component
-decomposition (use `logical-component-design`).
+decomposition (read `members/logical-component-design/SKILL.md` via the `architecture` router).
 
 ## Output contract (all modes)
 
 Every answer uses the same shape — verdict first, evidence second, concrete
-next step third — with a per-mode template in each mode file. Report at most the top 3
-findings with seam and fix; summarize the remainder in one line. Leave with
-reason is a first-class, valuable verdict — saying "leave it" with the reason
-is success, not a non-answer. Keep it proportional: a clean module needs a
-sentence, not a report.
+next step third — with a per-mode template in each mode file. Report each
+material finding at the requested scope with its seam and fix; group minor
+findings by shared pattern. Leave with reason is a first-class, valuable
+verdict — saying "leave it" with the reason is success, not a non-answer.
+Keep it proportional: a clean module needs a sentence, not a report.
 
 `scripts/test_*.py` are the bundled scripts' own tests; they are not part of
 any mode's workflow.

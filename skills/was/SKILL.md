@@ -4,7 +4,7 @@ category: communication
 activation: command
 disable-model-invocation: true
 environments: coding, chat
-description: Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim.
+description: Re-pitches a short message in plain German by adding missing context before simplifying it, while keeping the repo's glossary terms verbatim.
 metadata:
   version: "1.1"
   opencode/slash: "true"

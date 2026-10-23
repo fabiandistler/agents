@@ -1717,11 +1717,13 @@ pass "codex install converts subagents to valid agent TOML"
 # 23. re-running leaves the agent files identical; foreign files survive.
 before="$(cat "$AGENTS_DIR/coupling-analyst.toml")"
 agent_inode_before="$(file_inode "$AGENTS_DIR/coupling-analyst.toml")"
-HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null
+agent_output="$(HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture 2>&1)"
 [[ "$(cat "$AGENTS_DIR/coupling-analyst.toml")" == "$before" ]] ||
   fail "agent conversion is not idempotent"
 [[ "$(file_inode "$AGENTS_DIR/coupling-analyst.toml")" == "$agent_inode_before" ]] ||
   fail "reinstall rewrote an unchanged agent TOML"
+grep -q '^  ok .*coupling-analyst\.toml' <<<"$agent_output" ||
+  fail "agent conversion did not report the unchanged TOML file as ok"
 printf 'name = "mine"\n' >"$AGENTS_DIR/cohesion-analyst.toml"
 HOME="$HOME_AG" "$INSTALL" --target=codex --category=architecture >/dev/null 2>&1
 grep -Fxq 'name = "mine"' "$AGENTS_DIR/cohesion-analyst.toml" ||

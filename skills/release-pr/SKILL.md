@@ -6,7 +6,7 @@ disable-model-invocation: true
 environments: coding
 compatibility: Requires git plus the forge's CLI — `gh` or the GitHub MCP tools (GitHub), `az` with the azure-devops extension (Azure Repos), or `glab` (GitLab); other hosts fall back to git only. R packages need Rscript with usethis and devtools; Python packages need uv. `scripts/release_state.py` is stdlib-only (tomllib on Python 3.11+, regex fallback below).
 argument-hint: "[major | minor | patch | X.Y.Z | tag]"
-description: Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written. After merge, tag and publish the release.
+description: Prepares a release pull request for an R or Python package, then tags and publishes the release after merge.
 metadata:
   version: "1.2"
   opencode/slash: "true"

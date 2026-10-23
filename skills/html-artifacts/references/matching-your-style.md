@@ -33,7 +33,7 @@ This is one-time work that pays off across every future artifact. Suggest it the
 
 ## When there's no existing system: the safe default
 
-Use this baseline if the user hasn't specified anything and there's no codebase to read. The palette is neutral and calm, works in light and dark; use one accent only:
+Use this baseline for document-style artifacts if the user hasn't specified anything and there's no codebase to read. The palette is neutral and calm, works in light and dark; use one accent only. For compact editor and dashboard layouts, use the defaults in the next section:
 
 ```css
 :root {

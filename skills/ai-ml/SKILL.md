@@ -35,8 +35,8 @@ model's trigger surface.
 <!-- BEGIN generated:members -->
 | Sub-skill | When to use | Read before acting |
 |---|---|---|
-| llm-application-engineering | Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring. | `members/llm-application-engineering/SKILL.md` |
-| ml-project-lifecycle | Guides a classical ML project — framing, baselines, model choice, missing data, deployment, retraining. | `members/ml-project-lifecycle/SKILL.md` |
+| llm-application-engineering | Engineers LLM applications for output quality, retrieval, fine-tuning, evals, agents, guardrails, and monitoring; use when building or debugging an app on an LLM. | `members/llm-application-engineering/SKILL.md` |
+| ml-project-lifecycle | Guides a classical ML project from framing and baselines through model choice, missing data, deployment, and retraining; use when training on supplied data, not building an LLM app. | `members/ml-project-lifecycle/SKILL.md` |
 <!-- END generated:members -->
 
 The table above is generated from `skills.json` by

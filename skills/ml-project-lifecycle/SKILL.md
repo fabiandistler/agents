@@ -2,7 +2,7 @@
 name: ml-project-lifecycle
 category: ai-ml
 environments: coding
-description: "Guides a classical ML project — framing, baselines, model choice, missing data, deployment, retraining. Use when training a model on your own data, not when building an LLM app."
+description: "Guides a classical ML project from framing and baselines through model choice, missing data, deployment, and retraining; use when training on supplied data, not building an LLM app."
 metadata:
   version: "1.0"
 ---
@@ -175,7 +175,7 @@ Batch: backtest on historical windows, then parallel run alongside the incumbent
 
 Retrain on any of these signals, not on a schedule alone:
 
-- **Scheduled** — daily or weekly, as a baseline cadence.
+- **Scheduled** — choose a cadence based on how quickly the data changes and how soon labels arrive. Daily or weekly retraining may fit fast-moving data with timely labels; slower-moving data or delayed labels usually call for a less frequent cadence or proxy signals until outcomes mature.
 - **Performance degradation** — the business metric from Part A moves beyond the cost bound agreed there, not a fixed percentage.
 - **Data-distribution shift** — PSI above 0.25 signals major shift, above 0.1 minor shift; investigate major shifts and monitor minor ones. Use a proxy metric such as prediction distribution or feature means when labels arrive late.
 - **Business event** — a product launch, a seasonal change, or another event known to shift the underlying data-generating process.

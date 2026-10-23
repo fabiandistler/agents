@@ -13,7 +13,7 @@
     },
     {
       "name": "architecture",
-      "summary": "Routes software-architecture work to the right sub-skill: choosing topology or code organization (monolith vs microservices, layered/hexagonal/clean), service boundaries and inter-service communication, DDD modeling, component decomposition, C4 diagrams, coupling/cohesion analysis, and CI architecture rules. - Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors.",
+      "summary": "Routes software architecture work to the right sub-skill; use when choosing system topology or code organization, service boundaries, domain models, component structure, C4 diagrams, coupling or cohesion, or architecture rules for CI. Not for single-file placement or routine refactors. - Use even when the word architecture is absent: how should I structure or organize this project, how should this repo be split into modules, two services share a database, draw an overview of how the system fits together, make CI enforce layering rules, model this domain. Not for single-file placement or routine refactors.",
       "category": "architecture",
       "path": "skills/architecture/SKILL.md",
       "activation": "router",
@@ -23,7 +23,7 @@
     },
     {
       "name": "architecture-pattern-advisor",
-      "summary": "Guides choosing a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion).",
+      "summary": "Guides repository architecture choices for topology or code organization; use when selecting or restructuring either, not for generic project setup.",
       "category": "architecture",
       "path": "skills/architecture-pattern-advisor/SKILL.md",
       "environments": [
@@ -32,7 +32,7 @@
     },
     {
       "name": "c4-modeling",
-      "summary": "Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code).",
+      "summary": "Drafts C4 system diagrams in Mermaid at Context, Container, Component, Landscape, Dynamic, or Deployment level; use when documenting a system as C4, not Code.",
       "category": "architecture",
       "path": "skills/c4-modeling/SKILL.md",
       "compatibility": "No dependencies — Mermaid renders natively on GitHub, GitLab, and most Markdown tools, and in VS Code with a Mermaid extension. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.",
@@ -43,7 +43,7 @@
     },
     {
       "name": "communication-analysis",
-      "summary": "Analyzes or rewrites a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening.",
+      "summary": "Analyzes or rewrites feedback and messages using Schulz von Thun's four-sides model and Rogers-style active listening; use for diagnosis or rewrites, not therapy.",
       "category": "communication",
       "path": "skills/communication-analysis/SKILL.md",
       "environments": [
@@ -63,7 +63,7 @@
     },
     {
       "name": "ddd",
-      "summary": "Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing.",
+      "summary": "Applies Domain-Driven Design to boundaries, context mapping, tactical patterns, aggregates, value objects, events, and event sourcing; use for DDD design or review.",
       "category": "architecture",
       "path": "skills/ddd/SKILL.md",
       "environments": [
@@ -112,7 +112,7 @@
     },
     {
       "name": "improve-codebase",
-      "summary": "Scan a codebase for deepening opportunities, present them as a visual HTML report with before/after diagrams, then interview the user round by round about the candidate they pick.",
+      "summary": "Scans a codebase for architectural deepening opportunities and guides a round-by-round review of candidates using a visual report with before-and-after diagrams.",
       "category": "refactoring",
       "path": "skills/improve-codebase/SKILL.md",
       "activation": "command",
@@ -124,7 +124,7 @@
     },
     {
       "name": "llm-application-engineering",
-      "summary": "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring.",
+      "summary": "Engineers LLM applications for output quality, retrieval, fine-tuning, evals, agents, guardrails, and monitoring; use when building or debugging an app on an LLM.",
       "category": "ai-ml",
       "path": "skills/llm-application-engineering/SKILL.md",
       "environments": [
@@ -153,7 +153,7 @@
     },
     {
       "name": "ml-project-lifecycle",
-      "summary": "Guides a classical ML project — framing, baselines, model choice, missing data, deployment, retraining.",
+      "summary": "Guides a classical ML project from framing and baselines through model choice, missing data, deployment, and retraining; use when training on supplied data, not building an LLM app.",
       "category": "ai-ml",
       "path": "skills/ml-project-lifecycle/SKILL.md",
       "environments": [
@@ -173,7 +173,7 @@
     },
     {
       "name": "oss-scouting",
-      "summary": "Scout one third-party open-source repository for open issues that suit a small, clean contribution, and write repro, root-cause analysis, fix diff, test, and a submit checklist to a local folder only.",
+      "summary": "Scouts a third-party open-source repository for a small, suitable issue, then prepares a reproduction, root-cause analysis, fix diff, tests, and a submission checklist in a local folder.",
       "category": "workflow",
       "path": "skills/oss-scouting/SKILL.md",
       "activation": "command",
@@ -185,7 +185,7 @@
     },
     {
       "name": "poc-spec-loop",
-      "summary": "Takes a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec, then a per-task TDD loop with fresh context up to a pull request.",
+      "summary": "Guides a greenfield R, Python, or Bash PoC to production readiness through an interactive specification and a per-task TDD loop.",
       "category": "workflow",
       "path": "skills/poc-spec-loop/SKILL.md",
       "activation": "command",
@@ -208,7 +208,7 @@
     },
     {
       "name": "pypet-snippets",
-      "summary": "Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, including proposing one from commands that recur in shell history.",
+      "summary": "Curates shell-command snippets with the pypet CLI, including creating, finding, editing, running, and aliasing snippets or proposing one from recurring shell commands.",
       "category": "workflow",
       "path": "skills/pypet-snippets/SKILL.md",
       "activation": "command",
@@ -229,7 +229,7 @@
     },
     {
       "name": "release-pr",
-      "summary": "Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written.",
+      "summary": "Prepares a release pull request for an R or Python package, then tags and publishes the release after merge.",
       "category": "workflow",
       "path": "skills/release-pr/SKILL.md",
       "activation": "command",
@@ -241,7 +241,7 @@
     },
     {
       "name": "repo-status",
-      "summary": "Generate a standup / status update from recent development activity — yesterday/today/blockers, turning rough notes or connected-tool activity into a shareable update.",
+      "summary": "Generates a standup or status update from recent development activity, including yesterday's work, today's plan, and blockers, using rough notes or connected-tool activity.",
       "category": "workflow",
       "path": "skills/repo-status/SKILL.md",
       "activation": "command",
@@ -262,7 +262,7 @@
     },
     {
       "name": "tldr",
-      "summary": "Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.",
+      "summary": "Compresses long material into the facts needed to decide or act, including recent messages and named files, PRs, documents, or threads.",
       "category": "communication",
       "path": "skills/tldr/SKILL.md",
       "activation": "command",
@@ -274,7 +274,7 @@
     },
     {
       "name": "was",
-      "summary": "Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim.",
+      "summary": "Re-pitches a short message in plain German by adding missing context before simplifying it, while keeping the repo's glossary terms verbatim.",
       "category": "communication",
       "path": "skills/was/SKILL.md",
       "activation": "command",

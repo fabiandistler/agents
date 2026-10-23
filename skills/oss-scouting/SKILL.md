@@ -6,7 +6,7 @@ disable-model-invocation: true
 environments: coding
 compatibility: Requires git and read-only GitHub access through the GitHub MCP tools or the GitHub CLI (`gh`). Running a candidate's reproduction needs that project's own toolchain.
 argument-hint: "<owner>/<repo>"
-description: Scout one third-party open-source repository for open issues that suit a small, clean contribution, and write repro, root-cause analysis, fix diff, test, and a submit checklist to a local folder only.
+description: Scouts a third-party open-source repository for a small, suitable issue, then prepares a reproduction, root-cause analysis, fix diff, tests, and a submission checklist in a local folder.
 metadata:
   version: "1.3"
   opencode/slash: "true"
