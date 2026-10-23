@@ -74,6 +74,7 @@ behaviour is in [`docs/install.md`](docs/install.md).
 | `--uninstall` | off | Remove only the links and managed blocks this installer created |
 | `--check` | off | Report drift between the selected install and the managed files; exit 0 clean, 3 drift; writes nothing |
 | `--output FILE` | — | With `--check`: write the full drift report as TSV |
+| `--update` | off | Replay the last successful install (targets, filters, components) from the saved state file; exit 4 when none exists |
 
 ```sh
 ./install.sh --target=opencode --category=architecture

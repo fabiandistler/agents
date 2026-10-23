@@ -17,9 +17,10 @@ from the plugin marketplace only, and `install.sh --target=claude` only syncs
 | Code | Meaning |
 |---|---|
 | `0` | The requested operation succeeded. `--help` returns 0, as does `--check` when the selected installation is clean. |
-| `1` | An operational failure prevented completion, such as a failed managed-file write or an unusable `--output` path. |
+| `1` | An operational failure prevented completion, such as an invalid saved-state file, a failed managed-file write, or an unusable `--output` path. |
 | `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, or a missing `--output` value. |
 | `3` | `--check` found drift. When `--output` is supplied, the TSV report contains the drift rows. |
+| `4` | `--update` found no saved install state. Run a successful install with `--target=...` before using `--update`. |
 
 ## Check the managed installation
 
@@ -43,6 +44,16 @@ Passing a guard flag makes that guard part of the expected state; existing
 Codex guard blocks are checked for stale checkout paths and hook trust even
 without a guard flag. Pass `--instructions`, `--merge-guard`, and
 `--secret-guard` to include those optional components in the expected state.
+
+## Replay the last install
+
+Each successful install saves its resolved targets, filters, optional components,
+and checkout path to `${XDG_STATE_HOME:-~/.local/state}/fabiandistler-agents/install.json`.
+`--update` replays those options. It exits 4 when no state file exists; start with an
+install such as `./install.sh --target=codex`. `--update --dry-run` previews the
+replay without changing files or state, and `--update --check` reports drift
+against the saved options. During `--update`, every write re-checks its file
+right before writing and leaves it alone if it changed in between.
 
 ## What gets linked where
 

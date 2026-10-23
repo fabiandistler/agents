@@ -17,6 +17,8 @@
 #   ./install.sh --target=all --secret-guard   # also block credential reads
 #   ./install.sh --target=all --check           # report managed-file drift
 #   ./install.sh --target=all --check --output drift.tsv
+#   ./install.sh --update                        # replay the last install
+#   ./install.sh --update --dry-run              # preview the replay
 #
 # Claude gets skills, command skills, subagents and the PR merge guard from the
 # plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
@@ -121,6 +123,12 @@
 # TSV instead of only printing the default summary; it requires --check. The
 # checker also flags Codex hooks that do not have a matching trusted hash.
 #
+# --update replays the last successful install from
+# ${XDG_STATE_HOME:-~/.local/state}/fabiandistler-agents/install.json. It exits 4
+# when no state exists; first install with --target=claude|codex|opencode|all.
+# Writes during --update re-check their file right before writing and leave it
+# alone if it changed in between.
+#
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
 #   - Symlink pointing elsewhere:      skip with a warning, never overwrite.
@@ -145,10 +153,12 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 DRY_RUN=0
 CHECK_MODE=0
+UPDATE_MODE=0
 CHECK_OUTPUT=""
 CHECK_OUTPUT_SET=0
 CHECK_ROWS=""
 CHECK_CURRENT_TARGET=""
+RESOLVED_TARGETS=""
 UNINSTALL=0
 INSTRUCTIONS=0
 GUARDS=""
@@ -165,6 +175,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ./install.sh --target=claude|codex|opencode|all [options]
+  ./install.sh --update [--dry-run] [--check [--output FILE]]
 
 Options:
   --env=coding|chat|all        Filter skills (default: all)
@@ -176,15 +187,193 @@ Options:
   --uninstall                  Remove selected managed files
   --check                      Report drift (0 clean, 3 drift)
   --output FILE|--output=FILE  Write the --check TSV report
+  --update                     Replay the saved install (4: no saved state)
   -h, --help                   Show this help
 
 Exit codes: 0 success, 1 operational failure, 2 usage error,
-            3 --check found drift.
+            3 --check found drift, 4 --update has no saved install.
 
 Examples:
   ./install.sh --target=all --instructions --dry-run
   ./install.sh --target=all --check --output /tmp/agents-drift.tsv
 EOF
+}
+
+install_state_file() {
+  local state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
+  printf '%s/fabiandistler-agents/install.json' "${state_home%/}"
+}
+
+load_install_state() {
+  local file reader_pid status targets_csv stored_env stored_category stored_instructions \
+    stored_merge stored_secret target
+  file="$(install_state_file)"
+  if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+    printf 'saved install state is not a regular file: %s\n' "$file" >&2
+    return 1
+  fi
+  if [[ ! -f "$file" ]]; then
+    printf 'no saved install state at %s; install once with --target=claude|codex|opencode|all before --update\n' \
+      "$file" >&2
+    return 4
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is required to read --update state" >&2
+    return 1
+  fi
+  exec 3< <(
+    python3 - "$file" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as state_file:
+        state = json.load(state_file)
+    targets = state["targets"]
+    environment = state["env"]
+    category = state["category"]
+    instructions = state["instructions"]
+    merge_guard = state["merge_guard"]
+    secret_guard = state["secret_guard"]
+    repo_root = state["repo_root"]
+    if (
+        not isinstance(targets, list)
+        or not targets
+        or any(target not in {"claude", "codex", "opencode"} for target in targets)
+        or len(set(targets)) != len(targets)
+        or not isinstance(environment, str)
+        or "\0" in environment
+        or not isinstance(category, str)
+        or "\0" in category
+        or type(instructions) is not bool
+        or type(merge_guard) is not bool
+        or type(secret_guard) is not bool
+        or not isinstance(repo_root, str)
+        or not repo_root.startswith("/")
+        or "\0" in repo_root
+    ):
+        raise ValueError("invalid fields")
+    values = [
+        ",".join(targets),
+        environment,
+        category,
+        "1" if instructions else "0",
+        "1" if merge_guard else "0",
+        "1" if secret_guard else "0",
+    ]
+    sys.stdout.buffer.write("\0".join(values).encode("utf-8") + b"\0")
+except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+    sys.stderr.write("saved install state is invalid\n")
+    sys.exit(1)
+PY
+  )
+  reader_pid=$!
+  if ! IFS= read -r -d '' targets_csv <&3 ||
+    ! IFS= read -r -d '' stored_env <&3 ||
+    ! IFS= read -r -d '' stored_category <&3 ||
+    ! IFS= read -r -d '' stored_instructions <&3 ||
+    ! IFS= read -r -d '' stored_merge <&3 ||
+    ! IFS= read -r -d '' stored_secret <&3; then
+    exec 3<&-
+    wait "$reader_pid" || true
+    echo "saved install state is invalid" >&2
+    return 1
+  fi
+  exec 3<&-
+  if wait "$reader_pid"; then
+    :
+  else
+    status=$?
+    return "$status"
+  fi
+
+  ENV="$stored_env"
+  CATEGORY="$stored_category"
+  INSTRUCTIONS="$stored_instructions"
+  GUARDS=""
+  [[ "$stored_merge" == 1 ]] && GUARDS+=" merge"
+  [[ "$stored_secret" == 1 ]] && GUARDS+=" secret"
+  RESOLVED_TARGETS=""
+  IFS=',' read -ra _resolved_targets <<<"$targets_csv"
+  for target in "${_resolved_targets[@]}"; do
+    RESOLVED_TARGETS+="$target"$'\n'
+  done
+  if [[ "$targets_csv" == "claude,codex,opencode" ]]; then
+    TARGET=all
+  elif [[ "$targets_csv" == *','* ]]; then
+    TARGET=resolved
+  else
+    TARGET="$targets_csv"
+  fi
+  [[ "$ENV" == all ]] || FILTER_FLAGS+=" --env"
+  [[ "$CATEGORY" == all ]] || FILTER_FLAGS+=" --category"
+}
+
+json_quote() {
+  local value="$1" escaped="" character escaped_character code index
+  for ((index = 0; index < ${#value}; index++)); do
+    character="${value:index:1}"
+    case "$character" in
+      '"') escaped+='\\"' ;;
+      \\) escaped+='\\\\' ;;
+      $'\b') escaped+='\\b' ;;
+      $'\f') escaped+='\\f' ;;
+      $'\n') escaped+='\\n' ;;
+      $'\r') escaped+='\\r' ;;
+      $'\t') escaped+='\\t' ;;
+      *)
+        printf -v code '%d' "'$character"
+        if ((code < 32)); then
+          printf -v escaped_character '\\u%04x' "$code"
+          escaped+="$escaped_character"
+        else
+          escaped+="$character"
+        fi
+        ;;
+    esac
+  done
+  printf '"%s"' "$escaped"
+}
+
+write_install_state() {
+  local file dir target targets_json="[" separator="" content tmp before="" had_file=0 current
+  [[ -n "$RESOLVED_TARGETS" ]] || RESOLVED_TARGETS="$(resolve_targets)"
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    targets_json+="$separator$(json_quote "$target")"
+    separator=,
+  done <<<"$RESOLVED_TARGETS"
+  targets_json+="]"
+  file="$(install_state_file)"
+  dir="${file%/*}"
+  if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+    printf 'refusing to replace non-regular install state path: %s\n' "$file" >&2
+    return 1
+  fi
+  if [[ -f "$file" ]]; then
+    before="$(cat "$file")"
+    had_file=1
+  fi
+  ensure_parent "$dir"
+  content="{\"targets\":$targets_json,\"env\":$(json_quote "$ENV"),\"category\":$(json_quote "$CATEGORY"),\"instructions\":$( ((INSTRUCTIONS)) && printf true || printf false),\"merge_guard\":$([[ "$GUARDS" == *' merge'* ]] && printf true || printf false),\"secret_guard\":$([[ "$GUARDS" == *' secret'* ]] && printf true || printf false),\"repo_root\":$(json_quote "$REPO_ROOT") }"
+  tmp="$file.tmp.$$"
+  if [[ -e "$tmp" || -L "$tmp" ]]; then
+    printf 'refusing to replace temporary install state path: %s\n' "$tmp" >&2
+    return 1
+  fi
+  printf '%s\n' "$content" >"$tmp"
+  if ((had_file)); then
+    if [[ ! -f "$file" || -L "$file" || "$(cat "$file")" != "$before" ]]; then
+      rm "$tmp"
+      printf 'install state changed during this run; leaving it untouched: %s\n' "$file" >&2
+      return 1
+    fi
+  elif [[ -e "$file" || -L "$file" ]]; then
+    rm "$tmp"
+    printf 'install state appeared during this run; leaving it untouched: %s\n' "$file" >&2
+    return 1
+  fi
+  mv "$tmp" "$file"
 }
 
 while (($#)); do
@@ -202,6 +391,7 @@ while (($#)); do
       ;;
     --dry-run) DRY_RUN=1 ;;
     --check) CHECK_MODE=1 ;;
+    --update) UPDATE_MODE=1 ;;
     --output)
       if (($# == 0)); then
         echo "missing FILE after --output" >&2
@@ -232,7 +422,20 @@ while (($#)); do
   esac
 done
 
-if [[ -z "$TARGET" ]]; then
+if ((UPDATE_MODE)); then
+  if [[ -n "$TARGET" || -n "$FILTER_FLAGS" || "$INSTRUCTIONS" == 1 ||
+    -n "$GUARDS" || "$UNINSTALL" == 1 || ("$CHECK_OUTPUT_SET" == 1 && "$CHECK_MODE" == 0) ]]; then
+    echo "--update replays saved options; do not combine it with target, filter, component, or uninstall options" >&2
+    usage >&2
+    exit 2
+  fi
+  if load_install_state; then
+    :
+  else
+    state_status=$?
+    exit "$state_status"
+  fi
+elif [[ -z "$TARGET" ]]; then
   echo "missing --target=claude|codex|opencode|all" >&2
   usage >&2
   exit 2
@@ -250,6 +453,15 @@ esac
 if ((CHECK_MODE)); then
   case "$TARGET" in
     claude | codex | opencode | all) ;;
+    resolved)
+      if ((UPDATE_MODE)); then
+        :
+      else
+        echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
+        usage >&2
+        exit 2
+      fi
+      ;;
     *)
       echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
       usage >&2
@@ -354,6 +566,15 @@ target_command_dir_for() {
 }
 
 resolve_targets() {
+  if [[ -n "$RESOLVED_TARGETS" ]]; then
+    local resolved_target
+    while IFS= read -r resolved_target; do
+      if [[ -n "$resolved_target" ]]; then
+        printf '%s\n' "$resolved_target"
+      fi
+    done <<<"$RESOLVED_TARGETS"
+    return 0
+  fi
   if [[ "$TARGET" == "all" ]]; then
     printf 'claude\ncodex\nopencode\n'
   else
@@ -480,12 +701,52 @@ list_skills() {
 # truncates before writing, so an interrupt in between leaves a file we do not
 # own in pieces; a temp file plus mv either lands whole or not at all.
 write_file_atomic() {
-  local path="$1" content="$2"
+  local path="$1" content="$2" owner_marker="${3:-}" owner_end="${4:-}"
+  local expected_before="${5-}" expected_count="${6-}" expected_count_set=0 current current_count
   local tmp="$path.tmp.$$"
+  (($# < 6)) || expected_count_set=1
+  if [[ -e "$tmp" || -L "$tmp" ]]; then
+    printf 'refusing to replace temporary write path: %s\n' "$tmp" >&2
+    return 1
+  fi
   if [[ -n "$content" ]]; then
     printf '%s\n' "$content" >"$tmp"
   else
     : >"$tmp"
+  fi
+  if ((UPDATE_MODE)) && [[ -n "$owner_marker" ]]; then
+    if [[ -L "$path" ]] || { [[ -e "$path" ]] && [[ ! -f "$path" ]]; }; then
+      rm "$tmp"
+      printf '  WARN      %s is no longer a regular managed file; leaving it untouched\n' "$path" >&2
+      return 0
+    fi
+    if [[ -f "$path" ]]; then
+      current="$(cat "$path")"
+      if ((expected_count_set)); then
+        if [[ -n "$owner_end" ]]; then
+          current_count="$(grep -Fxc "$owner_marker" <<<"$current" || true)"
+          if [[ "$current" != "$expected_before" ]] ||
+            ! block_markers_balanced "$owner_marker" "$owner_end" <<<"$current" ||
+            [[ "$current_count" != "$expected_count" ]]; then
+            rm "$tmp"
+            printf '  WARN      %s changed during --update; leaving it untouched\n' "$path" >&2
+            return 0
+          fi
+        elif [[ "$current" != "$expected_before" ]] || ! grep -qxF "$owner_marker" "$path"; then
+          rm "$tmp"
+          printf '  WARN      %s changed during --update; leaving it untouched\n' "$path" >&2
+          return 0
+        fi
+      elif ! grep -qxF "$owner_marker" "$path"; then
+        rm "$tmp"
+        printf '  WARN      %s lost its ownership marker during --update; leaving it untouched\n' "$path" >&2
+        return 0
+      fi
+    elif ((expected_count_set)) && [[ -n "$expected_before" ]]; then
+      rm "$tmp"
+      printf '  WARN      %s disappeared during --update; leaving it untouched\n' "$path" >&2
+      return 0
+    fi
   fi
   mv "$tmp" "$path"
 }
@@ -495,7 +756,7 @@ write_file_atomic() {
 # The label names the kind of file and selects its ownership marker; `name`
 # picks the marker for instruction payloads, which differ by file type.
 owned_file_set() {
-  local target="$1" label="$2" name="${3:-}" marker kind check_target content
+  local target="$1" label="$2" name="${3:-}" marker kind check_target content current_before
   case "$label" in
     agent)
       marker="$AGENT_MARKER" kind=codex-agent check_target=codex
@@ -538,7 +799,10 @@ owned_file_set() {
     return 0
   fi
   ensure_parent "${target%/*}"
-  write_file_atomic "$target" "$content"
+  current_before=""
+  [[ -f "$target" ]] && current_before="$(cat "$target")"
+  # --update re-checks ownership and content just before the write.
+  write_file_atomic "$target" "$content" "$marker" "" "$current_before" file
   printf '  updated   %s (%s)\n' "$target" "$label"
 }
 
@@ -658,7 +922,8 @@ managed_block_set() {
     return 0
   fi
   ensure_parent "${file%/*}"
-  write_file_atomic "$file" "$after"
+  # --update re-checks the file just before the write (see write_file_atomic).
+  write_file_atomic "$file" "$after" "$begin" "$end" "$before" "$begin_count"
   printf '  updated   %s (%s)\n' "$file" "$what"
 }
 
@@ -696,7 +961,9 @@ managed_block_remove() {
     printf '[dry-run] remove %s\n' "$file"
     return 0
   fi
-  write_file_atomic "$file" "$after"
+  local marker_count
+  marker_count="$(grep -Fxc "$begin" <<<"$before" || true)"
+  write_file_atomic "$file" "$after" "$begin" "$end" "$before" "$marker_count"
   printf '  removed   %s from %s\n' "$what" "$file"
 }
 
@@ -1459,7 +1726,7 @@ PY
 }
 
 install_claude_python_hook() {
-  local file="$HOME/.claude/settings.json" command content
+  local file="$HOME/.claude/settings.json" command content before="" existed=0
   if ! instruction_payload_available 30-python.md ||
     ! instruction_payload_available python_init_context.py; then
     printf '  WARN      cannot install the Claude uv-init context hook because an instruction payload is unavailable\n' >&2
@@ -1474,6 +1741,10 @@ install_claude_python_hook() {
     ((CHECK_MODE)) || printf '  WARN      %s is a symlink, leaving it untouched (Python uv-init context hook)\n' \
       "$file" >&2
     return 0
+  fi
+  if [[ -f "$file" ]]; then
+    before="$(cat "$file")"
+    existed=1
   fi
   command="$(python_init_hook_command)"
   if ! content="$(claude_settings_with_python_hook "$file" "$command")"; then
@@ -1496,6 +1767,17 @@ install_claude_python_hook() {
     return 0
   fi
   ensure_parent "${file%/*}"
+  if ((UPDATE_MODE)); then
+    if ((existed)); then
+      if [[ ! -f "$file" || -L "$file" || "$(cat "$file")" != "$before" ]]; then
+        printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
+        return 0
+      fi
+    elif [[ -e "$file" || -L "$file" ]]; then
+      printf '  WARN      %s appeared during --update; leaving it untouched\n' "$file" >&2
+      return 0
+    fi
+  fi
   write_file_atomic "$file" "$content"
   printf '  updated   %s (Python uv-init context hook)\n' "$file"
 }
@@ -1815,13 +2097,14 @@ PY
 
 # Drop the guard entry an earlier version wrote into ~/.claude/settings.json.
 remove_claude_settings_merge_guard() {
-  local file="$HOME/.claude/settings.json" content status=0
+  local file="$HOME/.claude/settings.json" content status=0 before
   [[ -f "$file" ]] && grep -qF pr_merge_guard.py "$file" || return 0
   if ! command -v python3 >/dev/null 2>&1; then
     printf '  WARN      python3 not found; remove the pr_merge_guard.py hook from %s by hand\n' \
       "$file" >&2
     return 0
   fi
+  before="$(cat "$file")"
   content="$(claude_settings_without_merge_guard "$file")" || status=$?
   case "$status" in
     0) ;;
@@ -1835,6 +2118,12 @@ remove_claude_settings_merge_guard() {
   if ((DRY_RUN)); then
     check_record claude merge-guard "$file" stale
     printf '[dry-run] remove %s\n' "$file"
+    return 0
+  fi
+  if ((UPDATE_MODE)) &&
+    { [[ ! -f "$file" ]] || [[ -L "$file" ]] || [[ "$(cat "$file")" != "$before" ]] ||
+      ! grep -qF pr_merge_guard.py "$file"; }; then
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
     return 0
   fi
   write_file_atomic "$file" "$content"
@@ -2203,6 +2492,7 @@ sync_skill_links() {
 
 main() {
   local skills
+  [[ -n "$RESOLVED_TARGETS" ]] || RESOLVED_TARGETS="$(resolve_targets)"
   skills="$(list_skills)"
   if [[ -z "$skills" ]]; then
     echo "no skills found under $REPO_ROOT (env=$ENV, category=$CATEGORY)" >&2
@@ -2212,7 +2502,7 @@ main() {
   routed="$(routed_categories)"
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
   [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
-  if [[ -n "$FILTER_FLAGS" && ("$TARGET" == "claude" || "$TARGET" == "all") ]]; then
+  if [[ -n "$FILTER_FLAGS" ]] && target_is_selected claude; then
     printf '  WARN      %s: no effect for claude (its skills come from the plugin marketplace)\n' \
       "${FILTER_FLAGS# }" >&2
   fi
@@ -2332,4 +2622,7 @@ if ((CHECK_MODE)); then
   check_main
 else
   main
+  if ((UNINSTALL == 0 && DRY_RUN == 0)); then
+    write_install_state
+  fi
 fi
