@@ -37,13 +37,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
 
 from catalogue import entries_for_environment, entries_for_target, load_catalogue, top_level_entries
+from instruction_fragments import (
+    InstructionFragmentError,
+    fragment_matches_target,
+    load_fragments,
+    render_claude_rule,
+    validate_fragment,
+)
 from pr_merge_guard import with_claude_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -57,7 +63,6 @@ RULE_MARKER = "managed-by: fabiandistler/agents build_project_claude.py"
 SKIPPED_FRAGMENTS = frozenset({"60-code-comments.md"})
 SETTINGS_PATH = CLAUDE_DIR / "settings.json"
 MERGE_GUARD_COMMAND = 'python3 "$CLAUDE_PROJECT_DIR"/scripts/pr_merge_guard.py --harness claude'
-FIELD = re.compile(r"^([a-z]+):[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 
 
 def wanted_skill_links() -> dict[Path, Path]:
@@ -74,14 +79,6 @@ def wanted_skill_links() -> dict[Path, Path]:
 
 def wanted_agent_links() -> dict[Path, Path]:
     return {CLAUDE_DIR / "agents" / md.name: md for md in sorted(PLUGINS_DIR.glob("*/agents/*.md"))}
-
-
-def split_fragment(text: str) -> tuple[dict[str, str], str]:
-    if not text.startswith("---\n"):
-        return {}, text
-    end = text.find("\n---\n", 3)
-    fields = dict(FIELD.findall(text[4 : end + 1]))
-    return fields, text[end + 5 :]
 
 
 def tracked_files() -> list[str]:
@@ -105,23 +102,20 @@ def matches_any(globs: list[str], files: list[str]) -> bool:
 def wanted_rules() -> dict[Path, str]:
     rules: dict[Path, str] = {}
     files = tracked_files()
-    for fragment in sorted(INSTRUCTIONS_DIR.glob("*.md")):
+    for fragment in load_fragments(INSTRUCTIONS_DIR):
         if fragment.name in SKIPPED_FRAGMENTS:
             continue
-        fields, body = split_fragment(fragment.read_text(encoding="utf-8"))
-        targets = [t.strip() for t in fields.get("targets", "all").split(",")]
-        if "all" not in targets and "claude" not in targets:
+        errors = validate_fragment(fragment)
+        if errors:
+            raise InstructionFragmentError(f"{fragment.name}: {errors[0]}")
+        if not fragment_matches_target(fragment, "claude"):
             continue
-        # Quoted YAML list: a bare `**/*.R` parses as a YAML alias, and Claude
-        # loads a rule whose frontmatter does not parse unconditionally.
-        header = "---\n"
-        globs = [g.strip() for g in fields.get("paths", "").split(",") if g.strip()]
+        globs = list(fragment.path_globs)
         if globs and not matches_any(globs, files):
             continue  # path-scoped to files this repo does not have
-        if globs:
-            header += "paths:\n" + "".join(f'  - "{g}"\n' for g in globs)
-        header += f"{RULE_MARKER}\n---\n\n"
-        rules[CLAUDE_DIR / "rules" / f"agents-{fragment.name}"] = header + body.lstrip("\n")
+        rules[CLAUDE_DIR / "rules" / f"agents-{fragment.name}"] = render_claude_rule(
+            fragment, RULE_MARKER
+        )
     return rules
 
 
