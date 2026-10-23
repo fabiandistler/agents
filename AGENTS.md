@@ -170,10 +170,9 @@ machine consumption prefer `skills.json`.
 - Optional frontmatter fields:
   - `activation` — `auto` (default) or `command`. `auto` skills are
     model-triggered and their description counts toward the auto-trigger
-    budget. `command` skills are user-invoked only: for opencode
-    `install.sh` routes them to its command directory
-    (`~/.config/opencode/command`) as `<name>.md` instead of the skills
-    directory, keeping them out of the auto-trigger metadata; Claude loads
+    budget. `command` skills are user-invoked only: OpenCode exposes them as
+    slash commands from the ordinary skills directory when `metadata` sets
+    `opencode/slash: "true"` and `opencode/autoinvoke: "false"`; Claude loads
     them from the plugins as `/<category>:<name>`. Codex custom prompts are
     deprecated, so under codex they install
     into `~/.agents/skills/` like any skill, gated by an `agents/openai.yaml`

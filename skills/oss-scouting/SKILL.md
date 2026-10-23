@@ -9,6 +9,8 @@ argument-hint: "<owner>/<repo>"
 description: Scout one third-party open-source repository for open issues that suit a small, clean contribution, and write repro, root-cause analysis, fix diff, test, and a submit checklist to a local folder only.
 metadata:
   version: "1.3"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # OSS Scouting

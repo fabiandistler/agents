@@ -48,15 +48,13 @@
 # equivalent of its own.
 #
 # Skills with `activation: command` in their frontmatter are user-invoked,
-# not model-triggered. For opencode they are linked into its command
-# directory (~/.config/opencode/command) as <name>.md instead of the skills
-# directory, keeping them out of the auto-trigger metadata. Codex custom
-# prompts (~/.codex/prompts) are
-# deprecated, so under codex these skills install into the skills directory
-# like any other; their agents/openai.yaml sidecar
-# (policy.allow_implicit_invocation: false) keeps Codex from auto-triggering
-# them, so they stay explicit-only. --uninstall reverses this, and codex
-# installs also remove any leftover ~/.codex/prompts symlinks we created.
+# not model-triggered. OpenCode uses each skill's opencode/slash and
+# opencode/autoinvoke metadata, so these skills stay in the ordinary skills
+# directory. Codex custom prompts (~/.codex/prompts) are deprecated, so under
+# Codex these skills install into the skills directory like any other; their
+# agents/openai.yaml sidecar (policy.allow_implicit_invocation: false) keeps
+# Codex from auto-triggering them. --uninstall reverses this, and old Codex and
+# OpenCode command links are cleaned up during migration.
 #
 # A category may ship a router skill (`activation: router`, named after the
 # category). Its auto skills are nested under the router's members/ dir, so
@@ -602,18 +600,18 @@ target_dir_for() {
   esac
 }
 
-# Where each target discovers user-invoked commands. `activation: command`
-# skills go here (as <name>.md) instead of the skills directory.
+# Where Claude's earlier symlink installer placed its command skills.
 target_command_dir_for() {
   case "$1" in
     claude) printf '%s/.claude/commands\n' "$HOME" ;;
-    opencode) printf '%s/.config/opencode/command\n' "$HOME" ;;
     *)
       echo "unknown target: $1" >&2
       return 1
       ;;
   esac
 }
+
+opencode_legacy_command_dir() { printf '%s/.config/opencode/command\n' "$HOME"; }
 
 resolve_targets() {
   if [[ -n "$RESOLVED_TARGETS" ]]; then
@@ -2639,6 +2637,34 @@ cleanup_opencode_legacy() {
   done <<<"$skills"
 }
 
+# Earlier releases linked command skills into OpenCode's singular command/
+# directory. Their metadata now exposes the same skill as a slash command from
+# skills/, so remove only those old symlinks after the new location is handled.
+cleanup_opencode_legacy_commands() {
+  local skills="$1" legacy_dir skill source dest
+  legacy_dir="$(opencode_legacy_command_dir)"
+  [[ -d "$legacy_dir" ]] || return 0
+  while IFS= read -r skill; do
+    [[ -n "$skill" ]] || continue
+    [[ "$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")" == command ]] || continue
+    source="$REPO_ROOT/skills/$skill/SKILL.md"
+    dest="$legacy_dir/$skill.md"
+    [[ -L "$dest" ]] || continue
+    [[ "$(readlink "$dest")" == "$source" ]] || continue
+    check_record opencode "legacy OpenCode command skill" "$dest" stale
+    if ((DRY_RUN)); then
+      printf '[dry-run] remove %s\n' "$dest"
+      continue
+    fi
+    if [[ ! -L "$dest" || "$(readlink "$dest")" != "$source" ]]; then
+      printf '  WARN      %s changed during migration (leaving it untouched)\n' "$dest" >&2
+      continue
+    fi
+    rm "$dest"
+    printf '  removed   %s (legacy OpenCode command location)\n' "$dest"
+  done <<<"$skills"
+}
+
 # Earlier versions linked Codex skills into ~/.codex/skills, which Codex still
 # reads for backward compatibility; left there, every skill would load twice
 # next to ~/.agents/skills. Remove all our links from there, whatever --env or
@@ -2717,9 +2743,8 @@ cleanup_codex_prompts_legacy() {
 # prune links to skills the repo no longer ships.
 sync_skill_links() {
   local target="$1" skills="$2" routed="$3"
-  local dest_dir cmd_dir="" cmd_dir_ready=0 shared_root
+  local dest_dir shared_root
   dest_dir="$(target_dir_for "$target")"
-  [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
   if ((UNINSTALL == 0)); then
     ensure_parent "$dest_dir"
   fi
@@ -2727,19 +2752,11 @@ sync_skill_links() {
     local src dest activation category
     activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
     category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
-    if [[ "$activation" == "command" && "$target" != "codex" ]]; then
-      # User-invoked: link the single SKILL.md into the command directory.
-      src="$REPO_ROOT/skills/$skill/SKILL.md"
-      dest="$cmd_dir/$skill.md"
-      if ((UNINSTALL == 0)) && ((cmd_dir_ready == 0)); then
-        ensure_parent "$cmd_dir"
-        cmd_dir_ready=1
-      fi
-    elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
+    if [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
       # Auto member of a routed category: it is nested under the router's
       # members/ dir and loads lazily when routed to, so it is never linked
-      # at top level. Command skills bypass routing (handled above for
-      # non-codex; linked as skills for codex), so they are not skipped here.
+      # at top level. Command skills are ordinary skill links for Codex and
+      # OpenCode, and their runtime metadata keeps them explicitly invoked.
       # Codex discovers the nested member recursively anyway; it is disabled
       # by path in ~/.codex/config.toml further down.
       # Migration: before this category was routed, the member was linked
@@ -2751,8 +2768,8 @@ sync_skill_links() {
       unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
       continue
     else
-      # A normal auto skill, or the router itself (linked as a whole dir so
-      # its nested members/ come along).
+      # A normal auto or command skill, or the router itself (linked as a
+      # whole dir so its nested members/ come along).
       src="$REPO_ROOT/skills/$skill"
       dest="$dest_dir/$skill"
     fi
@@ -2785,7 +2802,9 @@ sync_skill_links() {
       "$dest_dir" >&2
   fi
   prune_stale_skill_links "$dest_dir"
-  [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
+  if [[ "$target" == "opencode" ]]; then
+    prune_stale_skill_links "$(opencode_legacy_command_dir)"
+  fi
   return 0
 }
 
@@ -2824,7 +2843,7 @@ rebase_managed_repo_paths() {
         ;;
       opencode)
         rebase_repo_symlink_dir "$HOME/.config/opencode/skills"
-        rebase_repo_symlink_dir "$(target_command_dir_for opencode)"
+        rebase_repo_symlink_dir "$(opencode_legacy_command_dir)"
         rebase_repo_symlink_dir "$HOME/.config/opencode/plugins"
         rebase_repo_symlink_dir "$HOME/.config/opencode/agent"
         agents_dir="$(opencode_agents_dir)"
@@ -2900,6 +2919,7 @@ main() {
     fi
     if [[ "$target" == "opencode" ]]; then
       cleanup_opencode_legacy "$skills"
+      cleanup_opencode_legacy_commands "$skills"
       prune_stale_opencode_agents
       if ((UNINSTALL)); then
         uninstall_opencode_agents

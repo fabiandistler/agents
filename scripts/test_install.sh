@@ -43,8 +43,7 @@ count_links() {
   echo "$n"
 }
 
-# True if a skill's frontmatter marks it `activation: command` (routed to the
-# command directory, not the skills directory).
+# True if a skill's frontmatter marks it `activation: command`.
 skill_is_command() {
   grep -Eq '^activation:[[:space:]]*command[[:space:]]*$' "$1/SKILL.md" 2>/dev/null
 }
@@ -107,7 +106,7 @@ skill_count() {
 }
 
 command_count() {
-  # Count `activation: command` skills (routed to the command dir), optionally
+  # Count `activation: command` skills (linked as ordinary skills), optionally
   # filtered by environment ($1 = coding|chat|all) and target ($2, default
   # claude).
   local want="${1:-all}" target="${2:-claude}" n=0
@@ -134,19 +133,21 @@ CMD_EXPECTED="$(command_count all)"
 # Skills may opt out of a target via `targets:`, so each target has its own
 # expected link count.
 CODEX_EXPECTED="$(skill_count all codex)"
-OPENCODE_EXPECTED="$(skill_count all opencode)"
+OPENCODE_AUTO_EXPECTED="$(skill_count all opencode)"
 CODEX_CMD_EXPECTED="$(command_count all codex)"
 OPENCODE_CMD_EXPECTED="$(command_count all opencode)"
+OPENCODE_EXPECTED=$((OPENCODE_AUTO_EXPECTED + OPENCODE_CMD_EXPECTED))
 # Skills opencode links itself under --target=all: those that skip codex, so
 # ~/.agents/skills (the root opencode shares) does not hold them.
 OPENCODE_ONLY_EXPECTED=0
+OPENCODE_ONLY_AUTO_EXPECTED=0
 for _d in "$REPO_ROOT"/skills/*/; do
   [[ -f "$_d/SKILL.md" ]] || continue
-  skill_is_command "$_d" && continue
   skill_is_nested_member "$_d" && continue
   skill_matches_target "$_d" opencode || continue
   skill_matches_target "$_d" codex && continue
   OPENCODE_ONLY_EXPECTED=$((OPENCODE_ONLY_EXPECTED + 1))
+  skill_is_command "$_d" || OPENCODE_ONLY_AUTO_EXPECTED=$((OPENCODE_ONLY_AUTO_EXPECTED + 1))
 done
 
 run_check_tests() {
@@ -957,6 +958,49 @@ PY
     fail "OpenCode uninstall did not remove only generated agents"
   pass "OpenCode uninstall removes generated agents and preserves foreign files"
 }
+run_command_skill_tests() {
+  local command_home state_home skills_dir legacy_dir skill_link legacy_link \
+    foreign_dir foreign_link output skill_md activation
+  command_home="$(mktemp -d)"
+  state_home="$command_home/xdg-state"
+  skills_dir="$command_home/.config/opencode/skills"
+  legacy_dir="$command_home/.config/opencode/command"
+  skill_link="$skills_dir/repo-status"
+
+  HOME="$command_home" XDG_STATE_HOME="$state_home" "$INSTALL" \
+    --target=opencode --category=workflow >/dev/null
+  [[ -L "$skill_link" && "$(readlink "$skill_link")" == "$REPO_ROOT/skills/repo-status" ]] ||
+    fail "OpenCode command skill was not installed as an ordinary skills link"
+  [[ ! -e "$legacy_dir" ]] ||
+    fail "OpenCode install created its legacy singular command directory"
+
+  for skill_md in "$REPO_ROOT"/skills/*/SKILL.md; do
+    activation="$(sed -n 's/^activation:[[:space:]]*//p' "$skill_md")"
+    [[ "$activation" == command ]] || continue
+    "$PYTHON" "$REPO_ROOT/scripts/quick_validate.py" "${skill_md%/SKILL.md}" >/dev/null ||
+      fail "quick_validate rejected command skill ${skill_md%/SKILL.md}"
+  done
+  pass "OpenCode command skills install in skills/ and pass shared validation"
+
+  mkdir -p "$legacy_dir"
+  legacy_link="$legacy_dir/repo-status.md"
+  ln -s "$REPO_ROOT/skills/repo-status/SKILL.md" "$legacy_link"
+  foreign_dir="$(mktemp -d)/foreign-command"
+  mkdir "$foreign_dir"
+  foreign_link="$legacy_dir/foreign.md"
+  ln -s "$foreign_dir" "$foreign_link"
+  output="$(HOME="$command_home" XDG_STATE_HOME="$state_home" \
+    "$INSTALL" --target=opencode --category=workflow 2>&1)"
+  [[ ! -L "$legacy_link" && -L "$foreign_link" && -L "$skill_link" ]] ||
+    fail "legacy command migration removed a foreign path or lost the skill link: $output"
+  pass "legacy OpenCode command links migrate without touching foreign entries"
+
+  HOME="$command_home" XDG_STATE_HOME="$state_home" "$INSTALL" \
+    --target=opencode --category=workflow --uninstall >/dev/null
+  [[ ! -e "$skill_link" && ! -e "$legacy_link" && -L "$foreign_link" ]] ||
+    fail "OpenCode command-skill uninstall removed a foreign path or kept the link"
+  pass "OpenCode command-skill uninstall removes only repo-owned links"
+}
 
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
@@ -1067,9 +1111,8 @@ claude_filter_warns() {
   fail "--env with --target=opencode warned about claude"
 pass "--env/--category with a claude target warn once, exit code unchanged"
 
-# 6. install --target=all populates codex and opencode only. opencode keeps
-#    command skills in its command dir; codex has no command dir, so its
-#    command skills land in the skills dir instead.
+# 6. install --target=all populates codex and opencode only. Both runtimes
+#    install command skills in their normal skills roots.
 CODEX_SKILLS_EXPECTED=$((CODEX_EXPECTED + CODEX_CMD_EXPECTED))
 HOME_A="$(mktemp -d)"
 HOME="$HOME_A" "$INSTALL" --target=all >/dev/null
@@ -1080,21 +1123,27 @@ got="$(count_links "$HOME_A/.config/opencode/skills")"
 got="$(count_links "$HOME_A/.agents/skills")"
 [[ "$got" -eq "$CODEX_SKILLS_EXPECTED" ]] ||
   fail "all install: .agents/skills has $got links, expected $CODEX_SKILLS_EXPECTED"
-got="$(count_links "$HOME_A/.config/opencode/command")"
-[[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] ||
-  fail "all install: opencode command has $got links, expected $OPENCODE_CMD_EXPECTED"
+[[ ! -e "$HOME_A/.config/opencode/command" ]] ||
+  fail "all install created the legacy OpenCode command directory"
 [[ -L "$HOME_A/.agents/skills/repo-status" ]] || fail "codex: command skill repo-status not linked into skills/"
 [[ -f "$HOME_A/.agents/skills/repo-status/agents/openai.yaml" ]] ||
   fail "codex: command skill repo-status missing its openai.yaml sidecar"
 [[ ! -e "$HOME_A/.codex/prompts/repo-status.md" ]] || fail "codex: command skill repo-status leaked into deprecated prompts/"
-pass "all install populates codex and opencode (codex commands as skills)"
+documentation_link="$HOME_A/.agents/skills/documentation"
+link_inode_before="$(stat -c %i "$documentation_link")"
+reinstall_output="$(HOME="$HOME_A" "$INSTALL" --target=all 2>&1)"
+[[ "$(stat -c %i "$documentation_link")" == "$link_inode_before" ]] ||
+  fail "reinstall replaced an unchanged skill link"
+grep -q '^  ok .*\.agents/skills/documentation' <<<"$reinstall_output" ||
+  fail "reinstall did not report the unchanged skill link as ok"
+pass "all install populates codex and opencode; unchanged links retain their inode"
 
-# 6a. --uninstall removes command-dir links (and the codex skill links).
+# 6a. --uninstall removes command-skill links from the normal skill roots.
 HOME="$HOME_A" "$INSTALL" --target=all --uninstall >/dev/null
-got="$(count_links "$HOME_A/.config/opencode/command")"
-[[ "$got" -eq 0 ]] || fail "all uninstall: opencode command dir still has $got links"
 [[ ! -e "$HOME_A/.agents/skills/repo-status" ]] || fail "codex uninstall left command skill repo-status behind"
-pass "all uninstall removes command-dir links"
+[[ ! -e "$HOME_A/.config/opencode/skills/repo-status" ]] ||
+  fail "OpenCode uninstall left command skill repo-status in skills/"
+pass "all uninstall removes command skills from the normal skill roots"
 
 # 6aa. re-running an install keeps the existing skill symlink inode.
 HOME_LINK_IDEM="$(mktemp -d)"
@@ -1110,16 +1159,15 @@ echo "ok: unchanged skill links keep their inode"
 
 # 6f. opencode reads ~/.agents/skills too, and wants skill names unique across
 #     its roots (#564): with codex installed first, opencode links none of the
-#     shared skills but keeps its command links.
+#     shared skills, including command skills.
 HOME_OCS="$(mktemp -d)"
 OCS_SKILLS="$HOME_OCS/.config/opencode/skills"
 HOME="$HOME_OCS" "$INSTALL" --target=codex >/dev/null
 HOME="$HOME_OCS" "$INSTALL" --target=opencode >/dev/null
 got="$(count_links "$OCS_SKILLS")"
 [[ "$got" -eq "$OPENCODE_ONLY_EXPECTED" ]] || fail "opencode after codex: $got duplicate skill links"
-got="$(count_links "$HOME_OCS/.config/opencode/command")"
-[[ "$got" -eq "$OPENCODE_CMD_EXPECTED" ]] ||
-  fail "opencode after codex: expected $OPENCODE_CMD_EXPECTED command links, got $got"
+[[ ! -e "$HOME_OCS/.config/opencode/command" ]] ||
+  fail "opencode after codex created the legacy command directory"
 pass "opencode skips skills codex already links"
 
 # 6g. the reverse order ends in the same state: a codex install removes the
@@ -1156,7 +1204,8 @@ HOME="$HOME_OCE" "$INSTALL" --target=opencode >/dev/null
 shared=0
 for link in "$HOME_OCE/.agents/skills"/*; do
   [[ -L "$link" ]] || continue
-  skill_is_command "$REPO_ROOT/skills/${link##*/}" || shared=$((shared + 1))
+  skill_matches_target "$REPO_ROOT/skills/${link##*/}" opencode || continue
+  shared=$((shared + 1))
 done
 for link in "$HOME_OCE/.config/opencode/skills"/*; do
   [[ -L "$link" ]] || continue
@@ -1208,15 +1257,15 @@ HOME="$HOME_HAND" "$INSTALL" --target=claude --dry-run >/dev/null
 HOME="$HOME_HAND" "$INSTALL" --target=claude >/dev/null
 [[ "$(count_links "$HOME_HAND/.claude/skills")" -eq 0 ]] || fail "migration left claude skill links"
 got="$(count_links "$HOME_HAND/.config/opencode/skills")"
-[[ "$got" -eq "$OPENCODE_EXPECTED" ]] ||
-  fail "migration handed $got skills to opencode, expected $OPENCODE_EXPECTED"
+[[ "$got" -eq "$OPENCODE_AUTO_EXPECTED" ]] ||
+  fail "migration handed $got skills to opencode, expected $OPENCODE_AUTO_EXPECTED"
 HOME_HAND2="$(mktemp -d)"
 make_old_claude_skills "$HOME_HAND2"
 HOME="$HOME_HAND2" "$INSTALL" --target=codex >/dev/null
 mkdir -p "$HOME_HAND2/.config/opencode/skills"
 HOME="$HOME_HAND2" "$INSTALL" --target=claude >/dev/null
 got="$(count_links "$HOME_HAND2/.config/opencode/skills")"
-[[ "$got" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
+[[ "$got" -eq "$OPENCODE_ONLY_AUTO_EXPECTED" ]] ||
   fail "migration handed opencode $got skills codex already shares"
 HOME_HAND3="$(mktemp -d)"
 make_old_claude_skills "$HOME_HAND3"
@@ -1318,8 +1367,8 @@ got="$(count_links "$HOME_OC/.config/opencode/skills")"
 pass "opencode install links skills/ and cleans the legacy agent dir"
 
 # 7. --env=chat links only the chat subset (non-empty, strictly fewer than all).
-CHAT_EXPECTED="$(skill_count chat opencode)"
-CODING_EXPECTED="$(skill_count coding opencode)"
+CHAT_EXPECTED=$(($(skill_count chat opencode) + $(command_count chat opencode)))
+CODING_EXPECTED=$(($(skill_count coding opencode) + $(command_count coding opencode)))
 [[ "$CHAT_EXPECTED" -ge 1 ]] || fail "no chat skills detected"
 [[ "$CHAT_EXPECTED" -lt "$OPENCODE_EXPECTED" ]] || fail "chat subset is not smaller than all"
 HOME_CHAT="$(mktemp -d)"
@@ -1359,7 +1408,6 @@ category_count() {
   local want="$1" target="${2:-claude}" n=0
   for d in "$REPO_ROOT"/skills/*/; do
     [[ -f "$d/SKILL.md" ]] || continue
-    skill_is_command "$d" && continue
     skill_is_nested_member "$d" && continue
     skill_matches_target "$d" "$target" || continue
     local cat
@@ -2089,5 +2137,8 @@ run_git_hook_tests
 
 # OpenCode subagents rendered from the plugin agents.
 run_opencode_agent_tests
+
+# OpenCode command skills via slash metadata.
+run_command_skill_tests
 
 echo "all install.sh tests passed"
