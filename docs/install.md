@@ -101,7 +101,14 @@ TOML and the OpenCode Markdown come from the same parser in
 |---|---|---|
 | `claude` | nothing; use the plugins | nothing; use the plugins |
 | `codex` | `~/.agents/skills/<skill>` | `~/.agents/skills/<skill>` (see below) |
-| `opencode` | `~/.config/opencode/skills/<skill>` | `~/.config/opencode/command/<name>.md` |
+| `opencode` | `~/.config/opencode/skills/<skill>` | `~/.config/opencode/skills/<skill>` (see below) |
+
+**OpenCode command skills.** A command skill stays in its ordinary skills
+directory. Its `metadata` sets `opencode/slash: "true"` to expose `/name` in
+the TUI and `opencode/autoinvoke: "false"` to keep it out of automatic
+selection; `scripts/quick_validate.py` requires both on every
+`activation: command` skill. The installer no longer creates command files, and
+removes the `~/.config/opencode/command/<name>.md` links earlier versions made.
 
 opencode also reads `~/.agents/skills/`, and it expects skill names to be
 unique across all its roots

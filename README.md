@@ -45,7 +45,7 @@ opencode: /home/you/.config/opencode/skills
   linked    /home/you/.config/opencode/skills/documentation -> /home/you/src/agents/skills/documentation
   linked    /home/you/.config/opencode/skills/refactoring -> /home/you/src/agents/skills/refactoring
   ...
-  linked    /home/you/.config/opencode/command/repo-status.md -> /home/you/src/agents/skills/repo-status/SKILL.md
+  linked    /home/you/.config/opencode/skills/repo-status -> /home/you/src/agents/skills/repo-status
 ```
 
 Start your agent and ask it something the catalogue covers — *"is this
@@ -98,8 +98,9 @@ router's
 **Some skills are invoked explicitly.** Skills marked `activation: command`
 are user-invoked only and install as commands — `/workflow:oss-scouting`,
 `/workflow:repo-status` in Claude Code, where plugin commands carry the
-plugin name. Codex gets them as skills that run only on an explicit
-`$oss-scouting`.
+plugin name. OpenCode discovers them as slash commands from the ordinary skill
+directory through `opencode/slash` and `opencode/autoinvoke` metadata. Codex
+gets them as skills that run only on an explicit `$oss-scouting`.
 
 **Shared rules are separate from skills.** Skills are capabilities loaded on
 demand. `instructions/` has three tiers: always-on rules, Claude path-scoped

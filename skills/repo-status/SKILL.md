@@ -6,6 +6,9 @@ disable-model-invocation: true
 environments: coding, chat
 argument-hint: "[yesterday | today | blockers | <topic>]"
 description: Generate a standup / status update from recent development activity — yesterday/today/blockers, turning rough notes or connected-tool activity into a shareable update.
+metadata:
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # Repo Status
