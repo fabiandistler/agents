@@ -545,15 +545,34 @@ def test_uploads_fail_when_the_file_is_missing(workflow: dict[Any, Any]) -> None
             )
 
 
-def test_every_action_is_pinned_to_a_version(workflow: dict[Any, Any]) -> None:
+def test_every_action_is_pinned_to_a_commit_sha(
+    workflow: dict[Any, Any], workflow_text: str
+) -> None:
+    # A tag can be moved to new code; a full commit SHA cannot. A moved tag
+    # would run unreviewed third-party code next to the write token and the
+    # model key.
     for name, job in _jobs(workflow).items():
         for step in _steps(job):
             uses = step.get("uses")
             if uses is None:
                 continue
-            assert re.fullmatch(r"[\w.-]+/[\w.-]+@v\d+", str(uses)), (
-                f"job {name!r} uses {uses!r}; a job that can write must not run a floating action"
+            assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", str(uses)), (
+                f"job {name!r} uses {uses!r}; pin every action to a full commit SHA"
             )
+
+    # YAML drops comments, so the version comment is checked on the raw text.
+    uses_lines = [
+        line for line in workflow_text.splitlines() if re.match(r"\s*(?:-\s+)?uses:", line)
+    ]
+    assert uses_lines, "the workflow uses no actions; the pinning check would be vacuous"
+    untagged = [
+        line.strip()
+        for line in uses_lines
+        if not re.search(r"@[0-9a-f]{40} # v\d+(?:\.\d+)*$", line)
+    ]
+    assert not untagged, (
+        f"every pinned action needs its tag as a trailing `# vX.Y.Z` comment; found {untagged}"
+    )
 
 
 def test_no_job_checks_out_the_pull_request_head(
