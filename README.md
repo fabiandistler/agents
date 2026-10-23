@@ -75,6 +75,7 @@ behaviour is in [`docs/install.md`](docs/install.md).
 | `--check` | off | Report drift between the selected install and the managed files; exit 0 clean, 3 drift; writes nothing |
 | `--output FILE` | — | With `--check`: write the full drift report as TSV |
 | `--update` | off | Replay the last successful install (targets, filters, components) from the saved state file; exit 4 when none exists |
+| `--git-hook` | off | Install `post-merge`/`post-rewrite` hooks in this clone that run `--update` when `--update --check` finds drift; `--uninstall --git-hook` removes them |
 
 ```sh
 ./install.sh --target=opencode --category=architecture

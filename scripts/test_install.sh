@@ -700,6 +700,138 @@ PY
   pass "--target=detected with no installations exits 2 without writing"
 }
 
+run_git_hook_tests() {
+  local hook_home state_home git_home git_dir hooks_dir post_merge post_rewrite \
+    skill_link before_merge before_rewrite output status dry_home dry_state dry_git_home \
+    dry_git_dir foreign_home foreign_state foreign_git_home foreign_git_dir foreign_hooks \
+    foreign_merge foreign_rewrite foreign_content
+
+  capture_hook_install() {
+    local captured_home="$1" captured_state="$2" captured_git_dir="$3"
+    shift 3
+    set +e
+    output="$(HOME="$captured_home" XDG_STATE_HOME="$captured_state" \
+      GIT_DIR="$captured_git_dir" GIT_WORK_TREE="$REPO_ROOT" \
+      "$INSTALL" "$@" 2>&1)"
+    status=$?
+    set -e
+  }
+
+  capture_hook_run() {
+    local hook="$1" captured_home="$2" captured_state="$3" captured_git_dir="$4" input="$5"
+    set +e
+    output="$(cd "$REPO_ROOT" && printf '%s' "$input" |
+      HOME="$captured_home" XDG_STATE_HOME="$captured_state" \
+        GIT_DIR="$captured_git_dir" GIT_WORK_TREE="$REPO_ROOT" "$hook" 2>&1)"
+    status=$?
+    set -e
+  }
+
+  hook_home="$(mktemp -d)"
+  state_home="$hook_home/xdg-state"
+  git_home="$(mktemp -d)"
+  git -C "$git_home" init -q
+  git_dir="$git_home/.git"
+  hooks_dir="$git_dir/hooks"
+  post_merge="$hooks_dir/post-merge"
+  post_rewrite="$hooks_dir/post-rewrite"
+  capture_hook_install "$hook_home" "$state_home" "$git_dir" \
+    --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 ]] || fail "--git-hook install failed: $output"
+  [[ -x "$post_merge" && -x "$post_rewrite" ]] ||
+    fail "--git-hook did not create executable post-merge and post-rewrite hooks"
+  grep -Fqx '# managed-by: fabiandistler/agents install.sh' "$post_merge" ||
+    fail "post-merge hook is missing its ownership marker"
+  grep -Fqx '# managed-by: fabiandistler/agents install.sh' "$post_rewrite" ||
+    fail "post-rewrite hook is missing its ownership marker"
+  [[ "$(head -n 1 "$post_rewrite")" == '#!/bin/sh' &&
+  "$(sed -n '3p' "$post_rewrite")" == 'cat >/dev/null' ]] ||
+    fail "post-rewrite hook does not consume Git's rewrite list"
+  [[ -f "$state_home/fabiandistler-agents/install.json" ]] ||
+    fail "--git-hook install did not save replay state"
+  before_merge="$(cat "$post_merge")"
+  before_rewrite="$(cat "$post_rewrite")"
+  capture_hook_install "$hook_home" "$state_home" "$git_dir" \
+    --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 ]] || fail "reinstalling --git-hook failed: $output"
+  [[ "$(cat "$post_merge")" == "$before_merge" &&
+  "$(cat "$post_rewrite")" == "$before_rewrite" ]] ||
+    fail "reinstalling --git-hook rewrote unchanged hooks"
+  [[ "$output" == *"ok        $post_merge (Git hook)"* &&
+    "$output" == *"ok        $post_rewrite (Git hook)"* ]] ||
+    fail "reinstalling --git-hook did not report both hooks unchanged"
+  pass "--git-hook creates executable marker-owned hooks idempotently"
+
+  skill_link="$hook_home/.agents/skills/communication-analysis"
+  rm "$skill_link"
+  capture_hook_run "$post_merge" "$hook_home" "$state_home" "$git_dir" ""
+  [[ "$status" -eq 0 && "$output" == *'--check: drift'* && -L "$skill_link" ]] ||
+    fail "post-merge did not check and replay the saved install: $output"
+  if "$PYTHON" - "$output" "$skill_link" "$REPO_ROOT" <<'PY'
+import sys
+
+output, skill_link, repo_root = sys.argv[1:]
+check = output.index("--check: drift")
+update = output.index(f"linked    {skill_link} -> {repo_root}/skills/communication-analysis")
+assert check < update
+PY
+  then
+    :
+  else
+    fail "post-merge ran --update before its --check"
+  fi
+  pass "post-merge checks first, then replays only when drift exists"
+
+  capture_hook_run "$post_rewrite" "$hook_home" "$state_home" "$git_dir" "old new\n"
+  [[ "$status" -eq 0 && "$output" == '--check: clean' ]] ||
+    fail "clean post-rewrite did not stop after its read-only check: $output"
+  rm "$skill_link"
+  capture_hook_run "$post_rewrite" "$hook_home" "$state_home" "$git_dir" "old new\n"
+  [[ "$status" -eq 0 && "$output" == *'--check: drift'* && -L "$skill_link" ]] ||
+    fail "post-rewrite did not consume stdin and replay drift: $output"
+  pass "post-rewrite consumes rewrite input and checks before updating"
+
+  capture_hook_install "$hook_home" "$state_home" "$git_dir" --uninstall --git-hook
+  [[ "$status" -eq 0 && ! -e "$post_merge" && ! -e "$post_rewrite" ]] ||
+    fail "targetless --uninstall --git-hook did not remove both managed hooks: $output"
+  pass "--uninstall --git-hook removes only this clone's managed hooks"
+
+  dry_home="$(mktemp -d)"
+  dry_state="$dry_home/xdg-state"
+  dry_git_home="$(mktemp -d)"
+  git -C "$dry_git_home" init -q
+  dry_git_dir="$dry_git_home/.git"
+  capture_hook_install "$dry_home" "$dry_state" "$dry_git_dir" \
+    --target=codex --category=communication --git-hook --dry-run
+  [[ "$status" -eq 0 && ! -e "$dry_git_dir/hooks/post-merge" &&
+    ! -e "$dry_git_dir/hooks/post-rewrite" ]] ||
+    fail "--git-hook --dry-run wrote into the Git hooks directory"
+  pass "--git-hook --dry-run creates no hooks"
+
+  foreign_home="$(mktemp -d)"
+  foreign_state="$foreign_home/xdg-state"
+  foreign_git_home="$(mktemp -d)"
+  git -C "$foreign_git_home" init -q
+  foreign_git_dir="$foreign_git_home/.git"
+  foreign_hooks="$foreign_git_dir/hooks"
+  foreign_merge="$foreign_hooks/post-merge"
+  foreign_rewrite="$foreign_hooks/post-rewrite"
+  foreign_content=$'#!/bin/sh\n# human-owned hook\nexit 0'
+  printf '%b\n' "$foreign_content" >"$foreign_merge"
+  chmod +x "$foreign_merge"
+  capture_hook_install "$foreign_home" "$foreign_state" "$foreign_git_dir" \
+    --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 && "$(cat "$foreign_merge")" == "$foreign_content" &&
+  -x "$foreign_rewrite" ]] ||
+    fail "--git-hook overwrote a foreign hook or failed to install the other hook: $output"
+  capture_hook_install "$foreign_home" "$foreign_state" "$foreign_git_dir" \
+    --uninstall --git-hook
+  [[ "$status" -eq 0 && "$(cat "$foreign_merge")" == "$foreign_content" &&
+  ! -e "$foreign_rewrite" ]] ||
+    fail "--uninstall --git-hook removed a foreign hook or kept its managed hook"
+  pass "foreign post-merge hooks survive install and uninstall"
+}
+
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
 dry_output="$(HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run 2>&1)"
@@ -1825,5 +1957,8 @@ run_update_tests
 
 # --target=detected: resolve targets from installed agents.
 run_detected_tests
+
+# --git-hook: per-clone post-merge/post-rewrite hooks.
+run_git_hook_tests
 
 echo "all install.sh tests passed"
