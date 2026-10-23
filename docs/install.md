@@ -56,6 +56,22 @@ replay without changing files or state, and `--update --check` reports drift
 against the saved options. During `--update`, every write re-checks its file
 right before writing and leaves it alone if it changed in between.
 
+## Update after a merge or rebase
+
+`--git-hook` installs marker-owned `post-merge` and `post-rewrite` hooks in this
+clone's Git hooks directory. They check the saved install first and run
+`--update` only when the check finds drift. `post-rewrite` also consumes Git's
+rewrite list, so it works after `git pull --rebase`. Hook setup is opt-in and
+does not add a CI or prek stage:
+
+```sh
+./install.sh --target=all --git-hook
+./install.sh --uninstall --git-hook
+```
+
+The targetless uninstall removes only these marker-owned hooks; it leaves the
+global skill and instruction installation in place. Foreign hooks are skipped.
+
 ## Detect installed agents
 
 `--target=detected` selects an agent when its command is on `PATH` or its user

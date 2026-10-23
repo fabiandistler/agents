@@ -19,7 +19,9 @@
 #   ./install.sh --target=all --check           # report managed-file drift
 #   ./install.sh --target=all --check --output drift.tsv
 #   ./install.sh --update                        # replay the last install
+#   ./install.sh --target=all --git-hook          # update after merge/rewrite
 #   ./install.sh --update --dry-run              # preview the replay
+#   ./install.sh --uninstall --git-hook           # remove this clone's hooks
 #
 # Claude gets skills, command skills, subagents and the PR merge guard from the
 # plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
@@ -129,6 +131,8 @@
 # when no state exists; first install with --target=claude|codex|opencode|all.
 # Writes during --update re-check their file right before writing and leave it
 # alone if it changed in between.
+# --git-hook installs marker-owned post-merge and post-rewrite hooks in this
+# clone. Each checks saved install state before replaying it with --update.
 # --target=detected selects agents with an installed command or config directory.
 #
 # Conservative behaviour:
@@ -156,6 +160,8 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 DRY_RUN=0
 CHECK_MODE=0
 UPDATE_MODE=0
+GIT_HOOK=0
+GIT_HOOK_MARKER='# managed-by: fabiandistler/agents install.sh'
 CHECK_OUTPUT=""
 CHECK_OUTPUT_SET=0
 CHECK_ROWS=""
@@ -179,6 +185,7 @@ usage() {
 Usage:
   ./install.sh --target=claude|codex|opencode|all|detected [options]
   ./install.sh --update [--dry-run] [--check [--output FILE]]
+  ./install.sh --uninstall --git-hook
 
 Options:
   --env=coding|chat|all        Filter skills (default: all)
@@ -191,6 +198,7 @@ Options:
   --check                      Report drift (0 clean, 3 drift)
   --output FILE|--output=FILE  Write the --check TSV report
   --update                     Replay the saved install (4: no saved state)
+  --git-hook                   Install this clone's update hooks
   -h, --help                   Show this help
 
 Exit codes: 0 success, 1 operational failure, 2 usage error,
@@ -414,6 +422,7 @@ while (($#)); do
     --dry-run) DRY_RUN=1 ;;
     --check) CHECK_MODE=1 ;;
     --update) UPDATE_MODE=1 ;;
+    --git-hook) GIT_HOOK=1 ;;
     --output)
       if (($# == 0)); then
         echo "missing FILE after --output" >&2
@@ -475,7 +484,7 @@ if ((UPDATE_MODE)); then
     state_status=$?
     exit "$state_status"
   fi
-elif [[ -z "$TARGET" ]]; then
+elif [[ -z "$TARGET" ]] && ! ((UNINSTALL && GIT_HOOK)); then
   echo "missing --target=claude|codex|opencode|all|detected" >&2
   usage >&2
   exit 2
@@ -741,7 +750,7 @@ list_skills() {
 # truncates before writing, so an interrupt in between leaves a file we do not
 # own in pieces; a temp file plus mv either lands whole or not at all.
 write_file_atomic() {
-  local path="$1" content="$2" owner_marker="${3:-}" owner_end="${4:-}"
+  local path="$1" content="$2" owner_marker="${3:-}" owner_end="${4:-}" mode="${7:-}"
   local expected_before="${5-}" expected_count="${6-}" expected_count_set=0 current current_count
   local tmp="$path.tmp.$$"
   (($# < 6)) || expected_count_set=1
@@ -754,6 +763,7 @@ write_file_atomic() {
   else
     : >"$tmp"
   fi
+  [[ -z "$mode" ]] || chmod "$mode" "$tmp"
   if ((UPDATE_MODE)) && [[ -n "$owner_marker" ]]; then
     if [[ -L "$path" ]] || { [[ -e "$path" ]] && [[ ! -f "$path" ]]; }; then
       rm "$tmp"
@@ -2289,6 +2299,129 @@ ensure_parent() {
   fi
 }
 
+git_hooks_dir() {
+  local git_dir
+  if ! git_dir="$(git -C "$REPO_ROOT" rev-parse --absolute-git-dir 2>/dev/null)"; then
+    echo "--git-hook requires a Git checkout" >&2
+    return 1
+  fi
+  printf '%s/hooks\n' "$git_dir"
+}
+
+render_git_hook() {
+  local hook="$1"
+  cat <<'HOOK'
+#!/bin/sh
+# managed-by: fabiandistler/agents install.sh
+HOOK
+  if [[ "$hook" == post-rewrite ]]; then
+    printf '%s\n' 'cat >/dev/null'
+  fi
+  cat <<'HOOK'
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
+cd "$repo_root" || exit 1
+if ./install.sh --update --check; then
+  exit 0
+else
+  check_status=$?
+  [ "$check_status" -eq 3 ] || exit "$check_status"
+fi
+exec ./install.sh --update
+HOOK
+}
+
+git_hook_is_managed() {
+  [[ -f "$1" && ! -L "$1" ]] && grep -qxF "$GIT_HOOK_MARKER" "$1"
+}
+
+install_git_hooks() {
+  local hooks_dir hook file content before
+  hooks_dir="$(git_hooks_dir)" || return 1
+  ensure_parent "$hooks_dir"
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    content="$(render_git_hook "$hook")"
+    if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+      printf '  WARN      %s is not a regular hook file (skipping)\n' "$file" >&2
+      continue
+    fi
+    if [[ -f "$file" ]]; then
+      before="$(cat "$file")"
+      if ! grep -qxF "$GIT_HOOK_MARKER" <<<"$before"; then
+        printf '  WARN      %s is not managed by this installer (skipping)\n' "$file" >&2
+        continue
+      fi
+      if [[ "$before" == "$content" && -x "$file" ]]; then
+        printf '  ok        %s (Git hook)\n' "$file"
+        continue
+      fi
+      if ((DRY_RUN)); then
+        printf '[dry-run] update %s\n' "$file"
+        continue
+      fi
+      write_file_atomic "$file" "$content" "$GIT_HOOK_MARKER" "" "$before" file 755
+      printf '  updated   %s (Git hook)\n' "$file"
+      continue
+    fi
+    if ((DRY_RUN)); then
+      printf '[dry-run] create %s\n' "$file"
+      continue
+    fi
+    write_file_atomic "$file" "$content" "$GIT_HOOK_MARKER" "" "" file 755
+    printf '  created   %s (Git hook)\n' "$file"
+  done
+}
+
+remove_git_hooks() {
+  local hooks_dir hook file before
+  hooks_dir="$(git_hooks_dir)" || return 1
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    [[ -e "$file" || -L "$file" ]] || continue
+    if ! git_hook_is_managed "$file"; then
+      printf '  WARN      %s is not a marker-owned hook (leaving it untouched)\n' "$file" >&2
+      continue
+    fi
+    before="$(cat "$file")"
+    if ((DRY_RUN)); then
+      printf '[dry-run] remove %s\n' "$file"
+      continue
+    fi
+    if ! git_hook_is_managed "$file" || [[ "$(cat "$file")" != "$before" ]]; then
+      printf '  WARN      %s changed during uninstall (leaving it untouched)\n' "$file" >&2
+      continue
+    fi
+    rm "$file"
+    printf '  removed   %s (Git hook)\n' "$file"
+  done
+}
+
+check_git_hooks() {
+  local hooks_dir hook file expected actual state
+  hooks_dir="$(git_hooks_dir)" || return 1
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    expected="$(render_git_hook "$hook")"
+    if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+      state=foreign
+    elif [[ ! -f "$file" ]]; then
+      state=missing
+    else
+      actual="$(cat "$file")"
+      if ! grep -qxF "$GIT_HOOK_MARKER" <<<"$actual"; then
+        state=foreign
+      elif [[ "$(grep -Fxc "$GIT_HOOK_MARKER" <<<"$actual" || true)" != 1 ]]; then
+        state=duplicate
+      elif [[ "$actual" != "$expected" || ! -x "$file" ]]; then
+        state=stale
+      else
+        continue
+      fi
+    fi
+    check_record all git-hook "$file" "$state"
+  done
+}
+
 link_one() {
   local src="$1" dest="$2"
   if [[ -L "$dest" ]]; then
@@ -2799,13 +2932,21 @@ check_result() {
 
 check_main() {
   main >/dev/null
+  ((GIT_HOOK)) && check_git_hooks
   check_result
 }
 
 if ((CHECK_MODE)); then
   check_main
+elif [[ -z "$TARGET" ]] && ((UNINSTALL && GIT_HOOK)); then
+  remove_git_hooks
 else
   main
+  if ((UNINSTALL && GIT_HOOK)); then
+    remove_git_hooks
+  elif ((GIT_HOOK)); then
+    install_git_hooks
+  fi
   if ((UNINSTALL == 0 && DRY_RUN == 0)); then
     write_install_state
   fi
