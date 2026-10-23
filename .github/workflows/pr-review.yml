@@ -43,6 +43,8 @@ jobs:
       pull-requests: read
       issues: read
       checks: read
+    outputs:
+      same_repo: ${{ steps.origin.outputs.same_repo }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -58,6 +60,20 @@ jobs:
             --pr "${{ github.event.pull_request.number || inputs.pr }}" \
             --repo "${{ github.repository }}" \
             --output context.json
+
+      - name: Check whether the head lives in this repository
+        id: origin
+        # A manual run has no pull request event to read the head repository
+        # from, so the review guard takes it from the fetched context. Only an
+        # explicit `fork: false` counts as same-repository.
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'PY'
+          import json
+
+          with open("context.json", encoding="utf-8") as handle:
+              context = json.load(handle)
+          print("same_repo=" + ("true" if context.get("fork") is False else "false"))
+          PY
 
       - name: Upload the context
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -80,12 +96,14 @@ jobs:
     needs: assess
     # Drafts are assessed but not reviewed until they are marked ready. A fork
     # pull request is assessed too, but its diff never reaches the model: the
-    # job holds a secret and the diff is untrusted input. A manual run reviews
-    # whatever pull request it is pointed at.
+    # job holds a secret and the diff is untrusted input. A manual run carries
+    # no pull request event, so the same-repository guard reads the assess
+    # output for both triggers.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      needs.assess.outputs.same_repo == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.draft == false &&
-      github.event.pull_request.head.repo.full_name == github.repository)
+      github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
     # The base checkout is the only thing the review reads; the model response
     # leaves the job as an artifact, never as a GitHub write.
