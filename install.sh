@@ -1058,6 +1058,7 @@ remove_legacy_codex_mcp() {
   local venv
   venv="$(codex_mcp_runtime_dir)"
   if [[ -d "$venv" ]]; then
+    check_record codex legacy-mcp-runtime "$venv" stale
     if ((DRY_RUN)); then
       printf '[dry-run] remove %s\n' "$venv"
     else

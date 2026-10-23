@@ -153,7 +153,7 @@ done
 run_check_tests() {
   local check_home report check_output check_status expected_row clean_home stale_home \
     agent_home guard_home untrusted_home foreign_home duplicate_home config_file instruction_file \
-    output_file begin_marker end_marker all_home all_report expected_all_row
+    output_file begin_marker end_marker all_home all_report expected_all_row legacy_venv_home
   capture_check() {
     local captured_home="$1"
     shift
@@ -394,6 +394,18 @@ PY
   expected_row=$'codex\trouted-member-overrides\t'"$config_file"$'\tduplicate'
   grep -Fq "$expected_row" "$output_file" || fail "--check missed duplicate managed blocks"
   pass "--check identifies duplicate managed blocks"
+
+  legacy_venv_home="$(mktemp -d)"
+  HOME="$legacy_venv_home" "$INSTALL" --target=codex --category=communication >/dev/null
+  mkdir -p "$legacy_venv_home/.codex/agents-mcp-runtime"
+  output_file="$legacy_venv_home/legacy-venv.tsv"
+  capture_check "$legacy_venv_home" --target=codex --category=communication --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] || fail "legacy MCP runtime venv did not produce drift exit 3: $check_output"
+  expected_row=$'codex\tlegacy-mcp-runtime\t'"$legacy_venv_home/.codex/agents-mcp-runtime"$'\tstale'
+  grep -Fq "$expected_row" "$output_file" || fail "--check missed the legacy MCP runtime venv"
+  [[ -d "$legacy_venv_home/.codex/agents-mcp-runtime" ]] ||
+    fail "--check deleted the legacy MCP runtime venv"
+  pass "--check reports the legacy MCP runtime venv without deleting it"
 
   for check_args in \
     '--target=codex --check --dry-run' \
