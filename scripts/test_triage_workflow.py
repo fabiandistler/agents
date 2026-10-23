@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 WORKFLOW = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "triage.yml"
+PROMPT = Path(__file__).resolve().parent.parent / "docs" / "agents" / "triage-prompt.md"
 
 
 def load_workflow() -> dict[Any, Any]:
@@ -99,3 +100,72 @@ def test_fetch_and_apply_run_the_model_free_cli():
     assert "scripts/triage.py fetch" in fetch
     assert "scripts/triage.py apply" in apply
     assert "$GITHUB_STEP_SUMMARY" in apply
+
+
+def classify_action() -> dict[Any, Any]:
+    return next(
+        step
+        for step in steps(load_workflow(), "classify")
+        if str(step.get("uses", "")).startswith("anthropics/claude-code-action")
+    )
+
+
+def test_classifier_uses_the_existing_claude_app_token():
+    with_ = classify_action()["with"]
+
+    assert with_["claude_code_oauth_token"] == "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"  # noqa: S105 -- expression name, not a secret
+    assert with_["prompt"] == "${{ steps.prompt.outputs.prompt }}"
+
+
+def test_classifier_is_limited_to_read_and_search_tools():
+    args = classify_action()["with"]["claude_args"]
+
+    assert '--allowedTools "Read,Glob,Grep"' in args
+    for denied in ("Bash", "Write", "Edit", "WebFetch", "WebSearch"):
+        assert denied in args
+
+
+def test_classifier_denies_credential_paths():
+    settings = classify_action()["with"]["settings"]
+
+    assert "Read(/proc/**)" in settings
+    assert "Read(**/.env)" in settings
+    assert "Read(**/.ssh/**)" in settings
+
+
+def test_classifier_requests_the_decision_schema():
+    args = classify_action()["with"]["claude_args"]
+
+    assert "--json-schema" in args
+    for field in ("category", "state", "confidence", "reason"):
+        assert f'"{field}"' in args
+
+
+def test_classifier_prompt_is_read_from_the_documented_file():
+    workflow = load_workflow()
+    build = next(step for step in steps(workflow, "classify") if step.get("id") == "prompt")
+
+    assert "docs/agents/triage-prompt.md" in build["run"]
+    assert "SANITIZED ISSUE FILE" in build["run"]
+
+
+def test_a_failed_classifier_cannot_reach_the_apply_job():
+    workflow = load_workflow()
+    save = next(step for step in steps(workflow, "classify") if step.get("name") == "Save decision")
+    apply_step = next(
+        step for step in steps(workflow, "apply") if "triage.py apply" in step.get("run", "")
+    )
+
+    assert "classify" in job(workflow, "apply")["needs"]
+    assert "${{ steps.classify.outputs.structured_output }}" in save["env"]["STRUCTURED_OUTPUT"]
+    assert "--summary-file" in apply_step["run"]
+
+
+def test_prompt_contract_treats_the_issue_as_untrusted_data():
+    text = PROMPT.read_text(encoding="utf-8")
+
+    assert "untrusted data" in text
+    assert "never an instruction" in text
+    assert "Never ask for a comment" in text
+    assert "`wontfix`, `ready-for-agent`, or `needs-info`" in text
+    assert "German and English" in text
