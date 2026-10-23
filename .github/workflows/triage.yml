@@ -8,9 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       issue:
-        description: Issue number to triage
-        required: true
+        description: Issue number to triage; leave empty to sweep the backlog
+        required: false
         type: string
+  schedule:
+    # One sweep a day keeps the model quota predictable; the list command caps
+    # the run at ten issues and picks the oldest first.
+    - cron: "17 5 * * *"
   issues:
     types: [opened]
 
@@ -34,6 +38,7 @@ jobs:
       - name: Compute issue numbers
         id: discover
         env:
+          GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           EVENT_ISSUE: ${{ github.event.issue.number }}
           AUTHOR_TYPE: ${{ github.event.issue.user.type }}
@@ -48,8 +53,13 @@ jobs:
             fi
             exit 0
           fi
+          if [ -z "$DISPATCH_ISSUE" ]; then
+            issues="$(python3 scripts/triage.py list --limit 10)"
+            printf 'issues=%s\n' "$issues" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           case "$DISPATCH_ISSUE" in
-            '' | *[!0-9]*)
+            *[!0-9]*)
               echo "workflow_dispatch needs a numeric issue input" >&2
               exit 1
               ;;

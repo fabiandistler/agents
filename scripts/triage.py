@@ -230,6 +230,37 @@ def related_issues(issues: list[dict[str, Any]], current_number: int) -> list[di
     return related
 
 
+def is_bot(item: dict[str, Any]) -> bool:
+    user = item.get("user") or {}
+    return user.get("type") == "Bot" or str(user.get("login", "")).endswith("[bot]")
+
+
+def has_state_label(item: dict[str, Any], mapping: dict[str, str]) -> bool:
+    present = {label["name"] for label in item.get("labels") or []}
+    return any(mapping[role] in present for role in STATE_ROLES)
+
+
+def list_untriaged(gh: GitHub, repo: str, mapping: dict[str, str], limit: int) -> list[int]:
+    """Open issues without a state label, oldest first, capped at the limit."""
+    pages = (
+        gh.api(
+            f"/repos/{repo}/issues?state=open&per_page=100&sort=created&direction=asc",
+            paginate=True,
+        )
+        or []
+    )
+    flat = (
+        [item for page in pages for item in page] if pages and isinstance(pages[0], list) else pages
+    )
+    eligible = [
+        item
+        for item in flat
+        if "pull_request" not in item and not is_bot(item) and not has_state_label(item, mapping)
+    ]
+    eligible.sort(key=lambda item: item.get("created_at") or "")
+    return [item["number"] for item in eligible[:limit]]
+
+
 def load_label_mapping(path: Path = DEFAULT_LABELS_DOC) -> dict[str, str]:
     """Read the role-to-label table from the one documented mapping."""
     try:
@@ -410,6 +441,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     fetch.add_argument("--issue", type=int, required=True)
     fetch.add_argument("--output", type=Path, required=True)
 
+    listing = sub.add_parser("list", help="print open untriaged issue numbers as a JSON array")
+    listing.add_argument(
+        "--limit", type=int, default=10, help="maximum issues to return (default 10)"
+    )
+
     apply = sub.add_parser("apply", help="validate a decision and add its labels")
     apply.add_argument("--issue", type=int, required=True)
     apply.add_argument("--decision", type=Path, required=True)
@@ -425,6 +461,12 @@ def main(argv: list[str] | None = None, *, gh: GitHub | None = None) -> int:
     client = gh or GitHub(run_gh)
     try:
         repo = resolve_repo(args.repo)
+        if args.command == "list":
+            if args.limit < 1:
+                raise UsageError("--limit must be at least 1")
+            mapping = load_label_mapping()
+            print(json.dumps(list_untriaged(client, repo, mapping, args.limit)))
+            return EXIT_OK
         if args.command == "fetch":
             issue = client.api(f"/repos/{repo}/issues/{args.issue}")
             if "pull_request" in issue:

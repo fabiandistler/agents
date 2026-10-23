@@ -36,11 +36,27 @@ def steps(workflow: dict[Any, Any], name: str) -> list[dict[Any, Any]]:
     return job(workflow, name)["steps"]
 
 
-def test_triggers_cover_dispatch_and_new_issues():
+def test_triggers_cover_dispatch_schedule_and_new_issues():
     on = triggers(load_workflow())
 
-    assert on["workflow_dispatch"]["inputs"]["issue"]["required"] is True
+    assert on["workflow_dispatch"]["inputs"]["issue"]["required"] is False
+    assert on["schedule"] == [{"cron": "17 5 * * *"}]
     assert on["issues"]["types"] == ["opened"]
+
+
+def test_discover_sweeps_when_the_dispatch_input_is_empty():
+    workflow = load_workflow()
+    discover = next(step for step in steps(workflow, "discover") if step.get("id") == "discover")
+
+    assert "scripts/triage.py list --limit 10" in discover["run"]
+    assert discover["env"]["GH_TOKEN"] == "${{ github.token }}"  # noqa: S105 -- expression name, not a secret
+
+
+def test_empty_discovery_skips_the_matrix_cleanly():
+    workflow = load_workflow()
+
+    assert job(workflow, "classify")["if"] == "needs.discover.outputs.issues != '[]'"
+    assert "classify" in job(workflow, "apply")["needs"]
 
 
 def test_top_level_permissions_are_empty():

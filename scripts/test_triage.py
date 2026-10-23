@@ -18,6 +18,7 @@ REPO = "fabiandistler/agents"
 ISSUE_PATH = f"/repos/{REPO}/issues/626"
 COMMENTS_PATH = f"{ISSUE_PATH}/comments?per_page=100"
 LIST_PATH = f"/repos/{REPO}/issues?state=open&per_page=100&sort=created&direction=desc"
+DISCOVERY_PATH = f"/repos/{REPO}/issues?state=open&per_page=100&sort=created&direction=asc"
 LABEL_PATH = f"{ISSUE_PATH}/labels"
 LABELS_DOC = Path(__file__).resolve().parent.parent / "docs" / "agents" / "triage-labels.md"
 
@@ -356,5 +357,72 @@ def test_cli_requires_a_repository(tmp_path: Path, monkeypatch):
     code = triage.main(
         ["fetch", "--issue", "626", "--output", str(tmp_path / "i.json")], gh=triage.GitHub(fake)
     )
+
+    assert code == triage.EXIT_USAGE
+
+
+def list_item(number: int, created_at: str, labels=(), **overrides: Any) -> dict[str, Any]:
+    payload = {
+        "number": number,
+        "title": f"Issue {number}",
+        "created_at": created_at,
+        "labels": [{"name": name} for name in labels],
+        "user": {"login": "fabian", "type": "User"},
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_list_skips_pull_requests_bots_and_triaged_issues(capsys):
+    fake = FakeGh(
+        {
+            ("GET", DISCOVERY_PATH): [
+                [
+                    list_item(1, "2026-01-01T00:00:00Z"),
+                    list_item(2, "2026-01-02T00:00:00Z", pull_request={"url": "x"}),
+                    list_item(
+                        3,
+                        "2026-01-03T00:00:00Z",
+                        user={"login": "dependabot[bot]", "type": "Bot"},
+                    ),
+                    list_item(4, "2026-01-04T00:00:00Z", labels=("needs-triage",)),
+                    list_item(5, "2026-01-05T00:00:00Z", labels=("wontfix",)),
+                    list_item(6, "2026-01-06T00:00:00Z", labels=("bug",)),
+                ]
+            ]
+        }
+    )
+
+    code = run_cli(fake, "list")
+
+    assert code == triage.EXIT_OK
+    assert json.loads(capsys.readouterr().out) == [1, 6]
+
+
+def test_list_flattens_pages_caps_and_sorts_oldest_first(capsys):
+    first_page = [list_item(n, f"2026-01-{n:02d}T00:00:00Z") for n in (6, 4, 5, 1, 3, 2)]
+    second_page = [list_item(n, f"2026-01-{n:02d}T00:00:00Z") for n in (7, 8, 9, 10, 11, 12)]
+    second_page.reverse()
+    fake = FakeGh({("GET", DISCOVERY_PATH): [first_page, second_page]})
+
+    code = run_cli(fake, "list", "--limit", "10")
+
+    assert code == triage.EXIT_OK
+    assert json.loads(capsys.readouterr().out) == list(range(1, 11))
+
+
+def test_list_returns_an_empty_array(capsys):
+    fake = FakeGh({("GET", DISCOVERY_PATH): [[]]})
+
+    code = run_cli(fake, "list")
+
+    assert code == triage.EXIT_OK
+    assert json.loads(capsys.readouterr().out) == []
+
+
+def test_list_rejects_a_non_positive_limit():
+    fake = FakeGh()
+
+    code = run_cli(fake, "list", "--limit", "0")
 
     assert code == triage.EXIT_USAGE
