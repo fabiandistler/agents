@@ -128,26 +128,13 @@ neither does not go in the report.
 
 ### 3. Present candidates as an HTML report
 
-Write one self-contained HTML file to the OS temp directory, so nothing lands
-in the repo. Resolve the temp directory from `$TMPDIR`, falling back to `/tmp`
-(`%TEMP%` on Windows), and write
-`<tmpdir>/architecture-review-<timestamp>.html` so each run gets a fresh file.
-Open it for the user (`xdg-open` on Linux, `open` on macOS, `start` on
-Windows) and give the absolute path. Without a browser or opener (a headless
-session), print the path instead.
+Write one self-contained HTML file to the OS temp directory as
+`<tmpdir>/architecture-review-<timestamp>.html` and open it for the user; in a
+headless session, print the absolute path instead.
 
-For each candidate, render a card with:
-
-- **Files**: the files and modules involved.
-- **Evidence**: one line per finding, each with `path:line` or a metric value
-  as the instrument printed it.
-- **Problem**: why the current shape causes friction.
-- **Solution**: in plain English, what would change.
-- **Benefits**: in terms of locality and leverage, and how tests would improve.
-- **Before / after diagram**: side by side, showing the shallowness and the
-  deepening.
-- **Recommendation strength**: `Strong`, `Worth exploring`, or `Speculative`,
-  as a badge.
+For each candidate, render one card per `references/html-report.md` — its
+candidate-card section is the single spec for the fields, the badge, and the
+diagram placement.
 
 End the report with a **Top recommendation** section: the one candidate to
 tackle first, and why.

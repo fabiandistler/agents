@@ -160,15 +160,8 @@ card. Nothing else.
 
 ## Tone
 
-Plain English and concise, but the architectural nouns and verbs come straight
-from `design-vocabulary.md`. Concision is no excuse to drift.
-
-**Use exactly:** module, interface, implementation, depth, deep, shallow, seam,
-adapter, leverage, locality.
-
-**Never substitute:** component, service, unit (for module) · API, signature
-(for interface) · boundary (for seam) · layer, wrapper (for module, when module
-is meant).
+Plain English and concise, with the architectural nouns and verbs exactly as
+`design-vocabulary.md` defines them — no substitutes.
 
 **Phrasings that fit:**
 

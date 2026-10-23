@@ -197,39 +197,17 @@ deploy. For a metric-backed decision on a borderline case, use `members/coupling
 
 ## 7. Analyzing architectural characteristics
 
-The final analysis step: consider the architecture characteristics the system
-must support — scalability, reliability, availability, fault tolerance,
-elasticity, agility (the ability to respond quickly to change). These can change
-a component's size.
-
-- Breaking a large, high-responsibility component into smaller ones improves
-  agility (easier to maintain and test), scalability, elasticity, and fault
-  tolerance.
-- Two parts of a system may handle the same *kind* of work (say, user input) but
-  at very different scales — one serving hundreds of concurrent users, the other
-  a handful. A purely functional view would give them one component; the
-  differing characteristics argue for splitting them.
-
-This step assumes you already know which architecture characteristics matter most
-to the system — ask the user for the top 3, or take them from an existing ADR
-or the trade-off analysis from `members/architecture-pattern-advisor/SKILL.md` (read via the `architecture` router), then run this pass. Do
-not assume them.
+Architecture characteristics can split or merge components — the worked split
+is in §10 below, the pass itself is step 4 in `SKILL.md`, including where the
+top-3 driving characteristics come from.
 
 ---
 
 ## 8. Component coupling
 
-Components are **coupled** when they communicate, or when a change to one may
-impact another. More coupling → harder to maintain and test → pay attention to it.
-Static-coupling definitions and the afferent/efferent example live in `SKILL.md`.
-
-### Temporal coupling
-
-Non-static dependencies based on timing or transactions (single units of work).
-When processing an order, `Order Placement`'s functionality must run before
-`Order Shipment`'s — they are temporally coupled. Current tooling rarely detects
-this; it usually surfaces from design documents or shows up through error
-conditions. Note it explicitly during design.
+More coupling → harder to maintain and test. Static coupling (afferent Cᴀ and
+efferent Cᴇ directions) and temporal coupling are defined in `SKILL.md`'s
+refinement lens; the worksheet records both per component.
 
 For coupling **metrics on realized code** — instability, abstractness, distance
 from the main sequence, zones of pain/uselessness — use `coupling-cohesion`.
@@ -238,29 +216,12 @@ from the main sequence, zones of pain/uselessness — use `coupling-cohesion`.
 
 ## 9. The Law of Demeter
 
-Also the **Principle of Least Knowledge**: a component or service should have
-limited knowledge of other components or services. (Demeter, the Greek goddess,
-produced all the world's grain but had no idea what people did with it — decoupled
-from the rest of the world.)
-
-**Before.** On accepting an order, `Order Placement`:
-
-- tells `Inventory Management` to decrement inventory, and
-- if stock is too low, tells `Supplier Ordering` to reorder, and
-- tells `Item Pricing` to adjust the price for limited supply, and
-- tells `Email Notification` to email the customer.
-
-`Order Placement` doesn't *perform* these actions, but it *knows they must
-happen* — and more knowledge means tighter coupling. It is highly coupled to the
-rest of the system.
-
-**After.** Distribute the knowledge. The decrement-inventory coupling must stay
-(inserting a middle component wouldn't change `Order Placement`'s efferent count).
-But the knowledge that "low stock → reorder *and* reprice" can be **deferred to
-`Inventory Management`**, which already owns inventory. `Order Placement` no
-longer needs to know about `Supplier Ordering` or `Item Pricing`, lowering its
-coupling. The redistribution trade-off lives in `SKILL.md`: move knowledge to
-where it belongs, don't just push a number down on one node.
+The redesign pattern and its coupling-redistribution trade-off are worked in
+`SKILL.md` (refinement lens "Law of Demeter"). In short: `Order Placement`
+knows it must decrement inventory, possibly reorder from a supplier, reprice,
+and email the customer — then moves the "low stock → reorder *and* reprice"
+knowledge into `Inventory Management`, which already owns inventory, and its
+efferent count drops.
 
 ---
 
