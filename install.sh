@@ -628,6 +628,10 @@ elif [[ -z "$TARGET" ]] && ! ((UNINSTALL && GIT_HOOK)); then
   echo "missing --target=claude|codex|opencode|all|detected" >&2
   usage >&2
   exit 2
+elif ((UNINSTALL == 0)) && [[ -f "$(install_state_file)" ]]; then
+  # A plain install overwrites the saved repo root, so it must rebase links
+  # from a moved checkout now; a later --update would see equal roots.
+  OLD_REPO_ROOT="$(load_install_state >/dev/null && printf '%s' "$OLD_REPO_ROOT")"
 fi
 
 case "$ENV" in
@@ -2639,7 +2643,7 @@ PLANNED_REBASED_LINKS=""
 
 rebase_repo_symlink() {
   local link="$1" current suffix new_target
-  [[ "$UPDATE_MODE" == 1 && -n "$OLD_REPO_ROOT" && "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] || return 0
+  [[ -n "$OLD_REPO_ROOT" && "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] || return 0
   [[ -L "$link" ]] || return 0
   current="$(readlink "$link")"
   [[ "$current" == "$OLD_REPO_ROOT/"* ]] || return 0
@@ -2953,8 +2957,8 @@ sync_skill_links() {
 
 rebase_managed_repo_paths() {
   local target config guard file agents_dir agent name payloads_dir
-  [[ "$UPDATE_MODE" == 1 && "$CHECK_MODE" == 0 && -n "$OLD_REPO_ROOT" &&
-    "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] || return 0
+  [[ "$CHECK_MODE" == 0 && -n "$OLD_REPO_ROOT" && "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] ||
+    return 0
   while IFS= read -r target; do
     [[ -n "$target" ]] || continue
     rebase_managed_block_path "$(instruction_file_for "$target")" \

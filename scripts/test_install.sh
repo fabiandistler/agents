@@ -701,6 +701,43 @@ PY
   [[ "$(readlink "$foreign_link")" == "$foreign_home/outside-skill" ]] ||
     fail "--update replaced a foreign skill link"
   pass "--update preserves foreign files and links at managed paths"
+
+  run_plain_install_after_move_test
+}
+
+# A plain install from a moved checkout saves the new repo root, so it must
+# rebase the old links itself: a later --update sees equal roots and would
+# leave them dangling.
+run_plain_install_after_move_test() {
+  local move_parent checkout_a checkout_b plain_home plain_state link dangling check_output
+  move_parent="$(mktemp -d)"
+  checkout_a="$move_parent/rvA"
+  checkout_b="$move_parent/rvB"
+  mkdir "$checkout_a"
+  git -C "$REPO_ROOT" ls-files -z --cached --others --exclude-standard |
+    (cd "$REPO_ROOT" && tar --null -T - -cf -) | tar -C "$checkout_a" -xf -
+  plain_home="$(mktemp -d)"
+  plain_state="$plain_home/xdg-state"
+  HOME="$plain_home" XDG_STATE_HOME="$plain_state" \
+    "$checkout_a/install.sh" --target=codex --category=communication >/dev/null
+  mv "$checkout_a" "$checkout_b"
+  HOME="$plain_home" XDG_STATE_HOME="$plain_state" \
+    "$checkout_b/install.sh" --target=codex --category=communication >/dev/null 2>&1 ||
+    fail "plain install from a moved checkout failed"
+  HOME="$plain_home" XDG_STATE_HOME="$plain_state" \
+    "$checkout_b/install.sh" --update >/dev/null 2>&1 ||
+    fail "--update after a plain install from a moved checkout failed"
+  dangling=0
+  for link in "$plain_home/.agents/skills"/*; do
+    [[ -L "$link" ]] || continue
+    [[ "$(readlink "$link")" == "$checkout_b/"* ]] || dangling=1
+  done
+  ((dangling == 0)) || fail "plain install from a moved checkout left links into the old checkout"
+  check_output="$(HOME="$plain_home" XDG_STATE_HOME="$plain_state" \
+    "$checkout_b/install.sh" --update --check 2>&1)" ||
+    fail "--update --check after a plain install from a moved checkout reported drift: $check_output"
+  rm -rf "$move_parent"
+  pass "plain install from a moved checkout rebases the previous checkout's links"
 }
 
 run_detected_tests() {
