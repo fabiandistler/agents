@@ -89,7 +89,7 @@ tiers in `instructions/`, ordered by numeric filename prefix:
   is sourced from `skills/llm-application-engineering/references/agent-pipelines.md`.
 
 ```sh
-./install.sh --target=all --instructions             # sync rules and on-demand payloads
+./install.sh --target=all --instructions             # sync rules, payloads and Claude's uv-init hook
 ./install.sh --target=all --instructions --dry-run   # preview
 ./install.sh --target=all --instructions --uninstall # strip the block
 ```
@@ -111,8 +111,12 @@ pointer to `~/.agents/instructions/30-python.md` for Python work and keep the
 R fragment inline. Rule files without the `managed-by:` line are never touched.
 The catch: nothing loads before the first matching read, so a rule that must
 hold while *creating* the first such file does not belong behind `paths:`.
+For the Python baseline, a Claude `Bash(uv init*)` PreToolUse hook reads the
+installed `~/.agents/instructions/30-python.md` and adds it to context before
+the first Python file exists.
 
-Uninstall removes the selected global blocks. It removes an on-demand file
+Uninstall removes the selected global blocks and, when Claude is selected, its
+uv-init hook. It removes an on-demand file
 only when no remaining managed instruction block refers to it; a file at a
 payload path without the ownership marker is never touched, and its pointer is
 then left out of the block.
@@ -130,8 +134,9 @@ its own and no rule loads twice. Once that file exists, opencode stops reading
 opencode too belongs in `~/.config/opencode/AGENTS.md` as well.
 
 The flag is opt-in — plain `./install.sh --target=...` only touches skills.
-Claude plugins cannot ship `CLAUDE.md` content or rules, so for Claude this
-flag is the only thing `install.sh` still installs.
+Claude plugins cannot ship `CLAUDE.md` content or path-scoped rules, so
+`--instructions` installs the instruction blocks, path rules, on-demand files,
+and Python `uv init` hook for Claude.
 
 ## PR merge guard (`--merge-guard`)
 
@@ -296,8 +301,9 @@ claude plugin install merge-guard@fabiandistler-agents
 claude plugin install secret-guard@fabiandistler-agents
 ```
 
-For Claude, `install.sh` installs no skills, commands or hooks any more (#567).
-`--target=claude` only syncs `--instructions`, because plugins cannot ship
+For Claude, skills, commands, subagents, and merge/secret guard hooks come from
+plugins (#567). `--target=claude` syncs only shared instructions, path rules,
+the Python `uv init` context hook, and cleanup of old links. Plugins cannot ship
 `CLAUDE.md` content or path-scoped rules. Every `--target=claude` run, install
 or `--uninstall`, also removes what earlier versions created, so skills do not
 load twice next to the plugins:
@@ -307,6 +313,11 @@ load twice next to the plugins:
 - the merge-guard `PreToolUse` entry in `~/.claude/settings.json` (found by the
   script name in its command; every other setting stays). Install the
   `merge-guard` plugin to keep the guard.
+
+With `--instructions`, the installer also adds a separate `PreToolUse` handler
+to `~/.claude/settings.json` with `if: Bash(uv init*)`. It invokes the installed
+`~/.agents/instructions/python_init_context.py`, which injects the Python
+baseline. `--uninstall --instructions` removes only that handler.
 
 **Updates.** Claude Code turns auto-update off by default for third-party
 marketplaces such as this one. Turn it on in `/plugin` under Marketplaces, or
@@ -330,7 +341,7 @@ should have:
 | `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
 | `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
 | `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
-| `.claude/settings.json` `PreToolUse` entry | the PR merge guard (`scripts/pr_merge_guard.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
+| `.claude/settings.json` `PreToolUse` entries | the PR merge guard (`scripts/pr_merge_guard.py`) and the Python `Bash(uv init*)` context hook (`scripts/python_init_context.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
 After changing a skill's frontmatter or an instruction fragment, the prek

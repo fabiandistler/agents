@@ -3,7 +3,7 @@
 # for popular coding agents. Idempotent; reversible via --uninstall.
 #
 # Usage:
-#   ./install.sh --target=claude --instructions # instructions, rules + payloads
+#   ./install.sh --target=claude --instructions # instructions, rules, payloads + uv-init hook
 #   ./install.sh --target=codex               # ~/.agents/skills/<skill>
 #   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
@@ -12,7 +12,7 @@
 #   ./install.sh --target=opencode --env=chat # only chat skills
 #   ./install.sh --target=codex  --env=coding # only coding skills
 #   ./install.sh --target=codex --category=architecture,refactoring
-#   ./install.sh --target=all --instructions   # also sync rules and payloads
+#   ./install.sh --target=all --instructions   # also sync rules, payloads and the Claude uv-init hook
 #   ./install.sh --target=all --merge-guard    # also block agent PR merges
 #   ./install.sh --target=all --secret-guard   # also block credential reads
 #
@@ -93,10 +93,11 @@
 # prefix and may limit themselves to agents with a `targets:` frontmatter field.
 # For Claude, fragments with `paths:` go to ~/.claude/rules/agents-<fragment>.md
 # and load only for matching files. Codex gets the Python baseline by pointer;
-# opencode gets the same pointer and keeps the R rules in its block. Anything
-# outside the managed markers is left untouched, so hand-written notes and
-# @-imports survive; --uninstall strips our blocks and removes only
-# unreferenced payloads. opencode
+# opencode gets the same pointer and keeps the R rules in its block. A Claude
+# PreToolUse hook supplies the Python baseline for `uv init` before any Python
+# file exists. Anything outside the managed markers is left untouched, so
+# hand-written notes and @-imports survive; --uninstall strips our blocks and
+# hooks and removes only unreferenced payloads. opencode
 # gets its own ~/.config/opencode/AGENTS.md: it reads ~/.claude/CLAUDE.md only
 # as a fallback when that file is missing, and opencode V2 not at all.
 #
@@ -869,8 +870,12 @@ instruction_payload_marker() {
   printf '<!-- managed-by: fabiandistler/agents install.sh -->'
 }
 
+# A script payload cannot carry an HTML comment, so it uses a shell comment.
 instruction_payload_marker_for() {
-  instruction_payload_marker
+  case "$1" in
+    *.py) printf '# managed-by: fabiandistler/agents install.sh' ;;
+    *) instruction_payload_marker ;;
+  esac
 }
 
 instruction_payload_dest() {
@@ -885,6 +890,7 @@ instruction_payload_source() {
       printf '%s/skills/llm-application-engineering/references/agent-pipelines.md' "$REPO_ROOT"
       ;;
     85-agent-scripts.md) printf '%s/on-demand/85-agent-scripts.md' "$(instructions_dir)" ;;
+    python_init_context.py) printf '%s/scripts/python_init_context.py' "$REPO_ROOT" ;;
     *) return 1 ;;
   esac
 }
@@ -897,6 +903,10 @@ render_instruction_payload() {
       printf '%s\n\n' "$(instruction_payload_marker)"
       fragment_body "$source" | sed \
         '/^<!-- python-project-baseline:start -->$/d; /^<!-- python-project-baseline:end -->$/d'
+      ;;
+    python_init_context.py)
+      printf '%s\n' "$(instruction_payload_marker_for "$name")"
+      cat "$source"
       ;;
     *)
       printf '%s\n\n' "$(instruction_payload_marker)"
@@ -928,6 +938,9 @@ install_instruction_payloads() {
     85-agent-scripts.md; do
     install_instruction_payload "$name"
   done
+  if target_is_selected claude; then
+    install_instruction_payload python_init_context.py
+  fi
 }
 
 # A pointer is rendered only when its payload is ours (or, in a dry run, would
@@ -942,9 +955,9 @@ instruction_payload_available() {
   return 1
 }
 
-# Reference checks only look inside installed instruction documents. A
-# target-specific uninstall keeps shared payloads while another target still
-# points at them.
+# Reference checks only look inside installed instruction documents/settings.
+# A target-specific uninstall keeps shared payloads while another target or
+# the Claude uv-init hook still points at them.
 instruction_payload_referenced() {
   local name="$1" target dest home_path
   dest="$(instruction_payload_dest "$name")"
@@ -963,6 +976,12 @@ instruction_payload_referenced() {
       return 0
     fi
   done
+  if [[ "$name" == "30-python.md" || "$name" == "python_init_context.py" ]] &&
+    ! { ((UNINSTALL)) && target_is_selected claude; } &&
+    [[ -f "$HOME/.claude/settings.json" ]] &&
+    grep -qF "python_init_context.py" "$HOME/.claude/settings.json"; then
+    return 0
+  fi
   return 1
 }
 
@@ -987,7 +1006,8 @@ prune_instruction_payloads() {
     30-python.md \
     70-code-review-conventions.md \
     80-agent-pipelines.md \
-    85-agent-scripts.md; do
+    85-agent-scripts.md \
+    python_init_context.py; do
     remove_instruction_payload "$name"
   done
 }
@@ -1215,6 +1235,127 @@ remove_instructions() {
   dest="$(instruction_file_for "$target")" || return 1
   managed_block_remove "$dest" "$(instructions_begin_marker)" \
     "$(instructions_end_marker)" "instructions block"
+}
+
+python_init_hook_command() {
+  printf 'python3 "%s/.agents/instructions/python_init_context.py" --baseline "%s/.agents/instructions/30-python.md"' \
+    "$HOME" "$HOME"
+}
+
+# Print ~/.claude/settings.json with the Python uv-init context hook installed.
+# Exit 1 when the file is unreadable/invalid or has an incompatible hooks shape.
+claude_settings_with_python_hook() {
+  python3 - "$REPO_ROOT/scripts" "$1" "$2" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from python_init_context import with_claude_hook
+
+path = Path(sys.argv[2])
+try:
+    settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+except (OSError, ValueError):
+    sys.exit(1)
+if not isinstance(settings, dict):
+    sys.exit(1)
+try:
+    wanted = with_claude_hook(settings, sys.argv[3])
+except (TypeError, ValueError):
+    sys.exit(1)
+print(json.dumps(wanted, indent=2))
+PY
+}
+
+# Print ~/.claude/settings.json without our Python hook. Exit 10 when absent.
+claude_settings_without_python_hook() {
+  python3 - "$REPO_ROOT/scripts" "$1" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from python_init_context import without_claude_hook
+
+path = Path(sys.argv[2])
+try:
+    settings = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    sys.exit(1)
+if not isinstance(settings, dict):
+    sys.exit(1)
+wanted = without_claude_hook(settings)
+if wanted == settings:
+    sys.exit(10)
+print(json.dumps(wanted, indent=2))
+PY
+}
+
+install_claude_python_hook() {
+  local file="$HOME/.claude/settings.json" command content
+  if ! instruction_payload_available 30-python.md ||
+    ! instruction_payload_available python_init_context.py; then
+    printf '  WARN      cannot install the Claude uv-init context hook because an instruction payload is unavailable\n' >&2
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; cannot install the Claude uv-init context hook\n' >&2
+    return 0
+  fi
+  if [[ -L "$file" ]]; then
+    printf '  WARN      %s is a symlink, leaving it untouched (Python uv-init context hook)\n' \
+      "$file" >&2
+    return 0
+  fi
+  command="$(python_init_hook_command)"
+  if ! content="$(claude_settings_with_python_hook "$file" "$command")"; then
+    printf '  WARN      %s is not a compatible JSON object, leaving it untouched (Python uv-init context hook)\n' \
+      "$file" >&2
+    return 0
+  fi
+  if [[ -f "$file" && "$(cat "$file")" == "$content" ]]; then
+    printf '  ok        %s (Python uv-init context hook)\n' "$file"
+    return 0
+  fi
+  if ((DRY_RUN)); then
+    printf '[dry-run] write %s\n' "$file"
+    return 0
+  fi
+  ensure_parent "${file%/*}"
+  write_file_atomic "$file" "$content"
+  printf '  updated   %s (Python uv-init context hook)\n' "$file"
+}
+
+remove_claude_python_hook() {
+  local file="$HOME/.claude/settings.json" content status=0
+  [[ -f "$file" ]] && grep -qF python_init_context.py "$file" || return 0
+  if [[ -L "$file" ]]; then
+    printf '  WARN      %s is a symlink, leaving it untouched (Python uv-init context hook)\n' \
+      "$file" >&2
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; remove the Python uv-init context hook from %s by hand\n' \
+      "$file" >&2
+    return 0
+  fi
+  content="$(claude_settings_without_python_hook "$file")" || status=$?
+  case "$status" in
+    0) ;;
+    10) return 0 ;;
+    *)
+      printf '  WARN      %s is not a JSON object, leaving it untouched (Python uv-init context hook)\n' \
+        "$file" >&2
+      return 0
+      ;;
+  esac
+  if ((DRY_RUN)); then
+    printf '[dry-run] remove %s\n' "$file"
+    return 0
+  fi
+  write_file_atomic "$file" "$content"
+  printf '  removed   Python uv-init context hook from %s\n' "$file"
 }
 
 # --- Pre-tool guards (PR merge guard, secret read guard) ----------------------
@@ -1726,10 +1867,16 @@ main() {
     if ((INSTRUCTIONS)); then
       if ((UNINSTALL)); then
         remove_instructions "$target"
-        if [[ "$target" == "claude" ]]; then remove_claude_rules; fi
+        if [[ "$target" == "claude" ]]; then
+          remove_claude_rules
+          remove_claude_python_hook
+        fi
       else
         install_instructions "$target"
-        if [[ "$target" == "claude" ]]; then install_claude_rules; fi
+        if [[ "$target" == "claude" ]]; then
+          install_claude_rules
+          install_claude_python_hook
+        fi
       fi
     fi
     for guard in $GUARDS; do

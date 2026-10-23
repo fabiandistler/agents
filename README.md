@@ -67,7 +67,7 @@ behaviour is in [`docs/install.md`](docs/install.md).
 | `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links) |
 | `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` (not Claude: install only some plugins instead) |
 | `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app (not Claude) |
-| `--instructions` | off | Compose always-on rules and pointers into the agent's global instruction file and install the on-demand files |
+| `--instructions` | off | Compose always-on rules and pointers, install on-demand files, and add Claude's `uv init` context hook |
 | `--merge-guard` | off | Also install the PR merge guard hook (Codex, opencode; Claude uses the `merge-guard` plugin) |
 | `--secret-guard` | off | Also install the secret read guard hook (Codex, opencode; Claude uses the `secret-guard` plugin) |
 | `--dry-run` | off | Print every action, change nothing |
@@ -104,7 +104,9 @@ rules, and on-demand rules whose pointers stay in the global instruction file.
 `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` or
 `~/.config/opencode/AGENTS.md`, and installs the on-demand files under
 `~/.agents/instructions/`. Claude loads path-scoped rules only for matching
-files. Content outside the managed markers is never touched.
+files; the installer and this repo's cloud mirror add a Claude hook that
+supplies the Python baseline before `uv init`. Content outside the managed
+markers is never touched.
 
 **Only the human merges.** A pre-tool hook blocks the agent from merging pull
 requests or enabling auto-merge: the `merge-guard` plugin in Claude Code,

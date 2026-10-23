@@ -1012,6 +1012,7 @@ HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication >/dev/null
 diff -q "$HOME_INS/claude-before.md" "$HOME_INS/.claude/CLAUDE.md" >/dev/null ||
   fail "instructions written without --instructions"
 [[ ! -e "$HOME_INS/.agents/instructions" ]] || fail "instruction payloads written without --instructions"
+[[ ! -e "$HOME_INS/.claude/settings.json" ]] || fail "Claude hook written without --instructions"
 pass "instructions are not touched without --instructions"
 
 # 40. With the flag the block lands, hand-written content survives, and a
@@ -1034,10 +1035,24 @@ grep -q 'New project baseline' "$PYTHON_RULE" || fail "Python rule has no baseli
 [[ -f "$HOME_INS/.agents/instructions/85-agent-scripts.md" ]] || fail "agent scripts payload missing"
 grep -Fq '.agents/instructions/70-code-review-conventions.md' "$CLAUDE_MD" ||
   fail "Claude block lacks the code review pointer"
+[[ -f "$HOME_INS/.agents/instructions/python_init_context.py" ]] || fail "Python hook command missing"
+"$PYTHON" - "$HOME_INS/.claude/settings.json" <<'PY' || fail "Claude uv-init hook missing"
+import json, sys
+settings = json.load(open(sys.argv[1], encoding="utf-8"))
+handlers = [h for group in settings["hooks"]["PreToolUse"] for h in group["hooks"]]
+entry = next(h for h in handlers if h.get("if") == "Bash(uv init*)")
+assert "python_init_context.py" in entry["command"]
+PY
+hook_output="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"uv init --package demo"}}' |
+  (cd /tmp && HOME="$HOME_INS" "$PYTHON" "$HOME_INS/.agents/instructions/python_init_context.py"))"
+grep -q 'New project baseline' <<<"$hook_output" || fail "installed uv-init hook did not inject the Python baseline"
 cp "$CLAUDE_MD" "$HOME_INS/claude-once.md"
+cp "$HOME_INS/.claude/settings.json" "$HOME_INS/settings-once.json"
 HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions >/dev/null
 diff -q "$HOME_INS/claude-once.md" "$CLAUDE_MD" >/dev/null ||
   fail "second --instructions run changed the file"
+diff -q "$HOME_INS/settings-once.json" "$HOME_INS/.claude/settings.json" >/dev/null ||
+  fail "second --instructions run changed Claude settings"
 pass "instructions block installs once and is idempotent"
 
 # 41. --uninstall strips only our block, restoring the file byte for byte.
@@ -1045,6 +1060,9 @@ HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructi
 diff -q "$HOME_INS/claude-before.md" "$CLAUDE_MD" >/dev/null ||
   fail "uninstall did not restore the original instruction file"
 [[ ! -e "$HOME_INS/.agents/instructions/30-python.md" ]] || fail "uninstall left the Python payload"
+[[ ! -e "$HOME_INS/.agents/instructions/python_init_context.py" ]] || fail "uninstall left the Python hook command"
+! grep -q python_init_context.py "$HOME_INS/.claude/settings.json" ||
+  fail "uninstall left the Claude uv-init hook"
 pass "instructions uninstall removes only the managed block"
 
 # 42. codex and opencode each get their own file created from nothing
