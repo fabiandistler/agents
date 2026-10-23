@@ -12,10 +12,11 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   skills. Read it once to discover what is available without crawling the
   tree.
 - `install.sh` (repo root) symlinks the skills into the conventional
-  install paths for Codex CLI and opencode. For Codex CLI
-  it also converts the plugins' subagents to Codex custom agents in
-  `~/.codex/agents/` and disables routed members via a marker-delimited
-  block in `~/.codex/config.toml` (both removed by `--uninstall`).
+  install paths for Codex CLI and opencode. It also renders the plugins'
+  subagents through `scripts/plugin_agents.py` — Codex custom agents in
+  `~/.codex/agents/`, opencode subagents in `~/.config/opencode/agents/` —
+  and for Codex CLI disables routed members via a marker-delimited block in
+  `~/.codex/config.toml` (all removed by `--uninstall`).
   `--merge-guard` adds the model-free hook `scripts/pr_merge_guard.py` that
   stops agents from merging PRs (only the human merges); this repo's
   `.claude/settings.json` carries it via `scripts/build_project_claude.py`.
