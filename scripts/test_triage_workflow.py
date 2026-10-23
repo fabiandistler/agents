@@ -137,7 +137,16 @@ def test_classifier_is_limited_to_read_and_search_tools():
     args = classify_action()["with"]["claude_args"]
 
     assert '--allowedTools "Read,Glob,Grep"' in args
-    for denied in ("Bash", "Write", "Edit", "WebFetch", "WebSearch"):
+    for denied in (
+        "Bash",
+        "BashOutput",
+        "KillShell",
+        "Write",
+        "Edit",
+        "NotebookEdit",
+        "WebFetch",
+        "WebSearch",
+    ):
         assert denied in args
 
 
