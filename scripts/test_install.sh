@@ -619,6 +619,87 @@ PY
   pass "--update preserves foreign files and links at managed paths"
 }
 
+run_detected_tests() {
+  local detected_home detected_state detected_bin state_file output status \
+    bare_home bare_state bare_bin no_agent_home no_agent_state
+
+  detected_home="$(mktemp -d)"
+  detected_state="$detected_home/xdg-state"
+  detected_bin="$detected_home/bin"
+  mkdir -p "$detected_bin" "$detected_home/.codex" "$detected_home/.config/opencode"
+  printf '#!/bin/sh\nexit 0\n' >"$detected_bin/claude"
+  chmod +x "$detected_bin/claude"
+  [[ ! -d "$detected_home/.claude" ]] || fail "CLI detection fixture already has Claude config"
+  set +e
+  output="$(HOME="$detected_home" XDG_STATE_HOME="$detected_state" \
+    PATH="$detected_bin:$PATH" "$INSTALL" --target=detected --category=communication 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 0 ]] || fail "--target=detected failed: $output"
+  [[ "$output" == *'detected targets: claude, codex, opencode'* ]] ||
+    fail "--target=detected did not print its resolved targets: $output"
+  state_file="$detected_state/fabiandistler-agents/install.json"
+  if "$PYTHON" - "$state_file" <<'PY'
+import json
+import sys
+
+targets = json.load(open(sys.argv[1], encoding="utf-8"))["targets"]
+assert targets == ["claude", "codex", "opencode"]
+assert "detected" not in targets
+PY
+  then
+    :
+  else
+    fail "detected install did not save resolved targets"
+  fi
+  cp "$state_file" "$detected_home/state-before-check.json"
+  set +e
+  output="$(HOME="$detected_home" XDG_STATE_HOME="$detected_state" \
+    PATH="$detected_bin:$PATH" "$INSTALL" --target=detected --category=communication --check 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 0 && "$output" == *'--check: clean'* ]] ||
+    fail "--check did not resolve detected targets read-only: $output"
+  diff -q "$state_file" "$detected_home/state-before-check.json" >/dev/null ||
+    fail "--check with detected targets changed saved install state"
+  pass "--target=detected combines installed commands and config directories"
+
+  bare_home="$(mktemp -d)"
+  bare_state="$bare_home/xdg-state"
+  bare_bin="$(mktemp -d)"
+  ln -s "$(command -v bash)" "$bare_bin/bash"
+  ln -s "$(command -v dirname)" "$bare_bin/dirname"
+  ln -s "$(command -v sed)" "$bare_bin/sed"
+  ln -s "$(command -v cat)" "$bare_bin/cat"
+  set +e
+  output="$(HOME="$bare_home" XDG_STATE_HOME="$bare_state" PATH="$bare_bin" \
+    "$INSTALL" 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 2 && "$output" == *'missing --target=claude|codex|opencode|all|detected'* ]] ||
+    fail "bare installer invocation did not explain the target options: $output"
+  [[ ! -e "$bare_home/.agents" && ! -e "$bare_home/.codex" &&
+    ! -e "$bare_home/.claude" && ! -e "$bare_home/.config" &&
+    ! -e "$bare_state/fabiandistler-agents/install.json" ]] ||
+    fail "bare installer invocation wrote into HOME or XDG state"
+  pass "bare invocation exits 2 without writing and lists detected"
+
+  no_agent_home="$(mktemp -d)"
+  no_agent_state="$no_agent_home/xdg-state"
+  set +e
+  output="$(HOME="$no_agent_home" XDG_STATE_HOME="$no_agent_state" PATH="$bare_bin" \
+    "$INSTALL" --target=detected 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 2 && "$output" == *'no agent commands or config directories detected'* ]] ||
+    fail "empty detected target set did not exit 2 clearly: $output"
+  [[ ! -e "$no_agent_home/.agents" && ! -e "$no_agent_home/.codex" &&
+    ! -e "$no_agent_home/.claude" && ! -e "$no_agent_home/.config" &&
+    ! -e "$no_agent_state/fabiandistler-agents/install.json" ]] ||
+    fail "empty detected target set wrote into HOME or XDG state"
+  pass "--target=detected with no installations exits 2 without writing"
+}
+
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
 dry_output="$(HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run 2>&1)"
@@ -1741,5 +1822,8 @@ run_check_tests
 
 # --update: saved install state and replay.
 run_update_tests
+
+# --target=detected: resolve targets from installed agents.
+run_detected_tests
 
 echo "all install.sh tests passed"

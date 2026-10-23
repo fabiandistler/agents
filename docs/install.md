@@ -18,7 +18,7 @@ from the plugin marketplace only, and `install.sh --target=claude` only syncs
 |---|---|
 | `0` | The requested operation succeeded. `--help` returns 0, as does `--check` when the selected installation is clean. |
 | `1` | An operational failure prevented completion, such as an invalid saved-state file, a failed managed-file write, or an unusable `--output` path. |
-| `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, or a missing `--output` value. |
+| `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, a missing `--output` value, or `--target=detected` finding no installed agents. |
 | `3` | `--check` found drift. When `--output` is supplied, the TSV report contains the drift rows. |
 | `4` | `--update` found no saved install state. Run a successful install with `--target=...` before using `--update`. |
 
@@ -55,6 +55,16 @@ install such as `./install.sh --target=codex`. `--update --dry-run` previews the
 replay without changing files or state, and `--update --check` reports drift
 against the saved options. During `--update`, every write re-checks its file
 right before writing and leaves it alone if it changed in between.
+
+## Detect installed agents
+
+`--target=detected` selects an agent when its command is on `PATH` or its user
+configuration directory exists: `claude` or `~/.claude/`, `codex` or
+`~/.codex/`, and `opencode` or `~/.config/opencode/`. The installer prints the
+resolved targets and saves that explicit list for later checks and updates, so
+an agent installed later is reported by `--update --check` rather than written
+to silently. A bare `./install.sh` still writes nothing and exits 2; pass a
+target or use `--target=detected` explicitly.
 
 ## What gets linked where
 

@@ -7,6 +7,7 @@
 #   ./install.sh --target=codex               # ~/.agents/skills/<skill>
 #   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
+#   ./install.sh --target=detected            # installed commands/config dirs
 #   ./install.sh --target=all --dry-run       # show what would happen
 #   ./install.sh --target=all --uninstall     # remove symlinks owned by us
 #   ./install.sh --target=opencode --env=chat # only chat skills
@@ -128,6 +129,7 @@
 # when no state exists; first install with --target=claude|codex|opencode|all.
 # Writes during --update re-check their file right before writing and leave it
 # alone if it changed in between.
+# --target=detected selects agents with an installed command or config directory.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -175,7 +177,7 @@ CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 usage() {
   cat <<'EOF'
 Usage:
-  ./install.sh --target=claude|codex|opencode|all [options]
+  ./install.sh --target=claude|codex|opencode|all|detected [options]
   ./install.sh --update [--dry-run] [--check [--output FILE]]
 
 Options:
@@ -196,7 +198,7 @@ Exit codes: 0 success, 1 operational failure, 2 usage error,
 
 Examples:
   ./install.sh --target=all --instructions --dry-run
-  ./install.sh --target=all --check --output /tmp/agents-drift.tsv
+  ./install.sh --target=detected --check --output /tmp/agents-drift.tsv
 EOF
 }
 
@@ -380,6 +382,22 @@ write_install_state() {
   mv "$tmp" "$file"
 }
 
+detect_targets() {
+  local targets=""
+  if command -v claude >/dev/null 2>&1 || [[ -d "$HOME/.claude" ]]; then
+    targets=claude
+  fi
+  if command -v codex >/dev/null 2>&1 || [[ -d "$HOME/.codex" ]]; then
+    [[ -z "$targets" ]] || targets+=$'\n'
+    targets+=codex
+  fi
+  if command -v opencode >/dev/null 2>&1 || [[ -d "$HOME/.config/opencode" ]]; then
+    [[ -z "$targets" ]] || targets+=$'\n'
+    targets+=opencode
+  fi
+  printf '%s\n' "$targets"
+}
+
 while (($#)); do
   arg="$1"
   shift
@@ -426,6 +444,24 @@ while (($#)); do
   esac
 done
 
+if [[ "$TARGET" == detected ]] && ((UPDATE_MODE == 0)); then
+  RESOLVED_TARGETS="$(detect_targets)"
+  if [[ -z "$RESOLVED_TARGETS" ]]; then
+    echo "no agent commands or config directories detected; pass --target=claude|codex|opencode|all explicitly" >&2
+    usage >&2
+    exit 2
+  fi
+  detected_target_list="${RESOLVED_TARGETS//$'\n'/, }"
+  printf 'detected targets: %s\n' "$detected_target_list"
+  if [[ "$RESOLVED_TARGETS" == "claude"$'\n'"codex"$'\n'"opencode" ]]; then
+    TARGET=all
+  elif [[ "$RESOLVED_TARGETS" == *$'\n'* ]]; then
+    TARGET=resolved
+  else
+    TARGET="$RESOLVED_TARGETS"
+  fi
+fi
+
 if ((UPDATE_MODE)); then
   if [[ -n "$TARGET" || -n "$FILTER_FLAGS" || "$INSTRUCTIONS" == 1 ||
     -n "$GUARDS" || "$UNINSTALL" == 1 || ("$CHECK_OUTPUT_SET" == 1 && "$CHECK_MODE" == 0) ]]; then
@@ -440,7 +476,7 @@ if ((UPDATE_MODE)); then
     exit "$state_status"
   fi
 elif [[ -z "$TARGET" ]]; then
-  echo "missing --target=claude|codex|opencode|all" >&2
+  echo "missing --target=claude|codex|opencode|all|detected" >&2
   usage >&2
   exit 2
 fi
@@ -458,16 +494,16 @@ if ((CHECK_MODE)); then
   case "$TARGET" in
     claude | codex | opencode | all) ;;
     resolved)
-      if ((UPDATE_MODE)); then
+      if ((UPDATE_MODE)) || [[ -n "$RESOLVED_TARGETS" ]]; then
         :
       else
-        echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
+        echo "invalid --target=$TARGET (expected claude|codex|opencode|all|detected)" >&2
         usage >&2
         exit 2
       fi
       ;;
     *)
-      echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
+      echo "invalid --target=$TARGET (expected claude|codex|opencode|all|detected)" >&2
       usage >&2
       exit 2
       ;;

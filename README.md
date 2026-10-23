@@ -64,7 +64,7 @@ behaviour is in [`docs/install.md`](docs/install.md).
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links) |
+| `--target=claude\|codex\|opencode\|all\|detected` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links; `detected`: every agent whose command or config directory exists) |
 | `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` (not Claude: install only some plugins instead) |
 | `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app (not Claude) |
 | `--instructions` | off | Compose always-on rules and pointers, install on-demand files, and add Claude's `uv init` context hook |
