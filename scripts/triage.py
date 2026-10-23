@@ -38,6 +38,7 @@ TITLE_LIMIT = 300
 BODY_LIMIT = 6000
 COMMENT_LIMIT = 2000
 COMMENT_COUNT_LIMIT = 20
+RELATED_LIMIT = 100
 TRUNCATION_MARK = "\n[truncated]"
 
 CATEGORY_ROLES = ("bug", "enhancement")
@@ -182,7 +183,11 @@ def sanitize(text: str, limit: int) -> str:
     return cleaned
 
 
-def build_document(issue: dict[str, Any], comments: list[dict[str, Any]]) -> dict[str, Any]:
+def build_document(
+    issue: dict[str, Any],
+    comments: list[dict[str, Any]],
+    related: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     author = issue.get("user") or {}
     selected = comments[-COMMENT_COUNT_LIMIT:]
     return {
@@ -204,7 +209,25 @@ def build_document(issue: dict[str, Any], comments: list[dict[str, Any]]) -> dic
             }
             for comment in selected
         ],
+        "related_open_issues": related or [],
     }
+
+
+def related_issues(issues: list[dict[str, Any]], current_number: int) -> list[dict[str, Any]]:
+    """Open issue titles the classifier may compare against for duplicates."""
+    related = []
+    for item in issues:
+        if "pull_request" in item or item.get("number") == current_number:
+            continue
+        related.append(
+            {
+                "number": item["number"],
+                "title": sanitize(item.get("title") or "", TITLE_LIMIT),
+            }
+        )
+        if len(related) == RELATED_LIMIT:
+            break
+    return related
 
 
 def load_label_mapping(path: Path = DEFAULT_LABELS_DOC) -> dict[str, str]:
@@ -407,7 +430,13 @@ def main(argv: list[str] | None = None, *, gh: GitHub | None = None) -> int:
             if "pull_request" in issue:
                 raise InvalidInput(f"#{args.issue} is a pull request, not an issue")
             comments = client.api(f"/repos/{repo}/issues/{args.issue}/comments?per_page=100") or []
-            document = build_document(issue, comments)
+            open_issues = (
+                client.api(
+                    f"/repos/{repo}/issues?state=open&per_page=100&sort=created&direction=desc"
+                )
+                or []
+            )
+            document = build_document(issue, comments, related_issues(open_issues, args.issue))
             write_json(args.output, document)
             print(json.dumps({"issue": args.issue, "output": str(args.output)}))
             return EXIT_OK

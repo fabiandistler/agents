@@ -17,6 +17,7 @@ import triage
 REPO = "fabiandistler/agents"
 ISSUE_PATH = f"/repos/{REPO}/issues/626"
 COMMENTS_PATH = f"{ISSUE_PATH}/comments?per_page=100"
+LIST_PATH = f"/repos/{REPO}/issues?state=open&per_page=100&sort=created&direction=desc"
 LABEL_PATH = f"{ISSUE_PATH}/labels"
 LABELS_DOC = Path(__file__).resolve().parent.parent / "docs" / "agents" / "triage-labels.md"
 
@@ -159,6 +160,11 @@ def test_fetch_writes_a_sanitized_document(tmp_path: Path):
         {
             ("GET", ISSUE_PATH): issue(title="Title <!-- x -->here"),
             ("GET", COMMENTS_PATH): comments,
+            ("GET", LIST_PATH): [
+                issue(number=626),
+                issue(number=600, title="Earlier request"),
+                issue(number=601, title="A pull request", pull_request={"url": "x"}),
+            ],
         }
     )
     output = tmp_path / "issue.json"
@@ -175,6 +181,9 @@ def test_fetch_writes_a_sanitized_document(tmp_path: Path):
     assert len(document["comments"]) == triage.COMMENT_COUNT_LIMIT
     assert document["comments"][0]["body"] == "comment 5"
     assert document["comments"][5]["body"] == "comment 10"
+    assert document["related_open_issues"] == [
+        {"number": 600, "title": "Earlier request"},
+    ]
 
 
 def test_fetch_refuses_a_pull_request(tmp_path: Path):
