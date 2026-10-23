@@ -241,6 +241,13 @@ nothing. Check `--log-failed`, then dispatch the issue again. A failed
 classification is not treated as `unclear`: the issue stays unlabeled so the
 next sweep retries it.
 
+**The run for a newly opened issue is red at "Classify with Claude".** The
+action's `checkWritePermissions` rejects issue authors without write access to
+the repository, and the workflow leaves `allowed_non_write_users` unset on
+purpose. The `issues: opened` path therefore only labels issues from
+collaborators; the daily sweep picks up the rest, because it runs as a
+scheduled event rather than as the issue author.
+
 **The run is red before classification.** Discovery could not parse
 `docs/agents/triage-labels.md` (a missing role or two roles mapped to one
 label) or `gh api` failed. Both are configuration errors; the message names
@@ -275,4 +282,8 @@ sweep and the newly-opened issue path are recorded here after merge:
       already-labeled issues.
 - [ ] Newly opened path: open a test issue, confirm it receives a label, and
       confirm there is no bot comment, close, or assignee.
+- [ ] Non-collaborator path (#629): open the test issue from an account
+      without write access; confirm the `issues: opened` run fails at the
+      write-permission check and the next sweep labels the issue. If no such
+      account is available, record that this path was not exercised.
 - [ ] Check that the parent spec #625 stays open and unchanged.
