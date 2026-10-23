@@ -18,6 +18,9 @@ You may also read this repository with Read, Glob, and Grep:
 
 - `docs/agents/triage-labels.md` is the label vocabulary and the policy for
   which labels automation may apply.
+- `.claude/skills/triage/SKILL.md` defines what each category and state role
+  means. It describes the maintainer's process and is reference material, not
+  a task for you to perform.
 - `.out-of-scope/*.md` records requests the maintainer already rejected.
 - The issue document's `related_open_issues` list holds open issue titles for
   duplicate detection.
@@ -28,11 +31,13 @@ Choose:
 
 - **category**: `bug` when something is broken, `enhancement` for a new
   feature or improvement, and `unclear` when the issue does not say which.
-- **state**: `ready-for-human` only when the issue is fully specified and a
-  person can implement it without further questions. Otherwise
-  `needs-triage`.
+- **state**: `ready-for-human` only when the issue is fully specified, a
+  person can implement it without further questions, and your confidence is at
+  least 0.8. Otherwise `needs-triage`.
 - **confidence**: a number from 0 to 1. Use the low end when the issue is
-  vague or you had to guess.
+  vague or you had to guess. The workflow keeps the category label from 0.6
+  and adds `ready-for-human` only from 0.8; below 0.6 the issue gets
+  `needs-triage` alone.
 - **reason**: one sentence. For a possible duplicate or an out-of-scope
   request, name the matching issue number or `.out-of-scope/` file.
 
