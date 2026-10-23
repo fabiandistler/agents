@@ -104,7 +104,7 @@ class GitHub:
     ) -> Any:
         argv = ["api", "--method", method, path]
         if paginate:
-            argv += ["--paginate", "--slurp"]
+            argv.append("--paginate")
         stdin = None
         if body is not None:
             argv += ["--input", "-"]
@@ -112,10 +112,29 @@ class GitHub:
         raw = self.runner(argv, stdin).strip()
         if not raw:
             return None
+        if paginate:
+            return _flatten_pages(raw)
         try:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
             raise GitHubError(f"gh api {path} returned invalid JSON") from exc
+
+
+def _flatten_pages(raw: str) -> list[Any]:
+    """`gh api --paginate` writes one JSON array per page, back to back."""
+    decoder = json.JSONDecoder()
+    pages: list[Any] = []
+    index = 0
+    while index < len(raw):
+        while index < len(raw) and raw[index].isspace():
+            index += 1
+        if index >= len(raw):
+            break
+        page, index = decoder.raw_decode(raw, index)
+        if not isinstance(page, list):
+            raise GitHubError("paginated gh api response is not a JSON array")
+        pages.extend(page)
+    return pages
 
 
 def run_gh(argv: list[str], stdin: str | None) -> str:
@@ -242,19 +261,16 @@ def has_state_label(item: dict[str, Any], mapping: dict[str, str]) -> bool:
 
 def list_untriaged(gh: GitHub, repo: str, mapping: dict[str, str], limit: int) -> list[int]:
     """Open issues without a state label, oldest first, capped at the limit."""
-    pages = (
+    issues = (
         gh.api(
             f"/repos/{repo}/issues?state=open&per_page=100&sort=created&direction=asc",
             paginate=True,
         )
         or []
     )
-    flat = (
-        [item for page in pages for item in page] if pages and isinstance(pages[0], list) else pages
-    )
     eligible = [
         item
-        for item in flat
+        for item in issues
         if "pull_request" not in item and not is_bot(item) and not has_state_label(item, mapping)
     ]
     eligible.sort(key=lambda item: item.get("created_at") or "")

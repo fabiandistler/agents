@@ -35,7 +35,10 @@ class FakeGh:
         key = (method, path)
         if key not in self.responses:
             raise AssertionError(f"unexpected gh call: {method} {path}")
-        return json.dumps(self.responses[key])
+        value = self.responses[key]
+        if "--paginate" in argv:
+            return "".join(json.dumps(page) for page in value)
+        return json.dumps(value)
 
     def writes(self) -> list[dict[str, Any]]:
         return [call for call in self.calls if call["method"] != "GET"]
@@ -418,6 +421,12 @@ def test_list_returns_an_empty_array(capsys):
 
     assert code == triage.EXIT_OK
     assert json.loads(capsys.readouterr().out) == []
+
+
+def test_flatten_pages_reads_back_to_back_arrays():
+    raw = '[{"number": 1}]\n[{"number": 2},{"number": 3}]'
+
+    assert triage._flatten_pages(raw) == [{"number": 1}, {"number": 2}, {"number": 3}]
 
 
 def test_list_rejects_a_non_positive_limit():
