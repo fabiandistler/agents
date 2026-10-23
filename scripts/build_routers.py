@@ -31,11 +31,7 @@ import json
 import sys
 from pathlib import Path
 
-from build_manifest import (
-    extract_frontmatter,
-    find_skill_files,
-    parse_frontmatter,
-)
+from catalogue import find_skill_files, parse_skill_frontmatter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
@@ -52,7 +48,7 @@ def routed_categories() -> dict[str, Path]:
     """
     routers: dict[str, Path] = {}
     for skill_md in find_skill_files():
-        fm = parse_frontmatter(extract_frontmatter(skill_md.read_text(encoding="utf-8")))
+        fm = parse_skill_frontmatter(skill_md.read_text(encoding="utf-8"), skill_md)
         if fm.get("activation") != "router":
             continue
         name = fm.get("name")
