@@ -15,6 +15,8 @@
 #   ./install.sh --target=all --instructions   # also sync rules, payloads and the Claude uv-init hook
 #   ./install.sh --target=all --merge-guard    # also block agent PR merges
 #   ./install.sh --target=all --secret-guard   # also block credential reads
+#   ./install.sh --target=all --check           # report managed-file drift
+#   ./install.sh --target=all --check --output drift.tsv
 #
 # Claude gets skills, command skills, subagents and the PR merge guard from the
 # plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
@@ -114,6 +116,10 @@
 # way (secret-guard plugin for claude): it blocks reading credential files
 # (.env, SSH keys, cloud and agent auth files) and dumping the environment.
 #
+# --check calculates the selected managed state without writing. It exits 0 when
+# clean, 3 when drift is found and 2 for invalid options. --output FILE writes
+# TSV instead of only printing the default summary; it requires --check.
+#
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
 #   - Symlink pointing elsewhere:      skip with a warning, never overwrite.
@@ -137,6 +143,11 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 DRY_RUN=0
+CHECK_MODE=0
+CHECK_OUTPUT=""
+CHECK_OUTPUT_SET=0
+CHECK_ROWS=""
+CHECK_CURRENT_TARGET=""
 UNINSTALL=0
 INSTRUCTIONS=0
 GUARDS=""
@@ -149,12 +160,35 @@ FILTER_FLAGS=""
 # Must match the category list in scripts/catalogue.py.
 CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 
-# Print the header comment block: from line 2 up to the first line that is not
-# a comment, minus that line. A hardcoded end line silently truncates as the
-# block grows — this one cannot drift.
-usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
+usage() {
+  cat <<'EOF'
+Usage:
+  ./install.sh --target=claude|codex|opencode|all [options]
 
-for arg in "$@"; do
+Options:
+  --env=coding|chat|all        Filter skills (default: all)
+  --category=NAME[,NAME...]    Filter skill categories
+  --instructions               Install shared instruction rules
+  --merge-guard                Install the PR merge guard
+  --secret-guard               Install the secret read guard
+  --dry-run                    Preview changes without writing
+  --uninstall                  Remove selected managed files
+  --check                      Report drift (0 clean, 3 drift)
+  --output FILE|--output=FILE  Write the --check TSV report
+  -h, --help                   Show this help
+
+Exit codes: 0 success, 1 operational failure, 2 usage error,
+            3 --check found drift.
+
+Examples:
+  ./install.sh --target=all --instructions --dry-run
+  ./install.sh --target=all --check --output /tmp/agents-drift.tsv
+EOF
+}
+
+while (($#)); do
+  arg="$1"
+  shift
   case "$arg" in
     --target=*) TARGET="${arg#--target=}" ;;
     --env=*)
@@ -166,6 +200,21 @@ for arg in "$@"; do
       [[ "$FILTER_FLAGS" == *--category* ]] || FILTER_FLAGS+=" --category"
       ;;
     --dry-run) DRY_RUN=1 ;;
+    --check) CHECK_MODE=1 ;;
+    --output)
+      if (($# == 0)); then
+        echo "missing FILE after --output" >&2
+        usage >&2
+        exit 2
+      fi
+      CHECK_OUTPUT="$1"
+      CHECK_OUTPUT_SET=1
+      shift
+      ;;
+    --output=*)
+      CHECK_OUTPUT="${arg#--output=}"
+      CHECK_OUTPUT_SET=1
+      ;;
     --instructions) INSTRUCTIONS=1 ;;
     --merge-guard) GUARDS+=" merge" ;;
     --secret-guard) GUARDS+=" secret" ;;
@@ -197,6 +246,32 @@ case "$ENV" in
     ;;
 esac
 
+if ((CHECK_MODE)); then
+  case "$TARGET" in
+    claude | codex | opencode | all) ;;
+    *)
+      echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  if ((DRY_RUN || UNINSTALL)); then
+    echo "--check cannot be combined with --dry-run or --uninstall" >&2
+    usage >&2
+    exit 2
+  fi
+  if ((CHECK_OUTPUT_SET)) && [[ -z "${CHECK_OUTPUT//[[:space:]]/}" ]]; then
+    echo "invalid empty --output FILE" >&2
+    usage >&2
+    exit 2
+  fi
+  DRY_RUN=1
+elif ((CHECK_OUTPUT_SET)); then
+  echo "--output requires --check" >&2
+  usage >&2
+  exit 2
+fi
+
 if [[ -z "$CATEGORY" ]]; then
   echo "invalid --category= (expected one of: ${CATEGORIES// /|}|all)" >&2
   usage >&2
@@ -215,6 +290,42 @@ if [[ "$CATEGORY" != "all" ]]; then
     fi
   done
 fi
+
+check_kind_for_what() {
+  case "$1" in
+    *routed*member*) printf 'routed-member-overrides' ;;
+    *"instruction payload"*) printf 'instruction-payload' ;;
+    *"instruction"*) printf 'instructions' ;;
+    *"Claude rule"*) printf 'claude-rule' ;;
+    *"agent "*) printf 'codex-agent' ;;
+    *"PR merge guard"*) printf 'merge-guard' ;;
+    *"secret read guard"*) printf 'secret-guard' ;;
+    *"legacy"*) printf 'legacy-managed-file' ;;
+    *) printf 'managed-file' ;;
+  esac
+}
+
+check_tsv_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\n'/\\n}"
+  printf '%s' "$value"
+}
+
+check_record() {
+  ((CHECK_MODE)) || return 0
+  local target="${1:-$CHECK_CURRENT_TARGET}" kind="$2" path="$3" state="$4" row
+  local escaped_target escaped_kind escaped_path escaped_state
+  [[ -n "$target" ]] || target="$TARGET"
+  escaped_target="$(check_tsv_escape "$target")"
+  escaped_kind="$(check_tsv_escape "$kind")"
+  escaped_path="$(check_tsv_escape "$path")"
+  escaped_state="$(check_tsv_escape "$state")"
+  printf -v row '%s\t%s\t%s\t%s' \
+    "$escaped_target" "$escaped_kind" "$escaped_path" "$escaped_state"
+  [[ $'\n'"$CHECK_ROWS" == *$'\n'"$row"$'\n'* ]] || CHECK_ROWS+="$row"$'\n'
+}
 
 target_dir_for() {
   case "$1" in
@@ -383,11 +494,18 @@ write_file_atomic() {
 # The label names the kind of file and selects its ownership marker; `name`
 # picks the marker for instruction payloads, which differ by file type.
 owned_file_set() {
-  local target="$1" label="$2" name="${3:-}" marker content
+  local target="$1" label="$2" name="${3:-}" marker kind check_target content
   case "$label" in
-    agent) marker="$AGENT_MARKER" ;;
-    rule) marker="$(claude_rule_marker)" ;;
-    instruction-payload) marker="$(instruction_payload_marker_for "$name")" ;;
+    agent)
+      marker="$AGENT_MARKER" kind=codex-agent check_target=codex
+      ;;
+    rule)
+      marker="$(claude_rule_marker)" kind=claude-rule check_target=claude
+      ;;
+    instruction-payload)
+      marker="$(instruction_payload_marker_for "$name")" kind=instruction-payload
+      check_target="$CHECK_CURRENT_TARGET"
+      ;;
     *)
       printf 'owned_file_set: unknown label %s\n' "$label" >&2
       return 2
@@ -396,8 +514,18 @@ owned_file_set() {
   content="$(cat)"
   if [[ -L "$target" ]] || { [[ -e "$target" ]] && [[ ! -f "$target" ]]; } ||
     { [[ -e "$target" ]] && ! grep -qxF "$marker" "$target" 2>/dev/null; }; then
-    printf '  WARN      %s exists and is not managed by install.sh (leaving it untouched)\n' \
-      "$target" >&2
+    check_record "$check_target" "$kind" "$target" foreign
+    ((CHECK_MODE)) ||
+      printf '  WARN      %s exists and is not managed by install.sh (leaving it untouched)\n' \
+        "$target" >&2
+    return 0
+  fi
+  if ((CHECK_MODE)); then
+    if [[ ! -f "$target" ]]; then
+      check_record "$check_target" "$kind" "$target" missing
+    elif [[ "$(cat "$target")" != "$content" ]]; then
+      check_record "$check_target" "$kind" "$target" stale
+    fi
     return 0
   fi
   if [[ -f "$target" && "$(cat "$target")" == "$content" ]]; then
@@ -468,6 +596,7 @@ replace_managed_block() {
 }
 
 warn_unbalanced_markers() {
+  ((CHECK_MODE)) && return 0
   printf '  WARN      unbalanced marker lines in %s, leaving it untouched (%s)\n' \
     "$1" "$2" >&2
 }
@@ -482,14 +611,30 @@ managed_block_set() {
     echo "managed_block_set: empty body for $what in $file" >&2
     return 1
   fi
-  local before="" after begin_count
+  local before="" after begin_count kind
+  kind="$(check_kind_for_what "$what")"
+  if ((CHECK_MODE)) && [[ -L "$file" ]]; then
+    check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" foreign
+    return 0
+  fi
   [[ -f "$file" ]] && before="$(cat "$file")"
   if ! block_markers_balanced "$begin" "$end" <<<"$before"; then
+    check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" foreign
     warn_unbalanced_markers "$file" "$what"
     return 0
   fi
   local block="$begin"$'\n'"$body"$'\n'"$end"
   begin_count="$(grep -Fxc "$begin" <<<"$before" || true)"
+  if ((CHECK_MODE)); then
+    if ((begin_count > 1)); then
+      check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" duplicate
+    elif ((begin_count == 0)); then
+      check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" missing
+    elif [[ "$before" != *"$block"* ]]; then
+      check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" stale
+    fi
+    return 0
+  fi
   if [[ "$begin_count" -eq 1 && "$before" == *"$block"* ]]; then
     printf '  ok        %s (%s)\n' "$file" "$what"
     return 0
@@ -522,9 +667,26 @@ managed_block_remove() {
   local file="$1" begin="$2" end="$3" what="$4"
   [[ -f "$file" ]] || return 0
   local before after
+  if ((CHECK_MODE)) && [[ -L "$file" ]]; then
+    check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" foreign
+    return 0
+  fi
   before="$(cat "$file")"
   if ! block_markers_balanced "$begin" "$end" <<<"$before"; then
+    check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" foreign
     warn_unbalanced_markers "$file" "$what"
+    return 0
+  fi
+  if ((CHECK_MODE)); then
+    if grep -Fq "$begin" <<<"$before"; then
+      local marker_count
+      marker_count="$(grep -Fxc "$begin" <<<"$before" || true)"
+      if ((marker_count > 1)); then
+        check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" duplicate
+      else
+        check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" stale
+      fi
+    fi
     return 0
   fi
   after="$(strip_block "$begin" "$end" <<<"$before")"
@@ -829,6 +991,7 @@ prune_stale_codex_agents() {
     name="$(basename "$dest" .toml)"
     compgen -G "$REPO_ROOT/plugins/*/agents/$name.md" >/dev/null && continue
     grep -qF "$AGENT_MARKER" "$dest" || continue
+    check_record codex codex-agent "$dest" stale
     run rm "$dest"
     ((DRY_RUN)) || printf '  removed   %s (agent no longer in repo)\n' "$dest"
   done
@@ -993,6 +1156,7 @@ remove_instruction_payload() {
     return 0
   fi
   if ((DRY_RUN)); then
+    check_record all instruction-payload "$dest" stale
     printf '[dry-run] remove %s\n' "$dest"
     return 0
   fi
@@ -1195,6 +1359,7 @@ list_managed_claude_rules() {
 
 remove_claude_rule() {
   if ((DRY_RUN)); then
+    check_record claude claude-rule "$1" stale
     printf '[dry-run] remove %s\n' "$1"
     return 0
   fi
@@ -1304,19 +1469,26 @@ install_claude_python_hook() {
     return 0
   fi
   if [[ -L "$file" ]]; then
-    printf '  WARN      %s is a symlink, leaving it untouched (Python uv-init context hook)\n' \
+    check_record claude python-init-hook "$file" foreign
+    ((CHECK_MODE)) || printf '  WARN      %s is a symlink, leaving it untouched (Python uv-init context hook)\n' \
       "$file" >&2
     return 0
   fi
   command="$(python_init_hook_command)"
   if ! content="$(claude_settings_with_python_hook "$file" "$command")"; then
-    printf '  WARN      %s is not a compatible JSON object, leaving it untouched (Python uv-init context hook)\n' \
+    check_record claude python-init-hook "$file" foreign
+    ((CHECK_MODE)) || printf '  WARN      %s is not a compatible JSON object, leaving it untouched (Python uv-init context hook)\n' \
       "$file" >&2
     return 0
   fi
   if [[ -f "$file" && "$(cat "$file")" == "$content" ]]; then
     printf '  ok        %s (Python uv-init context hook)\n' "$file"
     return 0
+  fi
+  if [[ -f "$file" ]]; then
+    check_record claude python-init-hook "$file" stale
+  else
+    check_record claude python-init-hook "$file" missing
   fi
   if ((DRY_RUN)); then
     printf '[dry-run] write %s\n' "$file"
@@ -1458,6 +1630,7 @@ remove_claude_settings_merge_guard() {
       ;;
   esac
   if ((DRY_RUN)); then
+    check_record claude merge-guard "$file" stale
     printf '[dry-run] remove %s\n' "$file"
     return 0
   fi
@@ -1555,18 +1728,26 @@ link_one() {
       printf '  ok        %s -> %s\n' "$dest" "$src"
       return 0
     fi
-    printf '  WARN      %s already symlinked to %s (skipping)\n' "$dest" "$current" >&2
+    if [[ "$current" == "$REPO_ROOT/skills/"* ]]; then
+      check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" stale
+    else
+      check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
+    fi
+    ((CHECK_MODE)) || printf '  WARN      %s already symlinked to %s (skipping)\n' "$dest" "$current" >&2
     return 0
   fi
   if [[ -e "$dest" ]]; then
-    printf '  WARN      %s exists and is not a symlink (skipping)\n' "$dest" >&2
+    check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
+    ((CHECK_MODE)) || printf '  WARN      %s exists and is not a symlink (skipping)\n' "$dest" >&2
     return 0
   fi
-  run ln -s "$src" "$dest"
+  check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" missing
   if ((DRY_RUN)); then
+    printf '[dry-run] link %s\n' "$dest"
     PLANNED_LINKS+="$dest"$'\n'
     return 0
   fi
+  run ln -s "$src" "$dest"
   printf '  linked    %s -> %s\n' "$dest" "$src"
 }
 
@@ -1608,22 +1789,30 @@ drop_opencode_duplicate() {
   local src="$1" root="$2" dest
   dest="$(opencode_skills_dir)/${src##*/}"
   [[ "$(readlink "$dest" 2>/dev/null)" == "$src" ]] || return 0
+  check_record opencode skill-link "$dest" duplicate
   run rm "$dest"
   ((DRY_RUN)) || printf '  removed   %s (opencode reads it from %s)\n' "$dest" "$root"
 }
 
 unlink_one() {
-  local src="$1" dest="$2"
+  local src="$1" dest="$2" state="${3:-stale}"
   if [[ ! -L "$dest" ]]; then
     if [[ -e "$dest" ]]; then
-      printf '  WARN      %s exists but is not a symlink (skipping)\n' "$dest" >&2
+      check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
+      ((CHECK_MODE)) || printf '  WARN      %s exists but is not a symlink (skipping)\n' "$dest" >&2
     fi
     return 0
   fi
   local current
   current="$(readlink "$dest")"
   if [[ "$current" != "$src" ]]; then
+    check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
     printf '  WARN      %s points to %s (not ours, skipping)\n' "$dest" "$current" >&2
+    return 0
+  fi
+  check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" "$state"
+  if ((DRY_RUN)); then
+    printf '[dry-run] remove %s\n' "$dest"
     return 0
   fi
   run rm "$dest"
@@ -1645,6 +1834,7 @@ prune_stale_skill_links() {
     [[ -e "$entry" ]] && continue
     target="$(readlink "$entry")"
     [[ "$target" == "$REPO_ROOT/skills/"* ]] || continue
+    check_record "$CHECK_CURRENT_TARGET" skill-link "$entry" stale
     run rm "$entry"
     ((DRY_RUN)) || printf '  removed   %s (skill no longer in repo)\n' "$entry"
   done
@@ -1664,6 +1854,7 @@ cleanup_opencode_legacy() {
     local dest="$legacy_dir/$skill"
     [[ -L "$dest" ]] || continue
     [[ "$(readlink "$dest")" == "$src" ]] || continue
+    check_record "$CHECK_CURRENT_TARGET" legacy-skill-link "$dest" stale
     run rm "$dest"
     ((DRY_RUN)) || printf '  removed   %s (legacy opencode location)\n' "$dest"
   done <<<"$skills"
@@ -1681,6 +1872,7 @@ cleanup_codex_skills_legacy() {
   for entry in "$legacy_dir"/*; do
     [[ -L "$entry" ]] || continue
     [[ "$(readlink "$entry")" == "$REPO_ROOT/skills/"* ]] || continue
+    check_record codex legacy-skill-link "$entry" stale
     run rm "$entry"
     ((DRY_RUN)) || printf '  removed   %s (deprecated codex skills dir)\n' "$entry"
   done
@@ -1705,6 +1897,7 @@ migrate_claude_to_plugins() {
       [[ -L "$entry" ]] || continue
       src="$(readlink "$entry")"
       [[ "$src" == "$REPO_ROOT/skills/"* ]] || continue
+      check_record claude legacy-skill-link "$entry" stale
       run rm "$entry"
       ((DRY_RUN)) || printf '  removed   %s (now in the Claude plugins)\n' "$entry"
       if [[ "$dir" == "$(target_dir_for claude)" && -f "$src/SKILL.md" ]]; then
@@ -1735,6 +1928,7 @@ cleanup_codex_prompts_legacy() {
     local dest="$legacy_dir/$skill.md"
     [[ -L "$dest" ]] || continue
     [[ "$(readlink "$dest")" == "$src" ]] || continue
+    check_record codex legacy-prompt-link "$dest" stale
     run rm "$dest"
     ((DRY_RUN)) || printf '  removed   %s (deprecated codex prompt)\n' "$dest"
   done <<<"$skills"
@@ -1833,11 +2027,13 @@ main() {
   fi
 
   if ((INSTRUCTIONS && UNINSTALL == 0)); then
+    CHECK_CURRENT_TARGET=all
     install_instruction_payloads
   fi
 
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
+    CHECK_CURRENT_TARGET="$target"
     if [[ "$target" == "claude" ]]; then
       printf 'claude: skills, commands and subagents come from the plugin marketplace\n'
       migrate_claude_to_plugins
@@ -1858,7 +2054,7 @@ main() {
         remove_codex_member_overrides
       else
         install_codex_agents
-        codex_routed_members "$(target_dir_for codex)" "$skills" | install_codex_member_overrides
+        install_codex_member_overrides < <(codex_routed_members "$(target_dir_for codex)" "$skills")
       fi
     fi
     if [[ "$target" == "opencode" ]]; then
@@ -1893,4 +2089,54 @@ main() {
   fi
 }
 
-main
+check_result() {
+  local missing=0 stale=0 foreign=0 duplicate=0
+  local target kind path state output_dir tsv
+  while IFS=$'\t' read -r target kind path state; do
+    case "$state" in
+      missing) missing=$((missing + 1)) ;;
+      stale) stale=$((stale + 1)) ;;
+      foreign) foreign=$((foreign + 1)) ;;
+      duplicate) duplicate=$((duplicate + 1)) ;;
+    esac
+  done <<<"$CHECK_ROWS"
+
+  if ((CHECK_OUTPUT_SET)); then
+    [[ ! -L "$CHECK_OUTPUT" ]] || {
+      echo "--output must not be a symlink: $CHECK_OUTPUT" >&2
+      return 1
+    }
+    [[ ! -d "$CHECK_OUTPUT" ]] || {
+      echo "--output must be a file: $CHECK_OUTPUT" >&2
+      return 1
+    }
+    output_dir="${CHECK_OUTPUT%/*}"
+    [[ "$output_dir" != "$CHECK_OUTPUT" ]] || output_dir=.
+    [[ -d "$output_dir" ]] || {
+      echo "--output directory does not exist: $output_dir" >&2
+      return 1
+    }
+    tsv=$'target\tkind\tpath\tstate\n'
+    tsv+="$CHECK_ROWS"
+    write_file_atomic "$CHECK_OUTPUT" "${tsv%$'\n'}"
+  fi
+
+  if [[ -z "$CHECK_ROWS" ]]; then
+    printf '%s\n' '--check: clean'
+    return 0
+  fi
+  printf -- '--check: drift (missing=%d stale=%d foreign=%d duplicate=%d)\n' \
+    "$missing" "$stale" "$foreign" "$duplicate"
+  return 3
+}
+
+check_main() {
+  main >/dev/null
+  check_result
+}
+
+if ((CHECK_MODE)); then
+  check_main
+else
+  main
+fi

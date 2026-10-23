@@ -12,6 +12,34 @@ Claude Code is the exception: it gets skills, subagents and the merge guard
 from the plugin marketplace only, and `install.sh --target=claude` only syncs
 `--instructions`. See [Claude Code: plugins only](#claude-code-plugins-only).
 
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | The requested operation succeeded. `--help` returns 0, as does `--check` when the selected installation is clean. |
+| `1` | An operational failure prevented completion, such as a failed managed-file write or an unusable `--output` path. |
+| `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, or a missing `--output` value. |
+| `3` | `--check` found drift. When `--output` is supplied, the TSV report contains the drift rows. |
+
+## Check the managed installation
+
+`--check` runs the selected install calculation without changing managed files.
+It prints a summary by default and exits with 0 when clean, 3 when it finds
+drift, or 2 when the options are invalid. Add `--output FILE` to write the full
+TSV report (`target`, `kind`, `path`, `state` columns):
+
+```sh
+./install.sh --target=all --check
+./install.sh --target=codex --merge-guard --secret-guard --check --output /tmp/agents-drift.tsv
+```
+
+The report states are `missing` (expected managed state is absent), `stale`
+(managed content no longer matches this checkout), `foreign` (an unmanaged
+file or unbalanced marker blocks the managed path), `duplicate` (more than one
+managed block or link occupies the selected state).
+Passing a guard flag makes that guard part of the expected state. Pass `--instructions`, `--merge-guard`, and
+`--secret-guard` to include those optional components in the expected state.
+
 ## What gets linked where
 
 | Target | Skills | Command skills (`activation: command`) |
