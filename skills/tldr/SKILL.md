@@ -7,7 +7,7 @@ environments: coding, chat
 argument-hint: "[file | PR | URL | topic — empty means the last message]"
 description: Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 # TL;DR
@@ -16,9 +16,6 @@ Something got too long to read. The user calls this instead of reading it, so
 hand back the **cliffs**: the few facts that let them decide or act, and an
 honest line about what those facts leave out.
 
-Cliffs, not a **telegram**. A telegram is shorter and just as unusable — it
-drops the premises, so only someone who already read the source can parse it.
-The cliffs let someone who read nothing hold their own in the conversation.
 
 ## What to summarize
 
@@ -30,8 +27,7 @@ The cliffs let someone who read nothing hold their own in the conversation.
 | A URL or attached document | That document. |
 | A topic in prose | The part of this session about that topic. |
 
-Read the target in full first. Cliffs assembled from a diff stat, a file
-listing, or a page title are a guess wearing a summary's clothes.
+Read the target in full first. 
 
 When the argument reads two ways — a word that is both a filename and a
 topic — resolve it from what the user has been doing and name the reading you
@@ -47,15 +43,7 @@ picked in one clause. Answer rather than ask.
 - [3–5, ordered by what the decision turns on, not by source order]
 
 **Your move.** [The decision waiting on them, the next step, or "nothing — FYI".]
-
-**Left out:** [What was cut that could still matter, or "nothing that changes the above".]
 ```
-
-The shape is the length budget; there is no word count to hit.
-
-The same thread as a telegram, its source, and its cliffs:
-
-Telegram: `Auth → gateway. Cache unchanged. New secret. LGTM w/ nit.`
 
 Source:
 
@@ -76,12 +64,7 @@ Cliffs:
 
 **Your move.** Create `GATEWAY_JWT_KEY`, then confirm Friday with Mara.
 
-**Left out:** the caching refactor (no behavior change) and three naming nits.
 ```
-
-The telegram only parses for someone who already read the PR; the cliffs
-carry the premises (*what* moved, *why* deploy fails) and keep the
-disagreement as two positions.
 
 ## Load-bearing
 
