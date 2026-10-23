@@ -20,13 +20,13 @@ Use this skill as a gate to pass through, not a menu to skim: framing the proble
 
 ### Business-objectives-first
 
-ML metrics such as accuracy or F1 are worthless if they do not move a business metric (revenue, cost, customer satisfaction). Before any ML decision — model choice, feature engineering, evaluation — answer three questions:
+At project framing and model selection, connect the work to an observable business outcome. Answer three questions:
 
 1. Which business problem does this decision address?
 2. Which business metric does it move?
 3. How will the connection between the two be measured?
 
-If a decision cannot be traced to a business metric, treat that as a signal to stop and re-scope, not a detail to fill in later.
+Use the agreed objective to guide feature engineering and evaluation; revisit scope if a change has no plausible path to the business metric.
 
 Ask early whether a prompted LLM or a plain rule would already meet the business bar — if so, follow `members/llm-application-engineering/SKILL.md`, read via the `ai-ml` router, instead of training a model.
 
@@ -79,7 +79,7 @@ AutoML (AutoGluon, H2O AutoML, FLAML; workflowsets in R) is a legitimate way to 
 - **Use it for:** a quick baseline, proof-of-concept work, standard well-trodden problems where time matters more than a marginal accuracy gain.
 - **Its costs:** it is a black box that is hard to debug, it can overfit to the validation data, it gets expensive on large datasets, and it cannot encode domain-specific structure a practitioner knows about.
 
-A workable default workflow: start with a simple model (e.g. XGBoost) as the real baseline, run AutoML in parallel purely as a comparison point, move to deep learning (starting from pretrained models where available) only if the simple baseline is insufficient, and refine iteratively only in response to a genuine business need — not because a metric could theoretically go higher.
+A workable default workflow: begin with the model family from the table (for tabular data, compare a tabular foundation model with an untuned GBDT), use AutoML as an optional comparison, and move to deep learning only when the baseline misses a genuine business need.
 
 ## Part C — Pipeline and deployment checklist
 
@@ -91,13 +91,10 @@ A workable default workflow: start with a simple model (e.g. XGBoost) as the rea
 | Versioning and deployment | vetiver plus pins, MLflow 3 LoggedModel plus registry | vetiver plus pins |
 | Monitoring | vetiver monitoring, MLflow | vetiver monitoring |
 
-### Feature-engineering pipeline, in order
+### Preprocessing and feature engineering
 
-1. **Missing values** — native NaN handling or simple imputation plus a missingness indicator, per the prediction default above.
-2. **Scaling** — normalization (0–1) or standardization (mean 0, std 1).
-3. **Encoding categoricals** — see the hashing trick below for categories that are not fixed in advance.
-4. **Feature crossing** — model non-linear relationships between features explicitly.
-5. **Positional embeddings** — for sequence-based data.
+Choose transformations that fit the data and model: missing-value handling as
+above, scaling, categorical encoding, feature crossing, or sequence embeddings.
 
 **Ordering constraint that matters most: every fitted step — impute, scale, encode, select, tune — is fit on training folds only, inside CV.** Fitting any statistic on the full dataset before splitting leaks test-set information into training and inflates validation performance in a way that will not hold in production.
 
@@ -142,8 +139,13 @@ preprocess = ColumnTransformer(
     ]
 )
 pipe = Pipeline([("preprocess", preprocess), ("model", model)])
-scores = cross_val_score(pipe, X, y, cv=GroupKFold(n_splits=5), groups=groups)
-scores = cross_val_score(pipe, X, y, cv=TimeSeriesSplit(n_splits=5))
+# For grouped observations:
+cv = GroupKFold(n_splits=5)
+cv_groups = groups
+# For time-ordered data instead, use these values:
+# cv = TimeSeriesSplit(n_splits=5)
+# cv_groups = None
+scores = cross_val_score(pipe, X, y, cv=cv, groups=cv_groups)
 ```
 
 ```r
@@ -159,7 +161,7 @@ group_vfold_cv(train, group = entity_id, v = 5)
 sliding_period(train, index = timestamp, period = "month", lookback = 12, assess_stop = 1)
 ```
 
-**Handling categories that appear only in production** (a new brand on a marketplace, a new user account): never hard-code a fixed vocabulary. Prefer one of these: sklearn `OneHotEncoder(handle_unknown="infrequent_if_exist")` or TargetEncoder; recipes `step_novel` plus `step_other`, or textrecipes `step_dummy_hash` (needs `library(textrecipes)`); CatBoost native handling. A hashing trick into a fixed index space (e.g. 2^18 slots) remains a fallback where none of the above fits.
+**Handling categories that appear only in production:** default to unknown-safe one-hot encoding: sklearn `OneHotEncoder(handle_unknown="ignore")`, or recipes `step_novel()` plus `step_other()`. For high-cardinality categories, use CatBoost's native handling or a hashing trick; TargetEncoder is another option when fit inside training folds.
 
 ### Staged deployment
 
