@@ -77,17 +77,24 @@ of these skills, a skill that excludes `claude` also gets no plugin symlink.
 
 ## Shared instructions (`--instructions`)
 
-Skills are capabilities an agent loads on demand; the rules that should apply
-to *every* session are something else. Those live in `instructions/` as
-single-topic Markdown fragments, ordered by their numeric filename prefix.
+Skills are capabilities an agent loads on demand; shared rules use three
+tiers in `instructions/`, ordered by numeric filename prefix:
+
+- **Always on:** 20, 25, 50, 55 and 60.
+- **Path-scoped in Claude:** 30 for Python files and 40 for R files. Codex and
+  opencode get a pointer for the Python baseline and keep the R rules inline.
+- **On demand:** 70, 80 and 85. Their pointers stay in the global instruction
+  file, and `install.sh` places their full text under `~/.agents/instructions/`.
+  In this repository, 70 and 85 are sourced from `instructions/on-demand/`; 80
+  is sourced from `skills/llm-application-engineering/references/agent-pipelines.md`.
 
 ```sh
-./install.sh --target=all --instructions             # sync the rule files
+./install.sh --target=all --instructions             # sync rules and on-demand payloads
 ./install.sh --target=all --instructions --dry-run   # preview
 ./install.sh --target=all --instructions --uninstall # strip the block
 ```
 
-Each fragment is authored once and composed into a marker-delimited managed
+Always-on fragments and pointers are composed into a marker-delimited managed
 block in the agent's global instruction file — `~/.claude/CLAUDE.md` for Claude
 Code, `~/.codex/AGENTS.md` for Codex CLI, `~/.config/opencode/AGENTS.md` for
 opencode. The filenames differ because that is
@@ -99,10 +106,16 @@ A fragment with a `paths:` field (comma-separated globs, e.g.
 `paths: **/*.R, **/DESCRIPTION`) leaves Claude's block and is written as a
 [path-scoped rule](https://code.claude.com/docs/en/memory#path-specific-rules)
 to `~/.claude/rules/agents-<fragment>.md`, which Claude Code loads only once it
-reads a matching file. Codex and opencode have no equivalent and keep the
-fragment in their block. Rule files without the `managed-by:` line are never
-touched. The catch: nothing loads before the first matching read, so a rule that
-must hold while *creating* the first such file does not belong behind `paths:`.
+reads a matching file. Codex and opencode have no equivalent: they use a
+pointer to `~/.agents/instructions/30-python.md` for Python work and keep the
+R fragment inline. Rule files without the `managed-by:` line are never touched.
+The catch: nothing loads before the first matching read, so a rule that must
+hold while *creating* the first such file does not belong behind `paths:`.
+
+Uninstall removes the selected global blocks. It removes an on-demand file
+only when no remaining managed instruction block refers to it; a file at a
+payload path without the ownership marker is never touched, and its pointer is
+then left out of the block.
 
 Anything outside the markers is left alone, so hand-written notes and
 `@`-imports survive install, reinstall, and uninstall. Unbalanced markers (from

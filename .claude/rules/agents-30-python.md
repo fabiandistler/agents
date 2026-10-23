@@ -1,4 +1,8 @@
 ---
+paths:
+  - "**/*.py"
+  - "**/pyproject.toml"
+  - "**/uv.lock"
 managed-by: fabiandistler/agents build_project_claude.py
 ---
 

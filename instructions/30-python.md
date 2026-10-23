@@ -1,6 +1,7 @@
 ---
 title: Python
 targets: all
+paths: **/*.py, **/pyproject.toml, **/uv.lock
 ---
 
 ## Python

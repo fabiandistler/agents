@@ -1011,6 +1011,7 @@ cp "$HOME_INS/.claude/CLAUDE.md" "$HOME_INS/claude-before.md"
 HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication >/dev/null
 diff -q "$HOME_INS/claude-before.md" "$HOME_INS/.claude/CLAUDE.md" >/dev/null ||
   fail "instructions written without --instructions"
+[[ ! -e "$HOME_INS/.agents/instructions" ]] || fail "instruction payloads written without --instructions"
 pass "instructions are not touched without --instructions"
 
 # 40. With the flag the block lands, hand-written content survives, and a
@@ -1021,7 +1022,18 @@ grep -q '^my own notes$' "$CLAUDE_MD" || fail "hand-written line lost"
 grep -q '^@RTK.md$' "$CLAUDE_MD" || fail "@-import lost"
 grep -q 'agents instructions (managed by install.sh' "$CLAUDE_MD" || fail "begin marker missing"
 grep -q '<!-- <<< agents instructions <<< -->' "$CLAUDE_MD" || fail "end marker missing"
-grep -q 'Use uv for Python package development' "$CLAUDE_MD" || fail "fragment body missing"
+! grep -q 'Use uv for Python package development' "$CLAUDE_MD" ||
+  fail "path-scoped Python fragment stayed in Claude's always-on block"
+PYTHON_RULE="$HOME_INS/.claude/rules/agents-30-python.md"
+[[ -f "$PYTHON_RULE" ]] || fail "path-scoped Python rule was not written"
+grep -q '"\*\*/\*.py"' "$PYTHON_RULE" || fail "Python rule lacks its quoted paths glob"
+grep -q 'New project baseline' "$PYTHON_RULE" || fail "Python rule has no baseline"
+[[ -f "$HOME_INS/.agents/instructions/30-python.md" ]] || fail "Python baseline payload missing"
+[[ -f "$HOME_INS/.agents/instructions/70-code-review-conventions.md" ]] || fail "code review payload missing"
+[[ -f "$HOME_INS/.agents/instructions/80-agent-pipelines.md" ]] || fail "agent pipeline payload missing"
+[[ -f "$HOME_INS/.agents/instructions/85-agent-scripts.md" ]] || fail "agent scripts payload missing"
+grep -Fq '.agents/instructions/70-code-review-conventions.md' "$CLAUDE_MD" ||
+  fail "Claude block lacks the code review pointer"
 cp "$CLAUDE_MD" "$HOME_INS/claude-once.md"
 HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions >/dev/null
 diff -q "$HOME_INS/claude-once.md" "$CLAUDE_MD" >/dev/null ||
@@ -1032,6 +1044,7 @@ pass "instructions block installs once and is idempotent"
 HOME="$HOME_INS" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null
 diff -q "$HOME_INS/claude-before.md" "$CLAUDE_MD" >/dev/null ||
   fail "uninstall did not restore the original instruction file"
+[[ ! -e "$HOME_INS/.agents/instructions/30-python.md" ]] || fail "uninstall left the Python payload"
 pass "instructions uninstall removes only the managed block"
 
 # 42. codex and opencode each get their own file created from nothing
@@ -1041,13 +1054,37 @@ HOME_INS2="$(mktemp -d)"
 HOME="$HOME_INS2" "$INSTALL" --target=all --category=communication --instructions >/dev/null
 for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
   [[ -f "$HOME_INS2/$f" ]] || fail "$f was not created"
-  grep -q 'Use uv for Python package development' "$HOME_INS2/$f" ||
-    fail "$f has no fragment body"
+  grep -q 'For Python work, read' "$HOME_INS2/$f" ||
+    fail "$f has no Python baseline pointer"
+  ! grep -q 'Use uv for Python package development' "$HOME_INS2/$f" ||
+    fail "$f loaded the Python baseline inline"
 done
+grep -q 'Use uv for Python package development' "$HOME_INS2/.agents/instructions/30-python.md" ||
+  fail "Codex/opencode Python pointer has no installed target"
 HOME="$HOME_INS2" "$INSTALL" --target=opencode --category=communication --instructions --uninstall >/dev/null
 ! grep -q 'agents instructions' "$HOME_INS2/.config/opencode/AGENTS.md" ||
   fail "opencode uninstall left the instructions block"
+[[ -f "$HOME_INS2/.agents/instructions/80-agent-pipelines.md" ]] ||
+  fail "target-specific uninstall removed a payload still used by codex and claude"
 pass "instructions create codex's and opencode's own files"
+
+# 42a. A foreign file at a payload path is never overwritten, and the block
+#      leaves out the pointer to it.
+HOME_INS5="$(mktemp -d)"
+mkdir -p "$HOME_INS5/.agents/instructions"
+printf 'mine\n' >"$HOME_INS5/.agents/instructions/85-agent-scripts.md"
+HOME="$HOME_INS5" "$INSTALL" --target=codex --category=communication --instructions >/dev/null 2>&1
+[[ "$(cat "$HOME_INS5/.agents/instructions/85-agent-scripts.md")" == mine ]] ||
+  fail "install overwrote a foreign payload file"
+! grep -q '85-agent-scripts.md' "$HOME_INS5/.codex/AGENTS.md" ||
+  fail "block points at a foreign payload file"
+grep -q '70-code-review-conventions.md' "$HOME_INS5/.codex/AGENTS.md" ||
+  fail "block lost the pointer to an owned payload"
+HOME="$HOME_INS5" "$INSTALL" --target=codex --category=communication --instructions --uninstall >/dev/null 2>&1
+[[ -f "$HOME_INS5/.agents/instructions/85-agent-scripts.md" ]] || fail "uninstall removed a foreign payload file"
+[[ ! -e "$HOME_INS5/.agents/instructions/70-code-review-conventions.md" ]] ||
+  fail "uninstall left an unreferenced owned payload"
+pass "foreign payload files are left alone and not pointed at"
 
 # 43. Unbalanced markers (a hand edit) leave the file completely alone, and
 #     --dry-run never writes.
@@ -1067,8 +1104,9 @@ grep -Fq "[dry-run] write $HOME_INS4/.codex/AGENTS.md" <<<"$ins_dry_output" ||
 pass "unbalanced markers and dry-run never write instruction files"
 
 # 44. A fragment with `paths:` leaves Claude's block for a path-scoped rule
-#     under ~/.claude/rules/ (codex and opencode keep it inline), a foreign
-#     rule file is never touched, and --uninstall removes only ours.
+#     under ~/.claude/rules/ (codex and opencode keep R inline and use the
+#     Python pointer), a foreign rule file is never touched, and --uninstall
+#     removes only ours.
 HOME_RULE_DRY="$(mktemp -d)"
 RULE_DRY_PATH="$HOME_RULE_DRY/.claude/rules/agents-40-r.md"
 rule_dry_output="$(HOME="$HOME_RULE_DRY" "$INSTALL" --target=all --category=communication --instructions --dry-run 2>&1)"
@@ -1089,6 +1127,9 @@ grep -q 'Namespace' "$R_RULE" || fail "R rule has no fragment body"
   fail "path-scoped fragment still inside Claude's block"
 for f in .codex/AGENTS.md .config/opencode/AGENTS.md; do
   grep -q 'Namespace' "$HOME_RULES/$f" || fail "$f lost the path-scoped fragment"
+  grep -q 'For Python work, read' "$HOME_RULES/$f" || fail "$f lost the Python pointer"
+  ! grep -q 'Use uv for Python package development' "$HOME_RULES/$f" ||
+    fail "$f loaded the Python baseline inline"
 done
 rule_content_before="$(cat "$R_RULE")"
 rule_inode_before="$(file_inode "$R_RULE")"
@@ -1101,6 +1142,8 @@ grep -q '  ok .*agents-40-r.md' <<<"$rule_output" ||
   fail "reinstall did not report the unchanged Claude rule as ok"
 HOME="$HOME_RULES" "$INSTALL" --target=claude --category=communication --instructions --uninstall >/dev/null 2>&1
 [[ ! -e "$R_RULE" ]] || fail "uninstall left the managed R rule"
+[[ -f "$HOME_RULES/.agents/instructions/80-agent-pipelines.md" ]] ||
+  fail "Claude uninstall removed a payload still used by codex and opencode"
 [[ -f "$HOME_RULES/.claude/rules/own.md" ]] || fail "uninstall removed a foreign rule file"
 pass "paths: fragments become path-scoped Claude rules only"
 

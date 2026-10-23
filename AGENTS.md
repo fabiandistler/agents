@@ -25,15 +25,20 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   marketplace only; `--target=claude` syncs just `--instructions` and removes
   the links and settings entry older versions created.
   See `./install.sh --help` and `docs/install.md`.
-- `instructions/` holds the agent-instruction fragments: single-topic
-  Markdown files, ordered by their numeric filename prefix, that
-  `install.sh --instructions` composes into a marker-delimited managed block
-  in each agent's global instruction file (`~/.claude/CLAUDE.md`,
-  `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`). A rule is authored
-  once here instead of being copied by hand into every agent's config.
-  Content outside the markers is never touched. A fragment with a `paths:`
-  field goes to Claude as a path-scoped rule in `~/.claude/rules/` instead
-  (codex and opencode keep it in their block).
+- `instructions/` holds single-topic rule fragments, ordered by numeric
+  filename prefix, in three tiers: 20, 25, 50, 55 and 60 are always on;
+  Python and R rules are path-scoped in Claude, while Codex and opencode get
+  the Python baseline by pointer and keep the R rules in their block; 70, 80
+  and 85 are on demand; 85 is also repeated in this repository's `AGENTS.md`.
+  `install.sh --instructions` composes the always-on
+  rules and pointers into marker-delimited blocks in each agent's global
+  instruction file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`,
+  `~/.config/opencode/AGENTS.md`) and installs on-demand files under
+  `~/.agents/instructions/`. Claude loads `paths:` fragments from
+  `~/.claude/rules/`. The 70 and 85 sources live in
+  `instructions/on-demand/`; 80 lives at
+  `skills/llm-application-engineering/references/agent-pipelines.md`. Content
+  outside the managed markers is never touched.
 - `plugins/` packages the same skills as Claude plugins, one plugin per
   category (each bundles its skills via symlinks into `skills/`).
   `.claude-plugin/marketplace.json` makes the repo installable as a
@@ -275,8 +280,8 @@ Applies to any executable an agent invokes: `scripts/` in a skill or
 plugin, hook commands, CI helpers. The seven rules that hold outside
 this repo too — non-interactive input, `--help`, exit codes, named
 writes, secrets, installed smoke test, bounded output — are also carried
-globally by `instructions/85-agent-scripts.md`; edit both when they
-change.
+globally by `instructions/on-demand/85-agent-scripts.md`; edit both when
+they change.
 
 - Never read from an interactive prompt. Agents run non-interactive
   shells; a TTY prompt hangs the session until timeout. Take every input

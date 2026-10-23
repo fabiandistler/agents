@@ -3,7 +3,7 @@
 # for popular coding agents. Idempotent; reversible via --uninstall.
 #
 # Usage:
-#   ./install.sh --target=claude --instructions # ~/.claude/CLAUDE.md + rules
+#   ./install.sh --target=claude --instructions # instructions, rules + payloads
 #   ./install.sh --target=codex               # ~/.agents/skills/<skill>
 #   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
@@ -12,7 +12,7 @@
 #   ./install.sh --target=opencode --env=chat # only chat skills
 #   ./install.sh --target=codex  --env=coding # only coding skills
 #   ./install.sh --target=codex --category=architecture,refactoring
-#   ./install.sh --target=all --instructions   # also sync the rule files
+#   ./install.sh --target=all --instructions   # also sync rules and payloads
 #   ./install.sh --target=all --merge-guard    # also block agent PR merges
 #   ./install.sh --target=all --secret-guard   # also block credential reads
 #
@@ -87,16 +87,16 @@
 #   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
 #     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
 #
-# --instructions (off by default) additionally composes the Markdown
-# fragments in instructions/ into each agent's global instruction file
-# (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.config/opencode/AGENTS.md), as
-# one marker-delimited managed block. Fragments are ordered by their numeric filename prefix and may limit
-# themselves to some agents with a `targets:` frontmatter field, as skills do.
-# For claude, a fragment with a `paths:` field (comma-separated globs) goes to
-# ~/.claude/rules/agents-<fragment>.md instead and loads only when Claude reads
-# a matching file; codex and opencode keep it in their block.
-# Anything outside the markers is left untouched, so hand-written notes and
-# @-imports survive; --uninstall strips the block and nothing else. opencode
+# --instructions (off by default) composes always-on rules and pointers into
+# each agent's global instruction file. It also installs the pointer targets in
+# ~/.agents/instructions/. Fragments are ordered by their numeric filename
+# prefix and may limit themselves to agents with a `targets:` frontmatter field.
+# For Claude, fragments with `paths:` go to ~/.claude/rules/agents-<fragment>.md
+# and load only for matching files. Codex gets the Python baseline by pointer;
+# opencode gets the same pointer and keeps the R rules in its block. Anything
+# outside the managed markers is left untouched, so hand-written notes and
+# @-imports survive; --uninstall strips our blocks and removes only
+# unreferenced payloads. opencode
 # gets its own ~/.config/opencode/AGENTS.md: it reads ~/.claude/CLAUDE.md only
 # as a fallback when that file is missing, and opencode V2 not at all.
 #
@@ -379,18 +379,22 @@ write_file_atomic() {
 
 # Set a complete file this installer owns. The caller renders content and
 # sends it on stdin; this function guards ownership and writes only changes.
+# The label names the kind of file and selects its ownership marker; `name`
+# picks the marker for instruction payloads, which differ by file type.
 owned_file_set() {
-  local target="$1" label="$2" marker content
+  local target="$1" label="$2" name="${3:-}" marker content
   case "$label" in
     agent) marker="$AGENT_MARKER" ;;
     rule) marker="$(claude_rule_marker)" ;;
+    instruction-payload) marker="$(instruction_payload_marker_for "$name")" ;;
     *)
       printf 'owned_file_set: unknown label %s\n' "$label" >&2
       return 2
       ;;
   esac
   content="$(cat)"
-  if [[ -e "$target" ]] && ! grep -qxF "$marker" "$target" 2>/dev/null; then
+  if [[ -L "$target" ]] || { [[ -e "$target" ]] && [[ ! -f "$target" ]]; } ||
+    { [[ -e "$target" ]] && ! grep -qxF "$marker" "$target" 2>/dev/null; }; then
     printf '  WARN      %s exists and is not managed by install.sh (leaving it untouched)\n' \
       "$target" >&2
     return 0
@@ -852,6 +856,150 @@ prune_stale_codex_agents() {
 
 instructions_dir() { printf '%s/instructions' "$REPO_ROOT"; }
 
+# --- On-demand instruction payloads ------------------------------------------
+#
+# Tier-C fragments (70, 80, 85) and Codex/opencode's Python baseline stay out of
+# the always-loaded block: the block carries a one-line pointer, and the full
+# text is installed under ~/.agents/instructions/. Each payload carries an
+# ownership marker; a file without it is never touched.
+
+instruction_payloads_dir() { printf '%s/.agents/instructions' "$HOME"; }
+
+instruction_payload_marker() {
+  printf '<!-- managed-by: fabiandistler/agents install.sh -->'
+}
+
+instruction_payload_marker_for() {
+  instruction_payload_marker
+}
+
+instruction_payload_dest() {
+  printf '%s/%s' "$(instruction_payloads_dir)" "$1"
+}
+
+instruction_payload_source() {
+  case "$1" in
+    30-python.md) printf '%s/30-python.md' "$(instructions_dir)" ;;
+    70-code-review-conventions.md) printf '%s/on-demand/70-code-review-conventions.md' "$(instructions_dir)" ;;
+    80-agent-pipelines.md)
+      printf '%s/skills/llm-application-engineering/references/agent-pipelines.md' "$REPO_ROOT"
+      ;;
+    85-agent-scripts.md) printf '%s/on-demand/85-agent-scripts.md' "$(instructions_dir)" ;;
+    *) return 1 ;;
+  esac
+}
+
+render_instruction_payload() {
+  local name="$1" source
+  source="$(instruction_payload_source "$name")" || return 1
+  case "$name" in
+    30-python.md)
+      printf '%s\n\n' "$(instruction_payload_marker)"
+      fragment_body "$source" | sed \
+        '/^<!-- python-project-baseline:start -->$/d; /^<!-- python-project-baseline:end -->$/d'
+      ;;
+    *)
+      printf '%s\n\n' "$(instruction_payload_marker)"
+      cat "$source"
+      ;;
+  esac
+}
+
+instruction_payload_is_owned() {
+  local dest
+  dest="$(instruction_payload_dest "$1")"
+  [[ -f "$dest" && ! -L "$dest" ]] || return 1
+  grep -qxF "$(instruction_payload_marker_for "$1")" "$dest"
+}
+
+install_instruction_payload() {
+  local name="$1" dest content
+  dest="$(instruction_payload_dest "$name")"
+  content="$(render_instruction_payload "$name")"
+  owned_file_set "$dest" instruction-payload "$name" <<<"$content"
+}
+
+install_instruction_payloads() {
+  local name
+  for name in \
+    30-python.md \
+    70-code-review-conventions.md \
+    80-agent-pipelines.md \
+    85-agent-scripts.md; do
+    install_instruction_payload "$name"
+  done
+}
+
+# A pointer is rendered only when its payload is ours (or, in a dry run, would
+# be): a foreign file at the payload path must not be advertised as the rules.
+instruction_payload_available() {
+  instruction_payload_is_owned "$1" && return 0
+  if ((DRY_RUN)); then
+    local dest
+    dest="$(instruction_payload_dest "$1")"
+    [[ ! -e "$dest" && ! -L "$dest" ]] && return 0
+  fi
+  return 1
+}
+
+# Reference checks only look inside installed instruction documents. A
+# target-specific uninstall keeps shared payloads while another target still
+# points at them.
+instruction_payload_referenced() {
+  local name="$1" target dest home_path
+  dest="$(instruction_payload_dest "$name")"
+  # The literal tilde is what composed instruction files contain, so no expansion.
+  # shellcheck disable=SC2088
+  home_path="~/.agents/instructions/$name"
+  for target in claude codex opencode; do
+    if ((UNINSTALL)) && target_is_selected "$target"; then
+      continue
+    fi
+    local instructions_file
+    instructions_file="$(instruction_file_for "$target")"
+    if [[ -f "$instructions_file" ]] &&
+      grep -qF "$(instructions_begin_marker)" "$instructions_file" &&
+      { grep -qF "$dest" "$instructions_file" || grep -qF "$home_path" "$instructions_file"; }; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+remove_instruction_payload() {
+  local name="$1" dest
+  dest="$(instruction_payload_dest "$name")"
+  instruction_payload_is_owned "$name" || return 0
+  if instruction_payload_referenced "$name"; then
+    return 0
+  fi
+  if ((DRY_RUN)); then
+    printf '[dry-run] remove %s\n' "$dest"
+    return 0
+  fi
+  rm "$dest"
+  printf '  removed   %s\n' "$dest"
+}
+
+prune_instruction_payloads() {
+  local name
+  for name in \
+    30-python.md \
+    70-code-review-conventions.md \
+    80-agent-pipelines.md \
+    85-agent-scripts.md; do
+    remove_instruction_payload "$name"
+  done
+}
+
+target_is_selected() {
+  local selected
+  while IFS= read -r selected; do
+    [[ "$selected" == "$1" ]] && return 0
+  done < <(resolve_targets)
+  return 1
+}
+
 # Global instruction file for a target. Unknown targets are an error.
 instruction_file_for() {
   case "$1" in
@@ -905,6 +1053,20 @@ list_instruction_fragments() {
     [[ -f "$file" ]] || continue
     fragment_matches_target "$file" "$want" || continue
     fragment_is_claude_rule "$file" "$want" && continue
+    case "${file##*/}" in
+      30-python.md)
+        [[ "$want" == "claude" ]] || instruction_payload_available 30-python.md || continue
+        ;;
+      70-code-review-conventions.md)
+        instruction_payload_available 70-code-review-conventions.md || continue
+        ;;
+      80-agent-pipelines.md)
+        instruction_payload_available 80-agent-pipelines.md || continue
+        ;;
+      85-agent-scripts.md)
+        instruction_payload_available 85-agent-scripts.md || continue
+        ;;
+    esac
     printf '%s\n' "$file"
   done
 }
@@ -924,12 +1086,17 @@ fragment_body() {
 # Compose the fragment paths read on stdin into one document, one blank line
 # between fragments.
 render_instructions() {
-  local file first=1
+  local target="$1" file first=1
   while IFS= read -r file; do
     [[ -n "$file" ]] || continue
     ((first)) || printf '\n'
     first=0
-    fragment_body "$file"
+    if [[ "$target" != "claude" && "${file##*/}" == "30-python.md" ]]; then
+      printf 'For Python work, read `%s`.\n' \
+        "$(instruction_payload_dest 30-python.md)"
+    else
+      fragment_body "$file"
+    fi
   done
 }
 
@@ -960,7 +1127,7 @@ install_instructions() {
     return 0
   fi
   managed_block_set "$dest" "$(instructions_begin_marker)" "$(instructions_end_marker)" \
-    "$(render_instructions <<<"$fragments")" "$count instruction fragments"
+    "$(render_instructions "$target" <<<"$fragments")" "$count instruction fragments"
 }
 
 # --- Path-scoped Claude rules ------------------------------------------------
@@ -1524,6 +1691,10 @@ main() {
       "${FILTER_FLAGS# }" >&2
   fi
 
+  if ((INSTRUCTIONS && UNINSTALL == 0)); then
+    install_instruction_payloads
+  fi
+
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
     if [[ "$target" == "claude" ]]; then
@@ -1569,6 +1740,10 @@ main() {
       fi
     done
   done < <(resolve_targets)
+
+  if ((INSTRUCTIONS && UNINSTALL)); then
+    prune_instruction_payloads
+  fi
 }
 
 main
