@@ -166,6 +166,14 @@ CHECK_ROWS=""
 CHECK_CURRENT_TARGET=""
 RESOLVED_TARGETS=""
 OLD_REPO_ROOT=""
+# Saved install state, filled by read_install_state.
+SAVED_TARGETS_CSV=""
+SAVED_ENV=""
+SAVED_CATEGORY=""
+SAVED_INSTRUCTIONS=0
+SAVED_MERGE=0
+SAVED_SECRET=0
+SAVED_REPO_ROOT=""
 UNINSTALL=0
 INSTRUCTIONS=0
 GUARDS=""
@@ -213,19 +221,16 @@ install_state_file() {
   printf '%s/fabiandistler-agents/install.json' "${state_home%/}"
 }
 
-load_install_state() {
-  local file reader_pid status targets_csv stored_env stored_category stored_instructions \
-    stored_merge stored_secret stored_repo_root target
+# Reads the saved install state into the SAVED_* globals. Returns 4 without a
+# message when no state file exists, so each caller words that case itself.
+read_install_state() {
+  local file reader_pid status
   file="$(install_state_file)"
   if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
     printf 'saved install state is not a regular file: %s\n' "$file" >&2
     return 1
   fi
-  if [[ ! -f "$file" ]]; then
-    printf 'no saved install state at %s; install once with --target=claude|codex|opencode|all before --update\n' \
-      "$file" >&2
-    return 4
-  fi
+  [[ -f "$file" ]] || return 4
   if ! command -v python3 >/dev/null 2>&1; then
     echo "python3 is required to read --update state" >&2
     return 1
@@ -278,13 +283,13 @@ except (OSError, UnicodeError, ValueError, KeyError, TypeError):
 PY
   )
   reader_pid=$!
-  if ! IFS= read -r -d '' targets_csv <&3 ||
-    ! IFS= read -r -d '' stored_env <&3 ||
-    ! IFS= read -r -d '' stored_category <&3 ||
-    ! IFS= read -r -d '' stored_instructions <&3 ||
-    ! IFS= read -r -d '' stored_merge <&3 ||
-    ! IFS= read -r -d '' stored_secret <&3 ||
-    ! IFS= read -r -d '' stored_repo_root <&3; then
+  if ! IFS= read -r -d '' SAVED_TARGETS_CSV <&3 ||
+    ! IFS= read -r -d '' SAVED_ENV <&3 ||
+    ! IFS= read -r -d '' SAVED_CATEGORY <&3 ||
+    ! IFS= read -r -d '' SAVED_INSTRUCTIONS <&3 ||
+    ! IFS= read -r -d '' SAVED_MERGE <&3 ||
+    ! IFS= read -r -d '' SAVED_SECRET <&3 ||
+    ! IFS= read -r -d '' SAVED_REPO_ROOT <&3; then
     exec 3<&-
     wait "$reader_pid" || true
     echo "saved install state is invalid" >&2
@@ -297,25 +302,39 @@ PY
     status=$?
     return "$status"
   fi
+}
 
-  ENV="$stored_env"
-  CATEGORY="$stored_category"
-  INSTRUCTIONS="$stored_instructions"
+load_install_state() {
+  local status target
+  if read_install_state; then
+    :
+  else
+    status=$?
+    if ((status == 4)); then
+      printf 'no saved install state at %s; install once with --target=claude|codex|opencode|all before --update\n' \
+        "$(install_state_file)" >&2
+    fi
+    return "$status"
+  fi
+
+  ENV="$SAVED_ENV"
+  CATEGORY="$SAVED_CATEGORY"
+  INSTRUCTIONS="$SAVED_INSTRUCTIONS"
   GUARDS=""
-  [[ "$stored_merge" == 1 ]] && GUARDS+=" merge"
-  [[ "$stored_secret" == 1 ]] && GUARDS+=" secret"
-  OLD_REPO_ROOT="$stored_repo_root"
+  [[ "$SAVED_MERGE" == 1 ]] && GUARDS+=" merge"
+  [[ "$SAVED_SECRET" == 1 ]] && GUARDS+=" secret"
+  OLD_REPO_ROOT="$SAVED_REPO_ROOT"
   RESOLVED_TARGETS=""
-  IFS=',' read -ra _resolved_targets <<<"$targets_csv"
+  IFS=',' read -ra _resolved_targets <<<"$SAVED_TARGETS_CSV"
   for target in "${_resolved_targets[@]}"; do
     RESOLVED_TARGETS+="$target"$'\n'
   done
-  if [[ "$targets_csv" == "claude,codex,opencode" ]]; then
+  if [[ "$SAVED_TARGETS_CSV" == "claude,codex,opencode" ]]; then
     TARGET=all
-  elif [[ "$targets_csv" == *','* ]]; then
+  elif [[ "$SAVED_TARGETS_CSV" == *','* ]]; then
     TARGET=resolved
   else
-    TARGET="$targets_csv"
+    TARGET="$SAVED_TARGETS_CSV"
   fi
   [[ "$ENV" == all ]] || FILTER_FLAGS+=" --env"
   [[ "$CATEGORY" == all ]] || FILTER_FLAGS+=" --category"
