@@ -2,6 +2,8 @@
 
 Issues and specs for this repo live as GitHub issues. For every operation below, use the GitHub MCP tools if the session has them; otherwise `gh` with the command given. GraphQL-backed `gh` porcelain (`gh issue`, `gh pr`) fails in sessions where GitHub's GraphQL endpoint is blocked; `gh api` (REST) works everywhere.
 
+New issues are labeled automatically by `.github/workflows/triage.yml`; the operator runbook is [triage-runbook.md](triage-runbook.md) and the label vocabulary is [triage-labels.md](triage-labels.md).
+
 ## Conventions
 
 - **Create an issue**: use the GitHub MCP tools if the session has them; otherwise `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
