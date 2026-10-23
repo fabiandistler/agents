@@ -82,6 +82,19 @@ an agent installed later is reported by `--update --check` rather than written
 to silently. A bare `./install.sh` still writes nothing and exits 2; pass a
 target or use `--target=detected` explicitly.
 
+## OpenCode subagents
+
+When OpenCode is selected, plugin subagents from `plugins/*/agents/*.md` are
+rendered into `~/.config/opencode/agents/<name>.md`. The renderer keeps each
+description and prompt, sets `mode: subagent`, maps Claude tools to OpenCode
+permissions, and denies editing unless the source lists `Edit` or `Write`. It
+drops Claude's `model` value and resolves `${CLAUDE_PLUGIN_ROOT}` for this
+checkout. Generated files carry an ownership comment; stale generated files
+are pruned, and uninstall removes only generated files for selected categories.
+See the [OpenCode agent format](https://opencode.ai/docs/agents). The Codex
+TOML and the OpenCode Markdown come from the same parser in
+`scripts/plugin_agents.py`.
+
 ## What gets linked where
 
 | Target | Skills | Command skills (`activation: command`) |
