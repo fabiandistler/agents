@@ -4,7 +4,7 @@
 Run from repo root:
     python3 scripts/check_secret_argv.py    # exit 1 when a credential sits in argv
 
-instructions/85-agent-scripts.md: secrets come from env or config, never a
+instructions/on-demand/85-agent-scripts.md: secrets come from env or config, never a
 flag. A value in argv lands in shell history and in every `ps` listing on the
 host, and an agent copies the commands a skill shows it. This gate reads the
 shell an agent would run — fenced blocks and code spans of Markdown, and all
