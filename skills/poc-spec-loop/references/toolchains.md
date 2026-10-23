@@ -2,6 +2,14 @@
 
 Re-verify the versions below before each real run; `ruff` in particular moves fast.
 
+## Contents
+
+- [Detect](#detect)
+- [Scaffold](#scaffold-prd-item-1)
+- [Commands](#commands--the-check-vocabulary-for-prd-items)
+- [CI](#ci-prd-item-2--ci-sh-plus-one-forge-file)
+- [Provenance](#provenance)
+
 ## Detect
 
 | Language | Marker | Required on PATH | Install line if missing |
@@ -18,16 +26,21 @@ Greenfield: nothing matches → Phase 1 asks once.
 
 ```
 uv init --package <name> && cd <name>
+```
+
+<!-- python-project-baseline:start -->
+**New project baseline**: when setting up a new Python project with uv, add this dev group and config without asking:
+
+```sh
 uv add --dev ruff ty pytest pytest-cov pip-audit
-uv lock && uv sync
 ```
-Pin in `pyproject.toml`. Use `extend-select`, never `select`: since ruff 0.16 the default set (413 rules, up from 59) covers `UP`/`DTZ`/`B`, and `select` would replace it. A fresh `uv init --package` passes this set; keep it passing rather than narrowing the rules. `exclude-newer` needs uv ≥ 0.9.17 — on an older uv leave the line out:
-```
+
+```toml
 [tool.ruff.lint]
 extend-select = ["S"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]  # pytest asserts
+"tests/**" = ["S101"]
 
 [tool.coverage.run]
 branch = true
@@ -35,7 +48,19 @@ branch = true
 [tool.uv]
 exclude-newer = "7 days"
 ```
-`ty` is the single type-check gate (same checker the prek hooks run). It is still beta; if it breaks on a library, swap it for `mypy` with `[tool.mypy] strict = true` — one checker, never two.
+
+Why (keep this list when trimming the rule; the non-obvious choices get undone without it):
+- `extend-select`, never `select`: since ruff 0.16 the default set (413 rules) already covers `UP`, `DTZ` and `B`, which catch patterns such as `datetime.utcnow()` and `typing.List`. `select` would replace that default.
+- `S` adds the bandit rules, so bandit itself is not needed. The default has only 3 of them. The hardcoded-secret rules (S105–S107) match on variable names, so a real key under an innocent name still gets through. Keep reviewing secrets by eye. `S101` flags `assert`, which pytest tests are made of, hence the `tests/**` ignore.
+- `branch = true` shows untested error paths that happy-path code skips.
+- `pip-audit` finds known vulnerabilities in dependencies.
+- `exclude-newer = "7 days"` is a dependency cooldown: the resolver ignores uploads younger than a week, so a malicious release is usually yanked before it can land. It belongs in `pyproject.toml` because cloud sessions never read a user-level `uv.toml`. Relative durations need uv ≥ 0.9.17 (≥ 0.9.25 for the per-package `false` in `--exclude-newer-package`; check `uv --version` first). Leave the line out on an older uv, which fails to parse it. When a fix needs a package newer than that, opt that one package out: `uv lock --exclude-newer-package "<package>=false"`.
+- `ty` is the type checker. It is still beta. If it breaks on a library it does not yet support, fall back to `mypy` with `[tool.mypy] strict = true`.
+<!-- python-project-baseline:end -->
+
+```
+uv lock && uv sync
+```
 
 Strict opt-in (only if the team asks for it; noisy on throwaway PoC code):
 ```
