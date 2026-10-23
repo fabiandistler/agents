@@ -7,6 +7,8 @@ environments: coding, chat
 description: Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim.
 metadata:
   version: "1.1"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 Moment, ich komme nicht mit. Erklär deine letzte Nachricht noch einmal neu, auf Deutsch – auch wenn der Chat bisher in einer anderen Sprache lief.

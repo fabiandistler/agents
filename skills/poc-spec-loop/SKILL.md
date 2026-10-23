@@ -8,6 +8,8 @@ compatibility: Requires jq, one loop runner CLI (claude, codex, or opencode), an
 description: Takes a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec, then a per-task TDD loop with fresh context up to a pull request. Use when productionizing a greenfield PoC.
 metadata:
   version: "1.0"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # poc-spec-loop

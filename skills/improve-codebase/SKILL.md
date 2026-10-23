@@ -8,6 +8,8 @@ compatibility: Requires git and a browser to view the HTML report. Writes only t
 description: Scan a codebase for deepening opportunities, present them as a visual HTML report with before/after diagrams, then interview the user round by round about the candidate they pick. Use when reviewing a repository's architecture.
 metadata:
   version: "1.0"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # Improve Codebase

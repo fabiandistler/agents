@@ -45,7 +45,7 @@ opencode: /home/you/.config/opencode/skills
   linked    /home/you/.config/opencode/skills/documentation -> /home/you/src/agents/skills/documentation
   linked    /home/you/.config/opencode/skills/refactoring -> /home/you/src/agents/skills/refactoring
   ...
-  linked    /home/you/.config/opencode/command/repo-status.md -> /home/you/src/agents/skills/repo-status/SKILL.md
+  linked    /home/you/.config/opencode/skills/repo-status -> /home/you/src/agents/skills/repo-status
 ```
 
 Start your agent and ask it something the catalogue covers — *"is this
@@ -64,14 +64,18 @@ behaviour is in [`docs/install.md`](docs/install.md).
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links) |
+| `--target=claude\|codex\|opencode\|all\|detected` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links; `detected`: every agent whose command or config directory exists) |
 | `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` (not Claude: install only some plugins instead) |
 | `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app (not Claude) |
-| `--instructions` | off | Compose always-on rules and pointers into the agent's global instruction file and install the on-demand files |
+| `--instructions` | off | Compose always-on rules and pointers, install on-demand files, and add Claude's `uv init` context hook |
 | `--merge-guard` | off | Also install the PR merge guard hook (Codex, opencode; Claude uses the `merge-guard` plugin) |
 | `--secret-guard` | off | Also install the secret read guard hook (Codex, opencode; Claude uses the `secret-guard` plugin) |
 | `--dry-run` | off | Print every action, change nothing |
 | `--uninstall` | off | Remove only the links and managed blocks this installer created |
+| `--check` | off | Report drift between the selected install and the managed files; exit 0 clean, 3 drift; writes nothing |
+| `--output FILE` | — | With `--check`: write the full drift report as TSV |
+| `--update` | off | Replay the last successful install (targets, filters, components) from the saved state file; exit 4 when none exists |
+| `--git-hook` | off | Install `post-merge`/`post-rewrite` hooks in this clone that run `--update` when `--update --check` finds drift; `--uninstall --git-hook` removes them |
 
 ```sh
 ./install.sh --target=opencode --category=architecture
@@ -94,8 +98,9 @@ router's
 **Some skills are invoked explicitly.** Skills marked `activation: command`
 are user-invoked only and install as commands — `/workflow:oss-scouting`,
 `/workflow:repo-status` in Claude Code, where plugin commands carry the
-plugin name. Codex gets them as skills that run only on an explicit
-`$oss-scouting`.
+plugin name. OpenCode discovers them as slash commands from the ordinary skill
+directory through `opencode/slash` and `opencode/autoinvoke` metadata. Codex
+gets them as skills that run only on an explicit `$oss-scouting`.
 
 **Shared rules are separate from skills.** Skills are capabilities loaded on
 demand. `instructions/` has three tiers: always-on rules, Claude path-scoped
@@ -104,7 +109,9 @@ rules, and on-demand rules whose pointers stay in the global instruction file.
 `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` or
 `~/.config/opencode/AGENTS.md`, and installs the on-demand files under
 `~/.agents/instructions/`. Claude loads path-scoped rules only for matching
-files. Content outside the managed markers is never touched.
+files; the installer and this repo's cloud mirror add a Claude hook that
+supplies the Python baseline before `uv init`. Content outside the managed
+markers is never touched.
 
 **Only the human merges.** A pre-tool hook blocks the agent from merging pull
 requests or enabling auto-merge: the `merge-guard` plugin in Claude Code,
