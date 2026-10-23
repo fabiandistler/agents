@@ -17,9 +17,10 @@ Use these rules when a pipeline separates finding, grading, and publishing. They
   | 100 | The finding is proven: the changed code and specification or a deterministic reproduction establish the defect, with no reasonable alternative. |
 
 - Give the grader this scale verbatim. Apply the configured threshold before writing; omit every finding below it, including findings described as uncertain.
-- A no-findings response is valid for an unattended pipeline only when its receiving system expects one.
+- Silence is a valid output. Produce a no-findings report only when someone explicitly expects one.
 - Put the false-positive catalogue in the finder prompt, not the grader prompt. It names findings that must never be reported: pre-existing issues, anything a linter, typechecker or compiler catches, nitpicks, and anything outside the change.
 - Split parallel finders by evidence source, not topic. Two agents inspecting the same source produce correlated errors, not broader coverage.
+- Run classification and grading on the cheap model, the actual analysis on the strong one.
 - Strip HTML comments, CSS-hidden text, zero-width characters, and embedded Base64 blobs from untrusted text before it reaches a prompt. This narrows injection exposure; a model's output on that text is a recommendation, never the decision.
 
 ## External writes
