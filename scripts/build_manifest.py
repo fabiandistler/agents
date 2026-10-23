@@ -1,278 +1,28 @@
 #!/usr/bin/env python3
-"""Generate skills.json from each skill's SKILL.md frontmatter.
+"""Generate skills.json from the skill catalogue.
 
 Run from repo root:
     python3 scripts/build_manifest.py            # write skills.json
     python3 scripts/build_manifest.py --check    # exit 1 if drift
 
-Stdlib-only. Parses a minimal subset of YAML frontmatter sufficient for
-our SKILL.md files: top-level scalar keys (name, description,
-compatibility) and a single nested `metadata.version` block.
+Source parsing and entry validation live in `catalogue.py`; this script owns
+only the generated manifest file. Stdlib-only.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILLS_DIR = REPO_ROOT / "skills"
-MANIFEST_PATH = REPO_ROOT / "skills.json"
+from catalogue import MANIFEST_PATH, REPO_ROOT, entry_from_skill_file, find_skill_files
+
 MANIFEST_VERSION = "1"
-
-CATEGORIES = (
-    "architecture",
-    "refactoring",
-    "ai-ml",
-    "workflow",
-    "communication",
-    "personal",
-)
-
-# How a skill is surfaced. `auto` (default): model-triggered; its description
-# participates in the auto-trigger budget. `command`: user-invoked only;
-# install.sh routes it to each target's command/prompt directory instead of
-# the skills directory, keeping it out of the auto-trigger metadata. `router`:
-# a per-category entry skill (named after its category) that is the only
-# member of the category registered at top level; its `members/` subdir nests
-# the category's auto skills, which load lazily when the router routes to them.
-ACTIVATIONS = ("auto", "command", "router")
-
-# Which agents a skill is installed for. Absent (the default) means all of
-# them; `targets: codex, opencode` keeps install.sh from linking the skill
-# under claude — e.g. when the Claude runtime ships its own version.
-TARGETS = ("claude", "codex", "opencode")
-
-
-def find_skill_files() -> list[Path]:
-    skills = []
-    for child in sorted(SKILLS_DIR.iterdir()):
-        if not child.is_dir() or child.name.startswith("."):
-            continue
-        skill_md = child / "SKILL.md"
-        if skill_md.is_file():
-            skills.append(skill_md)
-    return skills
-
-
-def extract_frontmatter(text: str) -> str:
-    if not text.startswith("---\n"):
-        raise ValueError("missing opening '---' frontmatter delimiter")
-    end = text.find("\n---", 4)
-    if end == -1:
-        raise ValueError("missing closing '---' frontmatter delimiter")
-    return text[4:end]
-
-
-def parse_frontmatter(block: str) -> dict[str, object]:
-    """Parse the limited YAML subset used by our SKILL.md files."""
-    out: dict[str, object] = {}
-    lines = block.splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if not line.strip() or line.lstrip().startswith("#"):
-            i += 1
-            continue
-        if not line.startswith(" ") and ":" in line:
-            key, _, rest = line.partition(":")
-            key = key.strip()
-            value = rest.strip()
-            if value == "":
-                # Nested block (e.g. `metadata:`); collect indented children.
-                nested: dict[str, str] = {}
-                i += 1
-                while i < len(lines) and (lines[i].startswith(" ") or lines[i].startswith("\t")):
-                    sub = lines[i].strip()
-                    if sub and ":" in sub:
-                        k, _, v = sub.partition(":")
-                        # Nested values are short scalars (metadata.version), so
-                        # unlike top-level ones they never span lines.
-                        nested[k.strip()] = _strip_quotes(v.strip())
-                    i += 1
-                out[key] = nested
-                continue
-            # Multi-line folded value? Our skills sometimes wrap descriptions.
-            value, consumed = _maybe_join_continuation(value, lines, i)
-            out[key] = _strip_quotes(value)
-            i += 1 + consumed
-            continue
-        i += 1
-    return out
-
-
-def _strip_quotes(value: str) -> str:
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-        return value[1:-1]
-    return value
-
-
-def _maybe_join_continuation(value: str, lines: list[str], idx: int) -> tuple[str, int]:
-    """If a quoted value spans multiple lines (single quote opened, not closed),
-    keep joining lines until the quote closes. Returns (joined, extra_lines)."""
-    if not value or value[0] not in ("'", '"'):
-        return value, 0
-    quote = value[0]
-    if value.endswith(quote) and len(value) > 1:
-        return value, 0
-    consumed = 0
-    parts = [value]
-    j = idx + 1
-    while j < len(lines):
-        parts.append(lines[j])
-        consumed += 1
-        if lines[j].rstrip().endswith(quote):
-            break
-        j += 1
-    return " ".join(p.strip() for p in parts), consumed
-
-
-# The manifest summary is the description's first sentence, capped here; a
-# longer first sentence is truncated with an ellipsis and loses its trigger.
-SUMMARY_LIMIT = 200
-
-
-def first_sentence(text: str) -> str:
-    """The description's leading sentence, whitespace-normalized (untruncated)."""
-    text = re.sub(r"\s+", " ", text).strip()
-    m = re.search(r"\.\s", text)
-    return text[: m.end()].strip() if m else text
-
-
-def truncate_summary(sentence: str, limit: int = SUMMARY_LIMIT) -> str:
-    if len(sentence) > limit:
-        return sentence[: limit - 1].rstrip() + "…"
-    return sentence
-
-
-def warn(message: str) -> None:
-    sys.stderr.write(f"warning: {message}\n")
-
-
-# Agent-skills spec limit; Claude.ai silently drops skills that exceed it.
-MAX_DESCRIPTION_LENGTH = 1024
-
-# How Claude Code joins `when_to_use` onto the description in its skill listing.
-# The combined length is budgeted in scripts/check_descriptions.py.
-CLAUDE_WHEN_TO_USE_JOINER = " - "
-
-
-def check_strict_yaml(block: str, skill_md: Path) -> None:
-    """Reject frontmatter our lenient parser accepts but strict YAML rejects.
-
-    An unquoted scalar containing ': ' is a YAML mapping error, so consumers
-    like Claude.ai fail to load the skill even though skills.json builds fine.
-    """
-    for line in block.splitlines():
-        if line.startswith((" ", "\t")) or not line.strip() or line.lstrip().startswith("#"):
-            continue
-        key, _, rest = line.partition(":")
-        value = rest.strip()
-        if value and value[0] not in ("'", '"') and ": " in value:
-            raise ValueError(
-                f"{skill_md}: unquoted '{key.strip()}' value contains ': ' — invalid YAML;"
-                " rephrase (e.g. use an em-dash) or quote the value"
-            )
-
-
-def build_entry(skill_md: Path) -> dict[str, object]:
-    text = skill_md.read_text(encoding="utf-8")
-    block = extract_frontmatter(text)
-    check_strict_yaml(block, skill_md)
-    fm = parse_frontmatter(block)
-    name = fm.get("name")
-    description = fm.get("description")
-    category = fm.get("category")
-    if not isinstance(name, str) or not name:
-        raise ValueError(f"{skill_md}: frontmatter missing 'name'")
-    if not isinstance(description, str) or not description:
-        raise ValueError(f"{skill_md}: frontmatter missing 'description'")
-    if len(description) > MAX_DESCRIPTION_LENGTH:
-        raise ValueError(
-            f"{skill_md}: description is {len(description)} chars"
-            f" (limit {MAX_DESCRIPTION_LENGTH}; longer skills are dropped by Claude.ai)"
-        )
-    if not isinstance(category, str) or category not in CATEGORIES:
-        raise ValueError(
-            f"{skill_md}: frontmatter 'category' must be one of {', '.join(CATEGORIES)}"
-            f" (got {category!r})"
-        )
-    activation = fm.get("activation", "auto")
-    if not isinstance(activation, str) or activation not in ACTIVATIONS:
-        raise ValueError(
-            f"{skill_md}: frontmatter 'activation' must be one of {', '.join(ACTIVATIONS)}"
-            f" (got {activation!r})"
-        )
-    sentence = first_sentence(description)
-    when_to_use = fm.get("when_to_use")
-    if isinstance(when_to_use, str) and when_to_use.strip() and activation != "router":
-        # Only the router branch below folds the field into the summary, so on
-        # any other activation it would vanish from skills.json while Claude
-        # Code still appends it to the listing — the menu would then be scored
-        # against text the client never renders. Fail instead of dropping it.
-        raise ValueError(
-            f"{skill_md}: 'when_to_use' is only consumed for 'activation: router'"
-            f" skills (this one is {activation!r}); a non-router summary is a"
-            " truncated first sentence and would silently drop the field"
-        )
-    if activation == "router":
-        # A router's description is the whole trigger surface of its category;
-        # the summary is what the menu A/B in eval-suite/recall
-        # ([fabiandistler/eval-suite](https://github.com/fabiandistler/eval-suite))
-        # shows, so it carries all of it, untruncated, rather than a first
-        # sentence. When the router also declares `when_to_use`, that is appended the way Claude
-        # Code appends it to the listing (" - "), so the menu shows the model
-        # exactly the text the client would. Codex ignores the field, so this
-        # only ever adds what one of the two clients really displays.
-        summary = re.sub(r"\s+", " ", description).strip()
-        if isinstance(when_to_use, str) and when_to_use.strip():
-            summary += CLAUDE_WHEN_TO_USE_JOINER + re.sub(r"\s+", " ", when_to_use).strip()
-    else:
-        summary = truncate_summary(sentence)
-    if activation != "router" and len(sentence) > SUMMARY_LIMIT:
-        warn(
-            f"{skill_md}: description's first sentence is {len(sentence)} chars;"
-            f" the skills.json summary is truncated at {SUMMARY_LIMIT}, losing its"
-            f" what+when trigger. Rewrite the first sentence to stand alone under"
-            f" {SUMMARY_LIMIT} chars."
-        )
-    entry: dict[str, object] = {
-        "name": name,
-        "summary": summary,
-        "category": category,
-        "path": str(skill_md.relative_to(REPO_ROOT)),
-    }
-    # Emit only the non-default activation, mirroring compatibility/version.
-    if activation != "auto":
-        entry["activation"] = activation
-    compat = fm.get("compatibility")
-    if isinstance(compat, str) and compat:
-        entry["compatibility"] = compat
-    environments = fm.get("environments")
-    if isinstance(environments, str) and environments.strip():
-        entry["environments"] = [e.strip() for e in environments.split(",") if e.strip()]
-    targets = fm.get("targets")
-    if isinstance(targets, str) and targets.strip():
-        parsed = [t.strip() for t in targets.split(",") if t.strip()]
-        unknown = [t for t in parsed if t not in TARGETS]
-        if unknown:
-            raise ValueError(
-                f"{skill_md}: frontmatter 'targets' has unknown value(s)"
-                f" {', '.join(unknown)} (allowed: {', '.join(TARGETS)})"
-            )
-        entry["targets"] = parsed
-    metadata = fm.get("metadata")
-    if isinstance(metadata, dict) and metadata.get("version"):
-        entry["version"] = str(metadata["version"])
-    return entry
 
 
 def build_manifest() -> dict[str, object]:
-    skills = [build_entry(p) for p in find_skill_files()]
-    return {"version": MANIFEST_VERSION, "skills": skills}
+    entries = [entry_from_skill_file(path) for path in find_skill_files()]
+    return {"version": MANIFEST_VERSION, "skills": [entry.to_manifest() for entry in entries]}
 
 
 def main() -> int:

@@ -37,7 +37,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from catalogue import load_catalogue, routed_categories, unique_real_files
+from catalogue import load_catalogue, routed_categories, router_members, unique_real_files
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VENDOR_LOCK = Path(".claude/vendor/mattpocock-skills/lock.json")
@@ -81,12 +81,11 @@ class SkillSets:
 
 def load_sets(root: Path) -> SkillSets:
     catalogue = load_catalogue(root / "skills.json")
-    routed = routed_categories(catalogue)
     routers = {e.category: e.name for e in catalogue if e.is_router}
     member_router = {
         e.name: routers[e.category]
-        for e in catalogue
-        if e.category in routed and e.activation == "auto"
+        for category in routed_categories(catalogue)
+        for e in router_members(catalogue, category)
     }
     known = {e.name for e in catalogue}
     lock = root / VENDOR_LOCK
@@ -94,7 +93,7 @@ def load_sets(root: Path) -> SkillSets:
         known |= set(json.loads(lock.read_text(encoding="utf-8"))["skills"])
     return SkillSets(
         member_router=member_router,
-        command=frozenset(e.name for e in catalogue if e.activation == "command"),
+        command=frozenset(e.name for e in catalogue if e.is_command),
         known=frozenset(known),
     )
 

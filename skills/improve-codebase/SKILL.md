@@ -5,9 +5,11 @@ activation: command
 disable-model-invocation: true
 environments: coding
 compatibility: Requires git and a browser to view the HTML report. Writes only to the OS temp directory, plus the repo's GLOSSARY.md and ADRs when the user agrees.
-description: Scan a codebase for deepening opportunities, present them as a visual HTML report with before/after diagrams, then interview the user round by round about the candidate they pick. Use when reviewing a repository's architecture.
+description: Scans a codebase for architectural deepening opportunities and guides a round-by-round review of candidates using a visual report with before-and-after diagrams.
 metadata:
   version: "1.0"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # Improve Codebase

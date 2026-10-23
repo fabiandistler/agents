@@ -63,29 +63,32 @@ straight into the candidates.
 The diagrams carry the weight. Prose is sparse, plain, and uses the terms from
 `design-vocabulary.md` without ceremony.
 
-Each candidate is one `<article>`:
+Each candidate is one `<article>` with these fields, in this order:
 
-- **Title**: short, names the deepening (e.g. "Collapse the Order intake
-  pipeline").
-- **Badge row**: recommendation strength (`Strong` = emerald,
-  `Worth exploring` = amber, `Speculative` = slate), plus a tag for the
-  dependency category (`in-process`, `local-substitutable`,
-  `ports & adapters`, `mock`).
-- **Files**: monospaced list (`font-mono text-sm`) of the modules involved.
-- **Evidence**: required. One monospaced line per finding behind the
-  candidate, each carrying a `path:line` or a metric value quoted as the
-  instrument printed it (`commits=41 in 12 months`, `groups=2 [LCOM=7]`,
-  `sharing=intrusive, distance=package`), followed by a few words in
-  vocabulary terms (`evidence-translation.md` maps the metric terms). A
-  finding without either is cut, and a candidate left with no evidence line is
-  not rendered.
-- **Before / After diagram**: the centrepiece. Two columns, side by side. See
-  the patterns below.
-- **Problem**: one sentence. What hurts.
-- **Solution**: one sentence. What changes.
-- **Wins**: bullets, six words or fewer each, e.g. "Tests hit one interface",
-  "Pricing logic stops leaking", "Delete 4 shallow wrappers".
-- **ADR callout** (if applicable): one line in an amber-tinted box.
+1. **Title**: short; name the deepening (e.g. "Collapse the Order intake
+   pipeline").
+2. **Badge row**: recommendation strength (`Strong` = emerald,
+   `Worth exploring` = amber, `Speculative` = slate), plus a tag for the
+   dependency category (`in-process`, `local-substitutable`,
+   `ports & adapters`, `mock`).
+3. **Files**: a monospaced list (`font-mono text-sm`) of the modules involved.
+4. **Evidence**: required. Use one monospaced line per finding behind the
+   candidate, each carrying a `path:line` or a metric value quoted as the
+   instrument printed it (`commits=41 in 12 months`, `groups=2 [LCOM=7]`,
+   `sharing=intrusive, distance=package`), followed by a few words in
+   vocabulary terms (`evidence-translation.md` maps the metric terms). Cut a
+   finding without either; do not render a candidate without an evidence line.
+5. **Before / After diagram**: the centrepiece, shown in two side-by-side
+   columns. See the patterns below.
+6. **Problem**: exactly one sentence naming the current structural shape and
+   the concrete friction it causes.
+7. **Solution**: exactly one plain-English sentence stating what would change.
+8. **Benefits**: exactly three bullets, each six words or fewer. Cover one
+   benefit each for locality, leverage, and test improvement. For example:
+   "Locality: bugs stay in one module",
+   "Leverage: one interface serves N callers",
+   "Tests hit one interface".
+9. **ADR callout** (if applicable): one line in an amber-tinted box.
 
 No paragraphs of explanation. If a diagram needs a paragraph to be understood,
 redraw the diagram.

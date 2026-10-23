@@ -2,7 +2,7 @@
 name: llm-application-engineering
 category: ai-ml
 environments: coding
-description: "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring. Use when building or debugging an app on top of an LLM."
+description: "Engineers LLM applications for output quality, retrieval, fine-tuning, evals, agents, guardrails, and monitoring; use when building or debugging an app on an LLM."
 metadata:
   version: "1.2"
 ---
@@ -45,6 +45,10 @@ training-data preparation — open
 It is a dense, falsifiable conventions sheet meant to be consulted when the
 question is *how to implement* one of these steps well, not *which* step to take
 next.
+
+For multi-stage or unattended LLM pipelines, read
+[`references/agent-pipelines.md`](references/agent-pipelines.md) for grader
+separation, code-review meta-grading, and controlled external writes.
 
 ## Part A — The adaptation ladder
 

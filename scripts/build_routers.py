@@ -27,70 +27,28 @@ bypass routers, so they are excluded from the table. Stdlib-only.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
-from build_manifest import (
-    extract_frontmatter,
-    find_skill_files,
-    parse_frontmatter,
-)
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILLS_DIR = REPO_ROOT / "skills"
-MANIFEST_PATH = REPO_ROOT / "skills.json"
+from catalogue import REPO_ROOT, SkillEntry, load_catalogue, router_members
 
 BEGIN_MARKER = "<!-- BEGIN generated:members -->"
 END_MARKER = "<!-- END generated:members -->"
 
 
-def routed_categories() -> dict[str, Path]:
-    """Map category -> router SKILL.md for every `activation: router` skill.
-
-    The router skill must be named after its category (name == category).
-    """
-    routers: dict[str, Path] = {}
-    for skill_md in find_skill_files():
-        fm = parse_frontmatter(extract_frontmatter(skill_md.read_text(encoding="utf-8")))
-        if fm.get("activation") != "router":
-            continue
-        name = fm.get("name")
-        category = fm.get("category")
-        if name != category:
-            raise ValueError(
-                f"{skill_md}: a router's name ({name!r}) must equal its category ({category!r})"
-            )
-        routers[str(category)] = skill_md
-    return routers
+def router_files(catalogue: list[SkillEntry]) -> dict[str, Path]:
+    """Map each routed category to its router's source file."""
+    return {entry.category: REPO_ROOT / entry.path for entry in catalogue if entry.is_router}
 
 
-def load_members(category: str) -> list[dict[str, object]]:
-    """Auto members of a category from skills.json, in manifest order.
-
-    Excludes the router itself and any `activation: command` skill (those are
-    user-invoked and bypass routing).
-    """
-    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    members = []
-    for entry in manifest["skills"]:
-        if entry.get("category") != category:
-            continue
-        if entry.get("activation") in ("command", "router"):
-            continue
-        members.append(entry)
-    return members
-
-
-def render_table(members: list[dict[str, object]]) -> str:
+def render_table(members: list[SkillEntry]) -> str:
     """The generated member table, between (not including) the markers."""
     lines = [
         "| Sub-skill | When to use | Read before acting |",
         "|---|---|---|",
     ]
-    for m in members:
-        name = m["name"]
-        lines.append(f"| {name} | {m['summary']} | `members/{name}/SKILL.md` |")
+    for member in members:
+        lines.append(f"| {member.name} | {member.summary} | `members/{member.name}/SKILL.md` |")
     return "\n".join(lines)
 
 
@@ -108,12 +66,12 @@ def splice_region(text: str, table: str, skill_md: Path) -> str:
     return f"{head}\n{table}\n{tail}"
 
 
-def expected_symlinks(members: list[dict[str, object]]) -> dict[str, str]:
+def expected_symlinks(members: list[SkillEntry]) -> dict[str, str]:
     """Map member name -> expected relative symlink target under members/."""
-    return {str(m["name"]): f"../../{m['name']}" for m in members}
+    return {member.name: f"../../{member.name}" for member in members}
 
 
-def sync_symlinks(members_dir: Path, members: list[dict[str, object]], *, check: bool) -> list[str]:
+def sync_symlinks(members_dir: Path, members: list[SkillEntry], *, check: bool) -> list[str]:
     """Create (or in check mode verify) the members/<name> symlinks. Returns drift."""
     expected = expected_symlinks(members)
     errors: list[str] = []
@@ -154,8 +112,14 @@ def sync_symlinks(members_dir: Path, members: list[dict[str, object]], *, check:
     return errors
 
 
-def process(category: str, skill_md: Path, *, check: bool) -> list[str]:
-    members = load_members(category)
+def process(
+    category: str,
+    skill_md: Path,
+    catalogue: list[SkillEntry],
+    *,
+    check: bool,
+) -> list[str]:
+    members = router_members(catalogue, category)
     errors = sync_symlinks(skill_md.parent / "members", members, check=check)
 
     current = skill_md.read_text(encoding="utf-8")
@@ -177,10 +141,11 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="exit 1 if any router is out of date")
     args = parser.parse_args()
 
-    routers = routed_categories()
+    catalogue = load_catalogue()
+    routers = router_files(catalogue)
     errors: list[str] = []
     for category, skill_md in sorted(routers.items()):
-        errors.extend(process(category, skill_md, check=args.check))
+        errors.extend(process(category, skill_md, catalogue, check=args.check))
 
     if args.check:
         if errors:

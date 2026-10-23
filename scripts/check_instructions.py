@@ -21,60 +21,13 @@ import re
 import sys
 from pathlib import Path
 
+from instruction_fragments import InstructionFragmentError, load_fragment, validate_fragment
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INSTRUCTIONS_DIR = REPO_ROOT / "instructions"
 
-# install.sh orders fragments by glob, so every name needs a numeric prefix.
+# Fragment ordering is the numeric filename prefix.
 FILENAME = re.compile(r"^(\d{2})-[a-z0-9-]+\.md$")
-# install.sh reads frontmatter with `grep -m1 '^<field>:'`, so a field only
-# counts when it starts its own line; mirror that here rather than parsing YAML.
-FIELD = re.compile(r"^([a-z]+):[ \t]*(.*?)[ \t]*$", re.MULTILINE)
-
-VALID_TARGETS = frozenset({"all", "claude", "codex", "opencode"})
-# `targets` is optional: install.sh and build_project_claude.py read an absent
-# field as every agent. A present but blank one is ambiguous, see check_targets.
-REQUIRED_FIELDS = ("title",)
-
-
-def split_frontmatter(text: str) -> tuple[str, str] | None:
-    if not text.startswith("---\n"):
-        return None
-    end = text.find("\n---\n", 3)
-    if end == -1:
-        return None
-    return text[4 : end + 1], text[end + 5 :]
-
-
-def check_targets(value: str) -> list[str]:
-    parts = [p.strip() for p in value.split(",") if p.strip()]
-    if not parts:
-        return ["'targets' is empty (omit the field to mean every agent)"]
-    errors = []
-    unknown = [p for p in parts if p not in VALID_TARGETS]
-    if unknown:
-        errors.append(
-            f"'targets' has unknown value(s) {', '.join(sorted(unknown))};"
-            f" expected a comma-separated subset of {', '.join(sorted(VALID_TARGETS))}"
-        )
-    if "all" in parts and len(parts) > 1:
-        errors.append("'targets: all' cannot be combined with named agents")
-    return errors
-
-
-def check_paths(value: str) -> list[str]:
-    globs = [g.strip() for g in value.split(",")]
-    if not any(globs):
-        return ["'paths' is empty (omit the field to load the fragment always)"]
-    errors = []
-    if any(not g for g in globs):
-        errors.append("'paths' has an empty entry (stray comma)")
-    # install.sh writes each glob inside a double-quoted YAML string; a quote
-    # or backslash would break that frontmatter, and Claude then loads the rule
-    # unconditionally instead of failing.
-    bad = [g for g in globs if '"' in g or "\\" in g]
-    if bad:
-        errors.append(f"'paths' glob(s) {', '.join(bad)} contain a quote or backslash")
-    return errors
 
 
 def main() -> int:
@@ -102,25 +55,12 @@ def main() -> int:
             else:
                 prefixes[prefix] = name
 
-        parts = split_frontmatter(path.read_text(encoding="utf-8"))
-        if parts is None:
-            errors.append(f"{name}: missing or unterminated '---' frontmatter block")
+        try:
+            fragment = load_fragment(path)
+        except InstructionFragmentError as error:
+            errors.append(str(error))
             continue
-        frontmatter, body = parts
-        fields = {k: v for k, v in FIELD.findall(frontmatter)}
-
-        for field in REQUIRED_FIELDS:
-            if not fields.get(field):
-                errors.append(f"{name}: missing or empty '{field}'")
-
-        if "targets" in fields:
-            errors.extend(f"{name}: {e}" for e in check_targets(fields["targets"]))
-
-        if "paths" in fields:
-            errors.extend(f"{name}: {e}" for e in check_paths(fields["paths"]))
-
-        if not body.strip():
-            errors.append(f"{name}: body is empty; the fragment would render nothing")
+        errors.extend(f"{name}: {error}" for error in validate_fragment(fragment))
 
     if count == 0:
         errors.append(f"no fragments found in {INSTRUCTIONS_DIR}")

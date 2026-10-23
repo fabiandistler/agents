@@ -28,6 +28,16 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/scripts/pr_merge_guard.py --harness claude"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(uv init*)",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/scripts/python_init_context.py --baseline \"$CLAUDE_PROJECT_DIR\"/instructions/30-python.md"
+          }
+        ]
       }
     ]
   }

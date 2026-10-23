@@ -2,7 +2,7 @@
 name: architecture-pattern-advisor
 category: architecture
 environments: coding
-description: Guides choosing a repository's architecture — topology (monolith, modular monolith, microservices, serverless) or code organization (layered, by-domain, hexagonal, clean/onion). Use when picking or restructuring either, not for generic project setup.
+description: Guides repository architecture choices for topology or code organization; use when selecting or restructuring either, not for generic project setup.
 ---
 
 # Architecture Pattern Advisor

@@ -11,9 +11,9 @@ drives triggering is exactly what gets cut. This check keeps each SKILL.md
 under the Codex cap. Trigger lists and feature enumerations belong in the
 SKILL.md body (progressive disclosure), not the always-loaded frontmatter.
 
-This is a stricter *policy* layer on top of build_manifest.py's 1024-char
-spec cap; the two are deliberately decoupled. Stdlib-only; reuses the
-frontmatter parser from build_manifest.py.
+This is a stricter *policy* layer on top of catalogue.py's 1024-char spec cap;
+the two are deliberately decoupled. Stdlib-only; reuses the shared catalogue
+frontmatter parser.
 
 Always-loaded `auto` descriptions need a third-person opening and a `Use when`
 or `Use for` trigger clause. Routers need the third-person opening; their
@@ -26,11 +26,7 @@ from __future__ import annotations
 import re
 import sys
 
-from build_manifest import (
-    extract_frontmatter,
-    find_skill_files,
-    parse_frontmatter,
-)
+from catalogue import find_skill_files, parse_skill_frontmatter
 
 # Per-skill budgets, in characters.
 DEFAULT_BUDGET = 250
@@ -116,7 +112,7 @@ def main() -> int:
 
     for skill_md in find_skill_files():
         text = skill_md.read_text(encoding="utf-8")
-        fm = parse_frontmatter(extract_frontmatter(text))
+        fm = parse_skill_frontmatter(text, skill_md)
         raw_name = fm.get("name")
         name = raw_name if isinstance(raw_name, str) and raw_name else skill_md.parent.name
         description = fm.get("description")

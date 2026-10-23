@@ -59,6 +59,16 @@ def git(*args: str, cwd: Path) -> str:
     ).stdout.strip()
 
 
+def resolve_commit_ref(ref: str, *, cwd: Path) -> str:
+    return git(
+        "rev-parse",
+        "--verify",
+        "--end-of-options",
+        f"{ref}^{{commit}}",
+        cwd=cwd,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=CLI_DESCRIPTION,
@@ -78,11 +88,11 @@ def main() -> int:
         clone = Path(tmp) / "skills"
         try:
             git("clone", "--quiet", "--filter=blob:none", UPSTREAM, str(clone), cwd=Path(tmp))
-            git("checkout", "--quiet", args.ref, cwd=clone)
+            commit = resolve_commit_ref(args.ref, cwd=clone)
+            git("checkout", "--quiet", "--detach", commit, cwd=clone)
         except subprocess.CalledProcessError as exc:
             sys.stderr.write(f"git failed: {exc.stderr}")
             return 1
-        commit = git("rev-parse", "HEAD", cwd=clone)
         plugin = json.loads((clone / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
         sources = {
             Path(p).name: clone / p for p in plugin["skills"] if Path(p).name not in EXCLUDED

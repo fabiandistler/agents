@@ -2,7 +2,7 @@
 name: ddd
 category: architecture
 environments: coding
-description: "Applies Domain-Driven Design: subdomain classification, context mapping, legacy integration (ACL), tactical pattern choice, and conventions for aggregates, value objects, events, and event sourcing. Use for DDD design or review."
+description: "Applies Domain-Driven Design to boundaries, context mapping, tactical patterns, aggregates, value objects, events, and event sourcing; use for DDD design or review."
 metadata:
   version: "2.0"
 ---
@@ -70,8 +70,8 @@ decision path).
 1. **Classify the subdomain first** (Core / Generic / Supporting) with input from domain experts — run Big Picture EventStorming to surface candidate subdomains first (see "Discovering subdomains and boundaries" in `references/strategic-design.md`), then apply the classification table and the resourcing rule there. State the classification explicitly before recommending anything.
 2. **Identify the bounded context(s) involved** and, for each relationship to another context, pick a context-mapping pattern from the table in `references/strategic-design.md` and name the trade-off being accepted.
 3. **Walk the tactical decision path** above to choose an implementation pattern, keeping the pattern proportional to the subdomain's classification and complexity.
-4. **Model with the building blocks** in `references/implementation-conventions.md`: identify Entities (identity + a lifecycle worth tracking), Value Objects (validated, immutable, no identity), and the Aggregate boundary — keep the aggregate as small as the actual consistency requirement allows.
-5. **Apply the implementation conventions** in `references/implementation-conventions.md` as the code-review checklist while writing; read `references/event-sourcing.md` when question 1 of the decision path selects event sourcing.
+4. **Model with the building blocks** in `references/implementation-conventions.md`: identify Entities (identity + a lifecycle worth tracking), Value Objects (validated, immutable, no identity), and the Aggregate boundary — keep the aggregate as small as the actual consistency requirement allows. For an R implementation, also apply `references/r-implementation.md`.
+5. **Apply the implementation conventions** in `references/implementation-conventions.md` as the code-review checklist while writing; for an R implementation, also read `references/r-implementation.md`. Read `references/event-sourcing.md` when question 1 of the decision path selects event sourcing.
 6. **Flag over/under-investment** explicitly: a Domain Model proposed for a Supporting subdomain, or a Transaction Script proposed for a Core one, is worth calling out before implementation starts (see the Decision path above).
 7. **Note migration triggers**, not migrations to do immediately (see `references/strategic-design.md`): name the next pattern on the spectrum as the future move, ideally via a Strangler Fig migration.
 

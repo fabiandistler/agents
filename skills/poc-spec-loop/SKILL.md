@@ -5,9 +5,11 @@ activation: command
 disable-model-invocation: true
 environments: coding
 compatibility: Requires jq, one loop runner CLI (claude, codex, or opencode), and the forge CLI (gh, or az with the azure-devops extension) on PATH, a single GitHub or Azure DevOps Services remote, plus the language toolchain in references/toolchains.md (uv, R/Rscript, or bats/shellcheck/shfmt).
-description: Takes a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec, then a per-task TDD loop with fresh context up to a pull request. Use when productionizing a greenfield PoC.
+description: Guides a greenfield R, Python, or Bash PoC to production readiness through an interactive specification and a per-task TDD loop.
 metadata:
   version: "1.0"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # poc-spec-loop

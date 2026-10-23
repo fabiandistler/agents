@@ -2,7 +2,7 @@
 name: communication-analysis
 category: communication
 environments: chat
-description: Analyzes or rewrites a message, feedback, or conversation with Schulz von Thun's four-sides model and Rogers-style active listening. Use for feedback rewrites or message diagnosis; educational, not therapy.
+description: Analyzes or rewrites feedback and messages using Schulz von Thun's four-sides model and Rogers-style active listening; use for diagnosis or rewrites, not therapy.
 metadata:
   version: "1.0"
 ---

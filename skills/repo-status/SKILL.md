@@ -5,7 +5,10 @@ activation: command
 disable-model-invocation: true
 environments: coding, chat
 argument-hint: "[yesterday | today | blockers | <topic>]"
-description: Generate a standup / status update from recent development activity — yesterday/today/blockers, turning rough notes or connected-tool activity into a shareable update.
+description: Generates a standup or status update from recent development activity, including yesterday's work, today's plan, and blockers, using rough notes or connected-tool activity.
+metadata:
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # Repo Status
@@ -87,8 +90,22 @@ Then:
   done
   ```
 
-  For reviewed PRs, check each remaining one with
-  `gh api "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100" --jq '.[] | select(.user.login == "<login>" and .submitted_at >= "<date>") | .state'`.
+  For reviewed PRs, page through every review and keep the login/date filter
+  on the rows. The first output value is the raw page size, so a full page
+  continues even when none of its reviews match:
+
+  ```bash
+  page=1
+  while :; do
+    review_page=$(gh api "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100&page=$page" \
+      --jq '[length] + [.[] | select(.user.login == "<login>" and .submitted_at >= "<date>") | .state] | .[]') || break
+    review_count=${review_page%%$'\n'*}
+    review_states=$(printf '%s\n' "$review_page" | tail -n +2)
+    [ -n "$review_states" ] && printf '%s\n' "$review_states"
+    [ "$review_count" -eq 100 ] || break
+    page=$((page + 1))
+  done
+  ```
 - CI status: `gh run list --limit 5`
 
 Without the GitHub MCP tools or `gh`, fall back to git-only and structure what

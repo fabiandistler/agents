@@ -21,9 +21,10 @@ as a local install:
      loaded, or path-scoped when the fragment has `paths:` (same rendering as
      install.sh). A path-scoped fragment is skipped while no tracked file
      matches its globs (the R rules in this Python/Markdown repo).
-  4. The `PreToolUse` entry in `.claude/settings.json` that runs
-     `scripts/pr_merge_guard.py`, so agents in this repo cannot merge PRs. The
-     entry itself comes from that module, shared with install.sh.
+  4. The `PreToolUse` entries in `.claude/settings.json`: the PR merge guard
+     and the `Bash(uv init*)` hook that injects the Python baseline before the
+     first Python file exists. Each entry comes from its hook module, shared
+     with install.sh where applicable.
 
 It owns only symlinks pointing into this repo, rule files carrying the
 `managed-by:` marker and the guard's entry in settings.json; anything else in
@@ -37,17 +38,24 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-from pr_merge_guard import with_claude_hook
+from catalogue import entries_for_environment, entries_for_target, load_catalogue, top_level_entries
+from instruction_fragments import (
+    InstructionFragmentError,
+    fragment_matches_target,
+    load_fragments,
+    render_claude_rule,
+    validate_fragment,
+)
+from pr_merge_guard import with_claude_hook as with_merge_guard_hook
+from python_init_context import with_claude_hook as with_python_init_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI_DESCRIPTION = "Mirror this repo's skills, subagents and instructions into `.claude/`."
-MANIFEST_PATH = REPO_ROOT / "skills.json"
 INSTRUCTIONS_DIR = REPO_ROOT / "instructions"
 PLUGINS_DIR = REPO_ROOT / "plugins"
 CLAUDE_DIR = REPO_ROOT / ".claude"
@@ -57,37 +65,26 @@ RULE_MARKER = "managed-by: fabiandistler/agents build_project_claude.py"
 SKIPPED_FRAGMENTS = frozenset({"60-code-comments.md"})
 SETTINGS_PATH = CLAUDE_DIR / "settings.json"
 MERGE_GUARD_COMMAND = 'python3 "$CLAUDE_PROJECT_DIR"/scripts/pr_merge_guard.py --harness claude'
-FIELD = re.compile(r"^([a-z]+):[ \t]*(.*?)[ \t]*$", re.MULTILINE)
+PYTHON_INIT_COMMAND = (
+    'python3 "$CLAUDE_PROJECT_DIR"/scripts/python_init_context.py '
+    '--baseline "$CLAUDE_PROJECT_DIR"/instructions/30-python.md'
+)
 
 
 def wanted_skill_links() -> dict[Path, Path]:
-    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    skills = manifest["skills"]
-    routed = {s["category"] for s in skills if s.get("activation") == "router"}
     links: dict[Path, Path] = {}
+    catalogue = load_catalogue()
+    skills = top_level_entries(catalogue)
+    skills = entries_for_environment(skills, ENVIRONMENT)
+    skills = entries_for_target(skills, "claude")
     for skill in skills:
-        activation = skill.get("activation", "auto")
-        if activation == "auto" and skill["category"] in routed:
-            continue  # a router member, reached through its router
-        if ENVIRONMENT not in skill.get("environments", [ENVIRONMENT]):
-            continue
-        if "claude" not in skill.get("targets", ["claude"]):
-            continue
-        source = REPO_ROOT / Path(skill["path"]).parent
-        links[CLAUDE_DIR / "skills" / skill["name"]] = source
+        source = REPO_ROOT / Path(skill.path).parent
+        links[CLAUDE_DIR / "skills" / skill.name] = source
     return links
 
 
 def wanted_agent_links() -> dict[Path, Path]:
     return {CLAUDE_DIR / "agents" / md.name: md for md in sorted(PLUGINS_DIR.glob("*/agents/*.md"))}
-
-
-def split_fragment(text: str) -> tuple[dict[str, str], str]:
-    if not text.startswith("---\n"):
-        return {}, text
-    end = text.find("\n---\n", 3)
-    fields = dict(FIELD.findall(text[4 : end + 1]))
-    return fields, text[end + 5 :]
 
 
 def tracked_files() -> list[str]:
@@ -111,29 +108,28 @@ def matches_any(globs: list[str], files: list[str]) -> bool:
 def wanted_rules() -> dict[Path, str]:
     rules: dict[Path, str] = {}
     files = tracked_files()
-    for fragment in sorted(INSTRUCTIONS_DIR.glob("*.md")):
+    for fragment in load_fragments(INSTRUCTIONS_DIR):
         if fragment.name in SKIPPED_FRAGMENTS:
             continue
-        fields, body = split_fragment(fragment.read_text(encoding="utf-8"))
-        targets = [t.strip() for t in fields.get("targets", "all").split(",")]
-        if "all" not in targets and "claude" not in targets:
+        errors = validate_fragment(fragment)
+        if errors:
+            raise InstructionFragmentError(f"{fragment.name}: {errors[0]}")
+        if not fragment_matches_target(fragment, "claude"):
             continue
-        # Quoted YAML list: a bare `**/*.R` parses as a YAML alias, and Claude
-        # loads a rule whose frontmatter does not parse unconditionally.
-        header = "---\n"
-        globs = [g.strip() for g in fields.get("paths", "").split(",") if g.strip()]
+        globs = list(fragment.path_globs)
         if globs and not matches_any(globs, files):
             continue  # path-scoped to files this repo does not have
-        if globs:
-            header += "paths:\n" + "".join(f'  - "{g}"\n' for g in globs)
-        header += f"{RULE_MARKER}\n---\n\n"
-        rules[CLAUDE_DIR / "rules" / f"agents-{fragment.name}"] = header + body.lstrip("\n")
+        rules[CLAUDE_DIR / "rules" / f"agents-{fragment.name}"] = render_claude_rule(
+            fragment, RULE_MARKER
+        )
     return rules
 
 
 def wanted_settings() -> str:
     settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
-    return json.dumps(with_claude_hook(settings, MERGE_GUARD_COMMAND), indent=2) + "\n"
+    settings = with_merge_guard_hook(settings, MERGE_GUARD_COMMAND)
+    settings = with_python_init_hook(settings, PYTHON_INIT_COMMAND)
+    return json.dumps(settings, indent=2) + "\n"
 
 
 def is_ours(link: Path) -> bool:
@@ -194,7 +190,7 @@ def sync(check: bool) -> list[str]:
     settings = wanted_settings()
     if SETTINGS_PATH.read_text(encoding="utf-8") != settings:
         act(
-            f"write {SETTINGS_PATH.relative_to(REPO_ROOT)} (PR merge guard hook)",
+            f"write {SETTINGS_PATH.relative_to(REPO_ROOT)} (PreToolUse hooks)",
             lambda: SETTINGS_PATH.write_text(settings, encoding="utf-8"),
         )
     return drift

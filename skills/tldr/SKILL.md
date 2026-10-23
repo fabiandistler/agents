@@ -5,9 +5,11 @@ activation: command
 disable-model-invocation: true
 environments: coding, chat
 argument-hint: "[file | PR | URL | topic — empty means the last message]"
-description: Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.
+description: Compresses long material into the facts needed to decide or act, including recent messages and named files, PRs, documents, or threads.
 metadata:
   version: "1.2"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # TL;DR

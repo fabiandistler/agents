@@ -8,9 +8,7 @@ change (**volatility**). The model is Vlad Khononov's Balanced Coupling, from
 [coupling.dev](https://coupling.dev). The author also publishes it as the
 `balanced-coupling` skill in the
 [vladikk/modularity](https://github.com/vladikk/modularity) plugin
-(CC BY-NC-SA 4.0), with the same four strength levels and balance rule. Its core rule
-in plain language: heavy sharing is fine up close; only light contract
-knowledge across distance unless proven stable with a revisit condition. The
+(CC BY-NC-SA 4.0), with the same four strength levels and balance rule. The
 binary form lives in
 [balanced-coupling-model.md](balanced-coupling-model.md).
 
@@ -105,8 +103,7 @@ a revisit condition (an ADR).
 ### 7. Sanity-check the verdicts
 
 Binary high/low is a deliberate simplification — recheck generous distance
-guesses and optimistic stability claims against git history; low-volatility
-acceptances are loans, not gifts, and need a revisit condition.
+guesses and optimistic stability claims against git history.
 
 ## Balanced-coupling output format
 

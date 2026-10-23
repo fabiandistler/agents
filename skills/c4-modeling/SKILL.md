@@ -2,7 +2,7 @@
 name: c4-modeling
 category: architecture
 environments: coding, chat
-description: Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code). Use when asked to draw or document a system as C4 diagrams.
+description: Drafts C4 system diagrams in Mermaid at Context, Container, Component, Landscape, Dynamic, or Deployment level; use when documenting a system as C4, not Code.
 compatibility: No dependencies — Mermaid renders natively on GitHub, GitLab, and most Markdown tools, and in VS Code with a Mermaid extension. Optionally C4-PlantUML for publication-grade output when PlantUML (Java) or a Kroki server is available.
 ---
 
