@@ -115,7 +115,7 @@ jobs:
             {"permissions":{"deny":["Read(/proc/**)","Read(/sys/**)","Read(**/.env)","Read(**/.env.*)","Read(**/*.pem)","Read(**/*.key)","Read(**/.ssh/**)","Read(**/.aws/**)","Read(**/.config/gh/**)"]}}
           claude_args: |
             --allowedTools "Read,Glob,Grep"
-            --disallowedTools "Bash,Write,Edit,MultiEdit,WebFetch,WebSearch,Task"
+            --disallowedTools "Bash,BashOutput,KillShell,Write,Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task"
             --max-turns 10
             --json-schema '{"type":"object","additionalProperties":false,"properties":{"category":{"type":"string","enum":["bug","enhancement","unclear"]},"state":{"type":"string","enum":["needs-triage","ready-for-human"]},"confidence":{"type":"number","minimum":0,"maximum":1},"reason":{"type":"string","minLength":1,"maxLength":500}},"required":["category","state","confidence","reason"]}'
       - name: Save decision
