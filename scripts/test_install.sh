@@ -9,6 +9,10 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL="$REPO_ROOT/install.sh"
+# Every successful install saves its options here; keep that out of the real
+# state directory.
+TEST_XDG_STATE_HOME="$(mktemp -d)"
+export XDG_STATE_HOME="$TEST_XDG_STATE_HOME"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -406,6 +410,131 @@ PY
     [[ "$check_status" -eq 2 ]] || fail "invalid --check arguments did not exit 2: $check_args"
   done
   pass "--check rejects incompatible and incomplete options"
+}
+
+run_update_tests() {
+  local update_home state_home state_file state_copy output status instruction_file \
+    foreign_home foreign_state foreign_agent foreign_link no_state_home no_state_dir \
+    default_state_home
+  capture_update() {
+    local captured_home="$1" captured_state_home="$2"
+    shift 2
+    set +e
+    output="$(HOME="$captured_home" XDG_STATE_HOME="$captured_state_home" \
+      "$INSTALL" "$@" 2>&1)"
+    status=$?
+    set -e
+  }
+
+  update_home="$(mktemp -d)"
+  state_home="$update_home/xdg-state"
+  state_file="$state_home/fabiandistler-agents/install.json"
+  HOME="$update_home" XDG_STATE_HOME="$state_home" "$INSTALL" \
+    --target=codex --env=coding --category=architecture --instructions \
+    --merge-guard --secret-guard >/dev/null
+  [[ -f "$state_file" ]] || fail "successful install did not save update state"
+  "$PYTHON" - "$state_file" "$REPO_ROOT" <<'PY' || fail "saved install state has the wrong schema or values"
+import json
+import sys
+
+state = json.load(open(sys.argv[1], encoding="utf-8"))
+assert state == {
+    "targets": ["codex"],
+    "env": "coding",
+    "category": "architecture",
+    "instructions": True,
+    "merge_guard": True,
+    "secret_guard": True,
+    "repo_root": sys.argv[2],
+}
+PY
+  pass "successful install saves resolved options and repo root"
+
+  default_state_home="$(mktemp -d)"
+  HOME="$default_state_home" XDG_STATE_HOME="" "$INSTALL" \
+    --target=codex --category=communication >/dev/null
+  [[ -f "$default_state_home/.local/state/fabiandistler-agents/install.json" ]] ||
+    fail "state without XDG_STATE_HOME did not use ~/.local/state"
+  pass "install state uses ~/.local/state when XDG_STATE_HOME is unset"
+
+  no_state_home="$(mktemp -d)"
+  no_state_dir="$no_state_home/xdg-state"
+  capture_update "$no_state_home" "$no_state_dir" --target=codex --category=communication --dry-run
+  [[ "$status" -eq 0 ]] || fail "initial dry-run failed: $output"
+  [[ ! -e "$no_state_dir/fabiandistler-agents/install.json" ]] ||
+    fail "dry-run saved install state"
+  pass "dry-run does not save install state"
+
+  cp "$state_file" "$update_home/state-before-update.json"
+  rm "$update_home/.agents/skills/architecture"
+  rm "$update_home/.codex/agents/coupling-analyst.toml"
+  rm "$update_home/.agents/instructions/70-code-review-conventions.md"
+  rm "$update_home/.agents/instructions/80-agent-pipelines.md"
+  rm "$update_home/.agents/instructions/85-agent-scripts.md"
+  instruction_file="$update_home/.codex/AGENTS.md"
+  "$PYTHON" - "$instruction_file" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+content = path.read_text(encoding="utf-8").replace("For Python work, read", "old Python pointer")
+path.write_text(content + "\nuser note outside the managed block\n")
+PY
+  capture_update "$update_home" "$state_home" --update
+  [[ "$status" -eq 0 ]] || fail "--update failed to replay saved options: $output"
+  [[ "$(readlink "$update_home/.agents/skills/architecture")" == "$REPO_ROOT/skills/architecture" ]] ||
+    fail "--update did not restore the selected skill link"
+  [[ -f "$update_home/.codex/agents/coupling-analyst.toml" ]] ||
+    fail "--update did not restore the selected Codex agent"
+  for payload in 70-code-review-conventions.md 80-agent-pipelines.md 85-agent-scripts.md; do
+    [[ -f "$update_home/.agents/instructions/$payload" ]] ||
+      fail "--update did not restore instruction payload $payload"
+  done
+  grep -q 'For Python work, read' "$instruction_file" ||
+    fail "--update did not restore the instruction block"
+  grep -q 'user note outside the managed block' "$instruction_file" ||
+    fail "--update removed user text outside the instruction block"
+  [[ ! -e "$update_home/.config/opencode" ]] || fail "codex-only state replay installed opencode files"
+  diff -q "$state_file" "$update_home/state-before-update.json" >/dev/null ||
+    fail "--update changed the saved resolved options"
+  pass "--update replays filters, guards, and on-demand instruction outputs"
+
+  rm "$update_home/.agents/skills/architecture"
+  rm "$update_home/.agents/instructions/80-agent-pipelines.md"
+  state_copy="$update_home/state-before-dry-run.json"
+  cp "$state_file" "$state_copy"
+  capture_update "$update_home" "$state_home" --update --dry-run
+  [[ "$status" -eq 0 ]] || fail "--update --dry-run failed: $output"
+  [[ ! -e "$update_home/.agents/skills/architecture" &&
+    ! -e "$update_home/.agents/instructions/80-agent-pipelines.md" ]] ||
+    fail "--update --dry-run changed managed files"
+  diff -q "$state_file" "$state_copy" >/dev/null || fail "--update --dry-run changed saved state"
+  pass "--update --dry-run previews without writing files or state"
+
+  local missing_home missing_state_home
+  missing_home="$(mktemp -d)"
+  missing_state_home="$missing_home/empty-state"
+  capture_update "$missing_home" "$missing_state_home" --update
+  [[ "$status" -eq 4 ]] || fail "missing update state exited $status instead of 4"
+  [[ "$output" == *'--target='* ]] || fail "missing-state error did not name --target"
+  pass "--update reports missing state with its own exit code and bootstrap option"
+
+  foreign_home="$(mktemp -d)"
+  foreign_state="$foreign_home/xdg-state"
+  HOME="$foreign_home" XDG_STATE_HOME="$foreign_state" "$INSTALL" \
+    --target=codex --category=architecture >/dev/null
+  foreign_agent="$foreign_home/.codex/agents/coupling-analyst.toml"
+  printf 'human-owned agent\n' >"$foreign_agent"
+  foreign_link="$foreign_home/.agents/skills/architecture"
+  rm "$foreign_link"
+  ln -s "$foreign_home/outside-skill" "$foreign_link"
+  capture_update "$foreign_home" "$foreign_state" --update
+  [[ "$status" -eq 0 ]] || fail "--update failed while preserving foreign paths: $output"
+  [[ "$(cat "$foreign_agent")" == 'human-owned agent' ]] ||
+    fail "--update overwrote a Codex agent without its marker"
+  [[ "$(readlink "$foreign_link")" == "$foreign_home/outside-skill" ]] ||
+    fail "--update replaced a foreign skill link"
+  pass "--update preserves foreign files and links at managed paths"
 }
 
 # 1. dry-run for --target=all should not create anything.
@@ -1527,5 +1656,8 @@ pass "--secret-guard installs next to the merge guard and uninstalls on its own"
 
 # --check: drift report for the managed state.
 run_check_tests
+
+# --update: saved install state and replay.
+run_update_tests
 
 echo "all install.sh tests passed"
