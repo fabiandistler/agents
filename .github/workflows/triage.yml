@@ -100,10 +100,12 @@ jobs:
           SANITIZED ISSUE FILE: .triage/$ISSUE/issue.json
           LABEL MAPPING: docs/agents/triage-labels.md
           OUT-OF-SCOPE DIRECTORY: .out-of-scope/"
+          schema="$(python3 scripts/triage.py schema)"
           {
             echo "prompt<<TRIAGE_PROMPT_END"
             printf '%s\n' "$prompt"
             echo "TRIAGE_PROMPT_END"
+            echo "schema=$schema"
           } >> "$GITHUB_OUTPUT"
       - name: Classify with Claude
         id: classify
@@ -117,7 +119,7 @@ jobs:
             --allowedTools "Read,Glob,Grep"
             --disallowedTools "Bash,BashOutput,KillShell,Write,Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task"
             --max-turns 10
-            --json-schema '{"type":"object","additionalProperties":false,"properties":{"category":{"type":"string","enum":["bug","enhancement","unclear"]},"state":{"type":"string","enum":["needs-triage","ready-for-human"]},"confidence":{"type":"number","minimum":0,"maximum":1},"reason":{"type":"string","minLength":1,"maxLength":500}},"required":["category","state","confidence","reason"]}'
+            --json-schema '${{ steps.prompt.outputs.schema }}'
       - name: Save decision
         env:
           STRUCTURED_OUTPUT: ${{ steps.classify.outputs.structured_output }}
@@ -136,6 +138,9 @@ jobs:
   apply:
     name: Apply labels to issue ${{ matrix.issue }}
     needs: [discover, classify]
+    # One failed classification must not block the other issues in the matrix;
+    # the download step below turns a missing artifact into a visible no-op.
+    if: always() && needs.discover.result == 'success' && needs.discover.outputs.issues != '[]' && needs.classify.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -148,11 +153,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Download decision
+        id: download
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: triage-decision-${{ matrix.issue }}
           path: .triage/${{ matrix.issue }}
+      - name: Record a missing decision
+        if: steps.download.outcome != 'success'
+        run: |
+          {
+            echo "### Issue #${{ matrix.issue }}: no decision"
+            echo ""
+            echo "The classifier produced no decision, so no labels were applied."
+            echo "The next sweep retries this issue; see the classify job for the failure."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Validate and apply decision
+        if: steps.download.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

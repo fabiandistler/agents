@@ -6,6 +6,7 @@ on manual dispatch. It never comments, closes, assigns, or removes a label.
 
 ## Contents
 
+- [Setup](#setup)
 - [What the workflow does](#what-the-workflow-does)
 - [Security model](#security-model)
 - [Label policy](#label-policy)
@@ -17,6 +18,26 @@ on manual dispatch. It never comments, closes, assigns, or removes a label.
 - [Quota and cap](#quota-and-cap)
 - [Troubleshooting](#troubleshooting)
 - [Acceptance record](#acceptance-record)
+
+## Setup
+
+One-time, before the first run:
+
+- The repository secret `CLAUDE_CODE_OAUTH_TOKEN` must exist. Only the
+  classify job reads it.
+- All seven labels in [triage-labels.md](triage-labels.md) must exist in the
+  tracker before the first run. `apply` adds labels by name and never creates
+  them. If you edit the right-hand column of the mapping, create the new
+  labels first.
+- Actions must be enabled. The workflow grants no top-level permission and
+  each job gets only what the security model table shows.
+- A manual dispatch or the schedule runs the workflow from the default branch
+  only. A branch that adds the workflow cannot be dispatched until it is
+  merged; test the model-free steps locally first (see
+  [Triage one issue](#triage-one-issue)).
+
+Local runs need `gh` authenticated (`gh auth status`). The script uses the
+Python standard library only.
 
 ## What the workflow does
 
@@ -33,6 +54,10 @@ Three jobs, one issue number per matrix entry:
 3. **apply** downloads the artifact, validates the decision against
    `docs/agents/triage-labels.md`, re-reads the live issue, and adds only the
    labels that policy allows and the issue lacks.
+
+Every issue is its own matrix entry. One failed classification does not stop
+the others: apply still runs for the successful entries and writes a
+"no decision" note to the run summary for the failed one.
 
 The classifier prompt is [triage-prompt.md](triage-prompt.md). The label
 mapping and the automation policy live in
@@ -79,8 +104,11 @@ override the thresholds.
 
 `bug`, `enhancement`, `needs-triage`, and `ready-for-human` are the only
 labels the automation may add. It never adds `wontfix`, `ready-for-agent`, or
-`needs-info`. An existing category or state label wins: the gap is left for a
-human. An issue with two state labels is refused, not resolved.
+`needs-info`. A human label wins over the model: an existing state label in a
+different state blocks the whole write, while an existing category only stops
+the category from being added. The state is checked first, so an issue that
+already carries a category still receives its state label. An issue with two
+state labels is refused, not resolved.
 
 ## Triage one issue
 
@@ -148,9 +176,10 @@ reason, the labels added, and the outcome (`applied`, `dry-run`, or `skipped`
 with the reason). The artifact holds `issue.json` (the sanitized input) and
 `decision.json` (the model's proposal). Artifacts are kept for seven days.
 
-A run is red when the classifier fails, the decision is malformed, or `apply`
-cannot validate it. The issue stays unlabeled in every one of those cases, so
-the next sweep retries it.
+A run is red when a classification or an apply fails. The failed issue stays
+unlabeled, or keeps the labels it had, and the next sweep retries it. The
+other matrix entries still complete, and the failed entry's apply job writes a
+"no decision" note to the run summary instead of guessing.
 
 ## Retry a failed issue
 
@@ -169,18 +198,22 @@ the next sweep retries it.
 
 ## Change the prompt or model
 
-- The prompt is `docs/agents/triage-prompt.md`. Keep the output contract in
-  sync with `scripts/triage.py` (`category`, `state`, `confidence`, `reason`)
-  and with the `--json-schema` argument in the workflow. Run
-  `python3 -m pytest -q scripts/test_triage.py scripts/test_triage_workflow.py`
-  before opening a PR.
-- The model is chosen in the `classify` job's `claude_args` (`--model`). The
-  default is whatever the Claude Code Action selects. A stronger model raises
+- The prompt is `docs/agents/triage-prompt.md`. Keep its field descriptions
+  in sync with the decision schema. The schema itself has one source:
+  `DECISION_SCHEMA` in `scripts/triage.py`; the workflow passes
+  `python3 scripts/triage.py schema` to `--json-schema`, and `apply` validates
+  against the same constants.
+- The model is chosen in the `classify` job's `claude_args`: add
+  `--model <name>` there. Without the flag the Claude Code Action uses its own
+  default, which can change between action releases. A stronger model raises
   the quota cost of every sweep; a cheaper one may lower confidence and send
   more issues to `needs-triage`.
 - Changing thresholds means editing `CATEGORY_THRESHOLD` and
   `READY_THRESHOLD` in `scripts/triage.py`, plus the table in this runbook and
-  the policy in `triage-labels.md`.
+  the policy in `triage-labels.md`. The prompt states the same numbers; update
+  it too.
+- Run `python3 -m pytest -q scripts/test_triage.py scripts/test_triage_workflow.py`
+  before opening a PR.
 
 ## Quota and cap
 
@@ -231,9 +264,10 @@ issue that already carries a state label.
 
 Discovery was exercised against the live repository before merge:
 `python3 scripts/triage.py --repo fabiandistler/agents list --limit 10`
-returned the unlabeled backlog in oldest-first order. The workflow itself can
-only be dispatched from the default branch, so the first sweep and the
-newly-opened issue path are recorded here after merge:
+returned `[466, 604, 608, 610, 609, 611, 620, 622]` — the unlabeled backlog,
+oldest first, with pull requests and bot-authored issues excluded. The
+workflow itself can only be dispatched from the default branch, so the first
+sweep and the newly-opened issue path are recorded here after merge:
 
 - [ ] First sweep: dispatch with no issue number; record the run id, the
       issues it labeled, and the summary lines.

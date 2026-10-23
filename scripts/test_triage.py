@@ -9,6 +9,7 @@ parsing contract (the label table and the sanitizer).
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -115,6 +116,60 @@ def test_label_mapping_rejects_a_missing_role(tmp_path: Path):
         raise AssertionError("a mapping without needs-info was accepted")
 
 
+def test_documented_automation_policy_matches_the_allowlist():
+    text = LABELS_DOC.read_text(encoding="utf-8")
+    add = re.search(r"may add only (.+?)\.", text, re.DOTALL)
+    deny = re.search(r"It never adds (.+?):", text, re.DOTALL)
+
+    assert add is not None
+    assert deny is not None
+    assert set(re.findall(r"`([a-z-]+)`", add.group(1))) == set(triage.APPLYABLE_ROLES)
+    assert set(re.findall(r"`([a-z-]+)`", deny.group(1))) == set(triage.STATE_ROLES) - set(
+        triage.APPLYABLE_ROLES
+    )
+
+
+def test_target_labels_stays_within_the_allowlist():
+    mapping = triage.load_label_mapping()
+    allowed = {mapping[role] for role in triage.APPLYABLE_ROLES}
+
+    for category in (*triage.CATEGORY_ROLES, "unclear"):
+        for confidence in (0.0, 0.59, 0.6, 0.79, 0.8, 1.0):
+            labels = triage.target_labels({"category": category, "confidence": confidence}, mapping)
+            assert set(labels) <= allowed, (category, confidence, labels)
+
+
+def test_schema_prints_the_validator_contract(capsys):
+    fake = FakeGh()
+
+    code = triage.main(["schema"], gh=triage.GitHub(fake))
+
+    assert code == triage.EXIT_OK
+    assert fake.calls == []
+    schema = json.loads(capsys.readouterr().out)
+    assert schema == triage.DECISION_SCHEMA
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == triage.DECISION_FIELDS
+    properties = schema["properties"]
+    assert properties["category"]["enum"] == [*triage.CATEGORY_ROLES, "unclear"]
+    assert properties["state"]["enum"] == ["needs-triage", "ready-for-human"]
+    assert properties["confidence"]["minimum"] == 0
+    assert properties["confidence"]["maximum"] == 1
+    assert properties["reason"]["maxLength"] == triage.REASON_LIMIT
+    for category in properties["category"]["enum"]:
+        for state in properties["state"]["enum"]:
+            validated = triage.validate_decision(
+                {
+                    "category": category,
+                    "state": state,
+                    "confidence": 0.5,
+                    "reason": "Schema and validator agree.",
+                }
+            )
+            assert validated["category"] == category
+            assert validated["state"] == state
+
+
 def test_sanitize_strips_hidden_and_encoded_payloads():
     blob = "A" * 160
     body = (
@@ -141,6 +196,20 @@ def test_sanitize_strips_hidden_and_encoded_payloads():
     assert "\u200b" not in cleaned
     assert blob not in cleaned
     assert "[base64 removed]" in cleaned
+
+
+def test_sanitize_removes_url_safe_and_wrapped_base64():
+    url_safe = "abc-_" * 20
+    wrapped = "\n".join(["A" * 76, "B" * 76, "C" * 76 + "=="])
+    body = f"Before.\n{url_safe}\nplain text\n{wrapped}\nAfter."
+
+    cleaned = triage.sanitize(body, triage.BODY_LIMIT)
+
+    assert "Before." in cleaned
+    assert "After." in cleaned
+    assert url_safe not in cleaned
+    assert "A" * 76 not in cleaned
+    assert cleaned.count("[base64 removed]") == 2
 
 
 def test_sanitize_caps_long_text_with_a_marker():
@@ -188,6 +257,32 @@ def test_fetch_writes_a_sanitized_document(tmp_path: Path):
     assert document["related_open_issues"] == [
         {"number": 600, "title": "Earlier request"},
     ]
+
+
+def test_fetch_truncates_long_bodies_and_comments(tmp_path: Path):
+    fake = FakeGh(
+        {
+            ("GET", ISSUE_PATH): issue(body="word " * 3000),
+            ("GET", COMMENTS_PATH): [
+                {
+                    "user": {"login": "commenter"},
+                    "created_at": "2026-10-23T08:00:00Z",
+                    "body": "word " * 1000,
+                }
+            ],
+            ("GET", LIST_PATH): [],
+        }
+    )
+    output = tmp_path / "issue.json"
+
+    code = run_cli(fake, "fetch", "--issue", "626", "--output", str(output))
+
+    assert code == triage.EXIT_OK
+    document = json.loads(output.read_text(encoding="utf-8"))
+    assert len(document["body"]) <= triage.BODY_LIMIT
+    assert document["body"].endswith(triage.TRUNCATION_MARK)
+    assert len(document["comments"][0]["body"]) <= triage.COMMENT_LIMIT
+    assert document["comments"][0]["body"].endswith(triage.TRUNCATION_MARK)
 
 
 def test_fetch_refuses_a_pull_request(tmp_path: Path):

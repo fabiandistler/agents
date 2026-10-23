@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import triage
 import yaml
 
 WORKFLOW = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "triage.yml"
@@ -160,10 +161,11 @@ def test_classifier_denies_credential_paths():
 
 def test_classifier_requests_the_decision_schema():
     args = classify_action()["with"]["claude_args"]
+    properties = triage.DECISION_SCHEMA["properties"]
 
-    assert "--json-schema" in args
-    for field in ("category", "state", "confidence", "reason"):
-        assert f'"{field}"' in args
+    assert "--json-schema '${{ steps.prompt.outputs.schema }}'" in args
+    for field in triage.DECISION_FIELDS:
+        assert field in properties
 
 
 def test_classifier_prompt_is_read_from_the_documented_file():
@@ -174,16 +176,52 @@ def test_classifier_prompt_is_read_from_the_documented_file():
     assert "SANITIZED ISSUE FILE" in build["run"]
 
 
-def test_a_failed_classifier_cannot_reach_the_apply_job():
+def test_a_failed_classifier_is_recorded_and_writes_no_labels():
     workflow = load_workflow()
+    apply_job = job(workflow, "apply")
     save = next(step for step in steps(workflow, "classify") if step.get("name") == "Save decision")
+    download = next(
+        step for step in steps(workflow, "apply") if "download-artifact" in step.get("uses", "")
+    )
+    note = next(
+        step for step in steps(workflow, "apply") if step.get("name") == "Record a missing decision"
+    )
     apply_step = next(
         step for step in steps(workflow, "apply") if "triage.py apply" in step.get("run", "")
     )
 
-    assert "classify" in job(workflow, "apply")["needs"]
+    assert "classify" in apply_job["needs"]
+    assert "always()" in apply_job["if"]
+    assert "needs.discover.result == 'success'" in apply_job["if"]
+    assert "needs.discover.outputs.issues != '[]'" in apply_job["if"]
+    assert "needs.classify.result != 'cancelled'" in apply_job["if"]
+    assert download["continue-on-error"] is True
+    assert download["id"] == "download"
+    assert note["if"] == "steps.download.outcome != 'success'"
+    assert "no labels were applied" in note["run"]
+    assert apply_step["if"] == "steps.download.outcome == 'success'"
     assert "${{ steps.classify.outputs.structured_output }}" in save["env"]["STRUCTURED_OUTPUT"]
     assert "--summary-file" in apply_step["run"]
+
+
+def test_schema_comes_from_the_model_free_cli():
+    workflow = load_workflow()
+    build = next(step for step in steps(workflow, "classify") if step.get("id") == "prompt")
+    args = classify_action()["with"]["claude_args"]
+
+    assert "python3 scripts/triage.py schema" in build["run"]
+    assert 'echo "schema=$schema"' in build["run"]
+    assert "--json-schema '${{ steps.prompt.outputs.schema }}'" in args
+    assert '--json-schema \'{"type"' not in args
+
+
+def test_prompt_states_the_thresholds_and_points_at_the_triage_skill():
+    text = PROMPT.read_text(encoding="utf-8")
+
+    assert "0.6" in text
+    assert "0.8" in text
+    assert "`.claude/skills/triage/SKILL.md`" in text
+    assert "reference material" in text
 
 
 def test_prompt_contract_treats_the_issue_as_untrusted_data():

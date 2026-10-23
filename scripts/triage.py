@@ -48,9 +48,24 @@ APPLYABLE_ROLES = ("bug", "enhancement", "needs-triage", "ready-for-human")
 DECISION_FIELDS = {"category", "state", "confidence", "reason"}
 CATEGORY_THRESHOLD = 0.6
 READY_THRESHOLD = 0.8
+REASON_LIMIT = 500
+
+DECISION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "category": {"type": "string", "enum": [*CATEGORY_ROLES, "unclear"]},
+        "state": {"type": "string", "enum": ["needs-triage", "ready-for-human"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "reason": {"type": "string", "minLength": 1, "maxLength": REASON_LIMIT},
+    },
+    "required": ["category", "state", "confidence", "reason"],
+}
 
 ZERO_WIDTH = re.compile("[\u200b\u200c\u200d\u2060\ufeff\u00ad]")
-BASE64_BLOB = re.compile(r"[A-Za-z0-9+/]{100,}={0,2}")
+# Single-line and line-wrapped base64 (including the URL-safe alphabet).
+BASE64_LINES = re.compile(r"[A-Za-z0-9+/_-]{60,}(?:[ \t]*\n[ \t]*[A-Za-z0-9+/_-]{60,})+={0,2}")
+BASE64_BLOB = re.compile(r"[A-Za-z0-9+/_-]{60,}={0,2}")
 ROLE_ROW = re.compile(r"^\|\s*`([a-z][a-z-]*)`\s*\|\s*`([a-z][a-z-]*)`\s*\|")
 HIDDEN_STYLES = ("display:none", "visibility:hidden", "font-size:0", "opacity:0")
 VOID_TAGS = {
@@ -75,13 +90,15 @@ BLOCK_TAGS = {"br", "div", "li", "p", "tr"}
 class TriageError(Exception):
     """Base class for failures the CLI reports as one stderr line."""
 
+    exit_code = EXIT_INVALID
+
 
 class UsageError(TriageError):
-    pass
+    exit_code = EXIT_USAGE
 
 
 class GitHubError(TriageError):
-    pass
+    exit_code = EXIT_GITHUB
 
 
 class InvalidInput(TriageError):
@@ -111,7 +128,7 @@ class GitHub:
             stdin = json.dumps(body)
         raw = self.runner(argv, stdin).strip()
         if not raw:
-            return None
+            raise GitHubError(f"gh api {path} returned no data")
         if paginate:
             return _flatten_pages(raw)
         try:
@@ -194,6 +211,7 @@ def sanitize(text: str, limit: int) -> str:
     parser.close()
     cleaned = "".join(parser.parts)
     cleaned = ZERO_WIDTH.sub("", cleaned)
+    cleaned = BASE64_LINES.sub("[base64 removed]", cleaned)
     cleaned = BASE64_BLOB.sub("[base64 removed]", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     cleaned = "\n".join(line.rstrip() for line in cleaned.splitlines()).strip()
@@ -205,7 +223,7 @@ def sanitize(text: str, limit: int) -> str:
 def build_document(
     issue: dict[str, Any],
     comments: list[dict[str, Any]],
-    related: list[dict[str, Any]] | None = None,
+    related: list[dict[str, Any]],
 ) -> dict[str, Any]:
     author = issue.get("user") or {}
     selected = comments[-COMMENT_COUNT_LIMIT:]
@@ -323,8 +341,10 @@ def validate_decision(raw: Any) -> dict[str, Any]:
         raise InvalidInput("confidence must be a number between 0 and 1")
     if not 0 <= confidence <= 1:
         raise InvalidInput("confidence must be a number between 0 and 1")
-    if not isinstance(reason, str) or not reason.strip() or len(reason) > 500:
-        raise InvalidInput("reason must be one non-empty sentence of at most 500 characters")
+    if not isinstance(reason, str) or not reason.strip() or len(reason) > REASON_LIMIT:
+        raise InvalidInput(
+            f"reason must be one non-empty sentence of at most {REASON_LIMIT} characters"
+        )
     return {
         "category": category,
         "state": state,
@@ -338,12 +358,12 @@ def target_labels(decision: dict[str, Any], mapping: dict[str, str]) -> list[str
     if decision.get("fallback"):
         return []
     confidence = decision["confidence"]
-    clear = decision["category"] in CATEGORY_ROLES and confidence >= CATEGORY_THRESHOLD
-    labels = [mapping[decision["category"]]] if clear else []
-    state_role = "ready-for-human" if clear and confidence >= READY_THRESHOLD else "needs-triage"
+    category_is_clear = decision["category"] in CATEGORY_ROLES and confidence >= CATEGORY_THRESHOLD
+    labels = [mapping[decision["category"]]] if category_is_clear else []
+    state_role = (
+        "ready-for-human" if category_is_clear and confidence >= READY_THRESHOLD else "needs-triage"
+    )
     labels.append(mapping[state_role])
-    if not set(labels) <= {mapping[role] for role in APPLYABLE_ROLES}:
-        raise InvalidInput("decision asks for a human-only label")
     return labels
 
 
@@ -356,12 +376,12 @@ def apply_decision(
     *,
     dry_run: bool = False,
 ) -> tuple[dict[str, Any], str]:
-    """Return the result object and its Markdown summary. Write labels unless dry-run."""
+    """Return the outcome object and its Markdown summary. Write labels unless dry-run."""
     issue = gh.api(f"/repos/{repo}/issues/{issue_number}")
     if "pull_request" in issue:
         raise InvalidInput(f"#{issue_number} is a pull request, not an issue")
     present = [label["name"] for label in issue.get("labels") or []]
-    result: dict[str, Any] = {
+    outcome: dict[str, Any] = {
         "issue": issue_number,
         "title": issue.get("title"),
         "decision": decision,
@@ -373,14 +393,14 @@ def apply_decision(
 
     state_roles = [role for role in STATE_ROLES if mapping[role] in present]
     if issue.get("state") != "open":
-        result["skip_reason"] = f"issue is {issue.get('state')}"
+        outcome["skip_reason"] = f"issue is {issue.get('state')}"
     elif len(state_roles) > 1:
         names = ", ".join(mapping[role] for role in state_roles)
-        result["skip_reason"] = f"issue carries conflicting state labels: {names}"
+        outcome["skip_reason"] = f"issue carries conflicting state labels: {names}"
     else:
         wanted = target_labels(decision, mapping)
         if state_roles and mapping[state_roles[0]] not in wanted:
-            result["skip_reason"] = f"issue already carries state label {mapping[state_roles[0]]}"
+            outcome["skip_reason"] = f"issue already carries state label {mapping[state_roles[0]]}"
         else:
             existing_categories = [role for role in CATEGORY_ROLES if mapping[role] in present]
             if existing_categories:
@@ -388,27 +408,27 @@ def apply_decision(
                 wanted = [label for label in wanted if label not in category_labels]
             to_add = [label for label in wanted if label not in present]
             if not wanted:
-                result["skip_reason"] = "classifier produced no decision"
+                outcome["skip_reason"] = "classifier produced no decision"
             elif not to_add:
-                result["skip_reason"] = "labels already present"
+                outcome["skip_reason"] = "labels already present"
             elif dry_run:
-                result["status"] = "dry-run"
-                result["labels_added"] = to_add
+                outcome["status"] = "dry-run"
+                outcome["labels_added"] = to_add
             else:
                 gh.api(
                     f"/repos/{repo}/issues/{issue_number}/labels",
                     method="POST",
                     body={"labels": to_add},
                 )
-                result["status"] = "applied"
-                result["labels_added"] = to_add
+                outcome["status"] = "applied"
+                outcome["labels_added"] = to_add
 
-    return result, summary_markdown(result)
+    return outcome, summary_markdown(outcome)
 
 
-def summary_markdown(result: dict[str, Any]) -> str:
-    decision = result["decision"]
-    lines = [f"### Issue #{result['issue']}: {result['title']}", ""]
+def summary_markdown(outcome: dict[str, Any]) -> str:
+    decision = outcome["decision"]
+    lines = [f"### Issue #{outcome['issue']}: {outcome['title']}", ""]
     if decision.get("fallback"):
         lines.append(f"- Classifier: fallback, no labels applied ({decision['reason']})")
     else:
@@ -418,11 +438,11 @@ def summary_markdown(result: dict[str, Any]) -> str:
             f"- Confidence: {decision['confidence']:.2f}",
             f"- Reason: {decision['reason']}",
         ]
-    added = ", ".join(f"`{label}`" for label in result["labels_added"]) or "none"
+    added = ", ".join(f"`{label}`" for label in outcome["labels_added"]) or "none"
     lines += [
         f"- Labels added: {added}",
-        f"- Outcome: {result['status']}"
-        + (f" ({result['skip_reason']})" if result["skip_reason"] else ""),
+        f"- Outcome: {outcome['status']}"
+        + (f" ({outcome['skip_reason']})" if outcome["skip_reason"] else ""),
         "",
     ]
     return "\n".join(lines)
@@ -448,10 +468,17 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="triage.py",
         description="Fetch and sanitize a GitHub issue, then validate and apply a triage decision.",
-        epilog="exit: 0 done or skipped, 2 usage, 3 gh or label-map failure, 4 invalid issue or decision",
+        epilog=(
+            "exit codes: 0 success or skip, 2 usage, 3 gh failure, 4 invalid input\n"
+            "examples:\n"
+            "  triage.py fetch --issue 466 --output .triage/466/issue.json\n"
+            "  triage.py apply --issue 466 --decision .triage/466/decision.json --dry-run"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--repo", help="OWNER/NAME; defaults to $GITHUB_REPOSITORY")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("schema", help="print the JSON schema the classifier must satisfy")
 
     fetch = sub.add_parser("fetch", help="fetch, sanitize and write one issue as JSON")
     fetch.add_argument("--issue", type=int, required=True)
@@ -476,6 +503,9 @@ def main(argv: list[str] | None = None, *, gh: GitHub | None = None) -> int:
     args = parse_args(argv)
     client = gh or GitHub(run_gh)
     try:
+        if args.command == "schema":
+            print(json.dumps(DECISION_SCHEMA, separators=(",", ":"), ensure_ascii=False))
+            return EXIT_OK
         repo = resolve_repo(args.repo)
         if args.command == "list":
             if args.limit < 1:
@@ -513,15 +543,9 @@ def main(argv: list[str] | None = None, *, gh: GitHub | None = None) -> int:
                 handle.write(summary)
         print(json.dumps(result, ensure_ascii=False))
         return EXIT_OK
-    except UsageError as exc:
+    except TriageError as exc:
         _print_error(str(exc))
-        return EXIT_USAGE
-    except InvalidInput as exc:
-        _print_error(str(exc))
-        return EXIT_INVALID
-    except GitHubError as exc:
-        _print_error(str(exc))
-        return EXIT_GITHUB
+        return exc.exit_code
 
 
 if __name__ == "__main__":
