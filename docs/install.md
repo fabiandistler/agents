@@ -17,9 +17,10 @@ from the plugin marketplace only, and `install.sh --target=claude` only syncs
 | Code | Meaning |
 |---|---|
 | `0` | The requested operation succeeded. `--help` returns 0, as does `--check` when the selected installation is clean. |
-| `1` | An operational failure prevented completion, such as a failed managed-file write or an unusable `--output` path. |
+| `1` | An operational failure prevented completion, such as an invalid saved-state file, a failed managed-file write, or an unusable `--output` path. |
 | `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, or a missing `--output` value. |
 | `3` | `--check` found drift. When `--output` is supplied, the TSV report contains the drift rows. |
+| `4` | `--update` found no saved install state. Run a successful install with `--target=...` before using `--update`. |
 
 ## Check the managed installation
 
@@ -36,9 +37,24 @@ TSV report (`target`, `kind`, `path`, `state` columns):
 The report states are `missing` (expected managed state is absent), `stale`
 (managed content no longer matches this checkout), `foreign` (an unmanaged
 file or unbalanced marker blocks the managed path), `duplicate` (more than one
-managed block or link occupies the selected state).
-Passing a guard flag makes that guard part of the expected state. Pass `--instructions`, `--merge-guard`, and
+managed block or link occupies the selected state), and `untrusted-hook` (Codex
+will skip a guard that is disabled or whose saved trust hash does not match its
+current hook).
+Passing a guard flag makes that guard part of the expected state; existing
+Codex guard blocks are checked for stale checkout paths and hook trust even
+without a guard flag. Pass `--instructions`, `--merge-guard`, and
 `--secret-guard` to include those optional components in the expected state.
+
+## Replay the last install
+
+Each successful install saves its resolved targets, filters, optional components,
+and checkout path to `${XDG_STATE_HOME:-~/.local/state}/fabiandistler-agents/install.json`.
+`--update` replays those options and rebases marker-owned paths and managed links
+if this checkout moved. It exits 4 when no state file exists; start with an
+install such as `./install.sh --target=codex`. `--update --dry-run` previews the
+replay without changing files or state, and `--update --check` reports drift
+against the saved options. During `--update`, every write re-checks its file
+right before writing and leaves it alone if it changed in between.
 
 ## What gets linked where
 
