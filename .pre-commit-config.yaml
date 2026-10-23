@@ -43,7 +43,9 @@ repos:
     rev: v0.0.84
     hooks:
       - id: ty
-        additional_dependencies: ["pyyaml>=6"]
+        # pytest is imported directly by the test modules, so ty must resolve
+        # it from the hook environment; there is no pyproject.toml to read.
+        additional_dependencies: ["pyyaml>=6", "pytest>=9"]
 
   # Shell: linting and formatting.
   # shellcheck runs before shfmt (shellcheck only reports, it does not
