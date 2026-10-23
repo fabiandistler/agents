@@ -101,7 +101,7 @@ rather than copying the code. Stories arrive over time, so this step recurs.
 ### 3. Analyze roles and responsibilities (cohesion)
 
 Check that each component's assigned work actually belongs together and that no
-component is doing too much. Write a one-paragraph **role and responsibility
+component is doing too much. Write a **one-sentence role and responsibility
 statement** for the component and read it critically:
 
 > The **conjunction test**: if the statement leans on *and*, *also*, *in
@@ -132,11 +132,10 @@ do not assume them.
 
 ### 5. Restructure and iterate
 
-Feedback is the point. Expect to restructure components frequently across the
-whole lifecycle — not just on greenfield systems — as edge cases surface and you
-and the developers understand the behaviors more deeply. Fold the results back
-into step 1 and go around again. Stopping "because the diagram is done" is the
-mistake; the loop is the method.
+Fold the results back into step 1 and go around again — after any split or
+merge as much as at the start. Stopping "because the diagram is done" is the
+mistake; the loop is the method. Few systems have only one valid decomposition:
+assess trade-offs honestly and pick the **least-worst** set.
 
 **Pass complete when:** every story is assigned to a component; each role
 statement is one sentence and passes the conjunction test; no component has
@@ -150,11 +149,9 @@ pass and record any open questions under "Next iteration" in the output.
 Once a candidate set of components exists, examine how they depend on each other
 — more coupling means the system is harder to maintain and test.
 
-- **Static coupling** — synchronous dependencies. Two directions to track per
-  component: **afferent coupling (Cᴀ)**, the incoming / fan-in count of other
-  components that depend on it (e.g. `Customer Notification`, called by both
-  `Order Placement` and `Order Shipment`, has Cᴀ = 2); and **efferent coupling
-  (Cᴇ)**, the outgoing / fan-out count of components it depends on.
+- **Static coupling** — synchronous dependencies; track per component the
+  **afferent count (Cᴀ)** of components that depend on it and the **efferent
+  count (Cᴇ)** of components it depends on.
 - **Temporal coupling** — non-static dependencies of timing or transaction
   order: `Order Placement` must run before `Order Shipment`. Tooling rarely
   catches this; surface it from the design and note it explicitly.
@@ -195,19 +192,6 @@ Approach: <Workflow | Actor/Action> — <one-line why>
 Characteristics reviewed: <which -ilities drove any split>
 Next iteration / open questions: <unmet checks from above + what to revisit as requirements firm up>
 ```
-
-## Common mistakes
-
-- **Perfectionism up front, or treating the first design as final.** See the
-  feedback loop above.
-- **The Entity Trap.** `*Manager` / `*Handler` names and god-components; name for
-  role, not entity.
-- **One component per step / per action.** Reused steps and actions share a
-  component; don't inflate the count mechanically.
-- **Skipping the characteristics pass.** Function-only decomposition misses
-  splits that scalability or reliability demand.
-- **Chasing "the one true design."** Few systems have only one valid
-  decomposition. Assess trade-offs honestly and pick the **least-worst** set.
 
 ## Source
 

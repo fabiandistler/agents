@@ -9,10 +9,8 @@ compare with that commit before syncing.
 ## Contents
 
 - [Glossary](#glossary)
-- [Deep vs shallow](#deep-vs-shallow)
 - [Principles](#principles)
-- [Designing for testability](#designing-for-testability)
-- [Relationships and rejected framings](#relationships-and-rejected-framings)
+- [Rejected framings](#rejected-framings)
 - [Dependency categories](#dependency-categories)
 - [Seam discipline and testing strategy](#seam-discipline-and-testing-strategy)
 - [Design it twice](#design-it-twice)
@@ -62,33 +60,6 @@ tests.
 verification concentrate in one place instead of spreading across callers.
 Fix once, fixed everywhere.
 
-## Deep vs shallow
-
-**Deep module** = small interface + lots of implementation:
-
-```text
-┌─────────────────────┐
-│   Small Interface   │  <- few methods, simple params
-├─────────────────────┤
-│                     │
-│  Deep Implementation│  <- complex logic hidden
-│                     │
-└─────────────────────┘
-```
-
-**Shallow module** = large interface + little implementation (avoid):
-
-```text
-┌─────────────────────────────────┐
-│       Large Interface           │  <- many methods, complex params
-├─────────────────────────────────┤
-│  Thin Implementation            │  <- just passes through
-└─────────────────────────────────┘
-```
-
-When designing an interface, ask: can the number of methods shrink? Can the
-parameters get simpler? Can more complexity hide inside?
-
 ## Principles
 
 - **Depth is a property of the interface, not the implementation.** A deep
@@ -105,45 +76,7 @@ parameters get simpler? Can more complexity hide inside?
 - **One adapter means a hypothetical seam. Two adapters mean a real one.** Do
   not introduce a seam unless something actually varies across it.
 
-## Designing for testability
-
-1. **Accept dependencies, do not create them.**
-
-   ```typescript
-   // Testable
-   function processOrder(order, paymentGateway) {}
-
-   // Hard to test
-   function processOrder(order) {
-     const gateway = new StripeGateway();
-   }
-   ```
-
-2. **Return results, do not produce side effects.**
-
-   ```typescript
-   // Testable
-   function calculateDiscount(cart): Discount {}
-
-   // Hard to test
-   function applyDiscount(cart): void {
-     cart.total -= discount;
-   }
-   ```
-
-3. **Small surface area.** Fewer methods mean fewer tests; fewer parameters
-   mean simpler test setup.
-
-## Relationships and rejected framings
-
-- A **module** has exactly one **interface**: the surface it presents to
-  callers and tests.
-- **Depth** is a property of a module, measured against its interface.
-- A **seam** is where a module's interface lives.
-- An **adapter** sits at a seam and satisfies the interface.
-- Depth produces **leverage** for callers and **locality** for maintainers.
-
-Rejected:
+## Rejected framings
 
 - **Depth as the ratio of implementation lines to interface lines**
   (Ousterhout): rewards padding the implementation. Depth here means leverage.

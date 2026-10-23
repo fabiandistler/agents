@@ -157,21 +157,6 @@ bar for every diagram:
 - **Key/legend** on every diagram explaining shapes, colors, line styles, and arrows. Mermaid C4 cannot draw one, so add a one-line `Key:` under the block.
 - **Consistency** across diagrams: same element ⇒ same name, same color/shape.
 
-## Common mistakes
-
-- **Container ≠ Docker container.** A C4 container is anything separately
-  runnable/deployable — a database is a container, a "UserService class" is not.
-- **Drawing before modeling.** Diagrams edited directly drift apart on the
-  first rename; keep the table authoritative.
-- **One mega-diagram.** Mixing levels (people next to classes) or exceeding
-  ~20 elements; zoom is the point of C4 — split by level and by container.
-- **"Uses" arrows.** Unlabeled or purpose-free relationships carry no
-  information; say *what for* and *how*.
-- **Drawing level 4 (Code).** Class diagrams go stale immediately; if truly
-  needed, generate them from code on demand instead of hand-drawing.
-- **Producing all six diagram types reflexively.** Match diagrams to audience;
-  two good diagrams beat six unmaintained ones.
-
 ## Source
 
 Simon Brown, the C4 model — [c4model.com](https://c4model.com): abstractions,
