@@ -10,7 +10,7 @@ from pathlib import Path
 import check_skill_refs
 
 CATALOGUE = [
-    {"name": "arch", "category": "architecture", "activation": "router"},
+    {"name": "architecture", "category": "architecture", "activation": "router"},
     {"name": "ddd", "category": "architecture"},
     {"name": "c4-modeling", "category": "architecture"},
     {"name": "docs", "category": "communication"},
@@ -44,7 +44,7 @@ def test_member_named_as_skill_fails_with_router_form_hint(tmp_path, capsys):
 
     assert code == 1
     assert "skills/docs/SKILL.md:6: c4-modeling:" in err
-    assert "`members/c4-modeling/SKILL.md`, read via the `arch` router" in err
+    assert "`members/c4-modeling/SKILL.md`, read via the `architecture` router" in err
 
 
 def test_router_form_introduces_member_for_rest_of_file(tmp_path, capsys):
@@ -52,7 +52,7 @@ def test_router_form_introduces_member_for_rest_of_file(tmp_path, capsys):
     write(
         tmp_path,
         "skills/docs/references/page.md",
-        "Read `members/c4-modeling/SKILL.md`, via the `arch` router.\n\n"
+        "Read `members/c4-modeling/SKILL.md`, via the `architecture` router.\n\n"
         "Later, c4-modeling draws the views.",
     )
 
@@ -75,7 +75,7 @@ def test_member_path_without_router_name_does_not_introduce(tmp_path, capsys):
 
 def test_router_and_self_and_frontmatter_and_lookalikes_pass(tmp_path, capsys):
     make_repo(tmp_path)
-    write(tmp_path, "skills/arch/SKILL.md", "- Domain boundaries -> `ddd`")
+    write(tmp_path, "skills/architecture/SKILL.md", "- Domain boundaries -> `ddd`")
     write(tmp_path, "skills/ddd/SKILL.md", "The `ddd` skill. See <https://ddd-crew.github.io/>.")
     write(tmp_path, "skills/docs/SKILL.md", "The ddd-crew canvas and DDD in general.")
 
@@ -130,7 +130,7 @@ def test_bad_paths_fail(tmp_path, capsys):
     write(
         tmp_path,
         "skills/docs/SKILL.md",
-        "Read `members/gone/SKILL.md` via `arch`.\n\nSee [d](../ddd/SKILL.md).",
+        "Read `members/gone/SKILL.md` via `architecture`.\n\nSee [d](../ddd/SKILL.md).",
     )
 
     code, _, err = run_gate(tmp_path, capsys)
@@ -143,7 +143,7 @@ def test_bad_paths_fail(tmp_path, capsys):
 def test_member_symlink_copies_count_once(tmp_path, capsys):
     make_repo(tmp_path)
     write(tmp_path, "skills/c4-modeling/SKILL.md", "Then use ddd.")
-    members = tmp_path / "skills/arch/members"
+    members = tmp_path / "skills/architecture/members"
     members.mkdir(parents=True)
     (members / "c4-modeling").symlink_to("../../c4-modeling")
 
@@ -166,7 +166,12 @@ def test_trigger_text_names_no_member_or_command(tmp_path, capsys):
         tmp_path, "skills/docs/SKILL.md", "Body.", description="Not for diagrams; use c4-modeling."
     )
     write(tmp_path, "skills/ddd/SKILL.md", "Body.", description="Compress with `tldr`.")
-    write(tmp_path, "skills/arch/SKILL.md", "Body.", description="Routes to ddd or c4-modeling.")
+    write(
+        tmp_path,
+        "skills/architecture/SKILL.md",
+        "Body.",
+        description="Routes to ddd or c4-modeling.",
+    )
     path = tmp_path / "skills/c4-modeling/SKILL.md"
     path.parent.mkdir(parents=True)
     path.write_text("---\nname: c4-modeling\nwhen_to_use: >\n  draw it, then ddd\n---\n\nBody.\n")
@@ -177,4 +182,4 @@ def test_trigger_text_names_no_member_or_command(tmp_path, capsys):
     assert "skills/docs/SKILL.md:3: c4-modeling: router member named in trigger text" in err
     assert "skills/ddd/SKILL.md:3: tldr: command skill named in trigger text" in err
     assert "skills/c4-modeling/SKILL.md:4: ddd:" in err
-    assert "skills/arch" not in err
+    assert "skills/architecture" not in err

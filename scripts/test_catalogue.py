@@ -97,7 +97,36 @@ def test_entry_from_skill_file_builds_complete_default_entry(tmp_path):
     }
 
 
-def test_load_catalogue_reads_summary_and_path(tmp_path):
+def test_entry_from_skill_file_rejects_router_name_mismatch(tmp_path):
+    skill_md = tmp_path / "skills" / "other" / "SKILL.md"
+    skill_md.parent.mkdir(parents=True)
+    skill_md.write_text(
+        "---\nname: other\ndescription: Routes skills.\ncategory: workflow\n"
+        "activation: router\n---\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="router's name.*equal its category"):
+        catalogue.entry_from_skill_file(skill_md, tmp_path)
+
+
+def test_load_catalogue_preserves_order_defaults_and_named_selections(tmp_path):
+    entries = [
+        {"name": "architecture", "category": "architecture", "activation": "router"},
+        {
+            "name": "ddd",
+            "category": "architecture",
+            "environments": ["coding"],
+            "targets": ["codex"],
+        },
+        {"name": "pypet-snippets", "category": "workflow", "activation": "command"},
+        {
+            "name": "docs",
+            "category": "communication",
+            "environments": ["chat"],
+            "targets": ["opencode"],
+        },
+    ]
     manifest_path = tmp_path / "skills.json"
     manifest_path.write_text(
         json.dumps(
@@ -105,25 +134,104 @@ def test_load_catalogue_reads_summary_and_path(tmp_path):
                 "version": "1",
                 "skills": [
                     {
-                        "name": "demo",
-                        "summary": "Demo summary.",
-                        "category": "workflow",
-                        "path": "skills/demo/SKILL.md",
+                        "summary": f"{entry['name']} summary.",
+                        "path": f"skills/{entry['name']}/SKILL.md",
+                        **entry,
                     }
+                    for entry in entries
                 ],
             }
         ),
         encoding="utf-8",
     )
 
-    [entry] = catalogue.load_catalogue(manifest_path)
+    catalogue_entries = catalogue.load_catalogue(manifest_path)
 
-    assert entry.summary == "Demo summary."
-    assert entry.path == "skills/demo/SKILL.md"
-    assert entry.in_environment("chat")
-    assert entry.in_target("opencode")
+    assert [entry.name for entry in catalogue_entries] == [
+        "architecture",
+        "ddd",
+        "pypet-snippets",
+        "docs",
+    ]
+    assert catalogue_entries[0].summary == "architecture summary."
+    assert catalogue_entries[0].path == "skills/architecture/SKILL.md"
+    assert catalogue_entries[0].in_environment("chat")
+    assert catalogue_entries[0].in_target("opencode")
+    assert [entry.name for entry in catalogue.top_level_entries(catalogue_entries)] == [
+        "architecture",
+        "pypet-snippets",
+        "docs",
+    ]
+    assert [
+        entry.name for entry in catalogue.router_members(catalogue_entries, "architecture")
+    ] == ["ddd"]
+    assert [entry.name for entry in catalogue.entries_for_target(catalogue_entries, "codex")] == [
+        "architecture",
+        "ddd",
+        "pypet-snippets",
+    ]
+    assert [
+        entry.name for entry in catalogue.entries_for_environment(catalogue_entries, "chat")
+    ] == ["architecture", "pypet-snippets", "docs"]
 
 
-def test_load_catalogue_fails_loudly_for_missing_manifest(tmp_path):
+def test_load_catalogue_fails_loudly_for_missing_or_malformed_manifest(tmp_path):
     with pytest.raises(FileNotFoundError, match="skill manifest not found"):
         catalogue.load_catalogue(tmp_path / "missing.json")
+
+    malformed = tmp_path / "malformed.json"
+    malformed.write_text("{", encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid skills.json"):
+        catalogue.load_catalogue(malformed)
+
+    missing_skills = tmp_path / "missing-skills.json"
+    missing_skills.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="'skills' array"):
+        catalogue.load_catalogue(missing_skills)
+
+
+def test_load_catalogue_rejects_invalid_paths_and_router_identity(tmp_path):
+    manifest = tmp_path / "skills.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "skills": [
+                    {
+                        "name": "demo",
+                        "summary": "Demo.",
+                        "category": "workflow",
+                        "path": "../outside/SKILL.md",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="relative source path"):
+        catalogue.load_catalogue(manifest)
+
+    manifest.write_text(
+        json.dumps(
+            {
+                "skills": [
+                    {
+                        "name": "demo",
+                        "summary": "Demo.",
+                        "category": "workflow",
+                        "path": "skills/demo/SKILL.md",
+                        "activation": "router",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="router's name.*equal its category"):
+        catalogue.load_catalogue(manifest)
+
+
+def test_target_and_environment_queries_reject_unknown_names():
+    with pytest.raises(ValueError, match="unknown target"):
+        catalogue.entries_for_target([], "unknown")
+    with pytest.raises(ValueError, match="unknown environment"):
+        catalogue.entries_for_environment([], "unknown")

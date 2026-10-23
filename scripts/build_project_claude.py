@@ -43,11 +43,11 @@ import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
 
+from catalogue import entries_for_environment, entries_for_target, load_catalogue, top_level_entries
 from pr_merge_guard import with_claude_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI_DESCRIPTION = "Mirror this repo's skills, subagents and instructions into `.claude/`."
-MANIFEST_PATH = REPO_ROOT / "skills.json"
 INSTRUCTIONS_DIR = REPO_ROOT / "instructions"
 PLUGINS_DIR = REPO_ROOT / "plugins"
 CLAUDE_DIR = REPO_ROOT / ".claude"
@@ -61,20 +61,14 @@ FIELD = re.compile(r"^([a-z]+):[ \t]*(.*?)[ \t]*$", re.MULTILINE)
 
 
 def wanted_skill_links() -> dict[Path, Path]:
-    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    skills = manifest["skills"]
-    routed = {s["category"] for s in skills if s.get("activation") == "router"}
     links: dict[Path, Path] = {}
+    catalogue = load_catalogue()
+    skills = top_level_entries(catalogue)
+    skills = entries_for_environment(skills, ENVIRONMENT)
+    skills = entries_for_target(skills, "claude")
     for skill in skills:
-        activation = skill.get("activation", "auto")
-        if activation == "auto" and skill["category"] in routed:
-            continue  # a router member, reached through its router
-        if ENVIRONMENT not in skill.get("environments", [ENVIRONMENT]):
-            continue
-        if "claude" not in skill.get("targets", ["claude"]):
-            continue
-        source = REPO_ROOT / Path(skill["path"]).parent
-        links[CLAUDE_DIR / "skills" / skill["name"]] = source
+        source = REPO_ROOT / Path(skill.path).parent
+        links[CLAUDE_DIR / "skills" / skill.name] = source
     return links
 
 

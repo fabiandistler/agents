@@ -32,17 +32,14 @@ CLI dependency.
 
 from __future__ import annotations
 
-import json
 import re
 import sys
 from pathlib import Path
 
-from catalogue import unique_real_files
+from catalogue import load_catalogue, unique_real_files
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
-MANIFEST_PATH = REPO_ROOT / "skills.json"
-
 USAGE = """usage: check_skill_vocab.py [--help]
 
 Check skill bodies for agent-specific vocabulary and for cross-skill
@@ -132,15 +129,7 @@ def body_lines(path: Path) -> tuple[list[str], int]:
 
 
 def load_command_skills() -> set[str]:
-    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    commands: set[str] = set()
-    for entry in manifest.get("skills", []):
-        name = entry.get("name")
-        if not isinstance(name, str) or not name:
-            continue
-        if entry.get("activation") == "command":
-            commands.add(name)
-    return commands
+    return {entry.name for entry in load_catalogue() if entry.is_command}
 
 
 def check_denylist(path: Path, rel: str, lines: list[str], offset: int) -> list[str]:
