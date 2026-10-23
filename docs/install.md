@@ -49,7 +49,8 @@ without a guard flag. Pass `--instructions`, `--merge-guard`, and
 
 Each successful install saves its resolved targets, filters, optional components,
 and checkout path to `${XDG_STATE_HOME:-~/.local/state}/fabiandistler-agents/install.json`.
-`--update` replays those options. It exits 4 when no state file exists; start with an
+`--update` replays those options and rebases marker-owned paths and managed links
+if this checkout moved. It exits 4 when no state file exists; start with an
 install such as `./install.sh --target=codex`. `--update --dry-run` previews the
 replay without changing files or state, and `--update --check` reports drift
 against the saved options. During `--update`, every write re-checks its file
