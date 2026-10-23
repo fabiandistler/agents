@@ -145,12 +145,126 @@ for _d in "$REPO_ROOT"/skills/*/; do
   OPENCODE_ONLY_EXPECTED=$((OPENCODE_ONLY_EXPECTED + 1))
 done
 
+run_check_tests() {
+  local check_home report check_output check_status expected_row clean_home stale_home \
+    agent_home foreign_home duplicate_home config_file instruction_file \
+    output_file begin_marker end_marker all_home all_report expected_all_row
+  capture_check() {
+    local captured_home="$1"
+    shift
+    set +e
+    check_output="$(HOME="$captured_home" "$INSTALL" "$@" 2>&1)"
+    check_status=$?
+    set -e
+  }
+
+  check_home="$(mktemp -d)"
+  report="$check_home/check.tsv"
+  capture_check "$check_home" --target=codex --category=communication --check --output "$report"
+  [[ "$check_status" -eq 3 ]] || fail "--check reported missing managed files with exit $check_status: $check_output"
+  grep -Fqx $'target\tkind\tpath\tstate' "$report" || fail "--check TSV header is missing"
+  expected_row=$'codex\tskill-link\t'"$check_home"'/.agents/skills/communication-analysis'$'\tmissing'
+  grep -Fq "$expected_row" "$report" ||
+    fail "--check TSV did not report a missing Codex skill link"
+  [[ ! -e "$check_home/.agents" && ! -e "$check_home/.codex" ]] ||
+    fail "--check created files under HOME"
+  pass "--check reports missing managed files as TSV without writing"
+
+  all_home="$(mktemp -d)"
+  all_report="$all_home/all-targets.tsv"
+  capture_check "$all_home" --target=all --category=communication --check --output "$all_report"
+  [[ "$check_status" -eq 3 ]] || fail "--check --target=all missed missing target state"
+  expected_all_row=$'codex\tskill-link\t'"$all_home"'/.agents/skills/communication-analysis'$'\tmissing'
+  grep -Fq "$expected_all_row" "$all_report" ||
+    fail "--check --target=all did not process its resolved Codex target"
+  pass "--check resolves all targets before reporting drift"
+
+  clean_home="$(mktemp -d)"
+  HOME="$clean_home" "$INSTALL" --target=codex --category=communication >/dev/null
+  capture_check "$clean_home" --target=codex --category=communication --check
+  [[ "$check_status" -eq 0 && "$check_output" == '--check: clean' ]] ||
+    fail "--check did not report clean installed state: $check_output"
+  pass "--check reports a clean managed inventory"
+
+  stale_home="$(mktemp -d)"
+  HOME="$stale_home" "$INSTALL" --target=codex --category=communication --instructions >/dev/null
+  instruction_file="$stale_home/.codex/AGENTS.md"
+  begin_marker='<!-- >>> agents instructions (managed by install.sh, do not edit) >>> -->'
+  end_marker='<!-- <<< agents instructions <<< -->'
+  printf 'notes\n\n%s\nold rules\n%s\n' "$begin_marker" "$end_marker" >"$instruction_file"
+  output_file="$stale_home/instructions.tsv"
+  capture_check "$stale_home" --target=codex --category=communication --instructions \
+    --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] || fail "stale instructions did not produce drift exit 3"
+  expected_row=$'codex\tinstructions\t'"$instruction_file"$'\tstale'
+  grep -Fq "$expected_row" "$output_file" || fail "--check missed stale instruction markers"
+  pass "--check compares rendered instruction marker blocks"
+
+  agent_home="$(mktemp -d)"
+  HOME="$agent_home" "$INSTALL" --target=codex --category=architecture >/dev/null
+  "$PYTHON" - "$agent_home/.codex/agents/coupling-analyst.toml" "$REPO_ROOT" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_text(path.read_text(encoding="utf-8").replace(sys.argv[2], "/old/checkout/agents"))
+PY
+  output_file="$agent_home/agents.tsv"
+  capture_check "$agent_home" --target=codex --category=architecture --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] || fail "moved-root Codex agent TOML did not produce drift exit 3"
+  expected_row=$'codex\tcodex-agent\t'"$agent_home/.codex/agents/coupling-analyst.toml"$'\tstale'
+  grep -Fq "$expected_row" "$output_file" || fail "--check missed moved-root Codex agent TOML"
+  pass "--check detects moved-root paths in Codex agent TOMLs"
+
+  foreign_home="$(mktemp -d)"
+  mkdir -p "$foreign_home/.agents/skills/communication-analysis"
+  output_file="$foreign_home/foreign.tsv"
+  capture_check "$foreign_home" --target=codex --category=communication --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] || fail "foreign managed path did not produce drift exit 3"
+  expected_row=$'codex\tskill-link\t'"$foreign_home/.agents/skills/communication-analysis"$'\tforeign'
+  grep -Fq "$expected_row" "$output_file" || fail "--check missed a foreign Codex skill path"
+  pass "--check identifies foreign files at managed paths"
+
+  duplicate_home="$(mktemp -d)"
+  HOME="$duplicate_home" "$INSTALL" --target=codex --category=architecture >/dev/null
+  config_file="$duplicate_home/.codex/config.toml"
+  begin_marker='# >>> agents routed-member skill overrides (managed by install.sh, do not edit) >>>'
+  end_marker='# <<< agents routed-member skill overrides <<<'
+  printf '\n%s\n[[skills.config]]\npath = "/duplicate/SKILL.md"\nenabled = false\n%s\n' \
+    "$begin_marker" "$end_marker" >>"$config_file"
+  output_file="$duplicate_home/duplicate.tsv"
+  capture_check "$duplicate_home" --target=codex --category=architecture --check --output "$output_file"
+  [[ "$check_status" -eq 3 ]] || fail "duplicate managed blocks did not produce drift exit 3"
+  expected_row=$'codex\trouted-member-overrides\t'"$config_file"$'\tduplicate'
+  grep -Fq "$expected_row" "$output_file" || fail "--check missed duplicate managed blocks"
+  pass "--check identifies duplicate managed blocks"
+
+  for check_args in \
+    '--target=codex --check --dry-run' \
+    '--target=codex --check --uninstall' \
+    '--target=codex --output report.tsv' \
+    '--target=bogus --check' \
+    '--target=codex --check --output' \
+    '--target=codex --check --output='; do
+    set +e
+    # Intentional word splitting turns each fixed fixture into CLI arguments.
+    # shellcheck disable=SC2086
+    check_output="$(HOME="$check_home" "$INSTALL" $check_args 2>&1)"
+    check_status=$?
+    set -e
+    [[ "$check_status" -eq 2 ]] || fail "invalid --check arguments did not exit 2: $check_args"
+  done
+  pass "--check rejects incompatible and incomplete options"
+}
+
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
-HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run >/dev/null
+dry_output="$(HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run 2>&1)"
 [[ ! -d "$HOME_DRY/.claude" ]] || fail "dry-run created $HOME_DRY/.claude"
 [[ ! -d "$HOME_DRY/.codex" ]] || fail "dry-run created $HOME_DRY/.codex"
 [[ ! -d "$HOME_DRY/.config/opencode" ]] || fail "dry-run created $HOME_DRY/.config/opencode"
+[[ "$(grep -c '^\[dry-run\] write .*/\.codex/agents/.*\.toml$' <<<"$dry_output")" -eq 2 ]] ||
+  fail "dry-run agent writes were not one target-only line each"
 pass "dry-run creates no files"
 
 # 2. install --target=claude links nothing: Claude gets skills, commands,
@@ -354,6 +468,9 @@ want=$((OPENCODE_EXPECTED - shared))
 oc_dry="$(HOME="$(mktemp -d)" "$INSTALL" --target=all --dry-run 2>&1)"
 [[ "$(grep -c '^\[dry-run\] link .*/\.config/opencode/skills/' <<<"$oc_dry")" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
   fail "dry-run --target=all planned opencode links that codex shares"
+if grep -q '^  linked .*\.config/opencode/skills/' <<<"$oc_dry"; then
+  fail "dry-run reported a link twice"
+fi
 grep -q 'shared .*/\.config/opencode/skills/' <<<"$oc_dry" ||
   fail "dry-run --target=all did not report the shared skills"
 pass "opencode links what codex lacks, and dry-run plans the shared state"
@@ -736,6 +853,24 @@ HOME="$HOME_OV4" "$INSTALL" --target=codex --category=communication >/dev/null
 [[ "$(cat "$CONFIG_OV4")" == "$before" ]] ||
   fail "narrower --category re-run changed the override block of installed routers"
 pass "narrower --category re-run keeps overrides of installed routers"
+
+# 21c4. Reinstalling routed-member and merge-guard blocks leaves their order
+#       and config inode unchanged.
+HOME_OV5="$(mktemp -d)"
+HOME="$HOME_OV5" "$INSTALL" --target=codex --category=ai-ml --merge-guard >/dev/null
+CONFIG_OV5="$HOME_OV5/.codex/config.toml"
+before="$(cat "$CONFIG_OV5")"
+inode_before="$(stat -c %i "$CONFIG_OV5")"
+reinstall_output="$(HOME="$HOME_OV5" "$INSTALL" --target=codex --category=ai-ml --merge-guard 2>&1)"
+[[ "$(cat "$CONFIG_OV5")" == "$before" ]] ||
+  fail "reinstall changed the routed-member/merge-guard block order"
+[[ "$(stat -c %i "$CONFIG_OV5")" == "$inode_before" ]] ||
+  fail "reinstall rewrote an unchanged routed-member/merge-guard config"
+grep -q '^  ok .*routed members disabled' <<<"$reinstall_output" ||
+  fail "reinstall did not report the unchanged routed-member block as ok"
+grep -q '^  ok .*PR merge guard hook' <<<"$reinstall_output" ||
+  fail "reinstall did not report the unchanged merge-guard block as ok"
+pass "routed-member and merge-guard blocks keep their order and inode"
 
 # 21d. a config left behind by a version that still registered the
 #      knowledge-base MCP servers is cleaned up — by install as well as by
@@ -1238,5 +1373,8 @@ diff -q "$HOME_SG/merge-only.toml" "$HOME_SG/.codex/config.toml" >/dev/null ||
 [[ -L "$HOME_SG/.config/opencode/plugins/pr-merge-guard.js" ]] ||
   fail "--secret-guard --uninstall removed the merge guard plugin"
 pass "--secret-guard installs next to the merge guard and uninstalls on its own"
+
+# --check: drift report for the managed state.
+run_check_tests
 
 echo "all install.sh tests passed"
