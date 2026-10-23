@@ -64,7 +64,7 @@ behaviour is in [`docs/install.md`](docs/install.md).
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--target=claude\|codex\|opencode\|all` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links) |
+| `--target=claude\|codex\|opencode\|all\|detected` | *required* | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links; `detected`: every agent whose command or config directory exists) |
 | `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` (not Claude: install only some plugins instead) |
 | `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app (not Claude) |
 | `--instructions` | off | Compose always-on rules and pointers, install on-demand files, and add Claude's `uv init` context hook |
@@ -75,6 +75,7 @@ behaviour is in [`docs/install.md`](docs/install.md).
 | `--check` | off | Report drift between the selected install and the managed files; exit 0 clean, 3 drift; writes nothing |
 | `--output FILE` | — | With `--check`: write the full drift report as TSV |
 | `--update` | off | Replay the last successful install (targets, filters, components) from the saved state file; exit 4 when none exists |
+| `--git-hook` | off | Install `post-merge`/`post-rewrite` hooks in this clone that run `--update` when `--update --check` finds drift; `--uninstall --git-hook` removes them |
 
 ```sh
 ./install.sh --target=opencode --category=architecture

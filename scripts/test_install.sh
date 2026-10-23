@@ -619,6 +619,345 @@ PY
   pass "--update preserves foreign files and links at managed paths"
 }
 
+run_detected_tests() {
+  local detected_home detected_state detected_bin state_file output status \
+    bare_home bare_state bare_bin no_agent_home no_agent_state
+
+  detected_home="$(mktemp -d)"
+  detected_state="$detected_home/xdg-state"
+  detected_bin="$detected_home/bin"
+  mkdir -p "$detected_bin" "$detected_home/.codex" "$detected_home/.config/opencode"
+  printf '#!/bin/sh\nexit 0\n' >"$detected_bin/claude"
+  chmod +x "$detected_bin/claude"
+  [[ ! -d "$detected_home/.claude" ]] || fail "CLI detection fixture already has Claude config"
+  set +e
+  output="$(HOME="$detected_home" XDG_STATE_HOME="$detected_state" \
+    PATH="$detected_bin:$PATH" "$INSTALL" --target=detected --category=communication 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 0 ]] || fail "--target=detected failed: $output"
+  [[ "$output" == *'detected targets: claude, codex, opencode'* ]] ||
+    fail "--target=detected did not print its resolved targets: $output"
+  state_file="$detected_state/fabiandistler-agents/install.json"
+  if "$PYTHON" - "$state_file" <<'PY'
+import json
+import sys
+
+targets = json.load(open(sys.argv[1], encoding="utf-8"))["targets"]
+assert targets == ["claude", "codex", "opencode"]
+assert "detected" not in targets
+PY
+  then
+    :
+  else
+    fail "detected install did not save resolved targets"
+  fi
+  cp "$state_file" "$detected_home/state-before-check.json"
+  set +e
+  output="$(HOME="$detected_home" XDG_STATE_HOME="$detected_state" \
+    PATH="$detected_bin:$PATH" "$INSTALL" --target=detected --category=communication --check 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 0 && "$output" == *'--check: clean'* ]] ||
+    fail "--check did not resolve detected targets read-only: $output"
+  diff -q "$state_file" "$detected_home/state-before-check.json" >/dev/null ||
+    fail "--check with detected targets changed saved install state"
+  pass "--target=detected combines installed commands and config directories"
+
+  bare_home="$(mktemp -d)"
+  bare_state="$bare_home/xdg-state"
+  bare_bin="$(mktemp -d)"
+  ln -s "$(command -v bash)" "$bare_bin/bash"
+  ln -s "$(command -v dirname)" "$bare_bin/dirname"
+  ln -s "$(command -v sed)" "$bare_bin/sed"
+  ln -s "$(command -v cat)" "$bare_bin/cat"
+  set +e
+  output="$(HOME="$bare_home" XDG_STATE_HOME="$bare_state" PATH="$bare_bin" \
+    "$INSTALL" 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 2 && "$output" == *'missing --target=claude|codex|opencode|all|detected'* ]] ||
+    fail "bare installer invocation did not explain the target options: $output"
+  [[ ! -e "$bare_home/.agents" && ! -e "$bare_home/.codex" &&
+    ! -e "$bare_home/.claude" && ! -e "$bare_home/.config" &&
+    ! -e "$bare_state/fabiandistler-agents/install.json" ]] ||
+    fail "bare installer invocation wrote into HOME or XDG state"
+  pass "bare invocation exits 2 without writing and lists detected"
+
+  no_agent_home="$(mktemp -d)"
+  no_agent_state="$no_agent_home/xdg-state"
+  set +e
+  output="$(HOME="$no_agent_home" XDG_STATE_HOME="$no_agent_state" PATH="$bare_bin" \
+    "$INSTALL" --target=detected 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 2 && "$output" == *'no agent commands or config directories detected'* ]] ||
+    fail "empty detected target set did not exit 2 clearly: $output"
+  [[ ! -e "$no_agent_home/.agents" && ! -e "$no_agent_home/.codex" &&
+    ! -e "$no_agent_home/.claude" && ! -e "$no_agent_home/.config" &&
+    ! -e "$no_agent_state/fabiandistler-agents/install.json" ]] ||
+    fail "empty detected target set wrote into HOME or XDG state"
+  pass "--target=detected with no installations exits 2 without writing"
+}
+
+run_git_hook_tests() {
+  local hook_home state_home git_home git_dir hooks_dir post_merge post_rewrite \
+    skill_link before_merge before_rewrite output status dry_home dry_state dry_git_home \
+    dry_git_dir foreign_home foreign_state foreign_git_home foreign_git_dir foreign_hooks \
+    foreign_merge foreign_rewrite foreign_content
+
+  capture_hook_install() {
+    local captured_home="$1" captured_state="$2" captured_git_dir="$3"
+    shift 3
+    set +e
+    output="$(HOME="$captured_home" XDG_STATE_HOME="$captured_state" \
+      GIT_DIR="$captured_git_dir" GIT_WORK_TREE="$REPO_ROOT" \
+      "$INSTALL" "$@" 2>&1)"
+    status=$?
+    set -e
+  }
+
+  capture_hook_run() {
+    local hook="$1" captured_home="$2" captured_state="$3" captured_git_dir="$4" input="$5"
+    set +e
+    output="$(cd "$REPO_ROOT" && printf '%s' "$input" |
+      HOME="$captured_home" XDG_STATE_HOME="$captured_state" \
+        GIT_DIR="$captured_git_dir" GIT_WORK_TREE="$REPO_ROOT" "$hook" 2>&1)"
+    status=$?
+    set -e
+  }
+
+  hook_home="$(mktemp -d)"
+  state_home="$hook_home/xdg-state"
+  git_home="$(mktemp -d)"
+  git -C "$git_home" init -q
+  git_dir="$git_home/.git"
+  hooks_dir="$git_dir/hooks"
+  post_merge="$hooks_dir/post-merge"
+  post_rewrite="$hooks_dir/post-rewrite"
+  capture_hook_install "$hook_home" "$state_home" "$git_dir" \
+    --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 ]] || fail "--git-hook install failed: $output"
+  [[ -x "$post_merge" && -x "$post_rewrite" ]] ||
+    fail "--git-hook did not create executable post-merge and post-rewrite hooks"
+  grep -Fqx '# managed-by: fabiandistler/agents install.sh' "$post_merge" ||
+    fail "post-merge hook is missing its ownership marker"
+  grep -Fqx '# managed-by: fabiandistler/agents install.sh' "$post_rewrite" ||
+    fail "post-rewrite hook is missing its ownership marker"
+  [[ "$(head -n 1 "$post_rewrite")" == '#!/bin/sh' &&
+  "$(sed -n '3p' "$post_rewrite")" == 'cat >/dev/null' ]] ||
+    fail "post-rewrite hook does not consume Git's rewrite list"
+  [[ -f "$state_home/fabiandistler-agents/install.json" ]] ||
+    fail "--git-hook install did not save replay state"
+  before_merge="$(cat "$post_merge")"
+  before_rewrite="$(cat "$post_rewrite")"
+  capture_hook_install "$hook_home" "$state_home" "$git_dir" \
+    --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 ]] || fail "reinstalling --git-hook failed: $output"
+  [[ "$(cat "$post_merge")" == "$before_merge" &&
+  "$(cat "$post_rewrite")" == "$before_rewrite" ]] ||
+    fail "reinstalling --git-hook rewrote unchanged hooks"
+  [[ "$output" == *"ok        $post_merge (Git hook)"* &&
+    "$output" == *"ok        $post_rewrite (Git hook)"* ]] ||
+    fail "reinstalling --git-hook did not report both hooks unchanged"
+  pass "--git-hook creates executable marker-owned hooks idempotently"
+
+  skill_link="$hook_home/.agents/skills/communication-analysis"
+  rm "$skill_link"
+  capture_hook_run "$post_merge" "$hook_home" "$state_home" "$git_dir" ""
+  [[ "$status" -eq 0 && "$output" == *'--check: drift'* && -L "$skill_link" ]] ||
+    fail "post-merge did not check and replay the saved install: $output"
+  if "$PYTHON" - "$output" "$skill_link" "$REPO_ROOT" <<'PY'
+import sys
+
+output, skill_link, repo_root = sys.argv[1:]
+check = output.index("--check: drift")
+update = output.index(f"linked    {skill_link} -> {repo_root}/skills/communication-analysis")
+assert check < update
+PY
+  then
+    :
+  else
+    fail "post-merge ran --update before its --check"
+  fi
+  pass "post-merge checks first, then replays only when drift exists"
+
+  capture_hook_run "$post_rewrite" "$hook_home" "$state_home" "$git_dir" "old new\n"
+  [[ "$status" -eq 0 && "$output" == '--check: clean' ]] ||
+    fail "clean post-rewrite did not stop after its read-only check: $output"
+  rm "$skill_link"
+  capture_hook_run "$post_rewrite" "$hook_home" "$state_home" "$git_dir" "old new\n"
+  [[ "$status" -eq 0 && "$output" == *'--check: drift'* && -L "$skill_link" ]] ||
+    fail "post-rewrite did not consume stdin and replay drift: $output"
+  pass "post-rewrite consumes rewrite input and checks before updating"
+
+  capture_hook_install "$hook_home" "$state_home" "$git_dir" --uninstall --git-hook
+  [[ "$status" -eq 0 && ! -e "$post_merge" && ! -e "$post_rewrite" ]] ||
+    fail "targetless --uninstall --git-hook did not remove both managed hooks: $output"
+  pass "--uninstall --git-hook removes only this clone's managed hooks"
+
+  dry_home="$(mktemp -d)"
+  dry_state="$dry_home/xdg-state"
+  dry_git_home="$(mktemp -d)"
+  git -C "$dry_git_home" init -q
+  dry_git_dir="$dry_git_home/.git"
+  capture_hook_install "$dry_home" "$dry_state" "$dry_git_dir" \
+    --target=codex --category=communication --git-hook --dry-run
+  [[ "$status" -eq 0 && ! -e "$dry_git_dir/hooks/post-merge" &&
+    ! -e "$dry_git_dir/hooks/post-rewrite" ]] ||
+    fail "--git-hook --dry-run wrote into the Git hooks directory"
+  pass "--git-hook --dry-run creates no hooks"
+
+  foreign_home="$(mktemp -d)"
+  foreign_state="$foreign_home/xdg-state"
+  foreign_git_home="$(mktemp -d)"
+  git -C "$foreign_git_home" init -q
+  foreign_git_dir="$foreign_git_home/.git"
+  foreign_hooks="$foreign_git_dir/hooks"
+  foreign_merge="$foreign_hooks/post-merge"
+  foreign_rewrite="$foreign_hooks/post-rewrite"
+  foreign_content=$'#!/bin/sh\n# human-owned hook\nexit 0'
+  printf '%b\n' "$foreign_content" >"$foreign_merge"
+  chmod +x "$foreign_merge"
+  capture_hook_install "$foreign_home" "$foreign_state" "$foreign_git_dir" \
+    --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 && "$(cat "$foreign_merge")" == "$foreign_content" &&
+  -x "$foreign_rewrite" ]] ||
+    fail "--git-hook overwrote a foreign hook or failed to install the other hook: $output"
+  capture_hook_install "$foreign_home" "$foreign_state" "$foreign_git_dir" \
+    --uninstall --git-hook
+  [[ "$status" -eq 0 && "$(cat "$foreign_merge")" == "$foreign_content" &&
+  ! -e "$foreign_rewrite" ]] ||
+    fail "--uninstall --git-hook removed a foreign hook or kept its managed hook"
+  pass "foreign post-merge hooks survive install and uninstall"
+}
+
+run_opencode_agent_tests() {
+  local agent_home state_home state_file agents_dir coupling cohesion removed before output status old_root \
+    edit_source rendered marker
+  agent_home="$(mktemp -d)"
+  state_home="$agent_home/xdg-state"
+  agents_dir="$agent_home/.config/opencode/agents"
+  HOME="$agent_home" XDG_STATE_HOME="$state_home" "$INSTALL" \
+    --target=opencode --category=architecture >/dev/null
+  coupling="$agents_dir/coupling-analyst.md"
+  cohesion="$agents_dir/cohesion-analyst.md"
+  removed="$agents_dir/source-removed.md"
+  state_file="$state_home/fabiandistler-agents/install.json"
+  [[ -f "$coupling" && -f "$cohesion" ]] ||
+    fail "OpenCode install did not render selected plugin agents in agents/"
+  [[ ! -e "$agent_home/.config/opencode/agent" ]] ||
+    fail "OpenCode install wrote plugin agents to the legacy singular agent/ directory"
+  if "$PYTHON" - "$agents_dir" "$REPO_ROOT" <<'PY'
+from pathlib import Path
+import sys
+
+agents_dir = Path(sys.argv[1])
+repo_root = Path(sys.argv[2])
+marker = "# generated by fabiandistler/agents install.sh; do not edit"
+for name in ("coupling-analyst", "cohesion-analyst"):
+    text = (agents_dir / f"{name}.md").read_text(encoding="utf-8")
+    frontmatter = text.split("---", 2)[1]
+    body = text.split("---", 2)[2]
+    assert marker in frontmatter
+    assert "description: \"" in frontmatter
+    assert "mode: subagent" in frontmatter
+    assert "permission:" in frontmatter
+    assert "  read: allow" in frontmatter
+    assert "  grep: allow" in frontmatter
+    assert "  glob: allow" in frontmatter
+    assert "  shell: allow" in frontmatter
+    assert "  edit: deny" in frontmatter
+    assert "model:" not in frontmatter
+    assert "${CLAUDE_PLUGIN_ROOT}" not in text
+    assert str(repo_root / "plugins/architecture") in body
+assert "Read-only coupling analysis of a codebase." in (
+    agents_dir / "coupling-analyst.md"
+).read_text(encoding="utf-8")
+PY
+  then
+    :
+  else
+    fail "OpenCode agent render was incomplete"
+  fi
+  pass "OpenCode agents preserve descriptions and map tool permissions"
+
+  edit_source="$agent_home/writable-agent.md"
+  marker='# generated by fabiandistler/agents install.sh; do not edit'
+  cat >"$edit_source" <<'AGENT'
+---
+name: writable-agent
+description: Writable test agent.
+tools: Read, Edit, Write
+model: sonnet
+---
+The prompt can write when asked.
+AGENT
+  rendered="$(python3 "$REPO_ROOT/scripts/plugin_agents.py" opencode \
+    --source "$edit_source" --plugin-dir "$REPO_ROOT/plugins/architecture" --marker "$marker")"
+  [[ "$rendered" == *'  edit: allow'* && "$rendered" != *'  edit: deny'* ]] ||
+    fail "OpenCode did not map Edit/Write tools to edit permission"
+  pass "OpenCode maps Edit and Write tools to edit allow"
+
+  before="$(cat "$coupling")"
+  output="$(HOME="$agent_home" XDG_STATE_HOME="$state_home" \
+    "$INSTALL" --target=opencode --category=architecture 2>&1)"
+  [[ "$(cat "$coupling")" == "$before" && "$output" == *"ok        $coupling (opencode-agent)"* ]] ||
+    fail "OpenCode agent install was not idempotent: $output"
+  old_root="/old/checkout/agents"
+  "$PYTHON" - "$state_file" "$coupling" "$REPO_ROOT" "$old_root" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+state_path, agent_path, repo_root, old_root = sys.argv[1:]
+state_file = Path(state_path)
+state = json.loads(state_file.read_text(encoding="utf-8"))
+state["repo_root"] = old_root
+state_file.write_text(json.dumps(state) + "\n", encoding="utf-8")
+agent_file = Path(agent_path)
+agent_file.write_text(
+    agent_file.read_text(encoding="utf-8").replace(repo_root, old_root),
+    encoding="utf-8",
+)
+PY
+  output="$(HOME="$agent_home" XDG_STATE_HOME="$state_home" "$INSTALL" --update 2>&1)"
+  if "$PYTHON" - "$state_file" "$coupling" "$REPO_ROOT" "$old_root" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+state_path, agent_path, repo_root, old_root = sys.argv[1:]
+state = json.loads(Path(state_path).read_text(encoding="utf-8"))
+agent = Path(agent_path).read_text(encoding="utf-8")
+assert state["repo_root"] == repo_root
+assert old_root not in agent and repo_root in agent
+PY
+  then
+    :
+  else
+    fail "--update did not rebase the moved OpenCode agent"
+  fi
+  printf '%s\n' '---' '# generated by fabiandistler/agents install.sh; do not edit' \
+    'name: removed' '---' 'stale prompt' >"$removed"
+  rm "$coupling"
+  output="$(HOME="$agent_home" XDG_STATE_HOME="$state_home" "$INSTALL" --update 2>&1)"
+  [[ -f "$coupling" && ! -e "$removed" && "$output" == *'agent no longer in repo'* ]] ||
+    fail "--update did not restore and prune OpenCode agents: $output"
+  pass "OpenCode agent install is idempotent and --update restores/prunes outputs"
+
+  printf '%s\n' 'human-owned OpenCode agent' >"$cohesion"
+  output="$(HOME="$agent_home" XDG_STATE_HOME="$state_home" \
+    "$INSTALL" --target=opencode --category=architecture 2>&1)"
+  [[ "$(cat "$cohesion")" == 'human-owned OpenCode agent' ]] ||
+    fail "OpenCode install overwrote a foreign agent"
+  HOME="$agent_home" XDG_STATE_HOME="$state_home" "$INSTALL" \
+    --target=opencode --category=architecture --uninstall >/dev/null 2>&1
+  [[ ! -e "$coupling" && "$(cat "$cohesion")" == 'human-owned OpenCode agent' ]] ||
+    fail "OpenCode uninstall did not remove only generated agents"
+  pass "OpenCode uninstall removes generated agents and preserves foreign files"
+}
+
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
 dry_output="$(HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run 2>&1)"
@@ -1741,5 +2080,14 @@ run_check_tests
 
 # --update: saved install state and replay.
 run_update_tests
+
+# --target=detected: resolve targets from installed agents.
+run_detected_tests
+
+# --git-hook: per-clone post-merge/post-rewrite hooks.
+run_git_hook_tests
+
+# OpenCode subagents rendered from the plugin agents.
+run_opencode_agent_tests
 
 echo "all install.sh tests passed"

@@ -18,7 +18,7 @@ from the plugin marketplace only, and `install.sh --target=claude` only syncs
 |---|---|
 | `0` | The requested operation succeeded. `--help` returns 0, as does `--check` when the selected installation is clean. |
 | `1` | An operational failure prevented completion, such as an invalid saved-state file, a failed managed-file write, or an unusable `--output` path. |
-| `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, or a missing `--output` value. |
+| `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, a missing `--output` value, or `--target=detected` finding no installed agents. |
 | `3` | `--check` found drift. When `--output` is supplied, the TSV report contains the drift rows. |
 | `4` | `--update` found no saved install state. Run a successful install with `--target=...` before using `--update`. |
 
@@ -55,6 +55,45 @@ install such as `./install.sh --target=codex`. `--update --dry-run` previews the
 replay without changing files or state, and `--update --check` reports drift
 against the saved options. During `--update`, every write re-checks its file
 right before writing and leaves it alone if it changed in between.
+
+## Update after a merge or rebase
+
+`--git-hook` installs marker-owned `post-merge` and `post-rewrite` hooks in this
+clone's Git hooks directory. They check the saved install first and run
+`--update` only when the check finds drift. `post-rewrite` also consumes Git's
+rewrite list, so it works after `git pull --rebase`. Hook setup is opt-in and
+does not add a CI or prek stage:
+
+```sh
+./install.sh --target=all --git-hook
+./install.sh --uninstall --git-hook
+```
+
+The targetless uninstall removes only these marker-owned hooks; it leaves the
+global skill and instruction installation in place. Foreign hooks are skipped.
+
+## Detect installed agents
+
+`--target=detected` selects an agent when its command is on `PATH` or its user
+configuration directory exists: `claude` or `~/.claude/`, `codex` or
+`~/.codex/`, and `opencode` or `~/.config/opencode/`. The installer prints the
+resolved targets and saves that explicit list for later checks and updates, so
+an agent installed later is reported by `--update --check` rather than written
+to silently. A bare `./install.sh` still writes nothing and exits 2; pass a
+target or use `--target=detected` explicitly.
+
+## OpenCode subagents
+
+When OpenCode is selected, plugin subagents from `plugins/*/agents/*.md` are
+rendered into `~/.config/opencode/agents/<name>.md`. The renderer keeps each
+description and prompt, sets `mode: subagent`, maps Claude tools to OpenCode
+permissions, and denies editing unless the source lists `Edit` or `Write`. It
+drops Claude's `model` value and resolves `${CLAUDE_PLUGIN_ROOT}` for this
+checkout. Generated files carry an ownership comment; stale generated files
+are pruned, and uninstall removes only generated files for selected categories.
+See the [OpenCode agent format](https://opencode.ai/docs/agents). The Codex
+TOML and the OpenCode Markdown come from the same parser in
+`scripts/plugin_agents.py`.
 
 ## What gets linked where
 

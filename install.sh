@@ -7,6 +7,7 @@
 #   ./install.sh --target=codex               # ~/.agents/skills/<skill>
 #   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
+#   ./install.sh --target=detected            # installed commands/config dirs
 #   ./install.sh --target=all --dry-run       # show what would happen
 #   ./install.sh --target=all --uninstall     # remove symlinks owned by us
 #   ./install.sh --target=opencode --env=chat # only chat skills
@@ -18,7 +19,9 @@
 #   ./install.sh --target=all --check           # report managed-file drift
 #   ./install.sh --target=all --check --output drift.tsv
 #   ./install.sh --update                        # replay the last install
+#   ./install.sh --target=all --git-hook          # update after merge/rewrite
 #   ./install.sh --update --dry-run              # preview the replay
+#   ./install.sh --uninstall --git-hook           # remove this clone's hooks
 #
 # Claude gets skills, command skills, subagents and the PR merge guard from the
 # plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
@@ -84,12 +87,12 @@
 # no longer link there; when the claude migration removes an old link, an
 # installed opencode gets its own link to that skill instead.
 #
-# The codex target additionally installs the full plugins, not just the
-# skills. Requires python3 (skipped with a warning otherwise); --uninstall
-# reverses it. --env only filters skills; the plugin extras follow
-# --category:
-#   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
-#     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
+# Codex and OpenCode also install selected plugin subagents from
+# plugins/<category>/agents/*.md. Both render from the same source parser;
+# Codex writes TOML under ~/.codex/agents/, while OpenCode writes Markdown under
+# ~/.config/opencode/agents/. Requires python3 (skipped with a warning
+# otherwise); --uninstall removes only marker-owned outputs. --env only filters
+# skills; plugin agents follow --category.
 #
 # --instructions (off by default) composes always-on rules and pointers into
 # each agent's global instruction file. It also installs the pointer targets in
@@ -128,6 +131,9 @@
 # when no state exists; first install with --target=claude|codex|opencode|all.
 # Writes during --update re-check their file right before writing and leave it
 # alone if it changed in between.
+# --git-hook installs marker-owned post-merge and post-rewrite hooks in this
+# clone. Each checks saved install state before replaying it with --update.
+# --target=detected selects agents with an installed command or config directory.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -154,6 +160,8 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 DRY_RUN=0
 CHECK_MODE=0
 UPDATE_MODE=0
+GIT_HOOK=0
+GIT_HOOK_MARKER='# managed-by: fabiandistler/agents install.sh'
 CHECK_OUTPUT=""
 CHECK_OUTPUT_SET=0
 CHECK_ROWS=""
@@ -175,8 +183,9 @@ CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 usage() {
   cat <<'EOF'
 Usage:
-  ./install.sh --target=claude|codex|opencode|all [options]
+  ./install.sh --target=claude|codex|opencode|all|detected [options]
   ./install.sh --update [--dry-run] [--check [--output FILE]]
+  ./install.sh --uninstall --git-hook
 
 Options:
   --env=coding|chat|all        Filter skills (default: all)
@@ -189,6 +198,7 @@ Options:
   --check                      Report drift (0 clean, 3 drift)
   --output FILE|--output=FILE  Write the --check TSV report
   --update                     Replay the saved install (4: no saved state)
+  --git-hook                   Install this clone's update hooks
   -h, --help                   Show this help
 
 Exit codes: 0 success, 1 operational failure, 2 usage error,
@@ -196,7 +206,7 @@ Exit codes: 0 success, 1 operational failure, 2 usage error,
 
 Examples:
   ./install.sh --target=all --instructions --dry-run
-  ./install.sh --target=all --check --output /tmp/agents-drift.tsv
+  ./install.sh --target=detected --check --output /tmp/agents-drift.tsv
 EOF
 }
 
@@ -380,6 +390,22 @@ write_install_state() {
   mv "$tmp" "$file"
 }
 
+detect_targets() {
+  local targets=""
+  if command -v claude >/dev/null 2>&1 || [[ -d "$HOME/.claude" ]]; then
+    targets=claude
+  fi
+  if command -v codex >/dev/null 2>&1 || [[ -d "$HOME/.codex" ]]; then
+    [[ -z "$targets" ]] || targets+=$'\n'
+    targets+=codex
+  fi
+  if command -v opencode >/dev/null 2>&1 || [[ -d "$HOME/.config/opencode" ]]; then
+    [[ -z "$targets" ]] || targets+=$'\n'
+    targets+=opencode
+  fi
+  printf '%s\n' "$targets"
+}
+
 while (($#)); do
   arg="$1"
   shift
@@ -396,6 +422,7 @@ while (($#)); do
     --dry-run) DRY_RUN=1 ;;
     --check) CHECK_MODE=1 ;;
     --update) UPDATE_MODE=1 ;;
+    --git-hook) GIT_HOOK=1 ;;
     --output)
       if (($# == 0)); then
         echo "missing FILE after --output" >&2
@@ -426,6 +453,24 @@ while (($#)); do
   esac
 done
 
+if [[ "$TARGET" == detected ]] && ((UPDATE_MODE == 0)); then
+  RESOLVED_TARGETS="$(detect_targets)"
+  if [[ -z "$RESOLVED_TARGETS" ]]; then
+    echo "no agent commands or config directories detected; pass --target=claude|codex|opencode|all explicitly" >&2
+    usage >&2
+    exit 2
+  fi
+  detected_target_list="${RESOLVED_TARGETS//$'\n'/, }"
+  printf 'detected targets: %s\n' "$detected_target_list"
+  if [[ "$RESOLVED_TARGETS" == "claude"$'\n'"codex"$'\n'"opencode" ]]; then
+    TARGET=all
+  elif [[ "$RESOLVED_TARGETS" == *$'\n'* ]]; then
+    TARGET=resolved
+  else
+    TARGET="$RESOLVED_TARGETS"
+  fi
+fi
+
 if ((UPDATE_MODE)); then
   if [[ -n "$TARGET" || -n "$FILTER_FLAGS" || "$INSTRUCTIONS" == 1 ||
     -n "$GUARDS" || "$UNINSTALL" == 1 || ("$CHECK_OUTPUT_SET" == 1 && "$CHECK_MODE" == 0) ]]; then
@@ -439,8 +484,8 @@ if ((UPDATE_MODE)); then
     state_status=$?
     exit "$state_status"
   fi
-elif [[ -z "$TARGET" ]]; then
-  echo "missing --target=claude|codex|opencode|all" >&2
+elif [[ -z "$TARGET" ]] && ! ((UNINSTALL && GIT_HOOK)); then
+  echo "missing --target=claude|codex|opencode|all|detected" >&2
   usage >&2
   exit 2
 fi
@@ -458,16 +503,16 @@ if ((CHECK_MODE)); then
   case "$TARGET" in
     claude | codex | opencode | all) ;;
     resolved)
-      if ((UPDATE_MODE)); then
+      if ((UPDATE_MODE)) || [[ -n "$RESOLVED_TARGETS" ]]; then
         :
       else
-        echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
+        echo "invalid --target=$TARGET (expected claude|codex|opencode|all|detected)" >&2
         usage >&2
         exit 2
       fi
       ;;
     *)
-      echo "invalid --target=$TARGET (expected claude|codex|opencode|all)" >&2
+      echo "invalid --target=$TARGET (expected claude|codex|opencode|all|detected)" >&2
       usage >&2
       exit 2
       ;;
@@ -514,6 +559,7 @@ check_kind_for_what() {
     *"instruction payload"*) printf 'instruction-payload' ;;
     *"instruction"*) printf 'instructions' ;;
     *"Claude rule"*) printf 'claude-rule' ;;
+    *"OpenCode agent"*) printf 'opencode-agent' ;;
     *"agent "*) printf 'codex-agent' ;;
     *"PR merge guard"*) printf 'merge-guard' ;;
     *"secret read guard"*) printf 'secret-guard' ;;
@@ -705,7 +751,7 @@ list_skills() {
 # truncates before writing, so an interrupt in between leaves a file we do not
 # own in pieces; a temp file plus mv either lands whole or not at all.
 write_file_atomic() {
-  local path="$1" content="$2" owner_marker="${3:-}" owner_end="${4:-}"
+  local path="$1" content="$2" owner_marker="${3:-}" owner_end="${4:-}" mode="${7:-}"
   local expected_before="${5-}" expected_count="${6-}" expected_count_set=0 current current_count
   local tmp="$path.tmp.$$"
   (($# < 6)) || expected_count_set=1
@@ -718,6 +764,7 @@ write_file_atomic() {
   else
     : >"$tmp"
   fi
+  [[ -z "$mode" ]] || chmod "$mode" "$tmp"
   if ((UPDATE_MODE)) && [[ -n "$owner_marker" ]]; then
     if [[ -L "$path" ]] || { [[ -e "$path" ]] && [[ ! -f "$path" ]]; }; then
       rm "$tmp"
@@ -764,6 +811,9 @@ owned_file_set() {
   case "$label" in
     agent)
       marker="$AGENT_MARKER" kind=codex-agent check_target=codex
+      ;;
+    opencode-agent)
+      marker="$AGENT_MARKER" kind=opencode-agent check_target=opencode
       ;;
     rule)
       marker="$(claude_rule_marker)" kind=claude-rule check_target=claude
@@ -1111,17 +1161,15 @@ install_codex_member_overrides() {
     "$(skill_override_end_marker)" "$toml" "$count routed members disabled"
 }
 
-# --- Codex custom agent registration ----------------------------------------
+# --- Plugin agent registration ----------------------------------------------
 #
-# Claude loads plugins/<category>/agents/*.md natively; Codex CLI discovers
-# custom agents as TOML files under ~/.codex/agents/ instead. Each agent's
-# frontmatter name/description and Markdown body (its system prompt) are
-# converted to a generated <name>.toml carrying a marker comment, so install
-# and uninstall never touch files we did not generate. The `tools:` and
-# `model:` frontmatter fields have no Codex equivalent and are dropped
-# (model and sandbox are inherited from the parent session).
+# Claude loads plugins/<category>/agents/*.md natively. Codex and OpenCode
+# render the same source through scripts/plugin_agents.py into their own formats.
+# Generated files carry a marker comment, so install and uninstall never touch
+# files we did not generate.
 
 codex_agents_dir() { printf '%s/.codex/agents' "$HOME"; }
+opencode_agents_dir() { printf '%s/.config/opencode/agents' "$HOME"; }
 
 AGENT_MARKER='# generated by fabiandistler/agents install.sh; do not edit'
 
@@ -1146,56 +1194,12 @@ agent_categories() {
   return 0
 }
 
-# Render one agents/<name>.md as a Codex custom-agent TOML file, with
-# ${CLAUDE_PLUGIN_ROOT} resolved to the plugin directory in this repo.
-plugin_agent_toml() {
-  local md="$1" plugin_dir="$2" marker="$3"
-  python3 - "$md" "$plugin_dir" "$marker" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-try:
-    md_path, plugin_dir, marker = sys.argv[1], sys.argv[2], sys.argv[3]
-    lines = Path(md_path).read_text(encoding="utf-8").splitlines()
-    if lines[0].strip() != "---":
-        raise ValueError("missing frontmatter")
-    close = lines[1:].index("---") + 1
-    body = "\n".join(lines[close + 1 :]).strip()
-    if not body:
-        raise ValueError("empty agent body")
-
-    # Minimal YAML subset: `key: value` plus `key: >-` folded blocks whose
-    # continuation lines are indented; folded newlines become spaces.
-    fm: dict[str, str] = {}
-    key = None
-    parts: list[str] = []
-
-    def flush():
-        if key is not None:
-            fm[key] = " ".join(p.strip() for p in parts if p.strip())
-
-    for line in lines[1:close]:
-        if line[:1] in (" ", "\t") and key is not None:
-            parts.append(line)
-            continue
-        flush()
-        k, _, v = line.partition(":")
-        key, parts = k.strip(), [v.replace(">-", "", 1) if v.strip() == ">-" else v]
-    flush()
-
-    name, desc = fm["name"], fm["description"]
-    body = body.replace("${CLAUDE_PLUGIN_ROOT}", plugin_dir) + "\n"
-    body = body.replace("\\", "\\\\").replace('"""', '\\"\\"\\"')
-
-    print(marker)
-    print(f"name = {json.dumps(name)}")
-    print(f"description = {json.dumps(desc)}")
-    print()
-    print(f'developer_instructions = """\n{body}"""')
-except Exception:
-    sys.exit(1)
-PY
+# Render plugin agent source into the target runtime's format. Both renderers
+# share one parser, and both resolve plugin-relative paths for this checkout.
+plugin_agent_render() {
+  local renderer="$1" md="$2" plugin_dir="$3" marker="$4"
+  python3 "$REPO_ROOT/scripts/plugin_agents.py" "$renderer" \
+    --source "$md" --plugin-dir "$plugin_dir" --marker "$marker"
 }
 
 install_codex_agents() {
@@ -1215,7 +1219,7 @@ install_codex_agents() {
     for md in "$REPO_ROOT/plugins/$cat/agents/"*.md; do
       name="$(basename "$md" .md)"
       dest="$agents_dir/$name.toml"
-      if ! toml="$(plugin_agent_toml "$md" "$REPO_ROOT/plugins/$cat" "$AGENT_MARKER")"; then
+      if ! toml="$(plugin_agent_render codex "$md" "$REPO_ROOT/plugins/$cat" "$AGENT_MARKER")"; then
         printf '  WARN      failed to convert %s (skipping)\n' "$md" >&2
         continue
       fi
@@ -1264,6 +1268,85 @@ prune_stale_codex_agents() {
     compgen -G "$REPO_ROOT/plugins/*/agents/$name.md" >/dev/null && continue
     grep -qF "$AGENT_MARKER" "$dest" || continue
     check_record codex codex-agent "$dest" stale
+    run rm "$dest"
+    ((DRY_RUN)) || printf '  removed   %s (agent no longer in repo)\n' "$dest"
+  done
+}
+
+install_opencode_agents() {
+  local agents_dir cats
+  agents_dir="$(opencode_agents_dir)"
+  cats="$(agent_categories)"
+  [[ -n "$cats" ]] || return 0
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; cannot install OpenCode agents in %s\n' \
+      "$agents_dir" >&2
+    return 0
+  fi
+  local cat md name dest markdown
+  while IFS= read -r cat; do
+    [[ -n "$cat" ]] || continue
+    for md in "$REPO_ROOT/plugins/$cat/agents/"*.md; do
+      [[ -f "$md" ]] || continue
+      name="$(basename "$md" .md)"
+      dest="$agents_dir/$name.md"
+      if ! markdown="$(plugin_agent_render opencode "$md" "$REPO_ROOT/plugins/$cat" "$AGENT_MARKER")"; then
+        printf '  WARN      failed to convert %s for OpenCode (skipping)\n' "$md" >&2
+        continue
+      fi
+      owned_file_set "$dest" opencode-agent <<<"$markdown"
+    done
+  done <<<"$cats"
+}
+
+uninstall_opencode_agents() {
+  local agents_dir cat md name dest before
+  agents_dir="$(opencode_agents_dir)"
+  while IFS= read -r cat; do
+    [[ -n "$cat" ]] || continue
+    for md in "$REPO_ROOT/plugins/$cat/agents/"*.md; do
+      [[ -f "$md" ]] || continue
+      name="$(basename "$md" .md)"
+      dest="$agents_dir/$name.md"
+      [[ -f "$dest" && ! -L "$dest" ]] || continue
+      if ! grep -qF "$AGENT_MARKER" "$dest"; then
+        printf '  WARN      %s was not generated by us (skipping)\n' "$dest" >&2
+        continue
+      fi
+      before="$(cat "$dest")"
+      if ((DRY_RUN)); then
+        printf '[dry-run] remove %s\n' "$dest"
+        continue
+      fi
+      if [[ ! -f "$dest" || -L "$dest" || "$(cat "$dest")" != "$before" ]] ||
+        ! grep -qF "$AGENT_MARKER" "$dest"; then
+        printf '  WARN      %s changed during uninstall (leaving it untouched)\n' "$dest" >&2
+        continue
+      fi
+      rm "$dest"
+      printf '  removed   %s\n' "$dest"
+    done
+  done < <(agent_categories)
+}
+
+prune_stale_opencode_agents() {
+  local agents_dir dest name before
+  agents_dir="$(opencode_agents_dir)"
+  [[ -d "$agents_dir" ]] || return 0
+  for dest in "$agents_dir"/*.md; do
+    [[ -f "$dest" && ! -L "$dest" ]] || continue
+    name="$(basename "$dest" .md)"
+    compgen -G "$REPO_ROOT/plugins/*/agents/$name.md" >/dev/null && continue
+    grep -qF "$AGENT_MARKER" "$dest" || continue
+    check_record opencode opencode-agent "$dest" stale
+    if ((UPDATE_MODE && CHECK_MODE == 0)); then
+      before="$(cat "$dest")"
+      if [[ ! -f "$dest" || -L "$dest" || "$(cat "$dest")" != "$before" ]] ||
+        ! grep -qF "$AGENT_MARKER" "$dest"; then
+        printf '  WARN      %s changed during --update; leaving it untouched\n' "$dest" >&2
+        continue
+      fi
+    fi
     run rm "$dest"
     ((DRY_RUN)) || printf '  removed   %s (agent no longer in repo)\n' "$dest"
   done
@@ -2253,6 +2336,129 @@ ensure_parent() {
   fi
 }
 
+git_hooks_dir() {
+  local git_dir
+  if ! git_dir="$(git -C "$REPO_ROOT" rev-parse --absolute-git-dir 2>/dev/null)"; then
+    echo "--git-hook requires a Git checkout" >&2
+    return 1
+  fi
+  printf '%s/hooks\n' "$git_dir"
+}
+
+render_git_hook() {
+  local hook="$1"
+  cat <<'HOOK'
+#!/bin/sh
+# managed-by: fabiandistler/agents install.sh
+HOOK
+  if [[ "$hook" == post-rewrite ]]; then
+    printf '%s\n' 'cat >/dev/null'
+  fi
+  cat <<'HOOK'
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
+cd "$repo_root" || exit 1
+if ./install.sh --update --check; then
+  exit 0
+else
+  check_status=$?
+  [ "$check_status" -eq 3 ] || exit "$check_status"
+fi
+exec ./install.sh --update
+HOOK
+}
+
+git_hook_is_managed() {
+  [[ -f "$1" && ! -L "$1" ]] && grep -qxF "$GIT_HOOK_MARKER" "$1"
+}
+
+install_git_hooks() {
+  local hooks_dir hook file content before
+  hooks_dir="$(git_hooks_dir)" || return 1
+  ensure_parent "$hooks_dir"
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    content="$(render_git_hook "$hook")"
+    if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+      printf '  WARN      %s is not a regular hook file (skipping)\n' "$file" >&2
+      continue
+    fi
+    if [[ -f "$file" ]]; then
+      before="$(cat "$file")"
+      if ! grep -qxF "$GIT_HOOK_MARKER" <<<"$before"; then
+        printf '  WARN      %s is not managed by this installer (skipping)\n' "$file" >&2
+        continue
+      fi
+      if [[ "$before" == "$content" && -x "$file" ]]; then
+        printf '  ok        %s (Git hook)\n' "$file"
+        continue
+      fi
+      if ((DRY_RUN)); then
+        printf '[dry-run] update %s\n' "$file"
+        continue
+      fi
+      write_file_atomic "$file" "$content" "$GIT_HOOK_MARKER" "" "$before" file 755
+      printf '  updated   %s (Git hook)\n' "$file"
+      continue
+    fi
+    if ((DRY_RUN)); then
+      printf '[dry-run] create %s\n' "$file"
+      continue
+    fi
+    write_file_atomic "$file" "$content" "$GIT_HOOK_MARKER" "" "" file 755
+    printf '  created   %s (Git hook)\n' "$file"
+  done
+}
+
+remove_git_hooks() {
+  local hooks_dir hook file before
+  hooks_dir="$(git_hooks_dir)" || return 1
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    [[ -e "$file" || -L "$file" ]] || continue
+    if ! git_hook_is_managed "$file"; then
+      printf '  WARN      %s is not a marker-owned hook (leaving it untouched)\n' "$file" >&2
+      continue
+    fi
+    before="$(cat "$file")"
+    if ((DRY_RUN)); then
+      printf '[dry-run] remove %s\n' "$file"
+      continue
+    fi
+    if ! git_hook_is_managed "$file" || [[ "$(cat "$file")" != "$before" ]]; then
+      printf '  WARN      %s changed during uninstall (leaving it untouched)\n' "$file" >&2
+      continue
+    fi
+    rm "$file"
+    printf '  removed   %s (Git hook)\n' "$file"
+  done
+}
+
+check_git_hooks() {
+  local hooks_dir hook file expected actual state
+  hooks_dir="$(git_hooks_dir)" || return 1
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    expected="$(render_git_hook "$hook")"
+    if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+      state=foreign
+    elif [[ ! -f "$file" ]]; then
+      state=missing
+    else
+      actual="$(cat "$file")"
+      if ! grep -qxF "$GIT_HOOK_MARKER" <<<"$actual"; then
+        state=foreign
+      elif [[ "$(grep -Fxc "$GIT_HOOK_MARKER" <<<"$actual" || true)" != 1 ]]; then
+        state=duplicate
+      elif [[ "$actual" != "$expected" || ! -x "$file" ]]; then
+        state=stale
+      else
+        continue
+      fi
+    fi
+    check_record all git-hook "$file" "$state"
+  done
+}
+
 link_one() {
   local src="$1" dest="$2"
   if [[ -L "$dest" ]]; then
@@ -2621,6 +2827,11 @@ rebase_managed_repo_paths() {
         rebase_repo_symlink_dir "$(target_command_dir_for opencode)"
         rebase_repo_symlink_dir "$HOME/.config/opencode/plugins"
         rebase_repo_symlink_dir "$HOME/.config/opencode/agent"
+        agents_dir="$(opencode_agents_dir)"
+        for agent in "$agents_dir"/*.md; do
+          [[ -f "$agent" && ! -L "$agent" ]] || continue
+          rebase_owned_file_path "$agent" "$AGENT_MARKER"
+        done
         ;;
     esac
   done < <(resolve_targets)
@@ -2689,6 +2900,12 @@ main() {
     fi
     if [[ "$target" == "opencode" ]]; then
       cleanup_opencode_legacy "$skills"
+      prune_stale_opencode_agents
+      if ((UNINSTALL)); then
+        uninstall_opencode_agents
+      else
+        install_opencode_agents
+      fi
     fi
     if ((INSTRUCTIONS)); then
       if ((UNINSTALL)); then
@@ -2763,13 +2980,21 @@ check_result() {
 
 check_main() {
   main >/dev/null
+  ((GIT_HOOK)) && check_git_hooks
   check_result
 }
 
 if ((CHECK_MODE)); then
   check_main
+elif [[ -z "$TARGET" ]] && ((UNINSTALL && GIT_HOOK)); then
+  remove_git_hooks
 else
   main
+  if ((UNINSTALL && GIT_HOOK)); then
+    remove_git_hooks
+  elif ((GIT_HOOK)); then
+    install_git_hooks
+  fi
   if ((UNINSTALL == 0 && DRY_RUN == 0)); then
     write_install_state
   fi
