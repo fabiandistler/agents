@@ -159,6 +159,7 @@ CHECK_OUTPUT_SET=0
 CHECK_ROWS=""
 CHECK_CURRENT_TARGET=""
 RESOLVED_TARGETS=""
+OLD_REPO_ROOT=""
 UNINSTALL=0
 INSTRUCTIONS=0
 GUARDS=""
@@ -206,7 +207,7 @@ install_state_file() {
 
 load_install_state() {
   local file reader_pid status targets_csv stored_env stored_category stored_instructions \
-    stored_merge stored_secret target
+    stored_merge stored_secret stored_repo_root target
   file="$(install_state_file)"
   if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
     printf 'saved install state is not a regular file: %s\n' "$file" >&2
@@ -260,6 +261,7 @@ try:
         "1" if instructions else "0",
         "1" if merge_guard else "0",
         "1" if secret_guard else "0",
+        repo_root,
     ]
     sys.stdout.buffer.write("\0".join(values).encode("utf-8") + b"\0")
 except (OSError, UnicodeError, ValueError, KeyError, TypeError):
@@ -273,7 +275,8 @@ PY
     ! IFS= read -r -d '' stored_category <&3 ||
     ! IFS= read -r -d '' stored_instructions <&3 ||
     ! IFS= read -r -d '' stored_merge <&3 ||
-    ! IFS= read -r -d '' stored_secret <&3; then
+    ! IFS= read -r -d '' stored_secret <&3 ||
+    ! IFS= read -r -d '' stored_repo_root <&3; then
     exec 3<&-
     wait "$reader_pid" || true
     echo "saved install state is invalid" >&2
@@ -293,6 +296,7 @@ PY
   GUARDS=""
   [[ "$stored_merge" == 1 ]] && GUARDS+=" merge"
   [[ "$stored_secret" == 1 ]] && GUARDS+=" secret"
+  OLD_REPO_ROOT="$stored_repo_root"
   RESOLVED_TARGETS=""
   IFS=',' read -ra _resolved_targets <<<"$targets_csv"
   for target in "${_resolved_targets[@]}"; do
@@ -1452,6 +1456,56 @@ target_is_selected() {
   return 1
 }
 
+rebase_owned_file_path() {
+  local file="$1" marker="$2" before after current
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  grep -qxF "$marker" "$file" || return 0
+  before="$(cat "$file")"
+  after="${before//"$OLD_REPO_ROOT"/"$REPO_ROOT"}"
+  [[ "$after" != "$before" ]] || return 0
+  if ((DRY_RUN)); then
+    printf '[dry-run] rewrite repo path in %s\n' "$file"
+    return 0
+  fi
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  current="$(cat "$file")"
+  if [[ "$current" != "$before" ]] || ! grep -qxF "$marker" "$file"; then
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
+    return 0
+  fi
+  write_file_atomic "$file" "$after" "$marker" "" "$before" file
+  printf '  updated   %s (moved checkout path)\n' "$file"
+}
+
+rebase_managed_block_path() {
+  local file="$1" begin="$2" end="$3" before prefix remainder body suffix updated_body after current
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  before="$(cat "$file")"
+  block_markers_balanced "$begin" "$end" <<<"$before" || return 0
+  [[ "$(grep -Fxc "$begin" <<<"$before" || true)" == 1 ]] || return 0
+  prefix="${before%%"$begin"*}"
+  remainder="${before#*"$begin"}"
+  body="${remainder%%"$end"*}"
+  suffix="${remainder#*"$end"}"
+  updated_body="${body//"$OLD_REPO_ROOT"/"$REPO_ROOT"}"
+  [[ "$updated_body" != "$body" ]] || return 0
+  after="$prefix$begin$updated_body$end$suffix"
+  if ((DRY_RUN)); then
+    printf '[dry-run] rewrite repo path in %s\n' "$file"
+    return 0
+  fi
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  current="$(cat "$file")"
+  if [[ "$current" != "$before" ]] ||
+    ! block_markers_balanced "$begin" "$end" <<<"$current" ||
+    [[ "$(grep -Fxc "$begin" <<<"$current" || true)" != 1 ]]; then
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
+    return 0
+  fi
+  write_file_atomic "$file" "$after" "$begin" "$end" "$before" 1
+  printf '  updated   %s (moved checkout path)\n' "$file"
+}
+
 # Global instruction file for a target. Unknown targets are an error.
 instruction_file_for() {
   case "$1" in
@@ -2204,6 +2258,9 @@ link_one() {
   if [[ -L "$dest" ]]; then
     local current
     current="$(readlink "$dest")"
+    if [[ $'\n'"$PLANNED_REBASED_LINKS" == *$'\n'"$dest"$'\n'* ]]; then
+      return 0
+    fi
     if [[ "$current" == "$src" ]]; then
       printf '  ok        %s -> %s\n' "$dest" "$src"
       return 0
@@ -2229,6 +2286,42 @@ link_one() {
   fi
   run ln -s "$src" "$dest"
   printf '  linked    %s -> %s\n' "$dest" "$src"
+}
+
+PLANNED_REBASED_LINKS=""
+
+rebase_repo_symlink() {
+  local link="$1" current suffix new_target
+  [[ "$UPDATE_MODE" == 1 && -n "$OLD_REPO_ROOT" && "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] || return 0
+  [[ -L "$link" ]] || return 0
+  current="$(readlink "$link")"
+  [[ "$current" == "$OLD_REPO_ROOT/"* ]] || return 0
+  suffix="${current#"$OLD_REPO_ROOT"/}"
+  new_target="$REPO_ROOT/$suffix"
+  [[ "$new_target" == "$REPO_ROOT/"* && (-e "$new_target" || -L "$new_target") ]] || return 0
+  if ((DRY_RUN)); then
+    printf '[dry-run] relink %s to current checkout\n' "$link"
+    PLANNED_REBASED_LINKS+="$link"$'\n'
+    return 0
+  fi
+  [[ -L "$link" && "$(readlink "$link")" == "$current" ]] || return 0
+  rm "$link"
+  [[ ! -e "$link" && ! -L "$link" ]] || {
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$link" >&2
+    return 0
+  }
+  [[ -e "$new_target" || -L "$new_target" ]] || return 0
+  ln -s "$new_target" "$link"
+  printf '  linked    %s -> %s (moved checkout)\n' "$link" "$new_target"
+}
+
+rebase_repo_symlink_dir() {
+  local dir="$1" link
+  [[ -d "$dir" ]] || return 0
+  for link in "$dir"/*; do
+    [[ -L "$link" ]] || continue
+    rebase_repo_symlink "$link"
+  done
 }
 
 # Links a dry-run planned but did not create, one per line, so a later target
@@ -2490,6 +2583,60 @@ sync_skill_links() {
   return 0
 }
 
+rebase_managed_repo_paths() {
+  local target config guard file agents_dir agent name payloads_dir
+  [[ "$UPDATE_MODE" == 1 && "$CHECK_MODE" == 0 && -n "$OLD_REPO_ROOT" &&
+    "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] || return 0
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    rebase_managed_block_path "$(instruction_file_for "$target")" \
+      "$(instructions_begin_marker)" "$(instructions_end_marker)"
+    case "$target" in
+      claude)
+        rebase_repo_symlink_dir "$HOME/.claude/skills"
+        rebase_repo_symlink_dir "$HOME/.claude/commands"
+        while IFS= read -r file; do
+          [[ -n "$file" ]] && rebase_owned_file_path "$file" "$(claude_rule_marker)"
+        done < <(list_managed_claude_rules)
+        ;;
+      codex)
+        rebase_repo_symlink_dir "$HOME/.agents/skills"
+        rebase_repo_symlink_dir "$HOME/.codex/skills"
+        rebase_repo_symlink_dir "$HOME/.codex/prompts"
+        config="$(codex_config_path)"
+        rebase_managed_block_path "$config" "$(skill_override_begin_marker)" \
+          "$(skill_override_end_marker)"
+        for guard in merge secret; do
+          rebase_managed_block_path "$config" "$(guard_begin_marker "$guard")" \
+            "$(guard_end_marker "$guard")"
+        done
+        agents_dir="$(codex_agents_dir)"
+        for agent in "$agents_dir"/*.toml; do
+          [[ -f "$agent" ]] || continue
+          rebase_owned_file_path "$agent" "$AGENT_MARKER"
+        done
+        ;;
+      opencode)
+        rebase_repo_symlink_dir "$HOME/.config/opencode/skills"
+        rebase_repo_symlink_dir "$(target_command_dir_for opencode)"
+        rebase_repo_symlink_dir "$HOME/.config/opencode/plugins"
+        rebase_repo_symlink_dir "$HOME/.config/opencode/agent"
+        ;;
+    esac
+  done < <(resolve_targets)
+
+  payloads_dir="$(instruction_payloads_dir)"
+  for name in \
+    30-python.md \
+    70-code-review-conventions.md \
+    80-agent-pipelines.md \
+    85-agent-scripts.md; do
+    rebase_owned_file_path "$payloads_dir/$name" "$(instruction_payload_marker)"
+  done
+  rebase_owned_file_path "$payloads_dir/python_init_context.py" \
+    '# managed-by: fabiandistler/agents install.sh'
+}
+
 main() {
   local skills
   [[ -n "$RESOLVED_TARGETS" ]] || RESOLVED_TARGETS="$(resolve_targets)"
@@ -2498,6 +2645,7 @@ main() {
     echo "no skills found under $REPO_ROOT (env=$ENV, category=$CATEGORY)" >&2
     exit 1
   fi
+  rebase_managed_repo_paths
   local routed
   routed="$(routed_categories)"
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"

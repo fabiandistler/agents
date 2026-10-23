@@ -414,7 +414,8 @@ PY
 
 run_update_tests() {
   local update_home state_home state_file state_copy output status instruction_file \
-    foreign_home foreign_state foreign_agent foreign_link no_state_home no_state_dir \
+    move_home move_state move_file old_root moved_skill_link \
+    moved_plugin_link foreign_home foreign_state foreign_agent foreign_link no_state_home no_state_dir \
     default_state_home
   capture_update() {
     local captured_home="$1" captured_state_home="$2"
@@ -518,6 +519,87 @@ PY
   [[ "$status" -eq 4 ]] || fail "missing update state exited $status instead of 4"
   [[ "$output" == *'--target='* ]] || fail "missing-state error did not name --target"
   pass "--update reports missing state with its own exit code and bootstrap option"
+
+  move_home="$(mktemp -d)"
+  move_state="$move_home/xdg-state"
+  move_file="$move_state/fabiandistler-agents/install.json"
+  old_root="/old/checkout/agents"
+  HOME="$move_home" XDG_STATE_HOME="$move_state" "$INSTALL" \
+    --target=all --env=coding --category=architecture --instructions \
+    --merge-guard --secret-guard >/dev/null
+  "$PYTHON" - "$move_file" "$old_root" "$REPO_ROOT" "$move_home" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+state_path = Path(sys.argv[1])
+old_root, repo_root, home = sys.argv[2:]
+state = json.loads(state_path.read_text(encoding="utf-8"))
+assert state["targets"] == ["claude", "codex", "opencode"]
+state["repo_root"] = old_root
+state_path.write_text(json.dumps(state) + "\n")
+
+config = Path(home) / ".codex/config.toml"
+config.write_text(
+    f"# user note: {old_root}/keep\n" +
+    config.read_text(encoding="utf-8").replace(repo_root, old_root)
+)
+for agent in (Path(home) / ".codex/agents").glob("*.toml"):
+    agent.write_text(agent.read_text(encoding="utf-8").replace(repo_root, old_root))
+instructions = Path(home) / ".codex/AGENTS.md"
+instructions.write_text(
+    instructions.read_text(encoding="utf-8") + f"\nuser note: {old_root}/keep\n"
+)
+PY
+  moved_skill_link="$move_home/.agents/skills/architecture"
+  rm "$moved_skill_link"
+  ln -s "$old_root/skills/architecture" "$moved_skill_link"
+  moved_plugin_link="$move_home/.config/opencode/plugins/pr-merge-guard.js"
+  rm "$moved_plugin_link"
+  ln -s "$old_root/scripts/opencode/pr-merge-guard.js" "$moved_plugin_link"
+  capture_update "$move_home" "$move_state" --update
+  [[ "$status" -eq 0 ]] || fail "--update failed after a checkout move: $output"
+  [[ "$(readlink "$moved_skill_link")" == "$REPO_ROOT/skills/architecture" ]] ||
+    fail "--update did not retarget the Codex skill link from the previous checkout"
+  [[ "$(readlink "$moved_plugin_link")" == "$REPO_ROOT/scripts/opencode/pr-merge-guard.js" ]] ||
+    fail "--update did not retarget the OpenCode guard link from the previous checkout"
+  if "$PYTHON" - "$move_home" "$move_file" "$REPO_ROOT" "$old_root" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+home, state_path, repo_root, old_root = sys.argv[1:]
+config_text = (Path(home) / ".codex/config.toml").read_text(encoding="utf-8")
+assert f"# user note: {old_root}/keep" in config_text
+for begin, end in (
+    (
+        "# >>> agents routed-member skill overrides (managed by install.sh, do not edit) >>>",
+        "# <<< agents routed-member skill overrides <<<",
+    ),
+    (
+        "# >>> agents PR merge guard (managed by install.sh, do not edit) >>>",
+        "# <<< agents PR merge guard <<<",
+    ),
+    (
+        "# >>> agents secret read guard (managed by install.sh, do not edit) >>>",
+        "# <<< agents secret read guard <<<",
+    ),
+):
+    body = config_text.split(begin, 1)[1].split(end, 1)[0]
+    assert old_root not in body and repo_root in body
+for agent in (Path(home) / ".codex/agents").glob("*.toml"):
+    text = agent.read_text(encoding="utf-8")
+    assert old_root not in text and repo_root in text
+instructions = (Path(home) / ".codex/AGENTS.md").read_text(encoding="utf-8")
+assert f"user note: {old_root}/keep" in instructions
+assert json.loads(Path(state_path).read_text(encoding="utf-8"))["repo_root"] == repo_root
+PY
+  then
+    :
+  else
+    fail "--update did not rebase marker-owned paths and preserve external content"
+  fi
+  pass "--update rebases marker-owned files and links after a checkout move"
 
   foreign_home="$(mktemp -d)"
   foreign_state="$foreign_home/xdg-state"
