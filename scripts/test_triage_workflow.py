@@ -134,6 +134,13 @@ def test_classifier_uses_the_existing_claude_app_token():
     assert with_["prompt"] == "${{ steps.prompt.outputs.prompt }}"
 
 
+def test_classifier_uses_the_read_only_job_token_instead_of_oidc():
+    # Without github_token the action fetches an OIDC token, which fails
+    # without id-token: write and would grant the Claude app's write scope.
+    assert classify_action()["with"]["github_token"] == "${{ github.token }}"  # noqa: S105 -- expression name, not a secret
+    assert "id-token" not in job(load_workflow(), "classify")["permissions"]
+
+
 def test_classifier_is_limited_to_read_and_search_tools():
     args = classify_action()["with"]["claude_args"]
 

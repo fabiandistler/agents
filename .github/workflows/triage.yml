@@ -112,6 +112,10 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Without this input the action requests an OIDC token for the Claude
+          # app, which needs `id-token: write` and hands the model job the app's
+          # write-scoped token. The job's read-only token keeps the split intact.
+          github_token: ${{ github.token }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           settings: |
             {"permissions":{"deny":["Read(/proc/**)","Read(/sys/**)","Read(**/.env)","Read(**/.env.*)","Read(**/*.pem)","Read(**/*.key)","Read(**/.ssh/**)","Read(**/.aws/**)","Read(**/.config/gh/**)"]}}
