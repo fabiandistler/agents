@@ -139,17 +139,71 @@ def test_plan_has_the_documented_shape():
 
     assert set(plan) == {
         "schema_version",
+        "repo",
         "number",
         "head_sha",
         "status",
         "abort_reason",
+        "decision",
         "actions",
     }
     assert plan["schema_version"] == 1
+    assert plan["repo"] == "fabiandistler/agents"
     assert plan["number"] == 42
     assert plan["head_sha"] == "abc123"
     assert plan["status"] == "planned"
     assert plan["abort_reason"] is None
+
+
+def test_plan_carries_the_decision_for_the_step_summary():
+    plan = pr_publish.plan_publish(make_context(), make_assessment(), make_review())
+
+    assert plan["decision"] == {
+        "risk": "low",
+        "review_status": "ok",
+        "verdict": "pass",
+        "auto_merge": "off",
+    }
+
+
+def test_decision_reports_enabled_auto_merge():
+    plan = pr_publish.plan_publish(
+        make_context(), make_assessment(), make_review(), auto_merge=True
+    )
+
+    assert plan["decision"]["auto_merge"] == "enabled"
+
+
+def test_decision_reports_disabled_auto_merge():
+    context = make_context(labels=["risk:low", "review:pass", "auto-merge:bot"])
+
+    plan = pr_publish.plan_publish(context, make_assessment(), make_review(), auto_merge=False)
+
+    assert plan["decision"]["auto_merge"] == "disabled"
+
+
+def test_decision_reports_the_effective_risk_and_verdict():
+    plan = pr_publish.plan_publish(
+        make_context(), make_assessment(), make_review(risk="high", verdict="concerns")
+    )
+
+    assert plan["decision"]["risk"] == "high"
+    assert plan["decision"]["verdict"] == "concerns"
+
+
+def test_aborted_plan_has_no_decision_to_apply():
+    plan = pr_publish.plan_publish(
+        make_context(head_sha="def456"),
+        make_assessment(head_sha="abc123"),
+        make_review(head_sha="abc123"),
+    )
+
+    assert plan["decision"] == {
+        "risk": None,
+        "review_status": "ok",
+        "verdict": None,
+        "auto_merge": "off",
+    }
 
 
 def test_plan_uses_only_the_documented_action_kinds():
@@ -725,6 +779,182 @@ def test_comment_body_does_not_depend_on_the_auto_merge_decision():
     assert comment_body(quiet) == comment_body(merging)
 
 
+# --- Live path ---------------------------------------------------------------
+
+REPO = "fabiandistler/agents"
+NUMBER = 42
+PR_PATH = f"/repos/{REPO}/pulls/{NUMBER}"
+FILES_PATH = f"{PR_PATH}/files"
+COMMENTS_PATH = f"/repos/{REPO}/issues/{NUMBER}/comments"
+REVIEWS_PATH = f"{PR_PATH}/reviews"
+CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
+
+
+def json_response(payload: object) -> pr_publish.pr_github.Response:
+    return pr_publish.pr_github.Response(status=200, body=json.dumps(payload).encode("utf-8"))
+
+
+def pull_request(head_sha: str, labels: list[str]) -> dict:
+    return {
+        "title": "A change",
+        "body": "",
+        "user": {"login": "someone-else"},
+        "head": {"sha": head_sha, "ref": "fix/x", "repo": {"full_name": REPO}},
+        "base": {
+            "sha": "base123",
+            "ref": "main",
+            "repo": {"full_name": REPO, "default_branch": "main"},
+        },
+        "draft": False,
+        "mergeable": True,
+        "labels": [{"name": label} for label in labels],
+    }
+
+
+class FakeGitHub:
+    """Serves ``fetch_context`` from canned payloads and records every write."""
+
+    def __init__(self, head_shas: list[str], labels: list[str] | None = None) -> None:
+        self.head_shas = list(head_shas)
+        self.labels = list(labels or [])
+        self.calls: list[dict] = []
+        self.pull_fetches = 0
+        self.fail_paths: set[str] = set()
+
+    def get(self, path: str, params: dict | None = None, accept: str | None = None):
+        self.calls.append({"method": "GET", "path": path, "payload": None})
+        if path == PR_PATH and accept is None:
+            self.pull_fetches += 1
+            return json_response(pull_request(self.head_shas.pop(0), self.labels))
+        if path == PR_PATH:
+            return pr_publish.pr_github.Response(status=200, body=b"diff --git a/x b/x\n")
+        if path == FILES_PATH:
+            return json_response(
+                [
+                    {
+                        "filename": "docs/guide.md",
+                        "status": "modified",
+                        "additions": 1,
+                        "deletions": 0,
+                        "patch": "@@",
+                    }
+                ]
+            )
+        if path == COMMENTS_PATH:
+            return json_response([])
+        if path == REVIEWS_PATH:
+            return json_response([])
+        if path.endswith("/check-runs"):
+            return json_response({"check_runs": []})
+        if path.startswith(CONTENTS_PREFIX):
+            raise pr_publish.pr_github.FetchError("not found", status=404)
+        raise AssertionError(f"unexpected GET {path}")
+
+    def _write(self, method: str, path: str, payload: dict | None):
+        self.calls.append({"method": method, "path": path, "payload": payload})
+        if path in self.fail_paths:
+            raise pr_publish.pr_github.FetchError("server error", status=500)
+        return pr_publish.pr_github.Response(status=200, body=b"{}")
+
+    def post(self, path: str, payload: dict | None = None):
+        return self._write("POST", path, payload)
+
+    def patch(self, path: str, payload: dict | None = None):
+        return self._write("PATCH", path, payload)
+
+    def delete(self, path: str, payload: dict | None = None):
+        return self._write("DELETE", path, payload)
+
+
+def write_calls(fake: FakeGitHub) -> list[dict]:
+    return [call for call in fake.calls if call["method"] != "GET"]
+
+
+def test_live_dry_run_fetches_once_and_writes_nothing():
+    fake = FakeGitHub(["abc123"])
+
+    plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)
+
+    assert plan["status"] == "planned"
+    assert plan["head_sha"] == "abc123"
+    assert fake.pull_fetches == 1
+    assert write_calls(fake) == []
+
+
+def test_live_write_applies_exactly_the_planned_actions():
+    fake = FakeGitHub(["abc123", "abc123"])
+
+    payload = pr_publish.publish_live(
+        REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
+    )
+
+    assert payload["schema_version"] == 1
+    assert payload["plan"]["status"] == "planned"
+    assert payload["ok"] is True
+    assert [result["kind"] for result in payload["results"]] == [
+        "set_labels",
+        "upsert_comment",
+        "request_reviewer",
+    ]
+    assert fake.pull_fetches == 2
+    assert [call["method"] for call in write_calls(fake)] == [
+        "POST",
+        "POST",
+        "POST",
+        "POST",
+        "POST",
+    ]
+    assert write_calls(fake)[0]["path"] == f"/repos/{REPO}/labels"
+    assert write_calls(fake)[2]["path"] == f"/repos/{REPO}/issues/{NUMBER}/labels"
+    assert write_calls(fake)[3]["path"] == COMMENTS_PATH
+    assert write_calls(fake)[4]["path"] == f"/repos/{REPO}/pulls/{NUMBER}/requested_reviewers"
+
+
+def test_a_changed_head_sha_between_the_fetches_aborts_every_write():
+    fake = FakeGitHub(["abc123", "def456"])
+
+    payload = pr_publish.publish_live(
+        REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
+    )
+
+    assert payload["status"] == "aborted"
+    assert payload["abort_reason"] == "head_sha_changed"
+    assert payload["actions"] == []
+    assert payload["head_sha"] == "def456"
+    assert fake.pull_fetches == 2
+    assert write_calls(fake) == []
+
+
+def test_a_stale_assessment_aborts_before_the_second_fetch():
+    fake = FakeGitHub(["def456"])
+
+    payload = pr_publish.publish_live(
+        REPO,
+        NUMBER,
+        make_assessment(head_sha="abc123"),
+        make_review(head_sha="abc123"),
+        write=True,
+        client=fake,
+    )
+
+    assert payload["status"] == "aborted"
+    assert payload["abort_reason"] == "head_sha_changed"
+    assert fake.pull_fetches == 1
+    assert write_calls(fake) == []
+
+
+def test_a_failed_write_is_reported_in_the_results():
+    fake = FakeGitHub(["abc123", "abc123"])
+    fake.fail_paths.add(f"/repos/{REPO}/labels")
+
+    payload = pr_publish.publish_live(
+        REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
+    )
+
+    assert payload["ok"] is False
+    assert [result["ok"] for result in payload["results"]] == [False, True, True]
+
+
 # --- CLI ---------------------------------------------------------------------
 
 
@@ -802,6 +1032,8 @@ def test_cli_help_is_short_and_documents_exit_codes():
     assert len(run.stdout.splitlines()) < 25
     assert "usage:" in run.stdout
     assert "exit:" in run.stdout
+    assert "1 a write action failed" in run.stdout
+    assert "--write" in run.stdout
     assert run.stdout.count("python3 scripts/pr_publish.py") == 2
 
 
@@ -933,3 +1165,101 @@ def test_cli_reads_auto_merge_from_the_environment(tmp_path):
 
     disabled = run_cli(*args, PR_AUTO_MERGE="TRUE")
     assert "enable_auto_merge" not in disabled.stdout
+
+
+# --- CLI write path ----------------------------------------------------------
+
+
+def live_args(tmp_path: Path) -> list[str]:
+    return [
+        "--live",
+        "--repo",
+        REPO,
+        "--pr",
+        str(NUMBER),
+        "--assessment",
+        str(write_json(tmp_path, "assessment.json", make_assessment())),
+        "--review",
+        str(write_json(tmp_path, "review.json", make_review())),
+    ]
+
+
+def test_cli_write_requires_live(tmp_path):
+    code = pr_publish.main([*offline_args(tmp_path), "--write"])
+
+    assert code == 2
+
+
+def test_cli_write_outside_github_actions_exits_five(monkeypatch, tmp_path):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+    code = pr_publish.main([*live_args(tmp_path), "--write"])
+
+    assert code == 5
+
+
+def test_cli_write_inside_actions_without_a_token_exits_four(monkeypatch, tmp_path):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    code = pr_publish.main([*live_args(tmp_path), "--write"])
+
+    assert code == 4
+
+
+def test_cli_write_applies_the_plan_and_prints_the_results(monkeypatch, tmp_path, capsys):
+    fake = FakeGitHub(["abc123", "abc123"])
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    code = pr_publish.main([*live_args(tmp_path), "--write"], client=fake)
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == 1
+    assert payload["ok"] is True
+    assert payload["plan"]["status"] == "planned"
+    assert [result["kind"] for result in payload["results"]] == [
+        "set_labels",
+        "upsert_comment",
+        "request_reviewer",
+    ]
+
+
+def test_cli_write_exits_one_when_an_action_failed(monkeypatch, tmp_path, capsys):
+    fake = FakeGitHub(["abc123", "abc123"])
+    fake.fail_paths.add(COMMENTS_PATH)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    code = pr_publish.main([*live_args(tmp_path), "--write"], client=fake)
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    payload = json.loads(captured.out)
+    assert payload["ok"] is False
+    assert [result["kind"] for result in payload["results"]] == [
+        "set_labels",
+        "upsert_comment",
+        "request_reviewer",
+    ]
+    failed = [result for result in payload["results"] if not result["ok"]]
+    assert [result["kind"] for result in failed] == ["upsert_comment"]
+    assert failed[0]["detail"], "a failed action must say what went wrong"
+
+
+def test_cli_write_prints_an_aborted_plan_when_the_head_changed(monkeypatch, tmp_path, capsys):
+    fake = FakeGitHub(["abc123", "def456"])
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    code = pr_publish.main([*live_args(tmp_path), "--write"], client=fake)
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "aborted"
+    assert payload["abort_reason"] == "head_sha_changed"
+    assert payload["actions"] == []
+    assert "results" not in payload
+    assert write_calls(fake) == []

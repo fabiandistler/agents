@@ -4,8 +4,8 @@
 # The workflow runs from the base commit on pull_request_target and never
 # checks out or executes the pull request head: metadata, diff and base file
 # contents arrive through the REST API. Every job holds only the credential its
-# stage needs, and publish consumes the earlier stages as artifacts. This slice
-# is a dry run: publish prints the plan it would apply and changes nothing.
+# stage needs, and publish consumes the earlier stages as artifacts. Publish
+# writes on every pull request event; a manual run defaults to a dry run.
 name: pr-review
 
 on:
@@ -125,6 +125,7 @@ jobs:
       always() && needs.assess.result == 'success'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
       issues: write
     steps:
@@ -161,17 +162,63 @@ jobs:
           fi
           python3 scripts/pr_review.py --context context.json > review.json
 
-      - name: Print the planned actions
+      - name: Publish the assessment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
         run: |
-          python3 scripts/pr_publish.py \
-            --context context.json \
-            --assessment assessment.json \
-            --review review.json > plan.json
+          set -euo pipefail
+          # A failed action still prints the results JSON, so the exit status is
+          # captured and reported after the summary has been rendered.
+          set +e
+          if [ "$WRITE" = "true" ]; then
+            python3 scripts/pr_publish.py \
+              --live \
+              --repo "${{ github.repository }}" \
+              --pr "$PR" \
+              --assessment assessment.json \
+              --review review.json \
+              --write > plan.json
+          else
+            python3 scripts/pr_publish.py \
+              --context context.json \
+              --assessment assessment.json \
+              --review review.json > plan.json
+          fi
+          status=$?
+          set -e
           cat plan.json
-          {
-            echo '### PR review plan'
-            echo
-            echo '```json'
-            cat plan.json
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          python3 - "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          import sys
+
+          with open("plan.json", encoding="utf-8") as handle:
+              payload = json.load(handle)
+          plan = payload.get("plan", payload)
+          decision = plan.get("decision") or {}
+          labels = {"add": [], "remove": []}
+          for action in plan.get("actions", []):
+              if action.get("kind") == "set_labels":
+                  labels["add"].extend(action.get("add", []))
+                  labels["remove"].extend(action.get("remove", []))
+
+          lines = ["### PR review decision", ""]
+          if plan.get("status") == "aborted":
+              lines.append(f"- aborted: {plan.get('abort_reason')}")
+          else:
+              lines.extend(
+                  [
+                      f"- risk: {decision.get('risk')}",
+                      f"- review: {decision.get('review_status')}",
+                      f"- verdict: {decision.get('verdict')}",
+                      f"- auto-merge: {decision.get('auto_merge')}",
+                      f"- labels added: {', '.join(labels['add']) or 'none'}",
+                      f"- labels removed: {', '.join(labels['remove']) or 'none'}",
+                  ]
+              )
+          lines.extend(["", "```json", json.dumps(payload, indent=2), "```"])
+          with open(sys.argv[1], "a", encoding="utf-8") as handle:
+              handle.write("\n".join(lines) + "\n")
+          PY
+          exit "$status"

@@ -333,13 +333,15 @@ def test_publish_runs_even_when_the_review_was_skipped(workflow: dict[Any, Any])
     )
 
 
-def test_publish_has_write_permissions_only(workflow: dict[Any, Any]) -> None:
+def test_publish_has_the_scopes_the_write_path_needs(workflow: dict[Any, Any]) -> None:
     permissions = _job(workflow, "publish").get("permissions")
-    assert permissions == {"pull-requests": "write", "issues": "write"}, (
-        f"publish must hold pull-requests and issues write and nothing else; found {permissions}"
-    )
-    assert "contents" not in permissions, (
-        "publish decides from artifacts; it must not read repository contents"
+    assert permissions == {
+        "contents": "read",
+        "pull-requests": "write",
+        "issues": "write",
+    }, (
+        "publish checks out the base (contents: read) and writes labels, comments and "
+        f"reviewer requests; found {permissions}"
     )
 
 
@@ -387,9 +389,104 @@ def test_publish_prints_the_plan(workflow: dict[Any, Any]) -> None:
     assert "plan.json" in command, "the plan must be written out and printed"
 
 
-def test_publish_appends_the_plan_to_the_step_summary(workflow: dict[Any, Any]) -> None:
+def test_publish_holds_the_workflow_token(workflow: dict[Any, Any]) -> None:
+    env = _env(workflow, "publish")
+    assert env.get("GITHUB_TOKEN") == "${{ secrets.GITHUB_TOKEN }}", (
+        "the write path needs the workflow token; it must not come from anywhere else"
+    )
+
+
+def test_publish_receives_the_pull_request_number(workflow: dict[Any, Any]) -> None:
+    env = _env(workflow, "publish")
+    value = _normalize(env.get("PR") or "")
+    assert "github.event.pull_request.number" in value, (
+        f"a pull request event must pass its own number; found {value!r}"
+    )
+    assert "inputs.pr" in value, f"a manual run must pass its input; found {value!r}"
+
+
+def test_publish_write_flag_follows_the_dry_run_input(workflow: dict[Any, Any]) -> None:
+    env = _env(workflow, "publish")
+    value = _normalize(env.get("WRITE") or "")
+    expected = "${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}"
+    assert value == expected, (
+        f"every event writes except a manual run that kept the dry-run default; found {value!r}"
+    )
+
+
+def test_publish_does_not_read_the_auto_merge_variable_yet(workflow_text: str) -> None:
+    assert "PR_AUTO_MERGE" not in workflow_text, (
+        "auto-merge is wired in its own ticket; the workflow must not read the variable yet"
+    )
+
+
+GUARDED_WRITE = re.compile(
+    r'if \[ "\$WRITE" = "true" \]; then\n(?P<write>.*?)\n\s*else\n(?P<dry>.*?)\n\s*fi\n',
+    re.DOTALL,
+)
+
+
+def test_the_write_flag_appears_once_in_the_guarded_publish_branch(
+    workflow: dict[Any, Any], workflow_text: str
+) -> None:
+    assert workflow_text.count("--write") == 1, (
+        "the write flag belongs to exactly one invocation: the guarded publish step"
+    )
+    for name, job in _jobs(workflow).items():
+        for step in _steps(job):
+            if "--write" in str(step.get("run", "")):
+                assert name == "publish", f"job {name!r} must not write"
+
     command = _run_containing(_job(workflow, "publish"), "scripts/pr_publish.py")
+    match = GUARDED_WRITE.search(command)
+    assert match is not None, "the publish step needs a WRITE-guarded branch and a dry-run branch"
+
+    write_branch = match.group("write")
+    assert "--write" in write_branch
+    assert "--live" in write_branch, "the write path re-fetches the pull request"
+    assert '--pr "$PR"' in write_branch
+    assert "github.repository" in write_branch
+    assert "--assessment assessment.json" in write_branch
+    assert "--review review.json" in write_branch
+
+    dry_branch = match.group("dry")
+    assert "--context context.json" in dry_branch, "the dry run uses the downloaded context"
+    assert "--write" not in dry_branch
+    assert "--live" not in dry_branch
+
+
+def test_publish_summarizes_the_decision_and_labels(workflow: dict[Any, Any]) -> None:
+    command = _run_containing(_job(workflow, "publish"), "scripts/pr_publish.py")
+
     assert "GITHUB_STEP_SUMMARY" in command, "the plan must be readable on the run summary"
+    assert "decision" in command, "the summary renders the decision object"
+    assert "labels" in command, "the summary lists the applied labels"
+
+
+def test_publish_renders_the_summary_before_a_failed_status_propagates(
+    workflow: dict[Any, Any],
+) -> None:
+    command = _run_containing(_job(workflow, "publish"), "scripts/pr_publish.py")
+
+    errexit_off = command.find("set +e")
+    assert errexit_off != -1, "the publisher must run with errexit off to capture its status"
+    status = re.search(r"^status=\$\?$", command, re.MULTILINE)
+    assert status is not None, "the publish step must capture the publisher's exit status"
+    errexit_on = re.search(r"^set -e$", command, re.MULTILINE)
+    assert errexit_on is not None, "errexit must be restored after capturing the status"
+    assert errexit_off < status.start() < errexit_on.start(), (
+        "only the publisher runs without errexit; the status is captured right after it"
+    )
+
+    assert command.index("cat plan.json") > status.start(), (
+        "the plan must be printed even when the publisher fails"
+    )
+    assert command.index("GITHUB_STEP_SUMMARY") > status.start(), (
+        "the summary must render even when the publisher fails"
+    )
+    assert command.rstrip().endswith('exit "$status"'), (
+        "the captured status must be the step's exit code, set after the summary"
+    )
 
 
 def test_concurrency_is_keyed_by_pull_request(workflow: dict[Any, Any]) -> None:
@@ -476,14 +573,3 @@ def test_no_job_checks_out_the_pull_request_head(
     assert "refs/pull/" not in workflow_text, (
         "the workflow must not check out the pull request merge ref"
     )
-
-
-def test_the_pipeline_never_passes_the_write_flag(
-    workflow: dict[Any, Any], workflow_text: str
-) -> None:
-    for name, job in _jobs(workflow).items():
-        for command in _runs(job):
-            assert "--write" not in command, (
-                f"job {name!r} passes --write; this slice of the pipeline is dry-run only"
-            )
-    assert "--write" not in workflow_text, "the workflow must not write in this slice"
