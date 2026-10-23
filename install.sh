@@ -145,7 +145,7 @@ CATEGORY="all"
 # Skill filters given on the command line (they do not apply to claude).
 FILTER_FLAGS=""
 
-# Must match the category list in scripts/build_manifest.py.
+# Must match the category list in scripts/catalogue.py.
 CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 
 # Print the header comment block: from line 2 up to the first line that is not
