@@ -57,6 +57,7 @@ Exit codes:
   2  usage or preconditions failed (bad flag; POC_AGENT missing or unknown; origin not on
      a supported forge; missing tool; dirty tree; prd.json missing or not approved)
   3  blocked stop (3 consecutive blocked items, or prd-01/prd-02 blocked)
+  4  infrastructure preflight failed; task attempts unchanged
 EOF
   exit 0
 fi
@@ -112,30 +113,23 @@ bad_deps=$(jq -r '[.items[].id] as $ids | .items[] | .id as $i | .deps[] | selec
   exit 2
 }
 LOGDIR="$(git rev-parse --absolute-git-dir)/poc-loop"
-mkdir -p "$LOGDIR"
-
-# ---------- branch ----------
-# .branch is written on the poc branch only, so a restart from main finds the
-# existing branch via its ref instead of creating a second one.
-BRANCH=$(jq -r '.branch // empty' "$PRD")
-[[ -n $BRANCH ]] || BRANCH=$(git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/poc/*' | head -n1)
-if [[ -z $BRANCH ]]; then
-  BRANCH="poc/$(date +%F)"
-  git switch -c "$BRANCH" main
-  jq --arg b "$BRANCH" '.branch=$b' "$PRD" >"$PRD.tmp" && mv "$PRD.tmp" "$PRD"
-  git commit -qam "chore(plans): start loop on $BRANCH"
-else
-  git switch "$BRANCH"
+if ! mkdir -p "$LOGDIR"; then
+  echo "Infrastructure preflight failed: Git metadata is not writable. Use a separately provisioned container or VM." >&2
+  exit 4
 fi
-BASE=$(git merge-base main "$BRANCH")
 
 # ---------- helpers ----------
+case $POC_AGENT in
+  claude) AGENT_COMMAND=(claude -p) ;;
+  codex) AGENT_COMMAND=(codex exec "${AGENT_FLAGS[@]}") ;;
+  opencode) AGENT_COMMAND=(opencode run "${AGENT_FLAGS[@]}") ;;
+esac
 run_agent() { # one fresh, headless agent context per call
-  case $POC_AGENT in
-    claude) claude -p "$1" "${AGENT_FLAGS[@]}" ;;
-    codex) codex exec "${AGENT_FLAGS[@]}" "$1" ;;
-    opencode) opencode run "${AGENT_FLAGS[@]}" "$1" ;;
-  esac
+  if [[ $POC_AGENT == claude ]]; then
+    "${AGENT_COMMAND[@]}" "$1" "${AGENT_FLAGS[@]}"
+  else
+    "${AGENT_COMMAND[@]}" "$1"
+  fi
 }
 next_item() { # first item: not passed, attempts<MAX, all deps passed, check != null
   jq -r --argjson m "$MAX_ATTEMPTS" '
@@ -236,6 +230,57 @@ azure_description() { # checklist cut to the cap (bytes >= chars, so it stays un
   awk -v max="$AZURE_DESCRIPTION_MAX" '/^$/{exit} {n+=length($0)+1; if(n>max){print "- …"; exit} print}' "$PR_MD"
   printf '\nFull body (blocked items, findings, deployment): `%s` on branch `%s`.\n' "$PR_MD" "$BRANCH"
 }
+
+# ---------- infrastructure preflight ----------
+# A successful model exit does not prove its shell tools can run or commit.
+preflight_dir=$(mktemp -d "$LOGDIR/preflight.XXXXXX") || {
+  echo "Infrastructure preflight failed: Git metadata is not writable." >&2
+  exit 4
+}
+trap 'rm -rf "$preflight_dir"' EXIT
+printf -v preflight_command 'set -eu; pwd >/dev/null; '
+for metadata_dir in "$(git rev-parse --absolute-git-dir)" "$(git rev-parse --path-format=absolute --git-common-dir)" "$(git rev-parse --path-format=absolute --git-path objects)" "$(git rev-parse --path-format=absolute --git-path refs/heads)"; do
+  printf -v probe_command 'probe=$(mktemp %q); rm -f "$probe"; ' "$metadata_dir/poc-preflight.XXXXXX"
+  preflight_command+=$probe_command
+done
+printf -v marker_command 'printf shell-ok > %q' "$preflight_dir/shell-ok"
+preflight_command+=$marker_command
+if ! bash -c "$preflight_command" >"$LOGDIR/preflight.log" 2>&1; then
+  echo "Infrastructure preflight failed: Git metadata is not writable." >&2
+  tail -c 4000 "$LOGDIR/preflight.log" >&2
+  exit 4
+fi
+rm -f "$preflight_dir/shell-ok"
+preflight_prompt="Loop infrastructure preflight.
+$preflight_command
+Execute the shell command above using your shell tool. Do not edit project files or access credentials. Report shell errors verbatim."
+# Match the task flags, including explicit overrides, but bound the probe to 45s.
+preflight_flags=()
+[[ $POC_AGENT != claude ]] || preflight_flags=("${AGENT_FLAGS[@]}")
+if ! timeout 45 "${AGENT_COMMAND[@]}" "$preflight_prompt" "${preflight_flags[@]}" >"$LOGDIR/preflight.log" 2>&1 ||
+  [[ ! -f $preflight_dir/shell-ok ]] || [[ $(<"$preflight_dir/shell-ok") != shell-ok ]]; then
+  echo "Infrastructure preflight failed: runner shell/Git write proof missing. Task attempts unchanged." >&2
+  echo "Use a separately provisioned container or VM with writable Git metadata; preserve the existing sandbox boundary." >&2
+  tail -c 4000 "$LOGDIR/preflight.log" >&2
+  exit 4
+fi
+rm -rf "$preflight_dir"
+trap - EXIT
+
+# ---------- branch ----------
+# .branch is written on the poc branch only, so a restart from main finds the
+# existing branch via its ref instead of creating a second one.
+BRANCH=$(jq -r '.branch // empty' "$PRD")
+[[ -n $BRANCH ]] || BRANCH=$(git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/poc/*' | head -n1)
+if [[ -z $BRANCH ]]; then
+  BRANCH="poc/$(date +%F)"
+  git switch -c "$BRANCH" main
+  jq --arg b "$BRANCH" '.branch=$b' "$PRD" >"$PRD.tmp" && mv "$PRD.tmp" "$PRD"
+  git commit -qam "chore(plans): start loop on $BRANCH"
+else
+  git switch "$BRANCH"
+fi
+BASE=$(git merge-base main "$BRANCH")
 
 # ---------- loop ----------
 consecutive_blocked=0
