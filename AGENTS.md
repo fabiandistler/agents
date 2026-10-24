@@ -322,6 +322,8 @@ change.
 
 Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
+New issues are labeled automatically by `.github/workflows/triage.yml`. The operator runbook is `docs/agents/triage-runbook.md`; the label vocabulary is `docs/agents/triage-labels.md`.
+
 ### Triage labels
 
 The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
