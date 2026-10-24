@@ -80,12 +80,13 @@ The skill's only action here is:
 POC_AGENT=<runner> bash <skill-dir>/assets/loop.sh
 ```
 
-`POC_AGENT` is required (`claude`, `codex`, or `opencode`); `loop.sh` exits 2 without it rather than guess. With `codex`, the runner gets full filesystem access — its `workspace-write` sandbox keeps `.git` read-only, and every task must commit — so run the loop in a container or VM.
+`POC_AGENT` is required (`claude`, `codex`, or `opencode`); `loop.sh` exits 2 without it rather than guess. With `codex`, the runner gets full filesystem access — its `workspace-write` sandbox keeps `.git` read-only, and every task must commit — so run the loop in a separately provisioned container or VM whose parent process permits that access. KVM alone does not establish this: an already restricted session keeps its restrictions. See [Runner environment and recovery](references/runner-recovery.md).
 
 `loop.sh` owns the loop; each task runs in a **fresh** runner context that sees only `SPEC.md`, the one prd item, and [assets/task-prompt.md](assets/task-prompt.md).
 
 **Enforced by `loop.sh`** (mechanically, independent of model behaviour):
 
+- Before branch creation or task selection, a 45-second runner preflight must execute a shell command and write a fresh proof file. The same command checks Git metadata writes in the driver and runner. Infrastructure failures exit 4 with a bounded diagnosis and leave task attempts untouched. A model exit code or printed success alone is insufficient.
 - Branch `poc/<YYYY-MM-DD>`, created from `main` on first run; the loop itself only commits on that branch. A restart (from `main` or the branch) resumes the newest existing `poc/*` branch.
 - `deps` naming an id that does not exist abort the run before it starts.
 - Run logs and the last failure output live under `.git/poc-loop/`, never in the working tree, so a stopped run restarts without cleanup.

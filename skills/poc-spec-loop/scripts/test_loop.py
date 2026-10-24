@@ -15,6 +15,22 @@ LOOP = Path(__file__).resolve().parent.parent / "assets" / "loop.sh"
 
 RUNNER_STUB = """#!/usr/bin/env bash
 printf '%s\\0' "$@" > "$STUB_LOG/$(basename "$0").argv"
+for arg in "$@"; do
+  if [[ $arg == "Loop infrastructure preflight."* ]]; then
+    if [[ ${STUB_PREFLIGHT_FAILURE:-} == 1 ]]; then
+      echo 'error building bubblewrap command: app-server socket directory must be a user-owned directory with mode 0700'
+      exit 0
+    fi
+    if [[ ${STUB_PREFLIGHT_FAILURE:-} == 2 ]]; then
+      echo shell-ok
+      exit 0
+    fi
+    command=${arg#*$'\\n'}
+    command=${command%%$'\\n'*}
+    bash -c "$command"
+    exit $?
+  fi
+done
 echo done > done.txt
 git add done.txt
 git commit -qm "feat(prd-01): done"
@@ -209,6 +225,54 @@ class LoopRunnerTest(unittest.TestCase):
                 self.assertEqual(fields[fields.index("body=@plans/PR.md") - 1], "-F")
                 self.assertFalse(any(f.startswith("draft=") for f in fields))
                 self.assertIn("- [x] prd-01", committed(repo, "plans/PR.md"))
+
+    def test_shell_failure_aborts_without_attempts_and_can_restart(self):
+        repo, log_dir, env = self.poc()
+        env["POC_AGENT"] = "codex"
+        env["STUB_PREFLIGHT_FAILURE"] = "1"
+        before = (repo / "plans/prd.json").read_bytes()
+        result = run_loop(repo, env)
+        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertIn("app-server socket directory", result.stderr)
+        self.assertEqual((repo / "plans/prd.json").read_bytes(), before)
+        self.assertEqual(current_branch(repo), "main")
+        self.assertFalse((repo / "plans/BLOCKED.md").exists())
+        self.assertFalse((repo / "done.txt").exists())
+        self.assertFalse((log_dir / "gh.argv").exists())
+        env.pop("STUB_PREFLIGHT_FAILURE")
+        result = run_loop(repo, env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(json.loads((repo / "plans/prd.json").read_text())["items"][0]["passes"])
+
+    def test_printed_success_without_shell_proof_is_rejected(self):
+        repo, log_dir, env = self.poc()
+        env.update(POC_AGENT="codex", STUB_PREFLIGHT_FAILURE="2")
+        before = (repo / "plans/prd.json").read_bytes()
+        result = run_loop(repo, env)
+        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertIn("proof missing", result.stderr)
+        self.assertEqual((repo / "plans/prd.json").read_bytes(), before)
+        self.assertEqual(current_branch(repo), "main")
+        self.assertFalse((log_dir / "gh.argv").exists())
+
+    def test_git_metadata_write_failure_stops_before_runner(self):
+        repo, log_dir, env = self.poc()
+        env["POC_AGENT"] = "codex"
+        mktemp = repo.parent / "bin/mktemp"
+        mktemp.write_text(
+            "#!/usr/bin/env bash\n"
+            'for arg in "$@"; do\n'
+            "  [[ $arg != */objects/poc-preflight.* ]] || exit 1\n"
+            'done\nexec /usr/bin/mktemp "$@"\n'
+        )
+        mktemp.chmod(0o755)
+        before = (repo / "plans/prd.json").read_bytes()
+        result = run_loop(repo, env)
+        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertIn("Git metadata is not writable", result.stderr)
+        self.assertEqual((repo / "plans/prd.json").read_bytes(), before)
+        self.assertEqual(current_branch(repo), "main")
+        self.assertEqual(list(log_dir.iterdir()), [])
 
     def test_flags_override_replaces_defaults(self):
         repo, log_dir, env = self.poc()
