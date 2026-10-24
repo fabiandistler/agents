@@ -66,7 +66,6 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
 
 PATH_CASES = [
     # low
-    ("README.md", "low", "docs"),
     ("MAINTENANCE.md", "low", "docs"),
     ("GLOSSARY.md", "low", "docs"),
     ("docs/guide.md", "low", "docs"),
@@ -78,6 +77,10 @@ PATH_CASES = [
     ("skills/foo/references/guide.md", "medium", "skills"),
     ("instructions/10-core.md", "medium", "instructions"),
     ("docs/agents/pr-review.md", "medium", "agent-docs"),
+    # medium: documents that state repository policy, such as the merge rule
+    ("README.md", "medium", "policy-docs"),
+    ("docs/adr/0001-record-decisions.md", "medium", "adr"),
+    ("docs/adr/README.md", "medium", "adr"),
     ("skills.json", "medium", "catalogue"),
     ("plugins/architecture/skills/x/SKILL.md", "medium", "plugins"),
     ("plugins/architecture/.claude-plugin/plugin.json", "medium", "plugins"),
@@ -132,6 +135,8 @@ PATH_CASES = [
     ("package-lock.json", "high", "dependency-pins"),
     ("tools/dev.requirements.txt", "high", "dependency-pins"),
     # high: unknown paths
+    ("AGENTS.md", "high", "unknown"),
+    ("CLAUDE.md", "high", "unknown"),
     ("scripts/random.py", "high", "unknown"),
     ("skills.md", "high", "unknown"),
     ("documentation/guide.md", "high", "unknown"),
@@ -166,7 +171,7 @@ def test_decision_echoes_identity_and_counts():
     decision = pr_risk.classify_pull_request(
         make_context(
             [
-                file_entry("README.md", additions=3, deletions=1),
+                file_entry("GLOSSARY.md", additions=3, deletions=1),
                 file_entry("docs/guide.md", additions=5, deletions=2),
             ]
         )
@@ -181,7 +186,7 @@ def test_decision_echoes_identity_and_counts():
         "deletions": 3,
         "changed_lines": 11,
     }
-    assert decision["reasons"] == ["docs: README.md", "docs: docs/guide.md"]
+    assert decision["reasons"] == ["docs: GLOSSARY.md", "docs: docs/guide.md"]
 
 
 def test_path_classes_do_not_depend_on_file_order():
@@ -468,7 +473,7 @@ def test_cli_context_prints_the_decision_json(tmp_path, capsys):
 
 
 def test_cli_output_file_receives_the_decision(tmp_path, capsys):
-    path = write_context(tmp_path, make_context([file_entry("README.md")]))
+    path = write_context(tmp_path, make_context([file_entry("GLOSSARY.md")]))
     output = tmp_path / "decision.json"
 
     code = pr_risk.main(["--context", str(path), "--output", str(output)])

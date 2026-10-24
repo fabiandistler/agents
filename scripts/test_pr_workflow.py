@@ -8,7 +8,10 @@ itself in the failing test instead of hiding behind a generic YAML comparison.
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -28,9 +31,12 @@ ASSESSMENT_ARTIFACT = "pr-assessment"
 REVIEW_ARTIFACT = "pr-review"
 
 # The skip rule for draft and fork pull requests, whitespace-normalized.
+# A manual run carries no pull request event, so the same-repository check comes
+# from the fetched context through the assess output.
 REVIEW_SKIP_CONDITION = (
-    "github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && "
-    "github.event.pull_request.head.repo.full_name == github.repository)"
+    "needs.assess.outputs.same_repo == 'true' && "
+    "(github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && "
+    "github.event.pull_request.head.repo.full_name == github.repository))"
 )
 
 
@@ -296,9 +302,49 @@ def test_review_skips_drafts_and_forks(workflow: dict[Any, Any]) -> None:
     condition = _job(workflow, "review").get("if")
     assert condition is not None, "review needs a job-level condition to skip drafts and forks"
     assert _normalize(condition) == REVIEW_SKIP_CONDITION, (
-        "review must run on manual dispatch and only on a non-draft, same-repository pull "
-        f"request; found {_normalize(condition)!r}"
+        "review must run only on a same-repository pull request, and on a pull request "
+        f"event only when it is not a draft; found {_normalize(condition)!r}"
     )
+
+
+def test_assess_exposes_whether_the_head_is_in_this_repository(
+    workflow: dict[Any, Any],
+) -> None:
+    job = _job(workflow, "assess")
+    outputs = job.get("outputs") or {}
+    assert outputs.get("same_repo") == "${{ steps.origin.outputs.same_repo }}", (
+        "assess must expose the same-repository check as the job output `same_repo`"
+    )
+    assert any(step.get("id") == "origin" for step in _steps(job)), (
+        "assess needs a step with id `origin` that derives `same_repo` from the context"
+    )
+
+
+@pytest.mark.parametrize(
+    ("context", "expected"),
+    [
+        ({"fork": False}, "true"),
+        ({"fork": True}, "false"),
+        ({}, "false"),
+        ({"fork": "false"}, "false"),
+    ],
+)
+def test_same_repo_output_follows_the_context_fork_flag(
+    workflow: dict[Any, Any], tmp_path: Path, context: dict[str, Any], expected: str
+) -> None:
+    step = next(step for step in _steps(_job(workflow, "assess")) if step.get("id") == "origin")
+    (tmp_path / "context.json").write_text(json.dumps(context), encoding="utf-8")
+    output = tmp_path / "github_output"
+    output.write_text("", encoding="utf-8")
+
+    subprocess.run(  # noqa: S603
+        ["bash", "-c", str(step["run"])],  # noqa: S607
+        cwd=tmp_path,
+        env={**os.environ, "GITHUB_OUTPUT": str(output)},
+        check=True,
+    )
+
+    assert output.read_text(encoding="utf-8").splitlines() == [f"same_repo={expected}"]
 
 
 def test_review_downloads_the_context(workflow: dict[Any, Any]) -> None:
@@ -545,15 +591,34 @@ def test_uploads_fail_when_the_file_is_missing(workflow: dict[Any, Any]) -> None
             )
 
 
-def test_every_action_is_pinned_to_a_version(workflow: dict[Any, Any]) -> None:
+def test_every_action_is_pinned_to_a_commit_sha(
+    workflow: dict[Any, Any], workflow_text: str
+) -> None:
+    # A tag can be moved to new code; a full commit SHA cannot. A moved tag
+    # would run unreviewed third-party code next to the write token and the
+    # model key.
     for name, job in _jobs(workflow).items():
         for step in _steps(job):
             uses = step.get("uses")
             if uses is None:
                 continue
-            assert re.fullmatch(r"[\w.-]+/[\w.-]+@v\d+", str(uses)), (
-                f"job {name!r} uses {uses!r}; a job that can write must not run a floating action"
+            assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", str(uses)), (
+                f"job {name!r} uses {uses!r}; pin every action to a full commit SHA"
             )
+
+    # YAML drops comments, so the version comment is checked on the raw text.
+    uses_lines = [
+        line for line in workflow_text.splitlines() if re.match(r"\s*(?:-\s+)?uses:", line)
+    ]
+    assert uses_lines, "the workflow uses no actions; the pinning check would be vacuous"
+    untagged = [
+        line.strip()
+        for line in uses_lines
+        if not re.search(r"@[0-9a-f]{40} # v\d+(?:\.\d+)*$", line)
+    ]
+    assert not untagged, (
+        f"every pinned action needs its tag as a trailing `# vX.Y.Z` comment; found {untagged}"
+    )
 
 
 def test_no_job_checks_out_the_pull_request_head(

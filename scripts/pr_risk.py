@@ -64,6 +64,9 @@ PATH_RULES = (
     (re.compile(r"^skills/"), MEDIUM, "skills"),
     (re.compile(r"^instructions/"), MEDIUM, "instructions"),
     (re.compile(r"^docs/agents/"), MEDIUM, "agent-docs"),
+    # README.md and the ADRs state repository policy, such as the merge rule.
+    (re.compile(r"^README\.md$"), MEDIUM, "policy-docs"),
+    (re.compile(r"^docs/adr/"), MEDIUM, "adr"),
     (re.compile(r"^skills\.json$"), MEDIUM, "catalogue"),
     (re.compile(r"^scripts/test_[^/]*\.py$"), MEDIUM, "tests"),
     (re.compile(r"^scripts/test_install\.sh$"), MEDIUM, "tests"),
@@ -74,8 +77,8 @@ PATH_RULES = (
     ),
     (re.compile(r"^maintenance/(?!reports/)"), MEDIUM, "maintenance"),
     # Low: documentation and generated reports.
-    (re.compile(r"^(?:README|MAINTENANCE|GLOSSARY)\.md$"), LOW, "docs"),
-    (re.compile(r"^docs/(?!agents/)"), LOW, "docs"),
+    (re.compile(r"^(?:MAINTENANCE|GLOSSARY)\.md$"), LOW, "docs"),
+    (re.compile(r"^docs/(?!agents/|adr/)"), LOW, "docs"),
     (re.compile(r"^maintenance/reports/"), LOW, "maintenance-reports"),
 )
 
