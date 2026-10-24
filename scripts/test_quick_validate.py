@@ -45,6 +45,7 @@ def test_description_budget_is_left_to_check_descriptions(tmp_path, capsys):
 
 
 COMMAND_FRONTMATTER = "name: demo-command\ndescription: Does a thing.\nactivation: command"
+OPENCODE_METADATA = 'metadata:\n  opencode/slash: "true"\n  opencode/autoinvoke: "false"'
 NO_IMPLICIT = "policy:\n  allow_implicit_invocation: false\n"
 
 
@@ -55,7 +56,9 @@ def write_sidecar(skill_dir: Path, text: str) -> None:
 
 def test_command_skill_with_flag_and_sidecar_is_valid(tmp_path):
     skill_dir = write_skill(
-        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\ndisable-model-invocation: true"
+        tmp_path,
+        "demo-command",
+        COMMAND_FRONTMATTER + "\ndisable-model-invocation: true\n" + OPENCODE_METADATA,
     )
     write_sidecar(skill_dir, NO_IMPLICIT)
 
@@ -65,7 +68,9 @@ def test_command_skill_with_flag_and_sidecar_is_valid(tmp_path):
 
 
 def test_command_skill_without_disable_model_invocation_is_invalid(tmp_path):
-    skill_dir = write_skill(tmp_path, "demo-command", COMMAND_FRONTMATTER)
+    skill_dir = write_skill(
+        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\n" + OPENCODE_METADATA
+    )
     write_sidecar(skill_dir, NO_IMPLICIT)
 
     valid, message = validate_skill(skill_dir)
@@ -76,7 +81,9 @@ def test_command_skill_without_disable_model_invocation_is_invalid(tmp_path):
 
 def test_command_skill_without_sidecar_is_invalid(tmp_path):
     skill_dir = write_skill(
-        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\ndisable-model-invocation: true"
+        tmp_path,
+        "demo-command",
+        COMMAND_FRONTMATTER + "\ndisable-model-invocation: true\n" + OPENCODE_METADATA,
     )
 
     valid, message = validate_skill(skill_dir)
@@ -87,7 +94,9 @@ def test_command_skill_without_sidecar_is_invalid(tmp_path):
 
 def test_command_skill_sidecar_allowing_implicit_invocation_is_invalid(tmp_path):
     skill_dir = write_skill(
-        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\ndisable-model-invocation: true"
+        tmp_path,
+        "demo-command",
+        COMMAND_FRONTMATTER + "\ndisable-model-invocation: true\n" + OPENCODE_METADATA,
     )
     write_sidecar(skill_dir, "policy:\n  allow_implicit_invocation: true\n")
 
@@ -95,6 +104,34 @@ def test_command_skill_sidecar_allowing_implicit_invocation_is_invalid(tmp_path)
 
     assert not valid
     assert "allow_implicit_invocation" in message
+
+
+def test_command_skill_requires_opencode_metadata(tmp_path):
+    skill_dir = write_skill(
+        tmp_path, "demo-command", COMMAND_FRONTMATTER + "\ndisable-model-invocation: true"
+    )
+    write_sidecar(skill_dir, NO_IMPLICIT)
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert "opencode/slash" in message
+
+
+def test_command_skill_requires_string_metadata_values(tmp_path):
+    skill_dir = write_skill(
+        tmp_path,
+        "demo-command",
+        COMMAND_FRONTMATTER
+        + "\ndisable-model-invocation: true\nmetadata:\n"
+        + '  opencode/slash: "true"\n  opencode/autoinvoke: false',
+    )
+    write_sidecar(skill_dir, NO_IMPLICIT)
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert "opencode/autoinvoke" in message
 
 
 def test_auto_skill_needs_no_sidecar(tmp_path):

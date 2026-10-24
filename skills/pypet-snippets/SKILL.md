@@ -6,6 +6,9 @@ disable-model-invocation: true
 environments: coding
 compatibility: Requires pypet-cli 0.9 on PATH (upstream archived Aug 2026, final v0.9.0).
 description: Curate shell-command snippets with the pypet CLI — create, find, edit, run and alias them on request, including proposing one from commands that recur in shell history.
+metadata:
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # Pypet Snippets
