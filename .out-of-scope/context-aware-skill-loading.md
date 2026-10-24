@@ -33,6 +33,9 @@ personal       hypertrophy-training    -> 1
 workflow       2 command skills        -> user-invoked, not in the auto budget
 ```
 
+As of 2026-10-24 the catalogue is 27 skills. The `architecture` router has 7
+members; `communication` has 7 skills; 8 skills are command skills.
+
 Roughly ten standing descriptions, each under a hard cap. That is not a context
 problem worth a new hook, a new installer mode, a new manifest field, and a new
 MCP tool.

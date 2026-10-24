@@ -62,9 +62,11 @@ Per run, at most:
 
 4. **Content pass.** Delegate `selected` to the `skill-reviewer` subagent in
    batches of about three skills, batches in parallel. Each returns findings
-   keyed by checklist ID and a list of *mechanical fixes*. Then apply the X
-   (cross-skill) items yourself over the selected skills, reading the other
-   skills' descriptions from `skills.json` for X1.
+   keyed by checklist ID and a list of *mechanical fixes*. If the subagent is
+   unavailable, read the selected skills against the checklist yourself and
+   key the findings the same way. Then apply the X (cross-skill) items
+   yourself over the selected skills, reading the other skills' descriptions
+   from `skills.json` for X1.
 
 5. **Verify.** For every `error` and every mechanical-fix finding, open the
    cited file and line and confirm it. Drop what does not hold. Drop anything
@@ -84,7 +86,8 @@ Per run, at most:
    - Apply only fixes with one obvious correct form: a dead relative link
      with an unambiguous target, a script invocation that disagrees with its
      `--help`, a missing `## Contents`, a stale generated file
-     (`python3 scripts/build_manifest.py`, `python3 scripts/build_routers.py`).
+     (`python3 scripts/build_manifest.py`, `python3 scripts/build_routers.py`,
+     `python3 scripts/build_project_claude.py`).
      Wording, triggering, structure and anything tagged *unverified* stay in
      the issue for a human.
    - Keep the diff under 200 lines; the rest stays in the issue.

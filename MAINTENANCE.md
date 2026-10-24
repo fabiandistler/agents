@@ -2,7 +2,8 @@
 
 <!--
 Source: prompt idea by Fabian Distler, 2026-09-01, developed with skill `idee-zu-artefakt`.
-Run by: plugin `repo-maintenance`, skill `maintenance-run`.
+Run by: plugin `repo-maintenance`, skill `maintenance-run` - an external Claude Code
+plugin, not part of this repository; its `references/jobs.md` holds the job details.
 Review date: 2026-12-01 - see sunset condition below.
 Bootstrapped fresh on 2026-09-28, replacing `ROOMBA.md` (the same catalog under the
 plugin's former naming, from `repo-maintenance` v0.1.0 / skill `roomba-run`). Seven runs
@@ -18,7 +19,7 @@ PR #412. Two findings were carried forward into *Backlog* below.
 | Last run | 2026-10-17 |
 | Last job | `test-flakiness` (report-only, 0 findings, PR pending merge) |
 | Next due job | `perf-quickwins` (no run yet -> catalog order) |
-| Baseline status | 2026-10-17: 9 of 14 checks run, all green (7 `scripts/` checks, ruff 0.17.1, pytest 96 passed); shellcheck, prek, install test not run |
+| Baseline status | The current check list is `scripts/check_all.sh --list`. The last run (2026-10-17) recorded its baseline in its report under `maintenance/reports/`; do not read an old report as today's status |
 | Open maintenance PRs | open PRs whose head branch starts with `maintenance/` (command below the table) |
 
 List open PRs, keeping those whose head branch starts with `maintenance/`. Use
@@ -58,7 +59,9 @@ Only the open question stays in the catalog: `dead-exports` (exports across the 
 
 - Clean working tree, on the default branch, `git fetch` has run.
 - Baseline recorded **before** the run - see *Baseline* below. This repo is neither an R
-  package nor a Python package, so `R CMD check` and `pytest` do not apply as written.
+  package nor a Python package: there is no `R CMD check` step, and the `pytest` check
+  runs the tests that live next to the scripts under `scripts/` and `skills/`, not a
+  package test suite.
 - Red or missing baseline -> report jobs only.
 
 ## Baseline
@@ -87,7 +90,7 @@ One standing caveat:
 | 5 | `test-flakiness` | yes | PR | 30d | 2026-10-17 |
 | 6 | `perf-quickwins` | no | Report | 30d | - |
 
-Open question per job (details in the skill under `references/jobs.md`):
+Open question per job (details in the external `repo-maintenance` skill's `references/jobs.md`):
 
 1. **deps-audit** - Will these updates break me? The scanner delivers the list, the run
    delivers breaking-change risk from changelogs it has read, and a recommendation.
