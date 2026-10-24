@@ -95,6 +95,16 @@ See the [OpenCode agent format](https://opencode.ai/docs/agents). The Codex
 TOML and the OpenCode Markdown come from the same parser in
 `scripts/plugin_agents.py`.
 
+`--uninstall` updates the same file. Removing the whole saved selection (every
+saved target and category) deletes it, so a later `--update` exits 4. Removing
+whole targets (all saved categories for them) or whole categories (for every
+saved target) rewrites it without them; component flags such as
+`--instructions` on that run also drop the component when no saved target is
+left out. `--uninstall --dry-run` prints `would delete` or `would rewrite` for
+the state file instead. One selection cannot express a category or `--env`
+removed from only some saved targets, so then the file stays unchanged, a note
+goes to stderr, and `--update` reinstalls what was removed.
+
 ## What gets linked where
 
 | Target | Skills | Command skills (`activation: command`) |

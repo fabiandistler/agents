@@ -132,6 +132,11 @@
 # --git-hook installs marker-owned post-merge and post-rewrite hooks in this
 # clone. Each checks saved install state before replaying it with --update.
 # --target=detected selects agents with an installed command or config directory.
+# --uninstall keeps that state in step: removing the whole saved selection
+# deletes the file, removing whole targets or categories rewrites it without
+# them, and --dry-run prints which of the two it would do. A category or env
+# removed from only some saved targets cannot be recorded; the state then stays
+# as it was and the run says so on stderr.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -174,6 +179,14 @@ SAVED_INSTRUCTIONS=0
 SAVED_MERGE=0
 SAVED_SECRET=0
 SAVED_REPO_ROOT=""
+# What --uninstall does to the saved state, filled by plan_uninstall_state.
+UNINSTALL_STATE_ACTION=keep
+UNINSTALL_STATE_BEFORE=""
+UNINSTALL_STATE_TARGETS=""
+UNINSTALL_STATE_CATEGORY=""
+UNINSTALL_STATE_INSTRUCTIONS=0
+UNINSTALL_STATE_MERGE=0
+UNINSTALL_STATE_SECRET=0
 UNINSTALL=0
 INSTRUCTIONS=0
 GUARDS=""
@@ -200,7 +213,8 @@ Options:
   --merge-guard                Install the PR merge guard
   --secret-guard               Install the secret read guard
   --dry-run                    Preview changes without writing
-  --uninstall                  Remove selected managed files
+  --uninstall                  Remove selected files and drop them from
+                               the saved install
   --check                      Report drift (0 clean, 3 drift)
   --output FILE|--output=FILE  Write the --check TSV report
   --update                     Replay the saved install (4: no saved state)
@@ -366,14 +380,18 @@ json_quote() {
   printf '"%s"' "$escaped"
 }
 
+# Arguments: comma-separated targets, env, category, instructions, merge guard,
+# secret guard (each 0 or 1), and repo root.
 write_install_state() {
-  local file dir target targets_json="[" separator="" content tmp before="" had_file=0 current
-  [[ -n "$RESOLVED_TARGETS" ]] || RESOLVED_TARGETS="$(resolve_targets)"
-  while IFS= read -r target; do
+  local targets_csv="$1" env="$2" category="$3" instructions="$4" merge_guard="$5" \
+    secret_guard="$6" repo_root="$7"
+  local file dir target targets_json="[" separator="" content tmp before="" had_file=0
+  IFS=',' read -ra _state_targets <<<"$targets_csv"
+  for target in "${_state_targets[@]}"; do
     [[ -n "$target" ]] || continue
     targets_json+="$separator$(json_quote "$target")"
     separator=,
-  done <<<"$RESOLVED_TARGETS"
+  done
   targets_json+="]"
   file="$(install_state_file)"
   dir="${file%/*}"
@@ -386,7 +404,7 @@ write_install_state() {
     had_file=1
   fi
   ensure_parent "$dir"
-  content="{\"targets\":$targets_json,\"env\":$(json_quote "$ENV"),\"category\":$(json_quote "$CATEGORY"),\"instructions\":$( ((INSTRUCTIONS)) && printf true || printf false),\"merge_guard\":$([[ "$GUARDS" == *' merge'* ]] && printf true || printf false),\"secret_guard\":$([[ "$GUARDS" == *' secret'* ]] && printf true || printf false),\"repo_root\":$(json_quote "$REPO_ROOT") }"
+  content="{\"targets\":$targets_json,\"env\":$(json_quote "$env"),\"category\":$(json_quote "$category"),\"instructions\":$( ((instructions)) && printf true || printf false),\"merge_guard\":$( ((merge_guard)) && printf true || printf false),\"secret_guard\":$( ((secret_guard)) && printf true || printf false),\"repo_root\":$(json_quote "$repo_root") }"
   tmp="$file.tmp.$$"
   if [[ -e "$tmp" || -L "$tmp" ]]; then
     printf 'refusing to replace temporary install state path: %s\n' "$tmp" >&2
@@ -421,6 +439,111 @@ detect_targets() {
     targets+=opencode
   fi
   printf '%s\n' "$targets"
+}
+
+# Prints the categories a --category value selects, one per line, in the order
+# of $CATEGORIES.
+category_names() {
+  local value="${1//[[:space:]]/}" name
+  for name in $CATEGORIES; do
+    if [[ "$value" == all || ",$value," == *",$name,"* ]]; then
+      printf '%s\n' "$name"
+    fi
+  done
+}
+
+# Decides, before anything is removed, what --uninstall does to the saved
+# state: keep it (nothing saved was removed), delete it (the whole saved
+# selection was removed), rewrite it without the removed targets or categories,
+# or keep it with a note when one selection cannot express the result (a
+# category or env removed from only some saved targets).
+plan_uninstall_state() {
+  local status target name removed_targets kept_targets="" kept_categories="" \
+    removed_categories touched_target=0 touched_category=0 all_targets_removed=1
+  UNINSTALL_STATE_ACTION=keep
+  if read_install_state; then
+    :
+  else
+    status=$?
+    ((status == 4)) && return 0
+    return "$status"
+  fi
+  UNINSTALL_STATE_BEFORE="$(cat "$(install_state_file)")"
+  removed_targets=" $(resolve_targets | tr '\n' ' ')"
+  IFS=',' read -ra _saved_targets <<<"$SAVED_TARGETS_CSV"
+  for target in "${_saved_targets[@]}"; do
+    if [[ "$removed_targets" == *" $target "* ]]; then
+      touched_target=1
+    else
+      kept_targets+="${kept_targets:+,}$target"
+      all_targets_removed=0
+    fi
+  done
+  removed_categories=" $(category_names "$CATEGORY" | tr '\n' ' ')"
+  while IFS= read -r name; do
+    if [[ "$removed_categories" == *" $name "* ]]; then
+      touched_category=1
+    else
+      kept_categories+="${kept_categories:+,}$name"
+    fi
+  done < <(category_names "$SAVED_CATEGORY")
+  ((touched_target && touched_category)) || return 0
+
+  if [[ "$ENV" != all && "$ENV" != "$SAVED_ENV" ]]; then
+    UNINSTALL_STATE_ACTION=partial
+  elif ((all_targets_removed)); then
+    if [[ -z "$kept_categories" ]]; then
+      UNINSTALL_STATE_ACTION=delete
+    else
+      UNINSTALL_STATE_ACTION=rewrite
+      UNINSTALL_STATE_TARGETS="$SAVED_TARGETS_CSV"
+      UNINSTALL_STATE_CATEGORY="$kept_categories"
+      UNINSTALL_STATE_INSTRUCTIONS=$((SAVED_INSTRUCTIONS && ! INSTRUCTIONS))
+      UNINSTALL_STATE_MERGE="$SAVED_MERGE"
+      [[ "$GUARDS" != *' merge'* ]] || UNINSTALL_STATE_MERGE=0
+      UNINSTALL_STATE_SECRET="$SAVED_SECRET"
+      [[ "$GUARDS" != *' secret'* ]] || UNINSTALL_STATE_SECRET=0
+    fi
+  elif [[ -z "$kept_categories" ]]; then
+    UNINSTALL_STATE_ACTION=rewrite
+    UNINSTALL_STATE_TARGETS="$kept_targets"
+    UNINSTALL_STATE_CATEGORY="$SAVED_CATEGORY"
+    UNINSTALL_STATE_INSTRUCTIONS="$SAVED_INSTRUCTIONS"
+    UNINSTALL_STATE_MERGE="$SAVED_MERGE"
+    UNINSTALL_STATE_SECRET="$SAVED_SECRET"
+  else
+    UNINSTALL_STATE_ACTION=partial
+  fi
+}
+
+apply_uninstall_state() {
+  local file
+  file="$(install_state_file)"
+  case "$UNINSTALL_STATE_ACTION" in
+    keep) return 0 ;;
+    partial)
+      printf 'install state keeps the saved selection: it cannot record removing a category or env from only some saved targets, so --update reinstalls it (%s)\n' \
+        "$file" >&2
+      return 0
+      ;;
+  esac
+  if ((DRY_RUN)); then
+    printf '  would %s install state %s\n' "$UNINSTALL_STATE_ACTION" "$file"
+    return 0
+  fi
+  if [[ ! -f "$file" || -L "$file" || "$(cat "$file")" != "$UNINSTALL_STATE_BEFORE" ]]; then
+    printf 'install state changed during this run; leaving it untouched: %s\n' "$file" >&2
+    return 1
+  fi
+  if [[ "$UNINSTALL_STATE_ACTION" == delete ]]; then
+    rm "$file"
+    printf '  removed   %s (install state)\n' "$file"
+  else
+    write_install_state "$UNINSTALL_STATE_TARGETS" "$SAVED_ENV" "$UNINSTALL_STATE_CATEGORY" \
+      "$UNINSTALL_STATE_INSTRUCTIONS" "$UNINSTALL_STATE_MERGE" "$UNINSTALL_STATE_SECRET" \
+      "$SAVED_REPO_ROOT"
+    printf '  updated   %s (install state)\n' "$file"
+  fi
 }
 
 while (($#)); do
@@ -3029,13 +3152,20 @@ if ((CHECK_MODE)); then
 elif [[ -z "$TARGET" ]] && ((UNINSTALL && GIT_HOOK)); then
   remove_git_hooks
 else
+  if ((UNINSTALL)); then
+    plan_uninstall_state
+  fi
   main
   if ((UNINSTALL && GIT_HOOK)); then
     remove_git_hooks
   elif ((GIT_HOOK)); then
     install_git_hooks
   fi
-  if ((UNINSTALL == 0 && DRY_RUN == 0)); then
-    write_install_state
+  if ((UNINSTALL)); then
+    apply_uninstall_state
+  elif ((DRY_RUN == 0)); then
+    write_install_state "$(resolve_targets | paste -sd, -)" "$ENV" "$CATEGORY" "$INSTRUCTIONS" \
+      "$([[ "$GUARDS" == *' merge'* ]] && printf 1 || printf 0)" \
+      "$([[ "$GUARDS" == *' secret'* ]] && printf 1 || printf 0)" "$REPO_ROOT"
   fi
 fi

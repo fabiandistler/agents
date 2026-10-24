@@ -425,6 +425,77 @@ PY
   pass "--check rejects incompatible and incomplete options"
 }
 
+run_uninstall_state_tests() {
+  local home state_home state_file output status before
+  capture_install() {
+    set +e
+    output="$(HOME="$home" XDG_STATE_HOME="$state_home" "$INSTALL" "$@" 2>&1)"
+    status=$?
+    set -e
+  }
+  saved_state_is() {
+    "$PYTHON" - "$state_file" "$1" <<'PY'
+import json
+import sys
+
+state = json.load(open(sys.argv[1], encoding="utf-8"))
+expected = json.loads(sys.argv[2])
+assert {key: state[key] for key in expected} == expected, state
+PY
+  }
+
+  home="$(mktemp -d)"
+  state_home="$home/xdg-state"
+  state_file="$state_home/fabiandistler-agents/install.json"
+  capture_install --target=codex --category=communication
+  [[ "$status" -eq 0 && -f "$state_file" ]] || fail "install for uninstall test failed: $output"
+  before="$(cat "$state_file")"
+  capture_install --target=codex --category=communication --uninstall --dry-run
+  [[ "$status" -eq 0 ]] || fail "uninstall --dry-run failed: $output"
+  [[ "$output" == *"would delete install state $state_file"* ]] ||
+    fail "uninstall --dry-run did not announce the state deletion"
+  [[ "$(cat "$state_file")" == "$before" ]] || fail "uninstall --dry-run changed the saved state"
+  capture_install --target=codex --category=communication --uninstall
+  [[ "$status" -eq 0 ]] || fail "uninstall failed: $output"
+  [[ ! -e "$state_file" ]] || fail "uninstall of the full saved selection kept install.json"
+  capture_install --update --dry-run
+  [[ "$status" -eq 4 ]] || fail "--update after a full uninstall exited $status instead of 4"
+  [[ ! -e "$home/.agents/skills/documentation" ]] || fail "--update reinstalled an uninstalled skill"
+  pass "full uninstall deletes the saved state, so --update has nothing to replay"
+
+  home="$(mktemp -d)"
+  state_home="$home/xdg-state"
+  state_file="$state_home/fabiandistler-agents/install.json"
+  capture_install --target=all --category=communication,workflow --instructions
+  [[ "$status" -eq 0 ]] || fail "install for partial uninstall test failed: $output"
+  capture_install --target=codex --category=communication,workflow --uninstall
+  [[ "$status" -eq 0 ]] || fail "target uninstall failed: $output"
+  saved_state_is '{"targets": ["claude", "opencode"], "category": "communication,workflow", "instructions": true}' ||
+    fail "target uninstall did not drop just that target from the saved state"
+  capture_install --target=all --category=workflow --uninstall --dry-run
+  [[ "$output" == *"would rewrite install state $state_file"* ]] ||
+    fail "uninstall --dry-run did not announce the state rewrite"
+  capture_install --target=all --category=workflow --uninstall
+  [[ "$status" -eq 0 ]] || fail "category uninstall failed: $output"
+  saved_state_is '{"targets": ["claude", "opencode"], "category": "communication", "instructions": true}' ||
+    fail "category uninstall did not drop just that category from the saved state"
+  capture_install --update
+  [[ "$status" -eq 0 ]] || fail "--update after a partial uninstall failed: $output"
+  [[ ! -e "$home/.agents/skills/documentation" ]] || fail "--update reinstalled the uninstalled codex target"
+  [[ -L "$home/.config/opencode/skills/documentation" ]] || fail "--update dropped the remaining opencode skills"
+  [[ ! -e "$home/.config/opencode/skills/natural-planning" ]] ||
+    fail "--update reinstalled the uninstalled category"
+  pass "partial uninstall keeps the remaining targets and categories in the saved state"
+
+  before="$(cat "$state_file")"
+  capture_install --target=opencode --category=communication --env=chat --uninstall
+  [[ "$status" -eq 0 ]] || fail "unrepresentable uninstall failed: $output"
+  [[ "$output" == *"install state keeps"* ]] ||
+    fail "uninstall that the state cannot express did not say so"
+  [[ "$(cat "$state_file")" == "$before" ]] || fail "unrepresentable uninstall changed the saved state"
+  pass "uninstall the state cannot express leaves it unchanged with a note"
+}
+
 run_update_tests() {
   local update_home state_home state_file state_copy output status instruction_file \
     move_home move_state move_file old_root moved_skill_link \
@@ -2152,5 +2223,8 @@ run_opencode_agent_tests
 
 # OpenCode command skills via slash metadata.
 run_command_skill_tests
+
+# --uninstall: keeps the saved install state in step with what it removed.
+run_uninstall_state_tests
 
 echo "all install.sh tests passed"
