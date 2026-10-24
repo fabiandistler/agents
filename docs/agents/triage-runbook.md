@@ -378,6 +378,30 @@ issue that already carries a state label.
 
 ## Acceptance record
 
+### Local verification
+
+The implementation for #626–628 is prepared locally. The existing PR #638
+implementation and the stacked PR #640 token fixes are combined without
+changing the permission split or configuring credentials. Offline regression
+checks cover nested CSS-hidden content staying out of the classifier input
+and malformed decisions producing a failed apply summary without a label
+write. The CLI and workflow suite passes with 52 tests; the complete Python
+suite passes with 259 tests and 10 subtests. All GitHub calls in those tests
+use fake runners.
+
+The live acceptance criteria of #629 remain pending. No workflow was
+dispatched, no test issue was created, and no label, comment, assignment, or
+issue state was changed during this local verification.
+
+### Live verification after deployment
+
+Prerequisites: merge PR #640 into PR #638's branch, integrate the local
+follow-up fixes, and deploy the reviewed workflow to `main` through a human
+merge. A repository administrator then verifies the existing setup above;
+the local changes require no new provider secret or permission grant.
+Choose an eligible issue and record its labels, state, comments, and assignees
+before dispatch, so the checks below can compare actual before/after values.
+
 Discovery was exercised against the live repository before merge:
 `python3 scripts/triage.py --repo fabiandistler/agents list --limit 10`
 returned `[466, 604, 608, 610, 609, 611, 620, 622]` — the unlabeled backlog,
@@ -388,7 +412,9 @@ sweep and the newly-opened issue path are recorded here after merge:
 - [ ] First sweep: dispatch with no issue number; record the run id, the
       issues it labeled, and the summary lines.
 - [ ] Second sweep: dispatch again; confirm it discovers nothing for the
-      already-labeled issues.
+      already-labeled issues. If more than ten eligible issues existed before
+      the first sweep, later sweeps may legitimately discover the remaining
+      backlog until the cap has drained it.
 - [ ] Newly opened path: open a test issue, confirm it receives a label, and
       confirm there is no bot comment, close, or assignee.
 - [ ] Non-collaborator path (#629): open the test issue from an account
@@ -396,6 +422,12 @@ sweep and the newly-opened issue path are recorded here after merge:
       write-permission check and the next sweep labels the issue. If no such
       account is available, record that this path was not exercised.
 - [ ] Check that the parent spec #625 stays open and unchanged.
+
+For each live check, retain the workflow run URL and the before/after issue
+snapshot. Record the category, requested state, confidence, reason, and added
+labels from the apply summary, plus the absence of bot comments, closure, and
+assignment. Keep any unexercised path explicitly pending; offline tests do
+not supply the deployment evidence required by #629.
 
 ## Disable or roll back
 
