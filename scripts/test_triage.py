@@ -212,6 +212,15 @@ def test_sanitize_removes_url_safe_and_wrapped_base64():
     assert cleaned.count("[base64 removed]") == 2
 
 
+def test_sanitize_keeps_nested_hidden_content_out_of_the_model_input():
+    for inner in ("<div>nested</div>", "<span>nested</span>", "<br>"):
+        body = f'Before.<div style="display:none">{inner}hidden payload</div>After.'
+
+        cleaned = triage.sanitize(body, triage.BODY_LIMIT)
+
+        assert cleaned == "Before.After."
+
+
 def test_sanitize_caps_long_text_with_a_marker():
     cleaned = triage.sanitize("word " * 1000, triage.TITLE_LIMIT)
 
@@ -422,6 +431,28 @@ def test_apply_rejects_malformed_decisions(tmp_path: Path):
 
         assert code == triage.EXIT_INVALID, payload
         assert fake.writes() == [], payload
+
+
+def test_apply_records_a_malformed_classifier_decision_in_the_summary(tmp_path: Path):
+    fake = FakeGh()
+    path = write_decision(tmp_path, {"category": "bug"})
+    summary = tmp_path / "summary.md"
+
+    code = run_cli(
+        fake,
+        "apply",
+        "--issue",
+        "626",
+        "--decision",
+        str(path),
+        "--summary-file",
+        str(summary),
+    )
+
+    assert code == triage.EXIT_INVALID
+    assert fake.writes() == []
+    assert "Issue #626" in summary.read_text(encoding="utf-8")
+    assert "failed" in summary.read_text(encoding="utf-8")
 
 
 def test_apply_appends_a_markdown_summary(tmp_path: Path):

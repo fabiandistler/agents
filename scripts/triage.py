@@ -177,7 +177,7 @@ class _VisibleText(HTMLParser):
         self.hidden: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag in ("script", "style") or _hides(attrs):
+        if self.hidden or tag in ("script", "style") or _hides(attrs):
             if tag not in VOID_TAGS:
                 self.hidden.append(tag)
             return
@@ -544,6 +544,12 @@ def main(argv: list[str] | None = None, *, gh: GitHub | None = None) -> int:
         print(json.dumps(result, ensure_ascii=False))
         return EXIT_OK
     except TriageError as exc:
+        if args.command == "apply" and args.summary_file:
+            with args.summary_file.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    f"### Issue #{args.issue}: triage failed\n\n"
+                    "The decision could not be applied. Inspect the step error before retrying.\n\n"
+                )
         _print_error(str(exc))
         return exc.exit_code
 
