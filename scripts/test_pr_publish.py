@@ -943,6 +943,70 @@ def test_a_stale_assessment_aborts_before_the_second_fetch():
     assert write_calls(fake) == []
 
 
+@pytest.mark.parametrize(
+    ("changed_path", "replacement", "expected_risk", "expected_comment_id"),
+    [
+        (PR_PATH, {"labels": [{"name": "risk:high"}]}, "low", None),
+        (
+            FILES_PATH,
+            [{"filename": ".github/workflows/check.yml", "status": "modified", "patch": "@@"}],
+            "high",
+            None,
+        ),
+        (COMMENTS_PATH, [{"id": 77, "body": f"{MARKER}\nprevious review"}], "low", 77),
+    ],
+)
+def test_live_write_replans_using_the_final_context(
+    changed_path, replacement, expected_risk, expected_comment_id
+):
+    class ChangedContext(FakeGitHub):
+        def get(self, path, params=None, accept=None):
+            response = super().get(path, params, accept)
+            if self.pull_fetches == 2 and path == changed_path and accept is None:
+                if path == PR_PATH:
+                    return json_response({**response.json(), **replacement})
+                return json_response(replacement)
+            return response
+
+    fake = ChangedContext(["abc123", "abc123"])
+    payload = pr_publish.publish_live(
+        REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
+    )
+
+    plan = payload["plan"]
+    assert plan["decision"]["risk"] == expected_risk
+    assert comment_action(plan)["comment_id"] == expected_comment_id
+    if changed_path == PR_PATH:
+        assert "risk:high" in label_action(plan)["remove"]
+
+
+def test_a_pull_request_closed_between_fetches_aborts_every_write():
+    class ClosedPull(FakeGitHub):
+        def get(self, path, params=None, accept=None):
+            response = super().get(path, params, accept)
+            if self.pull_fetches == 2 and path == PR_PATH and accept is None:
+                return json_response({**response.json(), "state": "closed"})
+            return response
+
+    fake = ClosedPull(["abc123", "abc123"])
+    plan = pr_publish.publish_live(
+        REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
+    )
+
+    assert plan["status"] == "aborted"
+    assert plan["abort_reason"] == "pull_request_closed"
+    assert plan["actions"] == []
+    assert write_calls(fake) == []
+
+
+def test_an_already_closed_pull_request_produces_no_actions():
+    plan = pr_publish.plan_publish(make_context(state="closed"), make_assessment(), make_review())
+
+    assert plan["status"] == "aborted"
+    assert plan["abort_reason"] == "pull_request_closed"
+    assert plan["actions"] == []
+
+
 def test_a_failed_write_is_reported_in_the_results():
     fake = FakeGitHub(["abc123", "abc123"])
     fake.fail_paths.add(f"/repos/{REPO}/labels")

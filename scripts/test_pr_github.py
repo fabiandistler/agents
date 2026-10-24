@@ -200,7 +200,12 @@ def fetch(client: FakeClient) -> dict:
 
 def test_fetch_context_maps_every_contract_field():
     client = FakeClient(
-        pull_request(draft=True, mergeable=False, labels=[{"name": "risk:low"}, {"name": "x"}]),
+        pull_request(
+            state="closed",
+            draft=True,
+            mergeable=False,
+            labels=[{"name": "risk:low"}, {"name": "x"}],
+        ),
         file_pages=(
             [
                 api_file("scripts/modified.py", patch="@@ -1 +1 @@\n"),
@@ -248,6 +253,7 @@ def test_fetch_context_maps_every_contract_field():
     assert context["schema_version"] == 1
     assert context["repo"] == REPO
     assert context["number"] == NUMBER
+    assert context["state"] == "closed"
     assert context["title"] == "Fix docs"
     assert context["body"] == "Body"
     assert context["author"] == "fabiandistler"

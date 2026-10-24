@@ -400,6 +400,7 @@ def fetch_context(
         "title": pull.get("title") if isinstance(pull.get("title"), str) else "",
         "body": pull.get("body") if isinstance(pull.get("body"), str) else "",
         "author": user.get("login") if isinstance(user.get("login"), str) else "",
+        "state": pull.get("state"),
         "head_sha": head_sha,
         "head_ref": head.get("ref") if isinstance(head.get("ref"), str) else "",
         "base_ref": base.get("ref") if isinstance(base.get("ref"), str) else "",

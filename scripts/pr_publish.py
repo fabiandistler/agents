@@ -407,6 +407,9 @@ def plan_publish(
     assessment = _validate_assessment(assessment)
     review = _validate_review(review)
 
+    if context.get("state") == "closed":
+        return _plan(context, "aborted", "pull_request_closed", [], _aborted_decision(review))
+
     if _is_stale(assessment, review, context["head_sha"]):
         return _plan(
             context,
@@ -453,18 +456,6 @@ def plan_publish(
     )
 
 
-def _aborted_write_plan(plan: dict, fresh: dict) -> dict:
-    head_sha = fresh.get("head_sha")
-    return {
-        **plan,
-        "head_sha": head_sha if isinstance(head_sha, str) and head_sha else plan["head_sha"],
-        "status": "aborted",
-        "abort_reason": "head_sha_changed",
-        "decision": {**plan["decision"], "risk": None, "verdict": None, "auto_merge": "off"},
-        "actions": [],
-    }
-
-
 def _fetch_context(repo: str, number: int, token: str | None, client=None) -> dict:
     if client is None:
         return pr_github.fetch_context(repo, number, token=token)
@@ -498,8 +489,9 @@ def publish_live(
         return plan
 
     fresh = _fetch_context(repo, number, token, client)
-    if fresh.get("head_sha") != plan["head_sha"]:
-        return _aborted_write_plan(plan, fresh)
+    plan = plan_publish(fresh, assessment, review, auto_merge=os.environ.get(AUTO_MERGE_ENV))
+    if plan["status"] == "aborted":
+        return plan
 
     writer = client if client is not None else pr_github.GitHubClient(token)
     results = pr_apply.apply_plan(plan, writer)
