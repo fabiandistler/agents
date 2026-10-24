@@ -17,8 +17,10 @@ TOOL_PERMISSIONS = {
     "Read": "read",
     "Grep": "grep",
     "Glob": "glob",
-    "Bash": "shell",
-    "Shell": "shell",
+    # OpenCode 1.19's shell tool checks "bash"; its v2 config migration maps
+    # "bash" to "shell", so "bash" stays valid across both.
+    "Bash": "bash",
+    "Shell": "bash",
     "Edit": "edit",
     "Write": "edit",
     "WebFetch": "webfetch",
@@ -92,7 +94,9 @@ def render_codex(fields, body: str, plugin_dir: str, marker: str) -> str:
 
 
 def opencode_permissions(tools: str):
-    permissions = {}
+    # A Claude tools: list is an allowlist. OpenCode lets the last matching rule
+    # win, so the catch-all deny goes first and the listed tools override it.
+    permissions = {'"*"': "deny"}
     for source_tool in tools.split(","):
         source_tool = source_tool.strip()
         if not source_tool:
@@ -100,8 +104,6 @@ def opencode_permissions(tools: str):
         if source_tool not in TOOL_PERMISSIONS:
             raise ValueError(f"unsupported Claude tool in frontmatter: {source_tool}")
         permissions[TOOL_PERMISSIONS[source_tool]] = "allow"
-    if "edit" not in permissions:
-        permissions["edit"] = "deny"
     return permissions
 
 
