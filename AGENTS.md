@@ -4,6 +4,16 @@ This repository is a catalogue of skills and small utilities for AI coding
 agents. It targets any agent that can read Markdown instructions — Claude
 Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 
+## Start here
+
+- Documentation map: [`docs/README.md`](docs/README.md).
+- Add or change a skill: [`docs/contributing.md`](docs/contributing.md); the
+  conventions below are the reference.
+- Install and use the catalogue: [`README.md`](README.md) and
+  [`docs/install.md`](docs/install.md).
+- Vocabulary: [`GLOSSARY.md`](GLOSSARY.md). Decisions:
+  [`docs/adr/README.md`](docs/adr/README.md).
+
 ## How to use this repo
 
 - Each directory under `skills/` that contains a `SKILL.md` file is a
@@ -22,9 +32,10 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `.claude/settings.json` carries it via `scripts/build_project_claude.py`.
   `--secret-guard` adds the same kind of hook, `scripts/secret_read_guard.py`,
   which stops agents from reading credential files or dumping the environment.
-  Claude Code gets skills, subagents and the merge guard from the plugin
-  marketplace only; `--target=claude` syncs just `--instructions` and removes
-  the links and settings entry older versions created.
+  Claude Code gets skills, subagents, the merge guard and the secret read guard
+  from the plugin marketplace only; `--target=claude` syncs just
+  `--instructions` and removes the links and settings entry older versions
+  created.
   See `./install.sh --help` and `docs/install.md`.
 - `instructions/` holds single-topic rule fragments, ordered by numeric
   filename prefix, in three tiers: 20, 25, 50, 55 and 60 are always on;
@@ -55,7 +66,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `scripts/build_project_claude.py` (CI checks drift), including the
   `Bash(uv init*)` hook that reads `instructions/30-python.md`, plus Matt
   Pocock's skills vendored by `scripts/vendor_mattpocock_skills.py`. See
-  `docs/install.md#cloud-sessions-claude-in-this-repo`.
+  `docs/maintainers/install-internals.md`.
 - Reference material stays inside the skill that owns it, under
   `skills/<skill>/references/`. SKILL.md names the pages it has; an agent
   opens one only when it needs it. There is no lookup service in front of
@@ -153,8 +164,10 @@ machine consumption prefer `skills.json`.
   - `name` — must match the directory name (`scripts/quick_validate.py` enforces it).
   - `category` — one of `architecture`, `refactoring`,
     `ai-ml`, `workflow`, `communication`, `personal` (the fixed list in
-    `scripts/build_manifest.py`). Determines the catalogue section, the
-    `install.sh --category` subset, and which plugin bundles the skill.
+    `scripts/catalogue.py`; `scripts/quick_validate.py` mirrors it so the
+    validator also works on skills outside this repo). Determines the
+    catalogue section, the `install.sh --category` subset, and which plugin
+    bundles the skill.
   - `description` — single paragraph; the first sentence becomes the
     `summary` in `skills.json` (for a router the whole description does, since
     it is the category's entire trigger surface). Keep it within the description budget:
@@ -248,10 +261,15 @@ machine consumption prefer `skills.json`.
   tables by hand — `README.md` and `AGENTS.md` (`## Skill catalogue`) —
   keeping their text identical and each skill under the section matching
   its `category`. CI enforces this with `python3 scripts/check_docs.py`.
-- Also keep the skill's plugin in sync: add/rename/remove the relative
-  symlink `plugins/<category>/skills/<skill-name>` →
-  `../../../skills/<skill-name>`. CI enforces this with
+- Keep the plugin in sync for **top-level** skills: add/rename/remove the
+  relative symlink `plugins/<category>/skills/<skill-name>` →
+  `../../../skills/<skill-name>`. A router member is a normal skill directory
+  under `skills/` but gets no plugin symlink: `build_routers.py` creates
+  `skills/<router>/members/<name>` and the generated member table, and the
+  category plugin contains only the router. CI enforces this with
   `python3 scripts/check_plugins.py`.
+- Fast loop for a docs or plugin change:
+  `scripts/check_all.sh --only docs,plugins`; `--list` shows every check name.
 - A reference file over 100 lines carries a `## Contents` heading with
   section links within its first 20 lines, so a partial read still shows its
   scope. CI enforces this with `python3 scripts/check_reference_tocs.py`.
@@ -317,9 +335,10 @@ they change.
   (`python3 scripts/tool.py <repo-path>`), never via a repo-root path
   (`skills/<name>/scripts/`, `members/<name>/scripts/`). The skill is
   installed elsewhere, so the target repo is always passed as an argument.
-- Per-skill eval prompts live in `skills/<name>/evals.json` (>=3
-  `should_trigger`, >=1 `should_not_trigger`, optional `expected_behavior`;
-  see `docs/adr/0006-skill-eval-prompts.md`). The `evals` check in
+- Every auto or router skill ships eval prompts in `skills/<name>/evals.json`
+  (>=3 `should_trigger`, >=1 `should_not_trigger`, optional
+  `expected_behavior`; see `docs/adr/0006-skill-eval-prompts.md`). Command
+  skills are exempt and may ship one. The `evals` check in
   `scripts/check_all.sh` (the list CI calls) runs `check_evals.py --strict`,
   so a missing or malformed file fails.
 

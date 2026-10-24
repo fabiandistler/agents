@@ -7,8 +7,7 @@ Re-verify the versions below before each real run; `ruff` in particular moves fa
 - [Detect](#detect)
 - [Scaffold](#scaffold-prd-item-1)
 - [Commands](#commands--the-check-vocabulary-for-prd-items)
-- [CI](#ci-prd-item-2--ci-sh-plus-one-forge-file)
-- [Provenance](#provenance)
+- [CI](#ci-prd-item-2--cish-plus-one-forge-file)
 
 ## Detect
 

@@ -20,10 +20,10 @@ import yaml
 # fields consumed by build_manifest.py, install.sh and check_plugins.py.
 #
 # These vocabularies mirror CATEGORIES / ACTIVATIONS / TARGETS in
-# scripts/build_manifest.py. They are restated rather than imported so this
-# validator keeps working on skills outside this repo, where that tooling is
-# not on the path. When the manifest builder gains a category, activation or
-# target, update it here too.
+# scripts/catalogue.py, which build_manifest.py imports. They are restated
+# rather than imported so this validator keeps working on skills outside this
+# repo, where that tooling is not on the path. When the catalogue gains a
+# category, activation or target, update it here too.
 ALLOWED_PROPERTIES = {
     # Agent Skills format
     "name",

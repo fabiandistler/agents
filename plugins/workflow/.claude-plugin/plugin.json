@@ -1,6 +1,6 @@
 {
   "name": "workflow",
-  "description": "Planning and workflow skills: natural planning, repo status updates, release PRs for R and Python packages, and open-source contribution scouting.",
+  "description": "Planning and workflow skills: natural planning, repo status updates, release PRs for R and Python packages, open-source contribution scouting, pypet command-snippet curation, and taking a greenfield PoC to production through a spec and TDD loop.",
   "author": {
     "name": "Fabian Distler"
   }

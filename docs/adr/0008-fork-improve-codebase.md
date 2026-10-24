@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted (2026-10-13). The merge of the fork is gated on the A/B result below.
+Accepted (2026-10-13). The A/B gate passed: the runs and the verdict are in
+[`docs/evals/improve-codebase-ab.md`](../evals/improve-codebase-ab.md), and the
+adjustments the runs called for are in `skills/improve-codebase/`.
 
 ## Context
 

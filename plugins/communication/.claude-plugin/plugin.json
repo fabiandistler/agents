@@ -1,6 +1,6 @@
 {
   "name": "communication",
-  "description": "Communication skills: stakeholder updates, communication analysis, problem-first explanations, technical documentation for a named reader, and self-contained HTML artifacts.",
+  "description": "Communication skills: stakeholder updates, communication analysis, problem-first explanations, technical documentation for a named reader, self-contained HTML artifacts, compressing long material with tldr, and re-pitching a misunderstood message with was.",
   "author": {
     "name": "Fabian Distler"
   }

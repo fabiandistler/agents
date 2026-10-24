@@ -11,10 +11,12 @@ Checked invariants:
   - Every directory under `plugins/` is listed in the marketplace.
   - Every `plugins/<plugin>/skills/<skill>` is a relative symlink to
     `../../../skills/<skill>` whose target contains a SKILL.md.
-  - Plugin membership mirrors the `category:` frontmatter exactly: plugin
-    `<cat>` contains precisely the skills with `category: <cat>`, so each
-    skill ships in exactly one plugin. Skills whose `targets:` frontmatter
-    excludes `claude` are left out — the plugins are the Claude distribution.
+  - Plugin membership mirrors the `category:` frontmatter for top-level
+    skills: plugin `<cat>` contains precisely the top-level skills whose
+    category is `<cat>`; routed members are excluded, since they nest under
+    their router. Each top-level skill ships in exactly one plugin. Skills
+    whose `targets:` frontmatter excludes `claude` are left out — the plugins
+    are the Claude distribution.
   - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
     `name:` (matching the filename stem) and `description:`.
   - A hook plugin (`HOOK_PLUGINS`: `merge-guard`, `secret-guard`) has a parsable

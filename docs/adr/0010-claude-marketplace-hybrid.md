@@ -6,6 +6,10 @@ Accepted (2026-10-22). Supersedes ADR-0004 in part: its `claude` row stands,
 its `codex` and `opencode` rows and "`install.sh` stops linking skills
 entirely" do not.
 
+Amended: the `secret-guard` plugin was added after this decision. It follows
+the same split — `claude` gets it from the marketplace as a hook-only plugin,
+`codex` and `opencode` get it from `install.sh --secret-guard`.
+
 ## Context
 
 ADR-0004 gave each install surface one distribution channel and moved `claude`
