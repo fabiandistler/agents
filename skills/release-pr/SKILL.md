@@ -9,6 +9,8 @@ argument-hint: "[major | minor | patch | X.Y.Z | tag]"
 description: Turn the current branch into a release pull request for an R or Python package — confirmed version bump, finalized NEWS.md or CHANGELOG.md, checks run, PR body written. After merge, tag and publish the release.
 metadata:
   version: "1.2"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # Release PR

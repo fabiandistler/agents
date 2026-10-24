@@ -8,6 +8,8 @@ argument-hint: "[file | PR | URL | topic — empty means the last message]"
 description: Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.
 metadata:
   version: "1.3"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # TL;DR

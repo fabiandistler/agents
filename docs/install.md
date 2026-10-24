@@ -12,13 +12,122 @@ Claude Code is the exception: it gets skills, subagents and the merge guard
 from the plugin marketplace only, and `install.sh --target=claude` only syncs
 `--instructions`. See [Claude Code: plugins only](#claude-code-plugins-only).
 
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | The requested operation succeeded. `--help` returns 0, as does `--check` when the selected installation is clean. |
+| `1` | An operational failure prevented completion, such as an invalid saved-state file, a failed managed-file write, or an unusable `--output` path. |
+| `2` | Invocation error: a missing or invalid target, an unknown option, incompatible options, a missing `--output` value, or `--target=detected` finding no installed agents. |
+| `3` | `--check` found drift. When `--output` is supplied, the TSV report contains the drift rows. |
+| `4` | `--update` found no saved install state. Run a successful install with `--target=...` before using `--update`. |
+
+## Check the managed installation
+
+`--check` runs the selected install calculation without changing managed files.
+It prints a summary by default and exits with 0 when clean, 3 when it finds
+drift, or 2 when the options are invalid. Add `--output FILE` to write the full
+TSV report (`target`, `kind`, `path`, `state` columns):
+
+```sh
+./install.sh --target=all --check
+./install.sh --target=codex --merge-guard --secret-guard --check --output /tmp/agents-drift.tsv
+```
+
+The report states are `missing` (expected managed state is absent), `stale`
+(managed content no longer matches this checkout), `foreign` (an unmanaged
+file or unbalanced marker blocks the managed path), `duplicate` (more than one
+managed block or link occupies the selected state), and `untrusted-hook` (Codex
+will skip a guard that is disabled or whose saved trust hash does not match its
+current hook).
+Passing a guard flag makes that guard part of the expected state; existing
+Codex guard blocks are checked for stale checkout paths and hook trust even
+without a guard flag. Pass `--instructions`, `--merge-guard`, and
+`--secret-guard` to include those optional components in the expected state.
+
+## Replay the last install
+
+Each successful install saves its resolved targets, filters, optional components,
+and checkout path to `${XDG_STATE_HOME:-~/.local/state}/fabiandistler-agents/install.json`.
+`--update` replays those options and rebases marker-owned paths and managed links
+if this checkout moved. It exits 4 when no state file exists; start with an
+install such as `./install.sh --target=codex`. `--update --dry-run` previews the
+replay without changing files or state, and `--update --check` reports drift
+against the saved options. During `--update`, every write re-checks its file
+right before writing and leaves it alone if it changed in between.
+
+## Update after a merge or rebase
+
+`--git-hook` installs marker-owned `post-merge` and `post-rewrite` hooks in this
+clone's Git hooks directory. They check the saved install first and run
+`--update` only when the check finds drift. `post-rewrite` also consumes Git's
+rewrite list, so it works after `git pull --rebase`. Hook setup is opt-in and
+does not add a CI or prek stage:
+
+```sh
+./install.sh --target=all --git-hook
+./install.sh --uninstall --git-hook
+```
+
+The targetless uninstall removes only these marker-owned hooks; it leaves the
+global skill and instruction installation in place. Foreign hooks are skipped.
+
+Git shares one hooks directory across a clone and its linked worktrees, so
+`--git-hook` run from a linked worktree writes there too. The hooks record the
+checkout that installed them and exit silently in every other worktree; a merge
+in a worktree therefore never moves your links into a directory that
+`git worktree remove` later deletes. When `core.hooksPath` is set (husky,
+lefthook, a shared hooks directory), `--git-hook` refuses with exit 1 before
+writing anything: that directory belongs to the hook manager, so call
+`./install.sh --update` from it yourself.
+
+## Detect installed agents
+
+`--target=detected` selects an agent when its command is on `PATH` or its user
+configuration directory exists: `claude` or `~/.claude/`, `codex` or
+`~/.codex/`, and `opencode` or `~/.config/opencode/`. The installer prints the
+resolved targets and saves that explicit list for later checks and updates, so
+an agent installed later is reported by `--update --check` rather than written
+to silently. A bare `./install.sh` still writes nothing and exits 2; pass a
+target or use `--target=detected` explicitly.
+
+## OpenCode subagents
+
+When OpenCode is selected, plugin subagents from `plugins/*/agents/*.md` are
+rendered into `~/.config/opencode/agents/<name>.md`. The renderer keeps each
+description and prompt, sets `mode: subagent`, maps Claude tools to OpenCode
+permissions, and denies editing unless the source lists `Edit` or `Write`. It
+drops Claude's `model` value and resolves `${CLAUDE_PLUGIN_ROOT}` for this
+checkout. Generated files carry an ownership comment; stale generated files
+are pruned, and uninstall removes only generated files for selected categories.
+See the [OpenCode agent format](https://opencode.ai/docs/agents). The Codex
+TOML and the OpenCode Markdown come from the same parser in
+`scripts/plugin_agents.py`.
+
+`--uninstall` updates the same file. Removing the whole saved selection (every
+saved target and category) deletes it, so a later `--update` exits 4. Removing
+whole targets (all saved categories for them) or whole categories (for every
+saved target) rewrites it without them; component flags such as
+`--instructions` on that run also drop the component when no saved target is
+left out. `--uninstall --dry-run` prints `would delete` or `would rewrite` for
+the state file instead. One selection cannot express a category or `--env`
+removed from only some saved targets, so then the file stays unchanged, a note
+goes to stderr, and `--update` reinstalls what was removed.
+
 ## What gets linked where
 
 | Target | Skills | Command skills (`activation: command`) |
 |---|---|---|
 | `claude` | nothing; use the plugins | nothing; use the plugins |
 | `codex` | `~/.agents/skills/<skill>` | `~/.agents/skills/<skill>` (see below) |
-| `opencode` | `~/.config/opencode/skills/<skill>` | `~/.config/opencode/command/<name>.md` |
+| `opencode` | `~/.config/opencode/skills/<skill>` | `~/.config/opencode/skills/<skill>` (see below) |
+
+**OpenCode command skills.** A command skill stays in its ordinary skills
+directory. Its `metadata` sets `opencode/slash: "true"` to expose `/name` in
+the TUI and `opencode/autoinvoke: "false"` to keep it out of automatic
+selection; `scripts/quick_validate.py` requires both on every
+`activation: command` skill. The installer no longer creates command files, and
+removes the `~/.config/opencode/command/<name>.md` links earlier versions made.
 
 opencode also reads `~/.agents/skills/`, and it expects skill names to be
 unique across all its roots
@@ -77,17 +186,24 @@ of these skills, a skill that excludes `claude` also gets no plugin symlink.
 
 ## Shared instructions (`--instructions`)
 
-Skills are capabilities an agent loads on demand; the rules that should apply
-to *every* session are something else. Those live in `instructions/` as
-single-topic Markdown fragments, ordered by their numeric filename prefix.
+Skills are capabilities an agent loads on demand; shared rules use three
+tiers in `instructions/`, ordered by numeric filename prefix:
+
+- **Always on:** 20, 25, 50, 55 and 60.
+- **Path-scoped in Claude:** 30 for Python files and 40 for R files. Codex and
+  opencode get a pointer for the Python baseline and keep the R rules inline.
+- **On demand:** 70, 80 and 85. Their pointers stay in the global instruction
+  file, and `install.sh` places their full text under `~/.agents/instructions/`.
+  In this repository, 70 and 85 are sourced from `instructions/on-demand/`; 80
+  is sourced from `skills/llm-application-engineering/references/agent-pipelines.md`.
 
 ```sh
-./install.sh --target=all --instructions             # sync the rule files
+./install.sh --target=all --instructions             # sync rules, payloads and Claude's uv-init hook
 ./install.sh --target=all --instructions --dry-run   # preview
 ./install.sh --target=all --instructions --uninstall # strip the block
 ```
 
-Each fragment is authored once and composed into a marker-delimited managed
+Always-on fragments and pointers are composed into a marker-delimited managed
 block in the agent's global instruction file — `~/.claude/CLAUDE.md` for Claude
 Code, `~/.codex/AGENTS.md` for Codex CLI, `~/.config/opencode/AGENTS.md` for
 opencode. The filenames differ because that is
@@ -99,10 +215,20 @@ A fragment with a `paths:` field (comma-separated globs, e.g.
 `paths: **/*.R, **/DESCRIPTION`) leaves Claude's block and is written as a
 [path-scoped rule](https://code.claude.com/docs/en/memory#path-specific-rules)
 to `~/.claude/rules/agents-<fragment>.md`, which Claude Code loads only once it
-reads a matching file. Codex and opencode have no equivalent and keep the
-fragment in their block. Rule files without the `managed-by:` line are never
-touched. The catch: nothing loads before the first matching read, so a rule that
-must hold while *creating* the first such file does not belong behind `paths:`.
+reads a matching file. Codex and opencode have no equivalent: they use a
+pointer to `~/.agents/instructions/30-python.md` for Python work and keep the
+R fragment inline. Rule files without the `managed-by:` line are never touched.
+The catch: nothing loads before the first matching read, so a rule that must
+hold while *creating* the first such file does not belong behind `paths:`.
+For the Python baseline, a Claude `Bash(uv init*)` PreToolUse hook reads the
+installed `~/.agents/instructions/30-python.md` and adds it to context before
+the first Python file exists.
+
+Uninstall removes the selected global blocks and, when Claude is selected, its
+uv-init hook. It removes an on-demand file
+only when no remaining managed instruction block refers to it; a file at a
+payload path without the ownership marker is never touched, and its pointer is
+then left out of the block.
 
 Anything outside the markers is left alone, so hand-written notes and
 `@`-imports survive install, reinstall, and uninstall. Unbalanced markers (from
@@ -117,8 +243,9 @@ its own and no rule loads twice. Once that file exists, opencode stops reading
 opencode too belongs in `~/.config/opencode/AGENTS.md` as well.
 
 The flag is opt-in — plain `./install.sh --target=...` only touches skills.
-Claude plugins cannot ship `CLAUDE.md` content or rules, so for Claude this
-flag is the only thing `install.sh` still installs.
+Claude plugins cannot ship `CLAUDE.md` content or path-scoped rules, so
+`--instructions` installs the instruction blocks, path rules, on-demand files,
+and Python `uv init` hook for Claude.
 
 ## PR merge guard (`--merge-guard`)
 
@@ -283,8 +410,9 @@ claude plugin install merge-guard@fabiandistler-agents
 claude plugin install secret-guard@fabiandistler-agents
 ```
 
-For Claude, `install.sh` installs no skills, commands or hooks any more (#567).
-`--target=claude` only syncs `--instructions`, because plugins cannot ship
+For Claude, skills, commands, subagents, and merge/secret guard hooks come from
+plugins (#567). `--target=claude` syncs only shared instructions, path rules,
+the Python `uv init` context hook, and cleanup of old links. Plugins cannot ship
 `CLAUDE.md` content or path-scoped rules. Every `--target=claude` run, install
 or `--uninstall`, also removes what earlier versions created, so skills do not
 load twice next to the plugins:
@@ -294,6 +422,11 @@ load twice next to the plugins:
 - the merge-guard `PreToolUse` entry in `~/.claude/settings.json` (found by the
   script name in its command; every other setting stays). Install the
   `merge-guard` plugin to keep the guard.
+
+With `--instructions`, the installer also adds a separate `PreToolUse` handler
+to `~/.claude/settings.json` with `if: Bash(uv init*)`. It invokes the installed
+`~/.agents/instructions/python_init_context.py`, which injects the Python
+baseline. `--uninstall --instructions` removes only that handler.
 
 **Updates.** Claude Code turns auto-update off by default for third-party
 marketplaces such as this one. Turn it on in `/plugin` under Marketplaces, or
@@ -317,7 +450,7 @@ should have:
 | `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
 | `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
 | `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
-| `.claude/settings.json` `PreToolUse` entry | the PR merge guard (`scripts/pr_merge_guard.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
+| `.claude/settings.json` `PreToolUse` entries | the PR merge guard (`scripts/pr_merge_guard.py`) and the Python `Bash(uv init*)` context hook (`scripts/python_init_context.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
 After changing a skill's frontmatter or an instruction fragment, the prek

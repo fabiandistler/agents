@@ -46,6 +46,10 @@ It is a dense, falsifiable conventions sheet meant to be consulted when the
 question is *how to implement* one of these steps well, not *which* step to take
 next.
 
+For multi-stage or unattended LLM pipelines, read
+[`references/agent-pipelines.md`](references/agent-pipelines.md) for grader
+separation, code-review meta-grading, and controlled external writes.
+
 ## Part A — The adaptation ladder
 
 When a foundation model fails at a task, finetuning is almost never the right
