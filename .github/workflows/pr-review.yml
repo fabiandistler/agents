@@ -1,0 +1,242 @@
+# pr-review - the three-stage pull request review pipeline: assess (model-free),
+# review (model key, read-only token) and publish (write token, no model key).
+#
+# The workflow runs from the base commit on pull_request_target and never
+# checks out or executes the pull request head: metadata, diff and base file
+# contents arrive through the REST API. Every job holds only the credential its
+# stage needs, and publish consumes the earlier stages as artifacts. Publish
+# writes on every pull request event; a manual run defaults to a dry run.
+name: pr-review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: string
+      dry_run:
+        # A manual run plans only unless this is set to false; then it writes
+        # exactly what a pull request event would.
+        description: Print the planned actions instead of applying them
+        required: false
+        type: boolean
+        default: true
+
+# No scope by default; each job below opts in to exactly what it needs.
+permissions: {}
+
+# A new push supersedes the run still reviewing the previous head.
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: true
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    # Read-only: the policy needs the pull request, its comments, its check
+    # runs and the base file contents. Nothing here may write.
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      checks: read
+    outputs:
+      same_repo: ${{ steps.origin.outputs.same_repo }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Fetch the pull request context
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/pr_github.py \
+            --pr "${{ github.event.pull_request.number || inputs.pr }}" \
+            --repo "${{ github.repository }}" \
+            --output context.json
+
+      - name: Check whether the head lives in this repository
+        id: origin
+        # A manual run has no pull request event to read the head repository
+        # from, so the review guard takes it from the fetched context. Only an
+        # explicit `fork: false` counts as same-repository.
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'PY'
+          import json
+
+          with open("context.json", encoding="utf-8") as handle:
+              context = json.load(handle)
+          print("same_repo=" + ("true" if context.get("fork") is False else "false"))
+          PY
+
+      - name: Upload the context
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pr-context
+          path: context.json
+          if-no-files-found: error
+
+      - name: Classify the risk
+        run: python3 scripts/pr_risk.py --context context.json --output assessment.json
+
+      - name: Upload the assessment
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pr-assessment
+          path: assessment.json
+          if-no-files-found: error
+
+  review:
+    needs: assess
+    # Drafts are assessed but not reviewed until they are marked ready. A fork
+    # pull request is assessed too, but its diff never reaches the model: the
+    # job holds a secret and the diff is untrusted input. A manual run carries
+    # no pull request event, so the same-repository guard reads the assess
+    # output for both triggers.
+    if: >-
+      needs.assess.outputs.same_repo == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository))
+    runs-on: ubuntu-latest
+    # The base checkout is the only thing the review reads; the model response
+    # leaves the job as an artifact, never as a GitHub write.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Download the context
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pr-context
+
+      - name: Review the diff
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          PR_REVIEW_MODEL: ${{ vars.PR_REVIEW_MODEL }}
+        run: python3 scripts/pr_review.py --context context.json > review.json
+
+      - name: Upload the review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pr-review
+          path: review.json
+          if-no-files-found: error
+
+  publish:
+    needs: [assess, review]
+    # A skipped review (draft, fork) still publishes the assessment, and a
+    # failed review still publishes `review:unavailable`. Only a failed
+    # assessment leaves nothing to publish.
+    if: >-
+      always() && needs.assess.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Download the context
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pr-context
+
+      - name: Download the assessment
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pr-assessment
+
+      - name: Download the review
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pr-review
+        # The review job is skipped for drafts and forks, so its artifact is
+        # legitimately absent.
+        continue-on-error: true
+
+      - name: Reconstruct the review when the review job was skipped
+        # Without the model key this yields `skipped` for a draft or fork and
+        # `unavailable` otherwise, so a missing review can never look like a pass.
+        run: |
+          if [ -s review.json ]; then
+            exit 0
+          fi
+          python3 scripts/pr_review.py --context context.json > review.json
+
+      - name: Publish the assessment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          # A failed action still prints the results JSON, so the exit status is
+          # captured and reported after the summary has been rendered.
+          set +e
+          if [ "$WRITE" = "true" ]; then
+            python3 scripts/pr_publish.py \
+              --live \
+              --repo "${{ github.repository }}" \
+              --pr "$PR" \
+              --assessment assessment.json \
+              --review review.json \
+              --write > plan.json
+          else
+            python3 scripts/pr_publish.py \
+              --context context.json \
+              --assessment assessment.json \
+              --review review.json > plan.json
+          fi
+          status=$?
+          set -e
+          cat plan.json
+          python3 - "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          import sys
+
+          with open("plan.json", encoding="utf-8") as handle:
+              payload = json.load(handle)
+          plan = payload.get("plan", payload)
+          decision = plan.get("decision") or {}
+          labels = {"add": [], "remove": []}
+          for action in plan.get("actions", []):
+              if action.get("kind") == "set_labels":
+                  labels["add"].extend(action.get("add", []))
+                  labels["remove"].extend(action.get("remove", []))
+
+          lines = ["### PR review decision", ""]
+          if plan.get("status") == "aborted":
+              lines.append(f"- aborted: {plan.get('abort_reason')}")
+          else:
+              lines.extend(
+                  [
+                      f"- risk: {decision.get('risk')}",
+                      f"- review: {decision.get('review_status')}",
+                      f"- verdict: {decision.get('verdict')}",
+                      f"- auto-merge: {decision.get('auto_merge')}",
+                      f"- labels added: {', '.join(labels['add']) or 'none'}",
+                      f"- labels removed: {', '.join(labels['remove']) or 'none'}",
+                  ]
+              )
+          lines.extend(["", "```json", json.dumps(payload, indent=2), "```"])
+          with open(sys.argv[1], "a", encoding="utf-8") as handle:
+              handle.write("\n".join(lines) + "\n")
+          PY
+          exit "$status"
