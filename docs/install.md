@@ -72,6 +72,15 @@ does not add a CI or prek stage:
 The targetless uninstall removes only these marker-owned hooks; it leaves the
 global skill and instruction installation in place. Foreign hooks are skipped.
 
+Git shares one hooks directory across a clone and its linked worktrees, so
+`--git-hook` run from a linked worktree writes there too. The hooks record the
+checkout that installed them and exit silently in every other worktree; a merge
+in a worktree therefore never moves your links into a directory that
+`git worktree remove` later deletes. When `core.hooksPath` is set (husky,
+lefthook, a shared hooks directory), `--git-hook` refuses with exit 1 before
+writing anything: that directory belongs to the hook manager, so call
+`./install.sh --update` from it yourself.
+
 ## Detect installed agents
 
 `--target=detected` selects an agent when its command is on `PATH` or its user

@@ -131,6 +131,8 @@
 # alone if it changed in between.
 # --git-hook installs marker-owned post-merge and post-rewrite hooks in this
 # clone. Each checks saved install state before replaying it with --update.
+# They act only in the installing checkout, not in its linked worktrees, and
+# --git-hook exits 1 without writing while core.hooksPath is set.
 # --target=detected selects agents with an installed command or config directory.
 # --uninstall keeps that state in step: removing the whole saved selection
 # deletes the file, removing whole targets or categories rewrites it without
@@ -2482,12 +2484,21 @@ ensure_parent() {
 }
 
 git_hooks_dir() {
-  local git_dir
-  if ! git_dir="$(git -C "$REPO_ROOT" rev-parse --absolute-git-dir 2>/dev/null)"; then
+  local toplevel hooks_dir
+  if ! toplevel="$(git -C "$REPO_ROOT" rev-parse --show-toplevel 2>/dev/null)"; then
     echo "--git-hook requires a Git checkout" >&2
     return 1
   fi
-  printf '%s/hooks\n' "$git_dir"
+  # A hooksPath dir belongs to a hook manager (husky, lefthook) or is shared
+  # across repositories, so this installer never writes into it.
+  if [[ -n "$(git -C "$toplevel" config --get core.hooksPath || true)" ]]; then
+    echo "--git-hook refuses to write while core.hooksPath is set; call ./install.sh --update from that hook manager instead" >&2
+    return 1
+  fi
+  # --git-path resolves the common hooks dir from a linked worktree too.
+  hooks_dir="$(git -C "$toplevel" rev-parse --git-path hooks)"
+  [[ "$hooks_dir" == /* ]] || hooks_dir="$toplevel/$hooks_dir"
+  printf '%s\n' "$hooks_dir"
 }
 
 render_git_hook() {
@@ -2499,9 +2510,15 @@ HOOK
   if [[ "$hook" == post-rewrite ]]; then
     printf '%s\n' 'cat >/dev/null'
   fi
+  local install_root
+  install_root="$(cd "$REPO_ROOT" && pwd -P)"
+  # Git runs these hooks in every linked worktree; only the installing
+  # checkout may replay, or the links would follow a worktree that gets removed.
+  printf "install_root='%s'\n" "${install_root//\'/\'\\\'\'}"
   cat <<'HOOK'
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
-cd "$repo_root" || exit 1
+[ "$(cd "$repo_root" && pwd -P)" = "$install_root" ] || exit 0
+cd "$install_root" || exit 1
 if ./install.sh --update --check; then
   exit 0
 else
@@ -3150,6 +3167,11 @@ check_main() {
   ((GIT_HOOK)) && check_git_hooks
   check_result
 }
+
+# Resolve the hooks dir before main so a refused --git-hook leaves no partial install.
+if ((GIT_HOOK)); then
+  git_hooks_dir >/dev/null || exit 1
+fi
 
 if ((CHECK_MODE)); then
   check_main

@@ -1122,6 +1122,80 @@ run_command_skill_tests() {
   pass "OpenCode command-skill uninstall removes only repo-owned links"
 }
 
+# Exercises the hooks through real git operations in a throwaway copy of this
+# checkout, so linked worktrees and core.hooksPath behave as they do for users.
+run_git_hook_worktree_tests() {
+  local sandbox main_clone linked home state skill_link output status
+
+  sandbox_git() {
+    HOME="$home" XDG_STATE_HOME="$state" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+      GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.invalid \
+      GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.invalid git "$@"
+  }
+
+  sandbox_install() {
+    local checkout="$1"
+    shift
+    set +e
+    output="$(HOME="$home" XDG_STATE_HOME="$state" GIT_CONFIG_GLOBAL=/dev/null \
+      GIT_CONFIG_NOSYSTEM=1 "$checkout/install.sh" "$@" 2>&1)"
+    status=$?
+    set -e
+  }
+
+  fresh_sandbox() {
+    sandbox="$(cd "$(mktemp -d)" && pwd -P)"
+    home="$sandbox/home"
+    state="$sandbox/state"
+    main_clone="$sandbox/main"
+    linked="$sandbox/linked"
+    mkdir -p "$home" "$main_clone"
+    git -C "$REPO_ROOT" ls-files -z | (cd "$REPO_ROOT" && tar --null -T - -cf -) |
+      tar -C "$main_clone" -xf -
+    sandbox_git -C "$main_clone" init -q -b main
+    sandbox_git -C "$main_clone" add -A
+    sandbox_git -C "$main_clone" commit -q -m sandbox
+    sandbox_git -C "$main_clone" branch topic
+    sandbox_git -C "$main_clone" worktree add -q "$linked" -b side
+    skill_link="$home/.agents/skills/communication-analysis"
+  }
+
+  fresh_sandbox
+  sandbox_install "$main_clone" --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 ]] || fail "--git-hook install in the sandbox clone failed: $output"
+  sandbox_git -C "$main_clone" switch -q topic
+  echo topic >"$main_clone/topic.txt"
+  sandbox_git -C "$main_clone" add topic.txt
+  sandbox_git -C "$main_clone" commit -q -m topic
+  sandbox_git -C "$main_clone" switch -q main
+  rm "$skill_link"
+  sandbox_git -C "$linked" merge -q --no-edit topic >/dev/null 2>&1
+  [[ ! -e "$skill_link" && ! -L "$skill_link" ]] ||
+    fail "a merge in a linked worktree replayed the install from that worktree"
+  sandbox_git -C "$main_clone" merge -q --no-edit topic >/dev/null 2>&1
+  [[ "$(readlink "$skill_link")" == "$main_clone/skills/communication-analysis" ]] ||
+    fail "a merge in the installing clone did not replay the install into it"
+  pass "post-merge replays only for the installing checkout, not linked worktrees"
+
+  fresh_sandbox
+  sandbox_install "$linked" --target=codex --category=communication --git-hook
+  [[ "$status" -eq 0 && -x "$main_clone/.git/hooks/post-merge" &&
+    -x "$main_clone/.git/hooks/post-rewrite" &&
+    ! -e "$main_clone/.git/worktrees/linked/hooks/post-merge" &&
+    "$output" == *"created   $main_clone/.git/hooks/post-merge (Git hook)"* ]] ||
+    fail "--git-hook from a linked worktree did not write the common hooks dir: $output"
+  pass "--git-hook from a linked worktree writes the hooks Git actually runs"
+
+  fresh_sandbox
+  sandbox_git -C "$main_clone" config core.hooksPath .husky
+  sandbox_install "$main_clone" --target=codex --category=communication --git-hook
+  [[ "$status" -eq 1 && "$output" == *'core.hooksPath is set'* &&
+    ! -e "$main_clone/.husky" && ! -e "$main_clone/.git/hooks/post-merge" &&
+    ! -e "$home/.agents" && ! -e "$state/fabiandistler-agents/install.json" ]] ||
+    fail "--git-hook with core.hooksPath did not refuse before writing: $output"
+  pass "--git-hook refuses with exit 1 when core.hooksPath is set"
+}
+
 # 1. dry-run for --target=all should not create anything.
 HOME_DRY="$(mktemp -d)"
 dry_output="$(HOME="$HOME_DRY" "$INSTALL" --target=all --dry-run 2>&1)"
@@ -2254,6 +2328,7 @@ run_detected_tests
 
 # --git-hook: per-clone post-merge/post-rewrite hooks.
 run_git_hook_tests
+run_git_hook_worktree_tests
 
 # OpenCode subagents rendered from the plugin agents.
 run_opencode_agent_tests
