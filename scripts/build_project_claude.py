@@ -21,9 +21,11 @@ as a local install:
      loaded, or path-scoped when the fragment has `paths:` (same rendering as
      install.sh). A path-scoped fragment is skipped while no tracked file
      matches its globs (the R rules in this Python/Markdown repo).
-  4. The `PreToolUse` entry in `.claude/settings.json` that runs
-     `scripts/pr_merge_guard.py`, so agents in this repo cannot merge PRs. The
-     entry itself comes from that module, shared with install.sh.
+  4. The `PreToolUse` entries in `.claude/settings.json`: the PR merge guard
+     (`scripts/pr_merge_guard.py`), so agents in this repo cannot merge PRs,
+     and the `Bash(uv init*)` hook that injects the Python baseline before the
+     first Python file exists. Each entry comes from its hook module, shared
+     with install.sh.
 
 It owns only symlinks pointing into this repo, rule files carrying the
 `managed-by:` marker and the guard's entry in settings.json; anything else in
@@ -50,7 +52,8 @@ from instruction_fragments import (
     render_claude_rule,
     validate_fragment,
 )
-from pr_merge_guard import with_claude_hook
+from pr_merge_guard import with_claude_hook as with_merge_guard_hook
+from python_init_context import with_claude_hook as with_python_init_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI_DESCRIPTION = "Mirror this repo's skills, subagents and instructions into `.claude/`."
@@ -63,6 +66,10 @@ RULE_MARKER = "managed-by: fabiandistler/agents build_project_claude.py"
 SKIPPED_FRAGMENTS = frozenset({"60-code-comments.md"})
 SETTINGS_PATH = CLAUDE_DIR / "settings.json"
 MERGE_GUARD_COMMAND = 'python3 "$CLAUDE_PROJECT_DIR"/scripts/pr_merge_guard.py --harness claude'
+PYTHON_INIT_COMMAND = (
+    'python3 "$CLAUDE_PROJECT_DIR"/scripts/python_init_context.py '
+    '--baseline "$CLAUDE_PROJECT_DIR"/instructions/30-python.md'
+)
 
 
 def wanted_skill_links() -> dict[Path, Path]:
@@ -121,7 +128,9 @@ def wanted_rules() -> dict[Path, str]:
 
 def wanted_settings() -> str:
     settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
-    return json.dumps(with_claude_hook(settings, MERGE_GUARD_COMMAND), indent=2) + "\n"
+    settings = with_merge_guard_hook(settings, MERGE_GUARD_COMMAND)
+    settings = with_python_init_hook(settings, PYTHON_INIT_COMMAND)
+    return json.dumps(settings, indent=2) + "\n"
 
 
 def is_ours(link: Path) -> bool:
@@ -182,7 +191,7 @@ def sync(check: bool) -> list[str]:
     settings = wanted_settings()
     if SETTINGS_PATH.read_text(encoding="utf-8") != settings:
         act(
-            f"write {SETTINGS_PATH.relative_to(REPO_ROOT)} (PR merge guard hook)",
+            f"write {SETTINGS_PATH.relative_to(REPO_ROOT)} (PreToolUse hooks)",
             lambda: SETTINGS_PATH.write_text(settings, encoding="utf-8"),
         )
     return drift

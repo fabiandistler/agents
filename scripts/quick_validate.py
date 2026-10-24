@@ -86,13 +86,24 @@ def find_command_skill_gap(skill_path, frontmatter):
     """Return why a command skill could still be auto-triggered, or None.
 
     'activation: command' is a catalogue field no runtime reads. Claude honors
-    'disable-model-invocation: true'; Codex honors the committed
-    agents/openai.yaml sidecar, which install.sh links but never generates.
+    'disable-model-invocation: true'; OpenCode honors its slash/autoinvoke
+    metadata; Codex honors the committed agents/openai.yaml sidecar, which
+    install.sh links but never generates.
     """
     if frontmatter.get("disable-model-invocation") is not True:
         return (
             "'activation: command' requires 'disable-model-invocation: true' "
             "in the frontmatter (keeps Claude from auto-triggering it)"
+        )
+    metadata = frontmatter.get("metadata")
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("opencode/slash") != "true"
+        or metadata.get("opencode/autoinvoke") != "false"
+    ):
+        return (
+            "'activation: command' requires metadata 'opencode/slash: \"true\"' and "
+            "'opencode/autoinvoke: \"false\"' (registers an explicit OpenCode slash command)"
         )
     sidecar = Path(skill_path) / "agents" / "openai.yaml"
     if not sidecar.is_file():

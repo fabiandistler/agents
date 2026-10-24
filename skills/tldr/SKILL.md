@@ -8,6 +8,8 @@ argument-hint: "[file | PR | URL | topic — empty means the last message]"
 description: Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.
 metadata:
   version: "1.3"
+  opencode/slash: "true"
+  opencode/autoinvoke: "false"
 ---
 
 # TL;DR
@@ -27,7 +29,7 @@ honest line about what those facts leave out.
 | A URL or attached document | That document. |
 | A topic in prose | The part of this session about that topic. |
 
-Read the target in full first. 
+Read the target in full first.
 
 When the argument reads two ways — a word that is both a filename and a
 topic — resolve it from what the user has been doing and name the reading you

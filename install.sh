@@ -3,18 +3,25 @@
 # for popular coding agents. Idempotent; reversible via --uninstall.
 #
 # Usage:
-#   ./install.sh --target=claude --instructions # ~/.claude/CLAUDE.md + rules
+#   ./install.sh --target=claude --instructions # instructions, rules, payloads + uv-init hook
 #   ./install.sh --target=codex               # ~/.agents/skills/<skill>
 #   ./install.sh --target=opencode            # ~/.config/opencode/skills/<skill>
 #   ./install.sh --target=all                 # all of the above
+#   ./install.sh --target=detected            # installed commands/config dirs
 #   ./install.sh --target=all --dry-run       # show what would happen
 #   ./install.sh --target=all --uninstall     # remove symlinks owned by us
 #   ./install.sh --target=opencode --env=chat # only chat skills
 #   ./install.sh --target=codex  --env=coding # only coding skills
 #   ./install.sh --target=codex --category=architecture,refactoring
-#   ./install.sh --target=all --instructions   # also sync the rule files
+#   ./install.sh --target=all --instructions   # also sync rules, payloads and the Claude uv-init hook
 #   ./install.sh --target=all --merge-guard    # also block agent PR merges
 #   ./install.sh --target=all --secret-guard   # also block credential reads
+#   ./install.sh --target=all --check           # report managed-file drift
+#   ./install.sh --target=all --check --output drift.tsv
+#   ./install.sh --update                        # replay the last install
+#   ./install.sh --target=all --git-hook          # update after merge/rewrite
+#   ./install.sh --update --dry-run              # preview the replay
+#   ./install.sh --uninstall --git-hook           # remove this clone's hooks
 #
 # Claude gets skills, command skills, subagents and the PR merge guard from the
 # plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
@@ -41,15 +48,13 @@
 # equivalent of its own.
 #
 # Skills with `activation: command` in their frontmatter are user-invoked,
-# not model-triggered. For opencode they are linked into its command
-# directory (~/.config/opencode/command) as <name>.md instead of the skills
-# directory, keeping them out of the auto-trigger metadata. Codex custom
-# prompts (~/.codex/prompts) are
-# deprecated, so under codex these skills install into the skills directory
-# like any other; their agents/openai.yaml sidecar
-# (policy.allow_implicit_invocation: false) keeps Codex from auto-triggering
-# them, so they stay explicit-only. --uninstall reverses this, and codex
-# installs also remove any leftover ~/.codex/prompts symlinks we created.
+# not model-triggered. OpenCode uses each skill's opencode/slash and
+# opencode/autoinvoke metadata, so these skills stay in the ordinary skills
+# directory. Codex custom prompts (~/.codex/prompts) are deprecated, so under
+# Codex these skills install into the skills directory like any other; their
+# agents/openai.yaml sidecar (policy.allow_implicit_invocation: false) keeps
+# Codex from auto-triggering them. --uninstall reverses this, and old Codex and
+# OpenCode command links are cleaned up during migration.
 #
 # A category may ship a router skill (`activation: router`, named after the
 # category). Its auto skills are nested under the router's members/ dir, so
@@ -80,23 +85,24 @@
 # no longer link there; when the claude migration removes an old link, an
 # installed opencode gets its own link to that skill instead.
 #
-# The codex target additionally installs the full plugins, not just the
-# skills. Requires python3 (skipped with a warning otherwise); --uninstall
-# reverses it. --env only filters skills; the plugin extras follow
-# --category:
-#   - Each selected plugin's subagents (plugins/<category>/agents/*.md) are
-#     converted to Codex custom agents in ~/.codex/agents/<name>.toml.
+# Codex and OpenCode also install selected plugin subagents from
+# plugins/<category>/agents/*.md. Both render from the same source parser;
+# Codex writes TOML under ~/.codex/agents/, while OpenCode writes Markdown under
+# ~/.config/opencode/agents/. Requires python3 (skipped with a warning
+# otherwise); --uninstall removes only marker-owned outputs. --env only filters
+# skills; plugin agents follow --category.
 #
-# --instructions (off by default) additionally composes the Markdown
-# fragments in instructions/ into each agent's global instruction file
-# (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.config/opencode/AGENTS.md), as
-# one marker-delimited managed block. Fragments are ordered by their numeric filename prefix and may limit
-# themselves to some agents with a `targets:` frontmatter field, as skills do.
-# For claude, a fragment with a `paths:` field (comma-separated globs) goes to
-# ~/.claude/rules/agents-<fragment>.md instead and loads only when Claude reads
-# a matching file; codex and opencode keep it in their block.
-# Anything outside the markers is left untouched, so hand-written notes and
-# @-imports survive; --uninstall strips the block and nothing else. opencode
+# --instructions (off by default) composes always-on rules and pointers into
+# each agent's global instruction file. It also installs the pointer targets in
+# ~/.agents/instructions/. Fragments are ordered by their numeric filename
+# prefix and may limit themselves to agents with a `targets:` frontmatter field.
+# For Claude, fragments with `paths:` go to ~/.claude/rules/agents-<fragment>.md
+# and load only for matching files. Codex gets the Python baseline by pointer;
+# opencode gets the same pointer and keeps the R rules in its block. A Claude
+# PreToolUse hook supplies the Python baseline for `uv init` before any Python
+# file exists. Anything outside the managed markers is left untouched, so
+# hand-written notes and @-imports survive; --uninstall strips our blocks and
+# hooks and removes only unreferenced payloads. opencode
 # gets its own ~/.config/opencode/AGENTS.md: it reads ~/.claude/CLAUDE.md only
 # as a fallback when that file is missing, and opencode V2 not at all.
 #
@@ -112,6 +118,27 @@
 # --secret-guard (off by default) installs scripts/secret_read_guard.py the same
 # way (secret-guard plugin for claude): it blocks reading credential files
 # (.env, SSH keys, cloud and agent auth files) and dumping the environment.
+#
+# --check calculates the selected managed state without writing. It exits 0 when
+# clean, 3 when drift is found and 2 for invalid options. --output FILE writes
+# TSV instead of only printing the default summary; it requires --check. The
+# checker also flags Codex hooks that do not have a matching trusted hash.
+#
+# --update replays the last successful install from
+# ${XDG_STATE_HOME:-~/.local/state}/fabiandistler-agents/install.json. It exits 4
+# when no state exists; first install with --target=claude|codex|opencode|all.
+# Writes during --update re-check their file right before writing and leave it
+# alone if it changed in between.
+# --git-hook installs marker-owned post-merge and post-rewrite hooks in this
+# clone. Each checks saved install state before replaying it with --update.
+# They act only in the installing checkout, not in its linked worktrees, and
+# --git-hook exits 1 without writing while core.hooksPath is set.
+# --target=detected selects agents with an installed command or config directory.
+# --uninstall keeps that state in step: removing the whole saved selection
+# deletes the file, removing whole targets or categories rewrites it without
+# them, and --dry-run prints which of the two it would do. A category or env
+# removed from only some saved targets cannot be recorded; the state then stays
+# as it was and the run says so on stderr.
 #
 # Conservative behaviour:
 #   - Existing correct symlink:        skip (idempotent).
@@ -136,6 +163,32 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 DRY_RUN=0
+CHECK_MODE=0
+UPDATE_MODE=0
+GIT_HOOK=0
+GIT_HOOK_MARKER='# managed-by: fabiandistler/agents install.sh'
+CHECK_OUTPUT=""
+CHECK_OUTPUT_SET=0
+CHECK_ROWS=""
+CHECK_CURRENT_TARGET=""
+RESOLVED_TARGETS=""
+OLD_REPO_ROOT=""
+# Saved install state, filled by read_install_state.
+SAVED_TARGETS_CSV=""
+SAVED_ENV=""
+SAVED_CATEGORY=""
+SAVED_INSTRUCTIONS=0
+SAVED_MERGE=0
+SAVED_SECRET=0
+SAVED_REPO_ROOT=""
+# What --uninstall does to the saved state, filled by plan_uninstall_state.
+UNINSTALL_STATE_ACTION=keep
+UNINSTALL_STATE_BEFORE=""
+UNINSTALL_STATE_TARGETS=""
+UNINSTALL_STATE_CATEGORY=""
+UNINSTALL_STATE_INSTRUCTIONS=0
+UNINSTALL_STATE_MERGE=0
+UNINSTALL_STATE_SECRET=0
 UNINSTALL=0
 INSTRUCTIONS=0
 GUARDS=""
@@ -148,12 +201,356 @@ FILTER_FLAGS=""
 # Must match the category list in scripts/catalogue.py.
 CATEGORIES="architecture refactoring ai-ml workflow communication personal"
 
-# Print the header comment block: from line 2 up to the first line that is not
-# a comment, minus that line. A hardcoded end line silently truncates as the
-# block grows — this one cannot drift.
-usage() { sed -n '2,/^[^#]/p' "$0" | sed '$d'; }
+usage() {
+  cat <<'EOF'
+Usage:
+  ./install.sh --target=claude|codex|opencode|all|detected [options]
+  ./install.sh --update [--dry-run] [--check [--output FILE]]
+  ./install.sh --uninstall --git-hook
 
-for arg in "$@"; do
+Options:
+  --env=coding|chat|all        Filter skills (default: all)
+  --category=NAME[,NAME...]    Filter skill categories
+  --instructions               Install shared instruction rules
+  --merge-guard                Install the PR merge guard
+  --secret-guard               Install the secret read guard
+  --dry-run                    Preview changes without writing
+  --uninstall                  Remove selected files and drop them from
+                               the saved install
+  --check                      Report drift (0 clean, 3 drift)
+  --output FILE|--output=FILE  Write the --check TSV report
+  --update                     Replay the saved install (4: no saved state)
+  --git-hook                   Install this clone's update hooks
+  -h, --help                   Show this help
+
+Exit codes: 0 success, 1 operational failure, 2 usage error,
+            3 --check found drift, 4 --update has no saved install.
+
+Examples:
+  ./install.sh --target=all --instructions --dry-run
+  ./install.sh --target=detected --check --output /tmp/agents-drift.tsv
+EOF
+}
+
+install_state_file() {
+  local state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
+  printf '%s/fabiandistler-agents/install.json' "${state_home%/}"
+}
+
+# Reads the saved install state into the SAVED_* globals. Returns 4 without a
+# message when no state file exists, so each caller words that case itself.
+read_install_state() {
+  local file reader_pid status
+  file="$(install_state_file)"
+  if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+    printf 'saved install state is not a regular file: %s\n' "$file" >&2
+    return 1
+  fi
+  [[ -f "$file" ]] || return 4
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is required to read --update state" >&2
+    return 1
+  fi
+  exec 3< <(
+    python3 - "$file" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as state_file:
+        state = json.load(state_file)
+    targets = state["targets"]
+    environment = state["env"]
+    category = state["category"]
+    instructions = state["instructions"]
+    merge_guard = state["merge_guard"]
+    secret_guard = state["secret_guard"]
+    repo_root = state["repo_root"]
+    if (
+        not isinstance(targets, list)
+        or not targets
+        or any(target not in {"claude", "codex", "opencode"} for target in targets)
+        or len(set(targets)) != len(targets)
+        or not isinstance(environment, str)
+        or "\0" in environment
+        or not isinstance(category, str)
+        or "\0" in category
+        or type(instructions) is not bool
+        or type(merge_guard) is not bool
+        or type(secret_guard) is not bool
+        or not isinstance(repo_root, str)
+        or not repo_root.startswith("/")
+        or "\0" in repo_root
+    ):
+        raise ValueError("invalid fields")
+    values = [
+        ",".join(targets),
+        environment,
+        category,
+        "1" if instructions else "0",
+        "1" if merge_guard else "0",
+        "1" if secret_guard else "0",
+        repo_root,
+    ]
+    sys.stdout.buffer.write("\0".join(values).encode("utf-8") + b"\0")
+except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+    sys.stderr.write("saved install state is invalid\n")
+    sys.exit(1)
+PY
+  )
+  reader_pid=$!
+  if ! IFS= read -r -d '' SAVED_TARGETS_CSV <&3 ||
+    ! IFS= read -r -d '' SAVED_ENV <&3 ||
+    ! IFS= read -r -d '' SAVED_CATEGORY <&3 ||
+    ! IFS= read -r -d '' SAVED_INSTRUCTIONS <&3 ||
+    ! IFS= read -r -d '' SAVED_MERGE <&3 ||
+    ! IFS= read -r -d '' SAVED_SECRET <&3 ||
+    ! IFS= read -r -d '' SAVED_REPO_ROOT <&3; then
+    exec 3<&-
+    wait "$reader_pid" || true
+    echo "saved install state is invalid" >&2
+    return 1
+  fi
+  exec 3<&-
+  if wait "$reader_pid"; then
+    :
+  else
+    status=$?
+    return "$status"
+  fi
+}
+
+load_install_state() {
+  local status target
+  if read_install_state; then
+    :
+  else
+    status=$?
+    if ((status == 4)); then
+      printf 'no saved install state at %s; install once with --target=claude|codex|opencode|all before --update\n' \
+        "$(install_state_file)" >&2
+    fi
+    return "$status"
+  fi
+
+  ENV="$SAVED_ENV"
+  CATEGORY="$SAVED_CATEGORY"
+  INSTRUCTIONS="$SAVED_INSTRUCTIONS"
+  GUARDS=""
+  [[ "$SAVED_MERGE" == 1 ]] && GUARDS+=" merge"
+  [[ "$SAVED_SECRET" == 1 ]] && GUARDS+=" secret"
+  OLD_REPO_ROOT="$SAVED_REPO_ROOT"
+  RESOLVED_TARGETS=""
+  IFS=',' read -ra _resolved_targets <<<"$SAVED_TARGETS_CSV"
+  for target in "${_resolved_targets[@]}"; do
+    RESOLVED_TARGETS+="$target"$'\n'
+  done
+  if [[ "$SAVED_TARGETS_CSV" == "claude,codex,opencode" ]]; then
+    TARGET=all
+  elif [[ "$SAVED_TARGETS_CSV" == *','* ]]; then
+    TARGET=resolved
+  else
+    TARGET="$SAVED_TARGETS_CSV"
+  fi
+  [[ "$ENV" == all ]] || FILTER_FLAGS+=" --env"
+  [[ "$CATEGORY" == all ]] || FILTER_FLAGS+=" --category"
+}
+
+json_quote() {
+  local value="$1" escaped="" character escaped_character code index
+  for ((index = 0; index < ${#value}; index++)); do
+    character="${value:index:1}"
+    case "$character" in
+      '"') escaped+='\\"' ;;
+      \\) escaped+='\\\\' ;;
+      $'\b') escaped+='\\b' ;;
+      $'\f') escaped+='\\f' ;;
+      $'\n') escaped+='\\n' ;;
+      $'\r') escaped+='\\r' ;;
+      $'\t') escaped+='\\t' ;;
+      *)
+        printf -v code '%d' "'$character"
+        if ((code < 32)); then
+          printf -v escaped_character '\\u%04x' "$code"
+          escaped+="$escaped_character"
+        else
+          escaped+="$character"
+        fi
+        ;;
+    esac
+  done
+  printf '"%s"' "$escaped"
+}
+
+# Arguments: comma-separated targets, env, category, instructions, merge guard,
+# secret guard (each 0 or 1), and repo root.
+write_install_state() {
+  local targets_csv="$1" env="$2" category="$3" instructions="$4" merge_guard="$5" \
+    secret_guard="$6" repo_root="$7"
+  local file dir target targets_json="[" separator="" content tmp before="" had_file=0
+  IFS=',' read -ra _state_targets <<<"$targets_csv"
+  for target in "${_state_targets[@]}"; do
+    [[ -n "$target" ]] || continue
+    targets_json+="$separator$(json_quote "$target")"
+    separator=,
+  done
+  targets_json+="]"
+  file="$(install_state_file)"
+  dir="${file%/*}"
+  if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+    printf 'refusing to replace non-regular install state path: %s\n' "$file" >&2
+    return 1
+  fi
+  if [[ -f "$file" ]]; then
+    before="$(cat "$file")"
+    had_file=1
+  fi
+  ensure_parent "$dir"
+  content="{\"targets\":$targets_json,\"env\":$(json_quote "$env"),\"category\":$(json_quote "$category"),\"instructions\":$( ((instructions)) && printf true || printf false),\"merge_guard\":$( ((merge_guard)) && printf true || printf false),\"secret_guard\":$( ((secret_guard)) && printf true || printf false),\"repo_root\":$(json_quote "$repo_root") }"
+  tmp="$file.tmp.$$"
+  if [[ -e "$tmp" || -L "$tmp" ]]; then
+    printf 'refusing to replace temporary install state path: %s\n' "$tmp" >&2
+    return 1
+  fi
+  printf '%s\n' "$content" >"$tmp"
+  if ((had_file)); then
+    if [[ ! -f "$file" || -L "$file" || "$(cat "$file")" != "$before" ]]; then
+      rm "$tmp"
+      printf 'install state changed during this run; leaving it untouched: %s\n' "$file" >&2
+      return 1
+    fi
+  elif [[ -e "$file" || -L "$file" ]]; then
+    rm "$tmp"
+    printf 'install state appeared during this run; leaving it untouched: %s\n' "$file" >&2
+    return 1
+  fi
+  mv "$tmp" "$file"
+}
+
+detect_targets() {
+  local targets=""
+  if command -v claude >/dev/null 2>&1 || [[ -d "$HOME/.claude" ]]; then
+    targets=claude
+  fi
+  if command -v codex >/dev/null 2>&1 || [[ -d "$HOME/.codex" ]]; then
+    [[ -z "$targets" ]] || targets+=$'\n'
+    targets+=codex
+  fi
+  if command -v opencode >/dev/null 2>&1 || [[ -d "$HOME/.config/opencode" ]]; then
+    [[ -z "$targets" ]] || targets+=$'\n'
+    targets+=opencode
+  fi
+  printf '%s\n' "$targets"
+}
+
+# Prints the categories a --category value selects, one per line, in the order
+# of $CATEGORIES.
+category_names() {
+  local value="${1//[[:space:]]/}" name
+  for name in $CATEGORIES; do
+    if [[ "$value" == all || ",$value," == *",$name,"* ]]; then
+      printf '%s\n' "$name"
+    fi
+  done
+}
+
+# Decides, before anything is removed, what --uninstall does to the saved
+# state: keep it (nothing saved was removed), delete it (the whole saved
+# selection was removed), rewrite it without the removed targets or categories,
+# or keep it with a note when one selection cannot express the result (a
+# category or env removed from only some saved targets).
+plan_uninstall_state() {
+  local status target name removed_targets kept_targets="" kept_categories="" \
+    removed_categories touched_target=0 touched_category=0 all_targets_removed=1
+  UNINSTALL_STATE_ACTION=keep
+  if read_install_state; then
+    :
+  else
+    status=$?
+    ((status == 4)) && return 0
+    return "$status"
+  fi
+  UNINSTALL_STATE_BEFORE="$(cat "$(install_state_file)")"
+  removed_targets=" $(resolve_targets | tr '\n' ' ')"
+  IFS=',' read -ra _saved_targets <<<"$SAVED_TARGETS_CSV"
+  for target in "${_saved_targets[@]}"; do
+    if [[ "$removed_targets" == *" $target "* ]]; then
+      touched_target=1
+    else
+      kept_targets+="${kept_targets:+,}$target"
+      all_targets_removed=0
+    fi
+  done
+  removed_categories=" $(category_names "$CATEGORY" | tr '\n' ' ')"
+  while IFS= read -r name; do
+    if [[ "$removed_categories" == *" $name "* ]]; then
+      touched_category=1
+    else
+      kept_categories+="${kept_categories:+,}$name"
+    fi
+  done < <(category_names "$SAVED_CATEGORY")
+  ((touched_target && touched_category)) || return 0
+
+  if [[ "$ENV" != all && "$ENV" != "$SAVED_ENV" ]]; then
+    UNINSTALL_STATE_ACTION=partial
+  elif ((all_targets_removed)); then
+    if [[ -z "$kept_categories" ]]; then
+      UNINSTALL_STATE_ACTION=delete
+    else
+      UNINSTALL_STATE_ACTION=rewrite
+      UNINSTALL_STATE_TARGETS="$SAVED_TARGETS_CSV"
+      UNINSTALL_STATE_CATEGORY="$kept_categories"
+      UNINSTALL_STATE_INSTRUCTIONS=$((SAVED_INSTRUCTIONS && ! INSTRUCTIONS))
+      UNINSTALL_STATE_MERGE="$SAVED_MERGE"
+      [[ "$GUARDS" != *' merge'* ]] || UNINSTALL_STATE_MERGE=0
+      UNINSTALL_STATE_SECRET="$SAVED_SECRET"
+      [[ "$GUARDS" != *' secret'* ]] || UNINSTALL_STATE_SECRET=0
+    fi
+  elif [[ -z "$kept_categories" ]]; then
+    UNINSTALL_STATE_ACTION=rewrite
+    UNINSTALL_STATE_TARGETS="$kept_targets"
+    UNINSTALL_STATE_CATEGORY="$SAVED_CATEGORY"
+    UNINSTALL_STATE_INSTRUCTIONS="$SAVED_INSTRUCTIONS"
+    UNINSTALL_STATE_MERGE="$SAVED_MERGE"
+    UNINSTALL_STATE_SECRET="$SAVED_SECRET"
+  else
+    UNINSTALL_STATE_ACTION=partial
+  fi
+}
+
+apply_uninstall_state() {
+  local file
+  file="$(install_state_file)"
+  case "$UNINSTALL_STATE_ACTION" in
+    keep) return 0 ;;
+    partial)
+      printf 'install state keeps the saved selection: it cannot record removing a category or env from only some saved targets, so --update reinstalls it (%s)\n' \
+        "$file" >&2
+      return 0
+      ;;
+  esac
+  if ((DRY_RUN)); then
+    printf '  would %s install state %s\n' "$UNINSTALL_STATE_ACTION" "$file"
+    return 0
+  fi
+  if [[ ! -f "$file" || -L "$file" || "$(cat "$file")" != "$UNINSTALL_STATE_BEFORE" ]]; then
+    printf 'install state changed during this run; leaving it untouched: %s\n' "$file" >&2
+    return 1
+  fi
+  if [[ "$UNINSTALL_STATE_ACTION" == delete ]]; then
+    rm "$file"
+    printf '  removed   %s (install state)\n' "$file"
+  else
+    write_install_state "$UNINSTALL_STATE_TARGETS" "$SAVED_ENV" "$UNINSTALL_STATE_CATEGORY" \
+      "$UNINSTALL_STATE_INSTRUCTIONS" "$UNINSTALL_STATE_MERGE" "$UNINSTALL_STATE_SECRET" \
+      "$SAVED_REPO_ROOT"
+    printf '  updated   %s (install state)\n' "$file"
+  fi
+}
+
+while (($#)); do
+  arg="$1"
+  shift
   case "$arg" in
     --target=*) TARGET="${arg#--target=}" ;;
     --env=*)
@@ -165,6 +562,23 @@ for arg in "$@"; do
       [[ "$FILTER_FLAGS" == *--category* ]] || FILTER_FLAGS+=" --category"
       ;;
     --dry-run) DRY_RUN=1 ;;
+    --check) CHECK_MODE=1 ;;
+    --update) UPDATE_MODE=1 ;;
+    --git-hook) GIT_HOOK=1 ;;
+    --output)
+      if (($# == 0)); then
+        echo "missing FILE after --output" >&2
+        usage >&2
+        exit 2
+      fi
+      CHECK_OUTPUT="$1"
+      CHECK_OUTPUT_SET=1
+      shift
+      ;;
+    --output=*)
+      CHECK_OUTPUT="${arg#--output=}"
+      CHECK_OUTPUT_SET=1
+      ;;
     --instructions) INSTRUCTIONS=1 ;;
     --merge-guard) GUARDS+=" merge" ;;
     --secret-guard) GUARDS+=" secret" ;;
@@ -181,10 +595,45 @@ for arg in "$@"; do
   esac
 done
 
-if [[ -z "$TARGET" ]]; then
-  echo "missing --target=claude|codex|opencode|all" >&2
+if [[ "$TARGET" == detected ]] && ((UPDATE_MODE == 0)); then
+  RESOLVED_TARGETS="$(detect_targets)"
+  if [[ -z "$RESOLVED_TARGETS" ]]; then
+    echo "no agent commands or config directories detected; pass --target=claude|codex|opencode|all explicitly" >&2
+    usage >&2
+    exit 2
+  fi
+  detected_target_list="${RESOLVED_TARGETS//$'\n'/, }"
+  printf 'detected targets: %s\n' "$detected_target_list"
+  if [[ "$RESOLVED_TARGETS" == "claude"$'\n'"codex"$'\n'"opencode" ]]; then
+    TARGET=all
+  elif [[ "$RESOLVED_TARGETS" == *$'\n'* ]]; then
+    TARGET=resolved
+  else
+    TARGET="$RESOLVED_TARGETS"
+  fi
+fi
+
+if ((UPDATE_MODE)); then
+  if [[ -n "$TARGET" || -n "$FILTER_FLAGS" || "$INSTRUCTIONS" == 1 ||
+    -n "$GUARDS" || "$UNINSTALL" == 1 || ("$CHECK_OUTPUT_SET" == 1 && "$CHECK_MODE" == 0) ]]; then
+    echo "--update replays saved options; do not combine it with target, filter, component, or uninstall options" >&2
+    usage >&2
+    exit 2
+  fi
+  if load_install_state; then
+    :
+  else
+    state_status=$?
+    exit "$state_status"
+  fi
+elif [[ -z "$TARGET" ]] && ! ((UNINSTALL && GIT_HOOK)); then
+  echo "missing --target=claude|codex|opencode|all|detected" >&2
   usage >&2
   exit 2
+elif ((UNINSTALL == 0)) && [[ -f "$(install_state_file)" ]]; then
+  # A plain install overwrites the saved repo root, so it must rebase links
+  # from a moved checkout now; a later --update would see equal roots.
+  OLD_REPO_ROOT="$(load_install_state >/dev/null && printf '%s' "$OLD_REPO_ROOT")"
 fi
 
 case "$ENV" in
@@ -195,6 +644,41 @@ case "$ENV" in
     exit 2
     ;;
 esac
+
+if ((CHECK_MODE)); then
+  case "$TARGET" in
+    claude | codex | opencode | all) ;;
+    resolved)
+      if ((UPDATE_MODE)) || [[ -n "$RESOLVED_TARGETS" ]]; then
+        :
+      else
+        echo "invalid --target=$TARGET (expected claude|codex|opencode|all|detected)" >&2
+        usage >&2
+        exit 2
+      fi
+      ;;
+    *)
+      echo "invalid --target=$TARGET (expected claude|codex|opencode|all|detected)" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  if ((DRY_RUN || UNINSTALL)); then
+    echo "--check cannot be combined with --dry-run or --uninstall" >&2
+    usage >&2
+    exit 2
+  fi
+  if ((CHECK_OUTPUT_SET)) && [[ -z "${CHECK_OUTPUT//[[:space:]]/}" ]]; then
+    echo "invalid empty --output FILE" >&2
+    usage >&2
+    exit 2
+  fi
+  DRY_RUN=1
+elif ((CHECK_OUTPUT_SET)); then
+  echo "--output requires --check" >&2
+  usage >&2
+  exit 2
+fi
 
 if [[ -z "$CATEGORY" ]]; then
   echo "invalid --category= (expected one of: ${CATEGORIES// /|}|all)" >&2
@@ -215,6 +699,43 @@ if [[ "$CATEGORY" != "all" ]]; then
   done
 fi
 
+check_kind_for_what() {
+  case "$1" in
+    *routed*member*) printf 'routed-member-overrides' ;;
+    *"instruction payload"*) printf 'instruction-payload' ;;
+    *"instruction"*) printf 'instructions' ;;
+    *"Claude rule"*) printf 'claude-rule' ;;
+    *"OpenCode agent"*) printf 'opencode-agent' ;;
+    *"agent "*) printf 'codex-agent' ;;
+    *"PR merge guard"*) printf 'merge-guard' ;;
+    *"secret read guard"*) printf 'secret-guard' ;;
+    *"legacy"*) printf 'legacy-managed-file' ;;
+    *) printf 'managed-file' ;;
+  esac
+}
+
+check_tsv_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\n'/\\n}"
+  printf '%s' "$value"
+}
+
+check_record() {
+  ((CHECK_MODE)) || return 0
+  local target="${1:-$CHECK_CURRENT_TARGET}" kind="$2" path="$3" state="$4" row
+  local escaped_target escaped_kind escaped_path escaped_state
+  [[ -n "$target" ]] || target="$TARGET"
+  escaped_target="$(check_tsv_escape "$target")"
+  escaped_kind="$(check_tsv_escape "$kind")"
+  escaped_path="$(check_tsv_escape "$path")"
+  escaped_state="$(check_tsv_escape "$state")"
+  printf -v row '%s\t%s\t%s\t%s' \
+    "$escaped_target" "$escaped_kind" "$escaped_path" "$escaped_state"
+  [[ $'\n'"$CHECK_ROWS" == *$'\n'"$row"$'\n'* ]] || CHECK_ROWS+="$row"$'\n'
+}
+
 target_dir_for() {
   case "$1" in
     claude) printf '%s/.claude/skills\n' "$HOME" ;;
@@ -227,12 +748,10 @@ target_dir_for() {
   esac
 }
 
-# Where each target discovers user-invoked commands. `activation: command`
-# skills go here (as <name>.md) instead of the skills directory.
+# Where Claude's earlier symlink installer placed its command skills.
 target_command_dir_for() {
   case "$1" in
     claude) printf '%s/.claude/commands\n' "$HOME" ;;
-    opencode) printf '%s/.config/opencode/command\n' "$HOME" ;;
     *)
       echo "unknown target: $1" >&2
       return 1
@@ -240,7 +759,18 @@ target_command_dir_for() {
   esac
 }
 
+opencode_legacy_command_dir() { printf '%s/.config/opencode/command\n' "$HOME"; }
+
 resolve_targets() {
+  if [[ -n "$RESOLVED_TARGETS" ]]; then
+    local resolved_target
+    while IFS= read -r resolved_target; do
+      if [[ -n "$resolved_target" ]]; then
+        printf '%s\n' "$resolved_target"
+      fi
+    done <<<"$RESOLVED_TARGETS"
+    return 0
+  fi
   if [[ "$TARGET" == "all" ]]; then
     printf 'claude\ncodex\nopencode\n'
   else
@@ -367,32 +897,97 @@ list_skills() {
 # truncates before writing, so an interrupt in between leaves a file we do not
 # own in pieces; a temp file plus mv either lands whole or not at all.
 write_file_atomic() {
-  local path="$1" content="$2"
+  local path="$1" content="$2" owner_marker="${3:-}" owner_end="${4:-}" mode="${7:-}"
+  local expected_before="${5-}" expected_count="${6-}" expected_count_set=0 current current_count
   local tmp="$path.tmp.$$"
+  (($# < 6)) || expected_count_set=1
+  if [[ -e "$tmp" || -L "$tmp" ]]; then
+    printf 'refusing to replace temporary write path: %s\n' "$tmp" >&2
+    return 1
+  fi
   if [[ -n "$content" ]]; then
     printf '%s\n' "$content" >"$tmp"
   else
     : >"$tmp"
+  fi
+  [[ -z "$mode" ]] || chmod "$mode" "$tmp"
+  if ((UPDATE_MODE)) && [[ -n "$owner_marker" ]]; then
+    if [[ -L "$path" ]] || { [[ -e "$path" ]] && [[ ! -f "$path" ]]; }; then
+      rm "$tmp"
+      printf '  WARN      %s is no longer a regular managed file; leaving it untouched\n' "$path" >&2
+      return 0
+    fi
+    if [[ -f "$path" ]]; then
+      current="$(cat "$path")"
+      if ((expected_count_set)); then
+        if [[ -n "$owner_end" ]]; then
+          current_count="$(grep -Fxc "$owner_marker" <<<"$current" || true)"
+          if [[ "$current" != "$expected_before" ]] ||
+            ! block_markers_balanced "$owner_marker" "$owner_end" <<<"$current" ||
+            [[ "$current_count" != "$expected_count" ]]; then
+            rm "$tmp"
+            printf '  WARN      %s changed during --update; leaving it untouched\n' "$path" >&2
+            return 0
+          fi
+        elif [[ "$current" != "$expected_before" ]] || ! grep -qxF "$owner_marker" "$path"; then
+          rm "$tmp"
+          printf '  WARN      %s changed during --update; leaving it untouched\n' "$path" >&2
+          return 0
+        fi
+      elif ! grep -qxF "$owner_marker" "$path"; then
+        rm "$tmp"
+        printf '  WARN      %s lost its ownership marker during --update; leaving it untouched\n' "$path" >&2
+        return 0
+      fi
+    elif ((expected_count_set)) && [[ -n "$expected_before" ]]; then
+      rm "$tmp"
+      printf '  WARN      %s disappeared during --update; leaving it untouched\n' "$path" >&2
+      return 0
+    fi
   fi
   mv "$tmp" "$path"
 }
 
 # Set a complete file this installer owns. The caller renders content and
 # sends it on stdin; this function guards ownership and writes only changes.
+# The label names the kind of file and selects its ownership marker; `name`
+# picks the marker for instruction payloads, which differ by file type.
 owned_file_set() {
-  local target="$1" label="$2" marker content
+  local target="$1" label="$2" name="${3:-}" marker kind check_target content current_before
   case "$label" in
-    agent) marker="$AGENT_MARKER" ;;
-    rule) marker="$(claude_rule_marker)" ;;
+    agent)
+      marker="$AGENT_MARKER" kind=codex-agent check_target=codex
+      ;;
+    opencode-agent)
+      marker="$AGENT_MARKER" kind=opencode-agent check_target=opencode
+      ;;
+    rule)
+      marker="$(claude_rule_marker)" kind=claude-rule check_target=claude
+      ;;
+    instruction-payload)
+      marker="$(instruction_payload_marker_for "$name")" kind=instruction-payload
+      check_target="$CHECK_CURRENT_TARGET"
+      ;;
     *)
       printf 'owned_file_set: unknown label %s\n' "$label" >&2
       return 2
       ;;
   esac
   content="$(cat)"
-  if [[ -e "$target" ]] && ! grep -qxF "$marker" "$target" 2>/dev/null; then
-    printf '  WARN      %s exists and is not managed by install.sh (leaving it untouched)\n' \
-      "$target" >&2
+  if [[ -L "$target" ]] || { [[ -e "$target" ]] && [[ ! -f "$target" ]]; } ||
+    { [[ -e "$target" ]] && ! grep -qxF "$marker" "$target" 2>/dev/null; }; then
+    check_record "$check_target" "$kind" "$target" foreign
+    ((CHECK_MODE)) ||
+      printf '  WARN      %s exists and is not managed by install.sh (leaving it untouched)\n' \
+        "$target" >&2
+    return 0
+  fi
+  if ((CHECK_MODE)); then
+    if [[ ! -f "$target" ]]; then
+      check_record "$check_target" "$kind" "$target" missing
+    elif [[ "$(cat "$target")" != "$content" ]]; then
+      check_record "$check_target" "$kind" "$target" stale
+    fi
     return 0
   fi
   if [[ -f "$target" && "$(cat "$target")" == "$content" ]]; then
@@ -404,7 +999,10 @@ owned_file_set() {
     return 0
   fi
   ensure_parent "${target%/*}"
-  write_file_atomic "$target" "$content"
+  current_before=""
+  [[ -f "$target" ]] && current_before="$(cat "$target")"
+  # --update re-checks ownership and content just before the write.
+  write_file_atomic "$target" "$content" "$marker" "" "$current_before" file
   printf '  updated   %s (%s)\n' "$target" "$label"
 }
 
@@ -463,6 +1061,7 @@ replace_managed_block() {
 }
 
 warn_unbalanced_markers() {
+  ((CHECK_MODE)) && return 0
   printf '  WARN      unbalanced marker lines in %s, leaving it untouched (%s)\n' \
     "$1" "$2" >&2
 }
@@ -477,14 +1076,30 @@ managed_block_set() {
     echo "managed_block_set: empty body for $what in $file" >&2
     return 1
   fi
-  local before="" after begin_count
+  local before="" after begin_count kind
+  kind="$(check_kind_for_what "$what")"
+  if ((CHECK_MODE)) && [[ -L "$file" ]]; then
+    check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" foreign
+    return 0
+  fi
   [[ -f "$file" ]] && before="$(cat "$file")"
   if ! block_markers_balanced "$begin" "$end" <<<"$before"; then
+    check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" foreign
     warn_unbalanced_markers "$file" "$what"
     return 0
   fi
   local block="$begin"$'\n'"$body"$'\n'"$end"
   begin_count="$(grep -Fxc "$begin" <<<"$before" || true)"
+  if ((CHECK_MODE)); then
+    if ((begin_count > 1)); then
+      check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" duplicate
+    elif ((begin_count == 0)); then
+      check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" missing
+    elif [[ "$before" != *"$block"* ]]; then
+      check_record "$CHECK_CURRENT_TARGET" "$kind" "$file" stale
+    fi
+    return 0
+  fi
   if [[ "$begin_count" -eq 1 && "$before" == *"$block"* ]]; then
     printf '  ok        %s (%s)\n' "$file" "$what"
     return 0
@@ -507,7 +1122,8 @@ managed_block_set() {
     return 0
   fi
   ensure_parent "${file%/*}"
-  write_file_atomic "$file" "$after"
+  # --update re-checks the file just before the write (see write_file_atomic).
+  write_file_atomic "$file" "$after" "$begin" "$end" "$before" "$begin_count"
   printf '  updated   %s (%s)\n' "$file" "$what"
 }
 
@@ -517,9 +1133,26 @@ managed_block_remove() {
   local file="$1" begin="$2" end="$3" what="$4"
   [[ -f "$file" ]] || return 0
   local before after
+  if ((CHECK_MODE)) && [[ -L "$file" ]]; then
+    check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" foreign
+    return 0
+  fi
   before="$(cat "$file")"
   if ! block_markers_balanced "$begin" "$end" <<<"$before"; then
+    check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" foreign
     warn_unbalanced_markers "$file" "$what"
+    return 0
+  fi
+  if ((CHECK_MODE)); then
+    if grep -Fq "$begin" <<<"$before"; then
+      local marker_count
+      marker_count="$(grep -Fxc "$begin" <<<"$before" || true)"
+      if ((marker_count > 1)); then
+        check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" duplicate
+      else
+        check_record "$CHECK_CURRENT_TARGET" "$(check_kind_for_what "$what")" "$file" stale
+      fi
+    fi
     return 0
   fi
   after="$(strip_block "$begin" "$end" <<<"$before")"
@@ -528,7 +1161,9 @@ managed_block_remove() {
     printf '[dry-run] remove %s\n' "$file"
     return 0
   fi
-  write_file_atomic "$file" "$after"
+  local marker_count
+  marker_count="$(grep -Fxc "$begin" <<<"$before" || true)"
+  write_file_atomic "$file" "$after" "$begin" "$end" "$before" "$marker_count"
   printf '  removed   %s from %s\n' "$what" "$file"
 }
 
@@ -571,6 +1206,7 @@ remove_legacy_codex_mcp() {
   local venv
   venv="$(codex_mcp_runtime_dir)"
   if [[ -d "$venv" ]]; then
+    check_record codex legacy-mcp-runtime "$venv" stale
     if ((DRY_RUN)); then
       printf '[dry-run] remove %s\n' "$venv"
     else
@@ -672,17 +1308,15 @@ install_codex_member_overrides() {
     "$(skill_override_end_marker)" "$toml" "$count routed members disabled"
 }
 
-# --- Codex custom agent registration ----------------------------------------
+# --- Plugin agent registration ----------------------------------------------
 #
-# Claude loads plugins/<category>/agents/*.md natively; Codex CLI discovers
-# custom agents as TOML files under ~/.codex/agents/ instead. Each agent's
-# frontmatter name/description and Markdown body (its system prompt) are
-# converted to a generated <name>.toml carrying a marker comment, so install
-# and uninstall never touch files we did not generate. The `tools:` and
-# `model:` frontmatter fields have no Codex equivalent and are dropped
-# (model and sandbox are inherited from the parent session).
+# Claude loads plugins/<category>/agents/*.md natively. Codex and OpenCode
+# render the same source through scripts/plugin_agents.py into their own formats.
+# Generated files carry a marker comment, so install and uninstall never touch
+# files we did not generate.
 
 codex_agents_dir() { printf '%s/.codex/agents' "$HOME"; }
+opencode_agents_dir() { printf '%s/.config/opencode/agents' "$HOME"; }
 
 AGENT_MARKER='# generated by fabiandistler/agents install.sh; do not edit'
 
@@ -707,56 +1341,12 @@ agent_categories() {
   return 0
 }
 
-# Render one agents/<name>.md as a Codex custom-agent TOML file, with
-# ${CLAUDE_PLUGIN_ROOT} resolved to the plugin directory in this repo.
-plugin_agent_toml() {
-  local md="$1" plugin_dir="$2" marker="$3"
-  python3 - "$md" "$plugin_dir" "$marker" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-try:
-    md_path, plugin_dir, marker = sys.argv[1], sys.argv[2], sys.argv[3]
-    lines = Path(md_path).read_text(encoding="utf-8").splitlines()
-    if lines[0].strip() != "---":
-        raise ValueError("missing frontmatter")
-    close = lines[1:].index("---") + 1
-    body = "\n".join(lines[close + 1 :]).strip()
-    if not body:
-        raise ValueError("empty agent body")
-
-    # Minimal YAML subset: `key: value` plus `key: >-` folded blocks whose
-    # continuation lines are indented; folded newlines become spaces.
-    fm: dict[str, str] = {}
-    key = None
-    parts: list[str] = []
-
-    def flush():
-        if key is not None:
-            fm[key] = " ".join(p.strip() for p in parts if p.strip())
-
-    for line in lines[1:close]:
-        if line[:1] in (" ", "\t") and key is not None:
-            parts.append(line)
-            continue
-        flush()
-        k, _, v = line.partition(":")
-        key, parts = k.strip(), [v.replace(">-", "", 1) if v.strip() == ">-" else v]
-    flush()
-
-    name, desc = fm["name"], fm["description"]
-    body = body.replace("${CLAUDE_PLUGIN_ROOT}", plugin_dir) + "\n"
-    body = body.replace("\\", "\\\\").replace('"""', '\\"\\"\\"')
-
-    print(marker)
-    print(f"name = {json.dumps(name)}")
-    print(f"description = {json.dumps(desc)}")
-    print()
-    print(f'developer_instructions = """\n{body}"""')
-except Exception:
-    sys.exit(1)
-PY
+# Render plugin agent source into the target runtime's format. Both renderers
+# share one parser, and both resolve plugin-relative paths for this checkout.
+plugin_agent_render() {
+  local renderer="$1" md="$2" plugin_dir="$3" marker="$4"
+  python3 "$REPO_ROOT/scripts/plugin_agents.py" "$renderer" \
+    --source "$md" --plugin-dir "$plugin_dir" --marker "$marker"
 }
 
 install_codex_agents() {
@@ -776,7 +1366,7 @@ install_codex_agents() {
     for md in "$REPO_ROOT/plugins/$cat/agents/"*.md; do
       name="$(basename "$md" .md)"
       dest="$agents_dir/$name.toml"
-      if ! toml="$(plugin_agent_toml "$md" "$REPO_ROOT/plugins/$cat" "$AGENT_MARKER")"; then
+      if ! toml="$(plugin_agent_render codex "$md" "$REPO_ROOT/plugins/$cat" "$AGENT_MARKER")"; then
         printf '  WARN      failed to convert %s (skipping)\n' "$md" >&2
         continue
       fi
@@ -824,6 +1414,86 @@ prune_stale_codex_agents() {
     name="$(basename "$dest" .toml)"
     compgen -G "$REPO_ROOT/plugins/*/agents/$name.md" >/dev/null && continue
     grep -qF "$AGENT_MARKER" "$dest" || continue
+    check_record codex codex-agent "$dest" stale
+    run rm "$dest"
+    ((DRY_RUN)) || printf '  removed   %s (agent no longer in repo)\n' "$dest"
+  done
+}
+
+install_opencode_agents() {
+  local agents_dir cats
+  agents_dir="$(opencode_agents_dir)"
+  cats="$(agent_categories)"
+  [[ -n "$cats" ]] || return 0
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; cannot install OpenCode agents in %s\n' \
+      "$agents_dir" >&2
+    return 0
+  fi
+  local cat md name dest markdown
+  while IFS= read -r cat; do
+    [[ -n "$cat" ]] || continue
+    for md in "$REPO_ROOT/plugins/$cat/agents/"*.md; do
+      [[ -f "$md" ]] || continue
+      name="$(basename "$md" .md)"
+      dest="$agents_dir/$name.md"
+      if ! markdown="$(plugin_agent_render opencode "$md" "$REPO_ROOT/plugins/$cat" "$AGENT_MARKER")"; then
+        printf '  WARN      failed to convert %s for OpenCode (skipping)\n' "$md" >&2
+        continue
+      fi
+      owned_file_set "$dest" opencode-agent <<<"$markdown"
+    done
+  done <<<"$cats"
+}
+
+uninstall_opencode_agents() {
+  local agents_dir cat md name dest before
+  agents_dir="$(opencode_agents_dir)"
+  while IFS= read -r cat; do
+    [[ -n "$cat" ]] || continue
+    for md in "$REPO_ROOT/plugins/$cat/agents/"*.md; do
+      [[ -f "$md" ]] || continue
+      name="$(basename "$md" .md)"
+      dest="$agents_dir/$name.md"
+      [[ -f "$dest" && ! -L "$dest" ]] || continue
+      if ! grep -qF "$AGENT_MARKER" "$dest"; then
+        printf '  WARN      %s was not generated by us (skipping)\n' "$dest" >&2
+        continue
+      fi
+      before="$(cat "$dest")"
+      if ((DRY_RUN)); then
+        printf '[dry-run] remove %s\n' "$dest"
+        continue
+      fi
+      if [[ ! -f "$dest" || -L "$dest" || "$(cat "$dest")" != "$before" ]] ||
+        ! grep -qF "$AGENT_MARKER" "$dest"; then
+        printf '  WARN      %s changed during uninstall (leaving it untouched)\n' "$dest" >&2
+        continue
+      fi
+      rm "$dest"
+      printf '  removed   %s\n' "$dest"
+    done
+  done < <(agent_categories)
+}
+
+prune_stale_opencode_agents() {
+  local agents_dir dest name before
+  agents_dir="$(opencode_agents_dir)"
+  [[ -d "$agents_dir" ]] || return 0
+  for dest in "$agents_dir"/*.md; do
+    [[ -f "$dest" && ! -L "$dest" ]] || continue
+    name="$(basename "$dest" .md)"
+    compgen -G "$REPO_ROOT/plugins/*/agents/$name.md" >/dev/null && continue
+    grep -qF "$AGENT_MARKER" "$dest" || continue
+    check_record opencode opencode-agent "$dest" stale
+    if ((UPDATE_MODE && CHECK_MODE == 0)); then
+      before="$(cat "$dest")"
+      if [[ ! -f "$dest" || -L "$dest" || "$(cat "$dest")" != "$before" ]] ||
+        ! grep -qF "$AGENT_MARKER" "$dest"; then
+        printf '  WARN      %s changed during --update; leaving it untouched\n' "$dest" >&2
+        continue
+      fi
+    fi
     run rm "$dest"
     ((DRY_RUN)) || printf '  removed   %s (agent no longer in repo)\n' "$dest"
   done
@@ -851,6 +1521,220 @@ prune_stale_codex_agents() {
 # one AGENTS.md-style document, written to whatever each agent actually reads.
 
 instructions_dir() { printf '%s/instructions' "$REPO_ROOT"; }
+
+# --- On-demand instruction payloads ------------------------------------------
+#
+# Tier-C fragments (70, 80, 85) and Codex/opencode's Python baseline stay out of
+# the always-loaded block: the block carries a one-line pointer, and the full
+# text is installed under ~/.agents/instructions/. Each payload carries an
+# ownership marker; a file without it is never touched.
+
+instruction_payloads_dir() { printf '%s/.agents/instructions' "$HOME"; }
+
+instruction_payload_marker() {
+  printf '<!-- managed-by: fabiandistler/agents install.sh -->'
+}
+
+# A script payload cannot carry an HTML comment, so it uses a shell comment.
+instruction_payload_marker_for() {
+  case "$1" in
+    *.py) printf '# managed-by: fabiandistler/agents install.sh' ;;
+    *) instruction_payload_marker ;;
+  esac
+}
+
+instruction_payload_dest() {
+  printf '%s/%s' "$(instruction_payloads_dir)" "$1"
+}
+
+instruction_payload_source() {
+  case "$1" in
+    30-python.md) printf '%s/30-python.md' "$(instructions_dir)" ;;
+    70-code-review-conventions.md) printf '%s/on-demand/70-code-review-conventions.md' "$(instructions_dir)" ;;
+    80-agent-pipelines.md)
+      printf '%s/skills/llm-application-engineering/references/agent-pipelines.md' "$REPO_ROOT"
+      ;;
+    85-agent-scripts.md) printf '%s/on-demand/85-agent-scripts.md' "$(instructions_dir)" ;;
+    python_init_context.py) printf '%s/scripts/python_init_context.py' "$REPO_ROOT" ;;
+    *) return 1 ;;
+  esac
+}
+
+render_instruction_payload() {
+  local name="$1" source
+  source="$(instruction_payload_source "$name")" || return 1
+  case "$name" in
+    30-python.md)
+      printf '%s\n\n' "$(instruction_payload_marker)"
+      fragment_body "$source" | sed \
+        '/^<!-- python-project-baseline:start -->$/d; /^<!-- python-project-baseline:end -->$/d'
+      ;;
+    python_init_context.py)
+      printf '%s\n' "$(instruction_payload_marker_for "$name")"
+      cat "$source"
+      ;;
+    *)
+      printf '%s\n\n' "$(instruction_payload_marker)"
+      cat "$source"
+      ;;
+  esac
+}
+
+instruction_payload_is_owned() {
+  local dest
+  dest="$(instruction_payload_dest "$1")"
+  [[ -f "$dest" && ! -L "$dest" ]] || return 1
+  grep -qxF "$(instruction_payload_marker_for "$1")" "$dest"
+}
+
+install_instruction_payload() {
+  local name="$1" dest content
+  dest="$(instruction_payload_dest "$name")"
+  content="$(render_instruction_payload "$name")"
+  owned_file_set "$dest" instruction-payload "$name" <<<"$content"
+}
+
+install_instruction_payloads() {
+  local name
+  for name in \
+    30-python.md \
+    70-code-review-conventions.md \
+    80-agent-pipelines.md \
+    85-agent-scripts.md; do
+    install_instruction_payload "$name"
+  done
+  if target_is_selected claude; then
+    install_instruction_payload python_init_context.py
+  fi
+}
+
+# A pointer is rendered only when its payload is ours (or, in a dry run, would
+# be): a foreign file at the payload path must not be advertised as the rules.
+instruction_payload_available() {
+  instruction_payload_is_owned "$1" && return 0
+  if ((DRY_RUN)); then
+    local dest
+    dest="$(instruction_payload_dest "$1")"
+    [[ ! -e "$dest" && ! -L "$dest" ]] && return 0
+  fi
+  return 1
+}
+
+# Reference checks only look inside installed instruction documents/settings.
+# A target-specific uninstall keeps shared payloads while another target or
+# the Claude uv-init hook still points at them.
+instruction_payload_referenced() {
+  local name="$1" target dest home_path
+  dest="$(instruction_payload_dest "$name")"
+  # The literal tilde is what composed instruction files contain, so no expansion.
+  # shellcheck disable=SC2088
+  home_path="~/.agents/instructions/$name"
+  for target in claude codex opencode; do
+    if ((UNINSTALL)) && target_is_selected "$target"; then
+      continue
+    fi
+    local instructions_file
+    instructions_file="$(instruction_file_for "$target")"
+    if [[ -f "$instructions_file" ]] &&
+      grep -qF "$(instructions_begin_marker)" "$instructions_file" &&
+      { grep -qF "$dest" "$instructions_file" || grep -qF "$home_path" "$instructions_file"; }; then
+      return 0
+    fi
+  done
+  if [[ "$name" == "30-python.md" || "$name" == "python_init_context.py" ]] &&
+    ! { ((UNINSTALL)) && target_is_selected claude; } &&
+    [[ -f "$HOME/.claude/settings.json" ]] &&
+    grep -qF "python_init_context.py" "$HOME/.claude/settings.json"; then
+    return 0
+  fi
+  return 1
+}
+
+remove_instruction_payload() {
+  local name="$1" dest
+  dest="$(instruction_payload_dest "$name")"
+  instruction_payload_is_owned "$name" || return 0
+  if instruction_payload_referenced "$name"; then
+    return 0
+  fi
+  if ((DRY_RUN)); then
+    check_record all instruction-payload "$dest" stale
+    printf '[dry-run] remove %s\n' "$dest"
+    return 0
+  fi
+  rm "$dest"
+  printf '  removed   %s\n' "$dest"
+}
+
+prune_instruction_payloads() {
+  local name
+  for name in \
+    30-python.md \
+    70-code-review-conventions.md \
+    80-agent-pipelines.md \
+    85-agent-scripts.md \
+    python_init_context.py; do
+    remove_instruction_payload "$name"
+  done
+}
+
+target_is_selected() {
+  local selected
+  while IFS= read -r selected; do
+    [[ "$selected" == "$1" ]] && return 0
+  done < <(resolve_targets)
+  return 1
+}
+
+rebase_owned_file_path() {
+  local file="$1" marker="$2" before after current
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  grep -qxF "$marker" "$file" || return 0
+  before="$(cat "$file")"
+  after="${before//"$OLD_REPO_ROOT"/"$REPO_ROOT"}"
+  [[ "$after" != "$before" ]] || return 0
+  if ((DRY_RUN)); then
+    printf '[dry-run] rewrite repo path in %s\n' "$file"
+    return 0
+  fi
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  current="$(cat "$file")"
+  if [[ "$current" != "$before" ]] || ! grep -qxF "$marker" "$file"; then
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
+    return 0
+  fi
+  write_file_atomic "$file" "$after" "$marker" "" "$before" file
+  printf '  updated   %s (moved checkout path)\n' "$file"
+}
+
+rebase_managed_block_path() {
+  local file="$1" begin="$2" end="$3" before prefix remainder body suffix updated_body after current
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  before="$(cat "$file")"
+  block_markers_balanced "$begin" "$end" <<<"$before" || return 0
+  [[ "$(grep -Fxc "$begin" <<<"$before" || true)" == 1 ]] || return 0
+  prefix="${before%%"$begin"*}"
+  remainder="${before#*"$begin"}"
+  body="${remainder%%"$end"*}"
+  suffix="${remainder#*"$end"}"
+  updated_body="${body//"$OLD_REPO_ROOT"/"$REPO_ROOT"}"
+  [[ "$updated_body" != "$body" ]] || return 0
+  after="$prefix$begin$updated_body$end$suffix"
+  if ((DRY_RUN)); then
+    printf '[dry-run] rewrite repo path in %s\n' "$file"
+    return 0
+  fi
+  [[ -f "$file" && ! -L "$file" ]] || return 0
+  current="$(cat "$file")"
+  if [[ "$current" != "$before" ]] ||
+    ! block_markers_balanced "$begin" "$end" <<<"$current" ||
+    [[ "$(grep -Fxc "$begin" <<<"$current" || true)" != 1 ]]; then
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
+    return 0
+  fi
+  write_file_atomic "$file" "$after" "$begin" "$end" "$before" 1
+  printf '  updated   %s (moved checkout path)\n' "$file"
+}
 
 # Global instruction file for a target. Unknown targets are an error.
 instruction_file_for() {
@@ -905,6 +1789,20 @@ list_instruction_fragments() {
     [[ -f "$file" ]] || continue
     fragment_matches_target "$file" "$want" || continue
     fragment_is_claude_rule "$file" "$want" && continue
+    case "${file##*/}" in
+      30-python.md)
+        [[ "$want" == "claude" ]] || instruction_payload_available 30-python.md || continue
+        ;;
+      70-code-review-conventions.md)
+        instruction_payload_available 70-code-review-conventions.md || continue
+        ;;
+      80-agent-pipelines.md)
+        instruction_payload_available 80-agent-pipelines.md || continue
+        ;;
+      85-agent-scripts.md)
+        instruction_payload_available 85-agent-scripts.md || continue
+        ;;
+    esac
     printf '%s\n' "$file"
   done
 }
@@ -924,12 +1822,17 @@ fragment_body() {
 # Compose the fragment paths read on stdin into one document, one blank line
 # between fragments.
 render_instructions() {
-  local file first=1
+  local target="$1" file first=1
   while IFS= read -r file; do
     [[ -n "$file" ]] || continue
     ((first)) || printf '\n'
     first=0
-    fragment_body "$file"
+    if [[ "$target" != "claude" && "${file##*/}" == "30-python.md" ]]; then
+      printf 'For Python work, read `%s`.\n' \
+        "$(instruction_payload_dest 30-python.md)"
+    else
+      fragment_body "$file"
+    fi
   done
 }
 
@@ -960,7 +1863,7 @@ install_instructions() {
     return 0
   fi
   managed_block_set "$dest" "$(instructions_begin_marker)" "$(instructions_end_marker)" \
-    "$(render_instructions <<<"$fragments")" "$count instruction fragments"
+    "$(render_instructions "$target" <<<"$fragments")" "$count instruction fragments"
 }
 
 # --- Path-scoped Claude rules ------------------------------------------------
@@ -1008,6 +1911,7 @@ list_managed_claude_rules() {
 
 remove_claude_rule() {
   if ((DRY_RUN)); then
+    check_record claude claude-rule "$1" stale
     printf '[dry-run] remove %s\n' "$1"
     return 0
   fi
@@ -1048,6 +1952,149 @@ remove_instructions() {
   dest="$(instruction_file_for "$target")" || return 1
   managed_block_remove "$dest" "$(instructions_begin_marker)" \
     "$(instructions_end_marker)" "instructions block"
+}
+
+python_init_hook_command() {
+  printf 'python3 "%s/.agents/instructions/python_init_context.py" --baseline "%s/.agents/instructions/30-python.md"' \
+    "$HOME" "$HOME"
+}
+
+# Print ~/.claude/settings.json with the Python uv-init context hook installed.
+# Exit 1 when the file is unreadable/invalid or has an incompatible hooks shape.
+claude_settings_with_python_hook() {
+  python3 - "$REPO_ROOT/scripts" "$1" "$2" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from python_init_context import with_claude_hook
+
+path = Path(sys.argv[2])
+try:
+    settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+except (OSError, ValueError):
+    sys.exit(1)
+if not isinstance(settings, dict):
+    sys.exit(1)
+try:
+    wanted = with_claude_hook(settings, sys.argv[3])
+except (TypeError, ValueError):
+    sys.exit(1)
+print(json.dumps(wanted, indent=2))
+PY
+}
+
+# Print ~/.claude/settings.json without our Python hook. Exit 10 when absent.
+claude_settings_without_python_hook() {
+  python3 - "$REPO_ROOT/scripts" "$1" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from python_init_context import without_claude_hook
+
+path = Path(sys.argv[2])
+try:
+    settings = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    sys.exit(1)
+if not isinstance(settings, dict):
+    sys.exit(1)
+wanted = without_claude_hook(settings)
+if wanted == settings:
+    sys.exit(10)
+print(json.dumps(wanted, indent=2))
+PY
+}
+
+install_claude_python_hook() {
+  local file="$HOME/.claude/settings.json" command content before="" existed=0
+  if ! instruction_payload_available 30-python.md ||
+    ! instruction_payload_available python_init_context.py; then
+    printf '  WARN      cannot install the Claude uv-init context hook because an instruction payload is unavailable\n' >&2
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; cannot install the Claude uv-init context hook\n' >&2
+    return 0
+  fi
+  if [[ -L "$file" ]]; then
+    check_record claude python-init-hook "$file" foreign
+    ((CHECK_MODE)) || printf '  WARN      %s is a symlink, leaving it untouched (Python uv-init context hook)\n' \
+      "$file" >&2
+    return 0
+  fi
+  if [[ -f "$file" ]]; then
+    before="$(cat "$file")"
+    existed=1
+  fi
+  command="$(python_init_hook_command)"
+  if ! content="$(claude_settings_with_python_hook "$file" "$command")"; then
+    check_record claude python-init-hook "$file" foreign
+    ((CHECK_MODE)) || printf '  WARN      %s is not a compatible JSON object, leaving it untouched (Python uv-init context hook)\n' \
+      "$file" >&2
+    return 0
+  fi
+  if [[ -f "$file" && "$(cat "$file")" == "$content" ]]; then
+    printf '  ok        %s (Python uv-init context hook)\n' "$file"
+    return 0
+  fi
+  if [[ -f "$file" ]]; then
+    check_record claude python-init-hook "$file" stale
+  else
+    check_record claude python-init-hook "$file" missing
+  fi
+  if ((DRY_RUN)); then
+    printf '[dry-run] write %s\n' "$file"
+    return 0
+  fi
+  ensure_parent "${file%/*}"
+  if ((UPDATE_MODE)); then
+    if ((existed)); then
+      if [[ ! -f "$file" || -L "$file" || "$(cat "$file")" != "$before" ]]; then
+        printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
+        return 0
+      fi
+    elif [[ -e "$file" || -L "$file" ]]; then
+      printf '  WARN      %s appeared during --update; leaving it untouched\n' "$file" >&2
+      return 0
+    fi
+  fi
+  write_file_atomic "$file" "$content"
+  printf '  updated   %s (Python uv-init context hook)\n' "$file"
+}
+
+remove_claude_python_hook() {
+  local file="$HOME/.claude/settings.json" content status=0
+  [[ -f "$file" ]] && grep -qF python_init_context.py "$file" || return 0
+  if [[ -L "$file" ]]; then
+    printf '  WARN      %s is a symlink, leaving it untouched (Python uv-init context hook)\n' \
+      "$file" >&2
+    return 0
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '  WARN      python3 not found; remove the Python uv-init context hook from %s by hand\n' \
+      "$file" >&2
+    return 0
+  fi
+  content="$(claude_settings_without_python_hook "$file")" || status=$?
+  case "$status" in
+    0) ;;
+    10) return 0 ;;
+    *)
+      printf '  WARN      %s is not a JSON object, leaving it untouched (Python uv-init context hook)\n' \
+        "$file" >&2
+      return 0
+      ;;
+  esac
+  if ((DRY_RUN)); then
+    printf '[dry-run] remove %s\n' "$file"
+    return 0
+  fi
+  write_file_atomic "$file" "$content"
+  printf '  removed   Python uv-init context hook from %s\n' "$file"
 }
 
 # --- Pre-tool guards (PR merge guard, secret read guard) ----------------------
@@ -1093,6 +2140,208 @@ guard_command() {
   printf 'python3 "%s/scripts/%s.py" --harness %s' "$REPO_ROOT" "$(guard_script "$1")" "$2"
 }
 
+render_codex_guard_toml() {
+  local guard="$1" command
+  command="$(guard_command "$guard" codex)"
+  python3 - "$REPO_ROOT/scripts" "$(guard_script "$guard")" "$command" <<'PY'
+import importlib
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from pr_merge_guard import codex_hook_toml
+
+guard = importlib.import_module(sys.argv[2])
+print(codex_hook_toml(sys.argv[3], guard.HOOK_MATCHER, guard.HOOK_STATUS))
+PY
+}
+
+codex_guard_trust_findings() {
+  local config="$1"
+  python3 - "$config" <<'PY'
+import ast
+import hashlib
+import json
+import os
+import re
+import sys
+
+try:
+    import tomllib
+except ImportError:
+    tomllib = None
+
+def toml_scalar(value):
+    value = value.strip()
+    if value in ("true", "false"):
+        return value == "true"
+    if re.fullmatch(r"[0-9]+", value):
+        return int(value)
+    if value.startswith(('"', "'")):
+        try:
+            return ast.literal_eval(value)
+        except (SyntaxError, ValueError):
+            return value[1:-1]
+    return value
+
+def minimal_toml(text):
+    config = {"hooks": {"PreToolUse": [], "state": {}}}
+    section = ""
+    group = None
+    handler = None
+    nested_state = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line == "[[hooks.PreToolUse]]":
+            group = {"hooks": []}
+            config["hooks"]["PreToolUse"].append(group)
+            section, handler, nested_state = "group", None, None
+            continue
+        if line == "[[hooks.PreToolUse.hooks]]":
+            if group is None:
+                continue
+            handler = {}
+            group["hooks"].append(handler)
+            section, nested_state = "handler", None
+            continue
+        if line == "[hooks.state]":
+            section, group, handler, nested_state = "state", None, None, None
+            continue
+        if line.startswith("[hooks.state.") and line.endswith("]"):
+            key_text = line[len("[hooks.state."):-1]
+            nested_state = toml_scalar(key_text)
+            config["hooks"]["state"].setdefault(nested_state, {})
+            section, group, handler = "nested-state", None, None
+            continue
+        if line.startswith("[") or "=" not in line:
+            section, group, handler, nested_state = "", None, None, None
+            continue
+        key, value = (part.strip() for part in line.split("=", 1))
+        if section == "group" and group is not None:
+            group[key] = toml_scalar(value)
+        elif section == "handler" and handler is not None:
+            handler[key] = toml_scalar(value)
+        elif section == "state":
+            state_key = toml_scalar(key)
+            state_entry = {}
+            for field in ("trusted_hash", "enabled"):
+                match = re.search(rf"\b{field}\s*=\s*([^,}}]+)", value)
+                if match:
+                    state_entry[field] = toml_scalar(match.group(1))
+            config["hooks"]["state"][state_key] = state_entry
+        elif section == "nested-state" and nested_state is not None:
+            config["hooks"]["state"].setdefault(nested_state, {})[key] = toml_scalar(value)
+    return config
+
+try:
+    config_path = os.path.abspath(sys.argv[1])
+    with open(config_path, "rb") as config_file:
+        if tomllib is not None:
+            config = tomllib.load(config_file)
+        else:
+            config = minimal_toml(config_file.read().decode("utf-8"))
+except (OSError, UnicodeError, ValueError):
+    sys.exit(3)
+
+hooks = config.get("hooks", {})
+groups = hooks.get("PreToolUse", []) if isinstance(hooks, dict) else []
+state = hooks.get("state", {}) if isinstance(hooks, dict) else {}
+if not isinstance(groups, list) or not isinstance(state, dict):
+    sys.exit(3)
+
+for guard, filename in (("merge", "pr_merge_guard.py"), ("secret", "secret_read_guard.py")):
+    matches = []
+    for group_index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+        handlers = group.get("hooks", [])
+        if not isinstance(handlers, list):
+            continue
+        for handler_index, handler in enumerate(handlers):
+            if not isinstance(handler, dict):
+                continue
+            command = handler.get("command")
+            if isinstance(command, str) and filename in command:
+                matches.append((group_index, handler_index, group, handler))
+    if len(matches) > 1:
+        print(f"{guard}\tduplicate")
+        continue
+    if not matches:
+        continue
+
+    group_index, handler_index, group, handler = matches[0]
+    normalized = {
+        "type": "command",
+        "command": handler["command"],
+        "timeout": handler.get("timeout", 600),
+        "async": handler.get("async", False),
+    }
+    for field in ("commandWindows", "statusMessage", "additionalContextLimit"):
+        if handler.get(field) is not None:
+            normalized[field] = handler[field]
+    identity = {
+        "event_name": "pre_tool_use",
+        "matcher": group.get("matcher"),
+        "hooks": [normalized],
+    }
+    current_hash = "sha256:" + hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    keys = (
+        f"{config_path}:pre_tool_use:{group_index}:{handler_index}",
+        f"{os.path.realpath(config_path)}:pre_tool_use:{group_index}:{handler_index}",
+    )
+    saved = next((state.get(key) for key in keys if key in state), None)
+    if not isinstance(saved, dict) or saved.get("enabled") is False or saved.get("trusted_hash") != current_hash:
+        print(f"{guard}\tuntrusted-hook")
+PY
+}
+
+check_codex_guard_hooks() {
+  local config guard begin end marker_count expected actual result status kind
+  config="$(codex_config_path)"
+  [[ -f "$config" ]] || return 0
+  for guard in merge secret; do
+    begin="$(guard_begin_marker "$guard")"
+    end="$(guard_end_marker "$guard")"
+    marker_count="$(grep -Fxc "$begin" "$config" || true)"
+    ((marker_count > 0)) || continue
+    kind="$(check_kind_for_what "$(guard_label "$guard")")"
+    if ! block_markers_balanced "$begin" "$end" <"$config"; then
+      check_record codex "$kind" "$config" foreign
+      continue
+    fi
+    if ((marker_count > 1)); then
+      check_record codex "$kind" "$config" duplicate
+      continue
+    fi
+    if ! expected="$(render_codex_guard_toml "$guard")"; then
+      check_record codex "$kind" "$config" foreign
+      continue
+    fi
+    actual="$(awk -v b="$begin" -v e="$end" '
+      $0 == b { inside = 1; next }
+      $0 == e { inside = 0; exit }
+      inside { if (printed) printf "\n"; printf "%s", $0; printed = 1 }
+    ' "$config")"
+    [[ "$actual" == "$expected" ]] || check_record codex "$kind" "$config" stale
+    result=""
+    status=0
+    result="$(codex_guard_trust_findings "$config")" || status=$?
+    case "$status" in
+      0)
+        while IFS=$'\t' read -r found_guard state; do
+          [[ "$found_guard" == "$guard" ]] || continue
+          check_record codex "$kind" "$config" "$state"
+        done <<<"$result"
+        ;;
+      2) check_record codex "$kind" "$config" untrusted-hook ;;
+      *) check_record codex "$kind" "$config" foreign ;;
+    esac
+  done
+}
+
 guard_begin_marker() {
   printf '# >>> agents %s (managed by install.sh, do not edit) >>>' "$(guard_label "$1")"
 }
@@ -1132,13 +2381,14 @@ PY
 
 # Drop the guard entry an earlier version wrote into ~/.claude/settings.json.
 remove_claude_settings_merge_guard() {
-  local file="$HOME/.claude/settings.json" content status=0
+  local file="$HOME/.claude/settings.json" content status=0 before
   [[ -f "$file" ]] && grep -qF pr_merge_guard.py "$file" || return 0
   if ! command -v python3 >/dev/null 2>&1; then
     printf '  WARN      python3 not found; remove the pr_merge_guard.py hook from %s by hand\n' \
       "$file" >&2
     return 0
   fi
+  before="$(cat "$file")"
   content="$(claude_settings_without_merge_guard "$file")" || status=$?
   case "$status" in
     0) ;;
@@ -1150,7 +2400,14 @@ remove_claude_settings_merge_guard() {
       ;;
   esac
   if ((DRY_RUN)); then
+    check_record claude merge-guard "$file" stale
     printf '[dry-run] remove %s\n' "$file"
+    return 0
+  fi
+  if ((UPDATE_MODE)) &&
+    { [[ ! -f "$file" ]] || [[ -L "$file" ]] || [[ "$(cat "$file")" != "$before" ]] ||
+      ! grep -qF pr_merge_guard.py "$file"; }; then
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$file" >&2
     return 0
   fi
   write_file_atomic "$file" "$content"
@@ -1171,19 +2428,7 @@ install_guard() {
   fi
   case "$target" in
     codex)
-      if ! toml="$(
-        python3 - "$REPO_ROOT/scripts" "$(guard_script "$guard")" \
-          "$(guard_command "$guard" codex)" <<'PY'
-import importlib
-import sys
-
-sys.path.insert(0, sys.argv[1])
-from pr_merge_guard import codex_hook_toml
-
-guard = importlib.import_module(sys.argv[2])
-print(codex_hook_toml(sys.argv[3], guard.HOOK_MATCHER, guard.HOOK_STATUS))
-PY
-      )"; then
+      if ! toml="$(render_codex_guard_toml "$guard")"; then
         printf '  WARN      cannot render the Codex %s hook (skipping)\n' "$label" >&2
         return 0
       fi
@@ -1238,28 +2483,213 @@ ensure_parent() {
   fi
 }
 
+git_hooks_dir() {
+  local toplevel hooks_dir
+  if ! toplevel="$(git -C "$REPO_ROOT" rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "--git-hook requires a Git checkout" >&2
+    return 1
+  fi
+  # A hooksPath dir belongs to a hook manager (husky, lefthook) or is shared
+  # across repositories, so this installer never writes into it.
+  if [[ -n "$(git -C "$toplevel" config --get core.hooksPath || true)" ]]; then
+    echo "--git-hook refuses to write while core.hooksPath is set; call ./install.sh --update from that hook manager instead" >&2
+    return 1
+  fi
+  # --git-path resolves the common hooks dir from a linked worktree too.
+  hooks_dir="$(git -C "$toplevel" rev-parse --git-path hooks)"
+  [[ "$hooks_dir" == /* ]] || hooks_dir="$toplevel/$hooks_dir"
+  printf '%s\n' "$hooks_dir"
+}
+
+render_git_hook() {
+  local hook="$1"
+  cat <<'HOOK'
+#!/bin/sh
+# managed-by: fabiandistler/agents install.sh
+HOOK
+  if [[ "$hook" == post-rewrite ]]; then
+    printf '%s\n' 'cat >/dev/null'
+  fi
+  local install_root
+  install_root="$(cd "$REPO_ROOT" && pwd -P)"
+  # Git runs these hooks in every linked worktree; only the installing
+  # checkout may replay, or the links would follow a worktree that gets removed.
+  printf "install_root='%s'\n" "${install_root//\'/\'\\\'\'}"
+  cat <<'HOOK'
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
+[ "$(cd "$repo_root" && pwd -P)" = "$install_root" ] || exit 0
+cd "$install_root" || exit 1
+if ./install.sh --update --check; then
+  exit 0
+else
+  check_status=$?
+  [ "$check_status" -eq 3 ] || exit "$check_status"
+fi
+exec ./install.sh --update
+HOOK
+}
+
+git_hook_is_managed() {
+  [[ -f "$1" && ! -L "$1" ]] && grep -qxF "$GIT_HOOK_MARKER" "$1"
+}
+
+install_git_hooks() {
+  local hooks_dir hook file content before
+  hooks_dir="$(git_hooks_dir)" || return 1
+  ensure_parent "$hooks_dir"
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    content="$(render_git_hook "$hook")"
+    if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+      printf '  WARN      %s is not a regular hook file (skipping)\n' "$file" >&2
+      continue
+    fi
+    if [[ -f "$file" ]]; then
+      before="$(cat "$file")"
+      if ! grep -qxF "$GIT_HOOK_MARKER" <<<"$before"; then
+        printf '  WARN      %s is not managed by this installer (skipping)\n' "$file" >&2
+        continue
+      fi
+      if [[ "$before" == "$content" && -x "$file" ]]; then
+        printf '  ok        %s (Git hook)\n' "$file"
+        continue
+      fi
+      if ((DRY_RUN)); then
+        printf '[dry-run] update %s\n' "$file"
+        continue
+      fi
+      write_file_atomic "$file" "$content" "$GIT_HOOK_MARKER" "" "$before" file 755
+      printf '  updated   %s (Git hook)\n' "$file"
+      continue
+    fi
+    if ((DRY_RUN)); then
+      printf '[dry-run] create %s\n' "$file"
+      continue
+    fi
+    write_file_atomic "$file" "$content" "$GIT_HOOK_MARKER" "" "" file 755
+    printf '  created   %s (Git hook)\n' "$file"
+  done
+}
+
+remove_git_hooks() {
+  local hooks_dir hook file before
+  hooks_dir="$(git_hooks_dir)" || return 1
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    [[ -e "$file" || -L "$file" ]] || continue
+    if ! git_hook_is_managed "$file"; then
+      printf '  WARN      %s is not a marker-owned hook (leaving it untouched)\n' "$file" >&2
+      continue
+    fi
+    before="$(cat "$file")"
+    if ((DRY_RUN)); then
+      printf '[dry-run] remove %s\n' "$file"
+      continue
+    fi
+    if ! git_hook_is_managed "$file" || [[ "$(cat "$file")" != "$before" ]]; then
+      printf '  WARN      %s changed during uninstall (leaving it untouched)\n' "$file" >&2
+      continue
+    fi
+    rm "$file"
+    printf '  removed   %s (Git hook)\n' "$file"
+  done
+}
+
+check_git_hooks() {
+  local hooks_dir hook file expected actual state
+  hooks_dir="$(git_hooks_dir)" || return 1
+  for hook in post-merge post-rewrite; do
+    file="$hooks_dir/$hook"
+    expected="$(render_git_hook "$hook")"
+    if [[ -L "$file" ]] || { [[ -e "$file" ]] && [[ ! -f "$file" ]]; }; then
+      state=foreign
+    elif [[ ! -f "$file" ]]; then
+      state=missing
+    else
+      actual="$(cat "$file")"
+      if ! grep -qxF "$GIT_HOOK_MARKER" <<<"$actual"; then
+        state=foreign
+      elif [[ "$(grep -Fxc "$GIT_HOOK_MARKER" <<<"$actual" || true)" != 1 ]]; then
+        state=duplicate
+      elif [[ "$actual" != "$expected" || ! -x "$file" ]]; then
+        state=stale
+      else
+        continue
+      fi
+    fi
+    check_record all git-hook "$file" "$state"
+  done
+}
+
 link_one() {
   local src="$1" dest="$2"
   if [[ -L "$dest" ]]; then
     local current
     current="$(readlink "$dest")"
+    if [[ $'\n'"$PLANNED_REBASED_LINKS" == *$'\n'"$dest"$'\n'* ]]; then
+      return 0
+    fi
     if [[ "$current" == "$src" ]]; then
       printf '  ok        %s -> %s\n' "$dest" "$src"
       return 0
     fi
-    printf '  WARN      %s already symlinked to %s (skipping)\n' "$dest" "$current" >&2
+    if [[ "$current" == "$REPO_ROOT/skills/"* ]]; then
+      check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" stale
+    else
+      check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
+    fi
+    ((CHECK_MODE)) || printf '  WARN      %s already symlinked to %s (skipping)\n' "$dest" "$current" >&2
     return 0
   fi
   if [[ -e "$dest" ]]; then
-    printf '  WARN      %s exists and is not a symlink (skipping)\n' "$dest" >&2
+    check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
+    ((CHECK_MODE)) || printf '  WARN      %s exists and is not a symlink (skipping)\n' "$dest" >&2
     return 0
   fi
-  run ln -s "$src" "$dest"
+  check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" missing
   if ((DRY_RUN)); then
+    printf '[dry-run] link %s\n' "$dest"
     PLANNED_LINKS+="$dest"$'\n'
     return 0
   fi
+  run ln -s "$src" "$dest"
   printf '  linked    %s -> %s\n' "$dest" "$src"
+}
+
+PLANNED_REBASED_LINKS=""
+
+rebase_repo_symlink() {
+  local link="$1" current suffix new_target
+  [[ -n "$OLD_REPO_ROOT" && "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] || return 0
+  [[ -L "$link" ]] || return 0
+  current="$(readlink "$link")"
+  [[ "$current" == "$OLD_REPO_ROOT/"* ]] || return 0
+  suffix="${current#"$OLD_REPO_ROOT"/}"
+  new_target="$REPO_ROOT/$suffix"
+  [[ "$new_target" == "$REPO_ROOT/"* && (-e "$new_target" || -L "$new_target") ]] || return 0
+  if ((DRY_RUN)); then
+    printf '[dry-run] relink %s to current checkout\n' "$link"
+    PLANNED_REBASED_LINKS+="$link"$'\n'
+    return 0
+  fi
+  [[ -L "$link" && "$(readlink "$link")" == "$current" ]] || return 0
+  rm "$link"
+  [[ ! -e "$link" && ! -L "$link" ]] || {
+    printf '  WARN      %s changed during --update; leaving it untouched\n' "$link" >&2
+    return 0
+  }
+  [[ -e "$new_target" || -L "$new_target" ]] || return 0
+  ln -s "$new_target" "$link"
+  printf '  linked    %s -> %s (moved checkout)\n' "$link" "$new_target"
+}
+
+rebase_repo_symlink_dir() {
+  local dir="$1" link
+  [[ -d "$dir" ]] || return 0
+  for link in "$dir"/*; do
+    [[ -L "$link" ]] || continue
+    rebase_repo_symlink "$link"
+  done
 }
 
 # Links a dry-run planned but did not create, one per line, so a later target
@@ -1300,22 +2730,30 @@ drop_opencode_duplicate() {
   local src="$1" root="$2" dest
   dest="$(opencode_skills_dir)/${src##*/}"
   [[ "$(readlink "$dest" 2>/dev/null)" == "$src" ]] || return 0
+  check_record opencode skill-link "$dest" duplicate
   run rm "$dest"
   ((DRY_RUN)) || printf '  removed   %s (opencode reads it from %s)\n' "$dest" "$root"
 }
 
 unlink_one() {
-  local src="$1" dest="$2"
+  local src="$1" dest="$2" state="${3:-stale}"
   if [[ ! -L "$dest" ]]; then
     if [[ -e "$dest" ]]; then
-      printf '  WARN      %s exists but is not a symlink (skipping)\n' "$dest" >&2
+      check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
+      ((CHECK_MODE)) || printf '  WARN      %s exists but is not a symlink (skipping)\n' "$dest" >&2
     fi
     return 0
   fi
   local current
   current="$(readlink "$dest")"
   if [[ "$current" != "$src" ]]; then
+    check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" foreign
     printf '  WARN      %s points to %s (not ours, skipping)\n' "$dest" "$current" >&2
+    return 0
+  fi
+  check_record "$CHECK_CURRENT_TARGET" skill-link "$dest" "$state"
+  if ((DRY_RUN)); then
+    printf '[dry-run] remove %s\n' "$dest"
     return 0
   fi
   run rm "$dest"
@@ -1337,6 +2775,7 @@ prune_stale_skill_links() {
     [[ -e "$entry" ]] && continue
     target="$(readlink "$entry")"
     [[ "$target" == "$REPO_ROOT/skills/"* ]] || continue
+    check_record "$CHECK_CURRENT_TARGET" skill-link "$entry" stale
     run rm "$entry"
     ((DRY_RUN)) || printf '  removed   %s (skill no longer in repo)\n' "$entry"
   done
@@ -1356,8 +2795,37 @@ cleanup_opencode_legacy() {
     local dest="$legacy_dir/$skill"
     [[ -L "$dest" ]] || continue
     [[ "$(readlink "$dest")" == "$src" ]] || continue
+    check_record "$CHECK_CURRENT_TARGET" legacy-skill-link "$dest" stale
     run rm "$dest"
     ((DRY_RUN)) || printf '  removed   %s (legacy opencode location)\n' "$dest"
+  done <<<"$skills"
+}
+
+# Earlier releases linked command skills into OpenCode's singular command/
+# directory. Their metadata now exposes the same skill as a slash command from
+# skills/, so remove only those old symlinks after the new location is handled.
+cleanup_opencode_legacy_commands() {
+  local skills="$1" legacy_dir skill source dest
+  legacy_dir="$(opencode_legacy_command_dir)"
+  [[ -d "$legacy_dir" ]] || return 0
+  while IFS= read -r skill; do
+    [[ -n "$skill" ]] || continue
+    [[ "$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")" == command ]] || continue
+    source="$REPO_ROOT/skills/$skill/SKILL.md"
+    dest="$legacy_dir/$skill.md"
+    [[ -L "$dest" ]] || continue
+    [[ "$(readlink "$dest")" == "$source" ]] || continue
+    check_record opencode "legacy OpenCode command skill" "$dest" stale
+    if ((DRY_RUN)); then
+      printf '[dry-run] remove %s\n' "$dest"
+      continue
+    fi
+    if [[ ! -L "$dest" || "$(readlink "$dest")" != "$source" ]]; then
+      printf '  WARN      %s changed during migration (leaving it untouched)\n' "$dest" >&2
+      continue
+    fi
+    rm "$dest"
+    printf '  removed   %s (legacy OpenCode command location)\n' "$dest"
   done <<<"$skills"
 }
 
@@ -1373,6 +2841,7 @@ cleanup_codex_skills_legacy() {
   for entry in "$legacy_dir"/*; do
     [[ -L "$entry" ]] || continue
     [[ "$(readlink "$entry")" == "$REPO_ROOT/skills/"* ]] || continue
+    check_record codex legacy-skill-link "$entry" stale
     run rm "$entry"
     ((DRY_RUN)) || printf '  removed   %s (deprecated codex skills dir)\n' "$entry"
   done
@@ -1397,6 +2866,7 @@ migrate_claude_to_plugins() {
       [[ -L "$entry" ]] || continue
       src="$(readlink "$entry")"
       [[ "$src" == "$REPO_ROOT/skills/"* ]] || continue
+      check_record claude legacy-skill-link "$entry" stale
       run rm "$entry"
       ((DRY_RUN)) || printf '  removed   %s (now in the Claude plugins)\n' "$entry"
       if [[ "$dir" == "$(target_dir_for claude)" && -f "$src/SKILL.md" ]]; then
@@ -1427,6 +2897,7 @@ cleanup_codex_prompts_legacy() {
     local dest="$legacy_dir/$skill.md"
     [[ -L "$dest" ]] || continue
     [[ "$(readlink "$dest")" == "$src" ]] || continue
+    check_record codex legacy-prompt-link "$dest" stale
     run rm "$dest"
     ((DRY_RUN)) || printf '  removed   %s (deprecated codex prompt)\n' "$dest"
   done <<<"$skills"
@@ -1436,9 +2907,8 @@ cleanup_codex_prompts_legacy() {
 # prune links to skills the repo no longer ships.
 sync_skill_links() {
   local target="$1" skills="$2" routed="$3"
-  local dest_dir cmd_dir="" cmd_dir_ready=0 shared_root
+  local dest_dir shared_root
   dest_dir="$(target_dir_for "$target")"
-  [[ "$target" != "codex" ]] && cmd_dir="$(target_command_dir_for "$target")"
   if ((UNINSTALL == 0)); then
     ensure_parent "$dest_dir"
   fi
@@ -1446,19 +2916,11 @@ sync_skill_links() {
     local src dest activation category
     activation="$(skill_activation "$REPO_ROOT/skills/$skill/SKILL.md")"
     category="$(skill_category "$REPO_ROOT/skills/$skill/SKILL.md")"
-    if [[ "$activation" == "command" && "$target" != "codex" ]]; then
-      # User-invoked: link the single SKILL.md into the command directory.
-      src="$REPO_ROOT/skills/$skill/SKILL.md"
-      dest="$cmd_dir/$skill.md"
-      if ((UNINSTALL == 0)) && ((cmd_dir_ready == 0)); then
-        ensure_parent "$cmd_dir"
-        cmd_dir_ready=1
-      fi
-    elif [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
+    if [[ "$activation" == "auto" && "$routed" == *" $category "* ]]; then
       # Auto member of a routed category: it is nested under the router's
       # members/ dir and loads lazily when routed to, so it is never linked
-      # at top level. Command skills bypass routing (handled above for
-      # non-codex; linked as skills for codex), so they are not skipped here.
+      # at top level. Command skills are ordinary skill links for Codex and
+      # OpenCode, and their runtime metadata keeps them explicitly invoked.
       # Codex discovers the nested member recursively anyway; it is disabled
       # by path in ~/.codex/config.toml further down.
       # Migration: before this category was routed, the member was linked
@@ -1470,8 +2932,8 @@ sync_skill_links() {
       unlink_one "$REPO_ROOT/skills/$skill" "$dest_dir/$skill"
       continue
     else
-      # A normal auto skill, or the router itself (linked as a whole dir so
-      # its nested members/ come along).
+      # A normal auto or command skill, or the router itself (linked as a
+      # whole dir so its nested members/ come along).
       src="$REPO_ROOT/skills/$skill"
       dest="$dest_dir/$skill"
     fi
@@ -1504,28 +2966,97 @@ sync_skill_links() {
       "$dest_dir" >&2
   fi
   prune_stale_skill_links "$dest_dir"
-  [[ -n "$cmd_dir" ]] && prune_stale_skill_links "$cmd_dir"
+  if [[ "$target" == "opencode" ]]; then
+    prune_stale_skill_links "$(opencode_legacy_command_dir)"
+  fi
   return 0
+}
+
+rebase_managed_repo_paths() {
+  local target config guard file agents_dir agent name payloads_dir
+  [[ "$CHECK_MODE" == 0 && -n "$OLD_REPO_ROOT" && "$OLD_REPO_ROOT" != "$REPO_ROOT" ]] ||
+    return 0
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    rebase_managed_block_path "$(instruction_file_for "$target")" \
+      "$(instructions_begin_marker)" "$(instructions_end_marker)"
+    case "$target" in
+      claude)
+        rebase_repo_symlink_dir "$HOME/.claude/skills"
+        rebase_repo_symlink_dir "$HOME/.claude/commands"
+        while IFS= read -r file; do
+          [[ -n "$file" ]] && rebase_owned_file_path "$file" "$(claude_rule_marker)"
+        done < <(list_managed_claude_rules)
+        ;;
+      codex)
+        rebase_repo_symlink_dir "$HOME/.agents/skills"
+        rebase_repo_symlink_dir "$HOME/.codex/skills"
+        rebase_repo_symlink_dir "$HOME/.codex/prompts"
+        config="$(codex_config_path)"
+        rebase_managed_block_path "$config" "$(skill_override_begin_marker)" \
+          "$(skill_override_end_marker)"
+        for guard in merge secret; do
+          rebase_managed_block_path "$config" "$(guard_begin_marker "$guard")" \
+            "$(guard_end_marker "$guard")"
+        done
+        agents_dir="$(codex_agents_dir)"
+        for agent in "$agents_dir"/*.toml; do
+          [[ -f "$agent" ]] || continue
+          rebase_owned_file_path "$agent" "$AGENT_MARKER"
+        done
+        ;;
+      opencode)
+        rebase_repo_symlink_dir "$HOME/.config/opencode/skills"
+        rebase_repo_symlink_dir "$(opencode_legacy_command_dir)"
+        rebase_repo_symlink_dir "$HOME/.config/opencode/plugins"
+        rebase_repo_symlink_dir "$HOME/.config/opencode/agent"
+        agents_dir="$(opencode_agents_dir)"
+        for agent in "$agents_dir"/*.md; do
+          [[ -f "$agent" && ! -L "$agent" ]] || continue
+          rebase_owned_file_path "$agent" "$AGENT_MARKER"
+        done
+        ;;
+    esac
+  done < <(resolve_targets)
+
+  payloads_dir="$(instruction_payloads_dir)"
+  for name in \
+    30-python.md \
+    70-code-review-conventions.md \
+    80-agent-pipelines.md \
+    85-agent-scripts.md; do
+    rebase_owned_file_path "$payloads_dir/$name" "$(instruction_payload_marker)"
+  done
+  rebase_owned_file_path "$payloads_dir/python_init_context.py" \
+    '# managed-by: fabiandistler/agents install.sh'
 }
 
 main() {
   local skills
+  [[ -n "$RESOLVED_TARGETS" ]] || RESOLVED_TARGETS="$(resolve_targets)"
   skills="$(list_skills)"
   if [[ -z "$skills" ]]; then
     echo "no skills found under $REPO_ROOT (env=$ENV, category=$CATEGORY)" >&2
     exit 1
   fi
+  rebase_managed_repo_paths
   local routed
   routed="$(routed_categories)"
   [[ "$ENV" != "all" ]] && printf 'env filter: %s\n' "$ENV"
   [[ "$CATEGORY" != "all" ]] && printf 'category filter: %s\n' "$CATEGORY"
-  if [[ -n "$FILTER_FLAGS" && ("$TARGET" == "claude" || "$TARGET" == "all") ]]; then
+  if [[ -n "$FILTER_FLAGS" ]] && target_is_selected claude; then
     printf '  WARN      %s: no effect for claude (its skills come from the plugin marketplace)\n' \
       "${FILTER_FLAGS# }" >&2
   fi
 
+  if ((INSTRUCTIONS && UNINSTALL == 0)); then
+    CHECK_CURRENT_TARGET=all
+    install_instruction_payloads
+  fi
+
   while IFS= read -r target; do
     [[ -z "$target" ]] && continue
+    CHECK_CURRENT_TARGET="$target"
     if [[ "$target" == "claude" ]]; then
       printf 'claude: skills, commands and subagents come from the plugin marketplace\n'
       migrate_claude_to_plugins
@@ -1546,19 +3077,33 @@ main() {
         remove_codex_member_overrides
       else
         install_codex_agents
-        codex_routed_members "$(target_dir_for codex)" "$skills" | install_codex_member_overrides
+        install_codex_member_overrides < <(codex_routed_members "$(target_dir_for codex)" "$skills")
       fi
+      ((CHECK_MODE)) && check_codex_guard_hooks
     fi
     if [[ "$target" == "opencode" ]]; then
       cleanup_opencode_legacy "$skills"
+      cleanup_opencode_legacy_commands "$skills"
+      prune_stale_opencode_agents
+      if ((UNINSTALL)); then
+        uninstall_opencode_agents
+      else
+        install_opencode_agents
+      fi
     fi
     if ((INSTRUCTIONS)); then
       if ((UNINSTALL)); then
         remove_instructions "$target"
-        if [[ "$target" == "claude" ]]; then remove_claude_rules; fi
+        if [[ "$target" == "claude" ]]; then
+          remove_claude_rules
+          remove_claude_python_hook
+        fi
       else
         install_instructions "$target"
-        if [[ "$target" == "claude" ]]; then install_claude_rules; fi
+        if [[ "$target" == "claude" ]]; then
+          install_claude_rules
+          install_claude_python_hook
+        fi
       fi
     fi
     for guard in $GUARDS; do
@@ -1569,6 +3114,84 @@ main() {
       fi
     done
   done < <(resolve_targets)
+
+  if ((INSTRUCTIONS && UNINSTALL)); then
+    prune_instruction_payloads
+  fi
 }
 
-main
+check_result() {
+  local missing=0 stale=0 foreign=0 duplicate=0 untrusted=0
+  local target kind path state output_dir tsv
+  while IFS=$'\t' read -r target kind path state; do
+    case "$state" in
+      missing) missing=$((missing + 1)) ;;
+      stale) stale=$((stale + 1)) ;;
+      foreign) foreign=$((foreign + 1)) ;;
+      duplicate) duplicate=$((duplicate + 1)) ;;
+      untrusted-hook) untrusted=$((untrusted + 1)) ;;
+    esac
+  done <<<"$CHECK_ROWS"
+
+  if ((CHECK_OUTPUT_SET)); then
+    [[ ! -L "$CHECK_OUTPUT" ]] || {
+      echo "--output must not be a symlink: $CHECK_OUTPUT" >&2
+      return 1
+    }
+    [[ ! -d "$CHECK_OUTPUT" ]] || {
+      echo "--output must be a file: $CHECK_OUTPUT" >&2
+      return 1
+    }
+    output_dir="${CHECK_OUTPUT%/*}"
+    [[ "$output_dir" != "$CHECK_OUTPUT" ]] || output_dir=.
+    [[ -d "$output_dir" ]] || {
+      echo "--output directory does not exist: $output_dir" >&2
+      return 1
+    }
+    tsv=$'target\tkind\tpath\tstate\n'
+    tsv+="$CHECK_ROWS"
+    write_file_atomic "$CHECK_OUTPUT" "${tsv%$'\n'}"
+  fi
+
+  if [[ -z "$CHECK_ROWS" ]]; then
+    printf '%s\n' '--check: clean'
+    return 0
+  fi
+  printf -- '--check: drift (missing=%d stale=%d foreign=%d duplicate=%d untrusted-hook=%d)\n' \
+    "$missing" "$stale" "$foreign" "$duplicate" "$untrusted"
+  return 3
+}
+
+check_main() {
+  main >/dev/null
+  ((GIT_HOOK)) && check_git_hooks
+  check_result
+}
+
+# Resolve the hooks dir before main so a refused --git-hook leaves no partial install.
+if ((GIT_HOOK)); then
+  git_hooks_dir >/dev/null || exit 1
+fi
+
+if ((CHECK_MODE)); then
+  check_main
+elif [[ -z "$TARGET" ]] && ((UNINSTALL && GIT_HOOK)); then
+  remove_git_hooks
+else
+  if ((UNINSTALL)); then
+    plan_uninstall_state
+  fi
+  main
+  if ((UNINSTALL && GIT_HOOK)); then
+    remove_git_hooks
+  elif ((GIT_HOOK)); then
+    install_git_hooks
+  fi
+  if ((UNINSTALL)); then
+    apply_uninstall_state
+  elif ((DRY_RUN == 0)); then
+    write_install_state "$(resolve_targets | paste -sd, -)" "$ENV" "$CATEGORY" "$INSTRUCTIONS" \
+      "$([[ "$GUARDS" == *' merge'* ]] && printf 1 || printf 0)" \
+      "$([[ "$GUARDS" == *' secret'* ]] && printf 1 || printf 0)" "$REPO_ROOT"
+  fi
+fi

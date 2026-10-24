@@ -14,7 +14,7 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 
 # Order matters: the catalogue and plugin checks read skills.json, so the
 # manifest check runs first.
-CHECKS=(manifest routers descriptions docs plugins instructions project-claude
+CHECKS=(manifest routers descriptions docs plugins instructions python-baseline project-claude
   frontmatter evals vocab gh-graphql skill-refs reference-tocs dated-claims skill-paths secret-argv pytest prek
   compileall install-smoke mermaid)
 
@@ -68,6 +68,7 @@ run_check() {
     docs) "$PY" scripts/check_docs.py ;;
     plugins) "$PY" scripts/check_plugins.py ;;
     instructions) "$PY" scripts/check_instructions.py ;;
+    python-baseline) "$PY" scripts/check_python_baseline.py ;;
     project-claude) "$PY" scripts/build_project_claude.py --check ;;
     frontmatter)
       # Running the validator, not just compiling it, proves its allowlist
