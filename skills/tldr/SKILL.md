@@ -27,7 +27,7 @@ honest line about what those facts leave out.
 | A URL or attached document | That document. |
 | A topic in prose | The part of this session about that topic. |
 
-Read the target in full first. 
+Read the target in full first.
 
 When the argument reads two ways — a word that is both a filename and a
 topic — resolve it from what the user has been doing and name the reading you
