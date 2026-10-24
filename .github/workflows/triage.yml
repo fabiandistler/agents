@@ -1,0 +1,183 @@
+name: Issue triage
+
+# The discover/classify/apply split is the safety boundary. Only the apply job
+# has `issues: write`; only the classify job may run a model. See
+# docs/agents/triage-runbook.md before changing the split.
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number to triage; leave empty to sweep the backlog
+        required: false
+        type: string
+  schedule:
+    # One sweep a day keeps the model quota predictable; the list command caps
+    # the run at ten issues and picks the oldest first.
+    - cron: "17 5 * * *"
+  issues:
+    types: [opened]
+
+permissions: {}
+
+concurrency:
+  group: issue-triage-${{ github.event.inputs.issue || github.event.issue.number || 'sweep' }}
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Discover issues
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      issues: ${{ steps.discover.outputs.issues }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compute issue numbers
+        id: discover
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ISSUE: ${{ github.event.issue.number }}
+          AUTHOR_TYPE: ${{ github.event.issue.user.type }}
+          DISPATCH_ISSUE: ${{ github.event.inputs.issue }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "issues" ]; then
+            if [ "$AUTHOR_TYPE" = "Bot" ]; then
+              echo "issues=[]" >> "$GITHUB_OUTPUT"
+            else
+              printf 'issues=[%s]\n' "$EVENT_ISSUE" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          if [ -z "$DISPATCH_ISSUE" ]; then
+            issues="$(python3 scripts/triage.py list --limit 10)"
+            printf 'issues=%s\n' "$issues" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case "$DISPATCH_ISSUE" in
+            *[!0-9]*)
+              echo "workflow_dispatch needs a numeric issue input" >&2
+              exit 1
+              ;;
+          esac
+          printf 'issues=[%s]\n' "$DISPATCH_ISSUE" >> "$GITHUB_OUTPUT"
+
+  classify:
+    name: Classify issue ${{ matrix.issue }}
+    needs: discover
+    if: needs.discover.outputs.issues != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    strategy:
+      matrix:
+        issue: ${{ fromJSON(needs.discover.outputs.issues) }}
+      max-parallel: 2
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch and sanitize issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/triage.py fetch \
+            --issue "${{ matrix.issue }}" \
+            --output ".triage/${{ matrix.issue }}/issue.json"
+      - name: Build prompt
+        id: prompt
+        env:
+          ISSUE: ${{ matrix.issue }}
+        run: |
+          set -euo pipefail
+          prompt="$(cat docs/agents/triage-prompt.md)
+          ---
+          ISSUE NUMBER: $ISSUE
+          SANITIZED ISSUE FILE: .triage/$ISSUE/issue.json
+          LABEL MAPPING: docs/agents/triage-labels.md
+          OUT-OF-SCOPE DIRECTORY: .out-of-scope/"
+          schema="$(python3 scripts/triage.py schema)"
+          {
+            echo "prompt<<TRIAGE_PROMPT_END"
+            printf '%s\n' "$prompt"
+            echo "TRIAGE_PROMPT_END"
+            echo "schema=$schema"
+          } >> "$GITHUB_OUTPUT"
+      - name: Classify with Claude
+        id: classify
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Without this input the action requests an OIDC token for the Claude
+          # app, which needs `id-token: write` and hands the model job the app's
+          # write-scoped token. The job's read-only token keeps the split intact.
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          settings: |
+            {"permissions":{"deny":["Read(/proc/**)","Read(/sys/**)","Read(**/.env)","Read(**/.env.*)","Read(**/*.pem)","Read(**/*.key)","Read(**/.ssh/**)","Read(**/.aws/**)","Read(**/.config/gh/**)"]}}
+          claude_args: |
+            --allowedTools "Read,Glob,Grep"
+            --disallowedTools "Bash,BashOutput,KillShell,Write,Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task"
+            --max-turns 10
+            --json-schema '${{ steps.prompt.outputs.schema }}'
+      - name: Save decision
+        env:
+          STRUCTURED_OUTPUT: ${{ steps.classify.outputs.structured_output }}
+        run: |
+          set -euo pipefail
+          test -n "$STRUCTURED_OUTPUT"
+          printf '%s' "$STRUCTURED_OUTPUT" > ".triage/${{ matrix.issue }}/decision.json"
+      - name: Upload decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-decision-${{ matrix.issue }}
+          path: .triage/${{ matrix.issue }}/
+          if-no-files-found: error
+          retention-days: 7
+
+  apply:
+    name: Apply labels to issue ${{ matrix.issue }}
+    needs: [discover, classify]
+    # One failed classification must not block the other issues in the matrix;
+    # the download step below turns a missing artifact into a visible no-op.
+    if: always() && needs.discover.result == 'success' && needs.discover.outputs.issues != '[]' && needs.classify.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      matrix:
+        issue: ${{ fromJSON(needs.discover.outputs.issues) }}
+      max-parallel: 2
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download decision
+        id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: triage-decision-${{ matrix.issue }}
+          path: .triage/${{ matrix.issue }}
+      - name: Record a missing decision
+        if: steps.download.outcome != 'success'
+        run: |
+          {
+            echo "### Issue #${{ matrix.issue }}: no decision"
+            echo ""
+            echo "The classifier produced no decision, so no labels were applied."
+            echo "The next sweep retries this issue; see the classify job for the failure."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Validate and apply decision
+        if: steps.download.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/triage.py apply \
+            --issue "${{ matrix.issue }}" \
+            --decision ".triage/${{ matrix.issue }}/decision.json" \
+            --summary-file "$GITHUB_STEP_SUMMARY"
