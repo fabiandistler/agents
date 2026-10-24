@@ -1,5 +1,8 @@
 # PR review runbook
 
+Repository maintainers use this runbook to operate PR review, with GitHub
+Actions access and an understanding of the repository's human merge rule.
+
 `.github/workflows/pr-review.yml` assesses, reviews and labels every pull
 request. It adds risk and verdict labels, keeps one sticky comment up to date,
 and asks the maintainer for a review. It never approves, never merges and
@@ -12,6 +15,9 @@ never enables auto-merge.
 - [Dry run](#dry-run)
 - [Going live](#going-live)
 - [Read a run](#read-a-run)
+- [Labels and troubleshooting](#labels-and-troubleshooting)
+- [Acceptance record](#acceptance-record)
+- [Auto-merge decision](#auto-merge-decision)
 - [Disable and roll back](#disable-and-roll-back)
 - [Known limits](#known-limits)
 
@@ -34,9 +40,10 @@ Three jobs per pull request event (`opened`, `synchronize`, `reopened`,
 - The model's risk can only raise the path-based risk, never lower it. A
   missing key, a provider error or a timeout (60 s) becomes
   `review:unavailable`, never a pass.
-- Publish re-reads the pull request right before writing. If the head moved,
-  it aborts with `head_sha_changed` and writes nothing; the run for the new
-  head takes over.
+- Publish re-reads the pull request right before writing and rebuilds its
+  plan from the current files, labels and comments. If the head moved, it
+  aborts with `head_sha_changed`; a closed PR aborts with
+  `pull_request_closed`. Both cases write nothing.
 
 The risk rules are `PATH_RULES` in `scripts/pr_risk.py`, the prompt is
 `scripts/pr_review_prompt.md`.
@@ -148,8 +155,82 @@ Artifacts: `pr-context` (the fetched PR, including the diff), `pr-assessment`
 (path risk and reasons), `pr-review` (verdict, findings, raw model text).
 Publish exit codes: 1 a write failed, 3 a malformed artifact, 4 the live
 re-fetch failed. A provider failure is not a red run; it shows as
-`review:unavailable`. Rerun with `gh run rerun <run-id> --failed`, or push to
-the PR.
+`review:unavailable`. After a provider fix, dispatch a fresh dry run or rerun
+the whole run with `gh run rerun <run-id>`. Use `--failed` only for a red job;
+it does not retry an unavailable review in a successful run. A new PR push
+also triggers a fresh assessment.
+
+## Labels and troubleshooting
+
+Issue classification keeps its own [five triage roles](triage-labels.md).
+PR review uses these separate families:
+
+| Label | Meaning and operator action |
+| --- | --- |
+| `risk:low` | Documentation/report path floor; the model can raise it. Merging remains manual. |
+| `risk:medium` | Skills, agent instructions, README/ADRs or a size escalation; human review needed. |
+| `risk:high` | Workflow, guard, automation, unknown path, fork or large change; human review needed. |
+| `review:pass` | The provider returned a parseable passing verdict. |
+| `review:concerns`, `review:block` | Read the findings in the sticky comment before merging. |
+| `review:unavailable` | Review did not run successfully; inspect the review artifact and configuration. |
+| `needs-review` | Maintainer attention is needed, including the self-authored assignment case. |
+| `do-not-merge` | Explicit maintainer veto; leave the PR open. |
+| `auto-merge:bot` | Reserved for #635; inactive in this implementation. |
+
+Thresholds and path rules live in `scripts/pr_risk.py`: over 300 changed lines
+or 20 files raises risk to medium; over 1000 lines or 50 files raises it to
+high. README and ADRs are policy documents, so their floor is medium. Risk
+suggestions never lower the deterministic floor. A skipped draft/fork review
+has no verdict label; a provider failure uses `review:unavailable`.
+
+| Symptom | Check and recovery |
+| --- | --- |
+| Missing labels or HTTP 403 | Check the publish job and repository Actions policy. Its existing `issues: write` and `pull-requests: write` scopes must be allowed; model access does not grant these scopes. |
+| Provider unavailable | Check that the maintainer configured the model secret, model availability and provider quota. Inspect `pr-review`; rerun only after fixing the cause. No raw credential belongs in an issue or log. |
+| `head_sha_changed` | A push invalidated the review. Wait for the run for the latest head; the old run intentionally writes nothing. |
+| `pull_request_closed` | The PR closed during the run. No action is needed unless it is intentionally reopened. |
+| Conflicting `risk:*` or `review:*` labels | A fresh successful publish replaces stale labels within each family. Check that the latest run succeeded rather than editing a label to override the policy. |
+| Duplicate sticky comments | Check whether concurrent publishers bypassed the per-PR workflow concurrency. The final snapshot reuses an existing marker comment instead of creating a second one. |
+| Publish rejects `disable_auto_merge` | Remove the reserved `auto-merge:bot` label as a maintainer. The writer deliberately refuses auto-merge actions until #635 is approved and implemented. |
+
+There is no separate daily request quota: one eligible review job makes one
+provider request, with bounded input and a 60-second timeout. Superseded runs
+are cancelled. The provider account's current quota, pricing and model
+availability are operator-managed; a limit or outage yields an unavailable
+review.
+
+## Acceptance record
+
+Offline verification and live rollout are separate. Pending rows are not
+completion claims for #631, #633, #634 or #636.
+
+| Scenario | Evidence or remaining manual step |
+| --- | --- |
+| Risk, review parser, publish planning, writer and workflow contracts | Run the six `scripts/test_pr_*.py` suites for this branch; tests use fixtures and fake transports only. |
+| State changes between assessment and writing | Regression cases change the final files, labels, sticky comment or PR state; closed/stale PRs write nothing. |
+| Live provider smoke test | Pending maintainer setup of `OPENCODE_API_KEY`; run the local read-only sequence with an approved provider configuration and record the result. |
+| End-to-end Actions dry run | Pending workflow deployment to `main`; dispatch with `dry_run=true`, record the run URL and verify no PR metadata changed. |
+| Live non-docs PR | Pending approved deployment; record a run with `needs-review`, a sticky comment and a maintainer request/assignment, with auto-merge off. |
+| Docs PR waiting for required checks | Pending #635, the merge exception decision and maintainer ruleset setup; no such run has been performed. |
+
+Before closing acceptance issues, replace each completed pending row with the
+run URL, head SHA and observed result. Offline tests cannot verify live token
+permissions, provider availability, label writes or ruleset enforcement.
+
+## Auto-merge decision
+
+Auto-merge remains unavailable. Setting `PR_AUTO_MERGE=true` cannot activate it
+because the workflow does not pass that variable and the writer rejects merge
+actions. The proposed [CI exception decision](../adr/0011-pr-review-merge-exception.md)
+records #635/#636's remaining choice; it does not change the current merge rule.
+
+If that exception is approved, a separate reviewed implementation must add
+native auto-merge behind an off-by-default variable, validate every gate, and
+update the merge rule precisely. The maintainer must then protect `main` with
+required `checks`, `mermaid` and `secrets` checks before any enablement. The
+rollout is a read-only dry run, an observation period, verified required-check
+configuration, and only then explicit maintainer enablement. The interactive
+merge guard remains unchanged throughout.
 
 ## Disable and roll back
 
