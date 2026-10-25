@@ -357,7 +357,7 @@ Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. 
 
 ### Triage labels
 
-The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`. Before applying `ready-for-agent`, read its blocked-issues rule: an issue with an open blocker gets `ready-for-human`.
 
 ### Domain docs
 
