@@ -135,17 +135,27 @@ Start every eval from outputs, not from metrics:
 LLM applications grow more complex step by step, not all at once. Each of the
 five steps below solves one concrete problem and should be added only when
 that problem is actually present — none of them should be built
-preemptively. The numbers give the usual order; the "Add it when" column
+preemptively. The numbers give the usual order; the "Add it when" line
 decides each step.
 
-| Step | Name | What it adds | Add it when |
-|---|---|---|---|
-| 1 | **Enhance and minimize context** | Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/ai-engineering-conventions.md` | Always first — poor context is the most common cause of poor output |
-| 2 | **Put in guardrails** | Input protection (prompt-injection detection, PII filtering) and output protection (hallucination/toxicity filters) | As soon as real users can reach the system |
-| 3 | **Add router and gateway** | Router sends each request to the right model (e.g. cheap model for simple queries); gateway unifies the interface across self-hosted models and APIs, centralizing load balancing, logging, caching, guardrails | As soon as more than one model or provider is in use |
-| 4 | **Reduce latency with caches** | Prompt cache for shared prefixes first (hosted APIs, cache reads cost a fraction of input price; check current provider pricing); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable | As soon as requests repeat, or individual calls are expensive |
-| 5a | **Add predefined workflows** | Chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer — fixed paths where generated output feeds back into the system | When the path through the system can be predefined |
-| 5b | **Add autonomous agents** | The model plans its own path and the system may take write actions | Last, and only when the path cannot be predefined — agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation |
+- **1. Enhance and minimize context**
+  - What it adds: Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/ai-engineering-conventions.md`
+  - Add it when: Always first — poor context is the most common cause of poor output
+- **2. Put in guardrails**
+  - What it adds: Input protection (prompt-injection detection, PII filtering) and output protection (hallucination/toxicity filters)
+  - Add it when: As soon as real users can reach the system
+- **3. Add router and gateway**
+  - What it adds: Router sends each request to the right model (e.g. cheap model for simple queries); gateway unifies the interface across self-hosted models and APIs, centralizing load balancing, logging, caching, guardrails
+  - Add it when: As soon as more than one model or provider is in use
+- **4. Reduce latency with caches**
+  - What it adds: Prompt cache for shared prefixes first (hosted APIs, cache reads cost a fraction of input price; check current provider pricing); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable
+  - Add it when: As soon as requests repeat, or individual calls are expensive
+- **5a. Add predefined workflows**
+  - What it adds: Chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer — fixed paths where generated output feeds back into the system
+  - Add it when: When the path through the system can be predefined
+- **5b. Add autonomous agents**
+  - What it adds: The model plans its own path and the system may take write actions
+  - Add it when: Last, and only when the path cannot be predefined — agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation
 
 ### Dependencies between the steps
 

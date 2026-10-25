@@ -119,13 +119,13 @@ exactly the two ways to violate this.
 `python3 scripts/coupling_metrics.py scripts/coupling_metrics.example.json` from
 the skill root yields:
 
-| Component | Ca | Ce | I | A | D | Zone |
-|---|---|---|---|---|---|---|
-| experimental | 0 | 2 | 1.00 | 1.00 | 1.00 | Zone of Uselessness |
-| core | 3 | 1 | 0.25 | 0.00 | 0.75 | Zone of Pain |
-| billing | 2 | 2 | 0.50 | 0.10 | 0.40 | near main sequence |
-| contracts | 3 | 0 | 0.00 | 1.00 | 0.00 | near main sequence |
-| web | 0 | 3 | 1.00 | 0.00 | 0.00 | near main sequence |
+- **experimental** — Zone of Uselessness: Ca 0, Ce 2, I 1.00, A 1.00, D 1.00
+- **core** — Zone of Pain: Ca 3, Ce 1, I 0.25, A 0.00, D 0.75
+- **billing** — near main sequence: Ca 2, Ce 2, I 0.50, A 0.10, D 0.40
+- **contracts** — near main sequence: Ca 3, Ce 0, I 0.00, A 1.00, D 0.00
+- **web** — near main sequence: Ca 0, Ce 3, I 1.00, A 0.00, D 0.00
+
+Off the main sequence (D > 0.5): experimental, core
 
 Read it as a story:
 

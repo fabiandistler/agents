@@ -34,12 +34,17 @@ yes → container. A `PaymentService` class inside the API: no → component.
 
 Core hierarchy (each level zooms into one element of the previous):
 
-| Diagram | Shows | Audience | How often needed |
-|---|---|---|---|
-| **System Context** | The system as one box, surrounded by its users and neighboring systems | Everyone, including non-technical | Always — the starting point |
-| **Container** | Inside one system: apps, services, data stores and how they communicate | Technical people in and around the team | Almost always |
-| **Component** | Inside one container: its major structural building blocks | Developers of that container | On demand, per interesting container |
-| **Code** (UML class, ER) | Inside one component | — | Rarely; generate, don't draw |
+- **System Context** — shows the system as one box, surrounded by its users
+  and neighboring systems. Audience: everyone, including non-technical.
+  Needed: always — the starting point.
+- **Container** — shows the inside of one system: apps, services, data stores
+  and how they communicate. Audience: technical people in and around the
+  team. Needed: almost always.
+- **Component** — shows the inside of one container: its major structural
+  building blocks. Audience: developers of that container. Needed: on demand,
+  per interesting container.
+- **Code** (UML class, ER) — shows the inside of one component. Audience: —.
+  Needed: rarely; generate, don't draw.
 
 Supplementary:
 

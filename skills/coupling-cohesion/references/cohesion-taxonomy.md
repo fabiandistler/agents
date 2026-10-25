@@ -221,13 +221,16 @@ Always finish with the human judgment in the
 ask **does this belong here?** (cohesion) and **could I change this without
 touching other parts?** (coupling). The questions repeat at every scale:
 
-| Level | Principle | Cohesion expression | Coupling expression |
-|-------|-----------|----------------------|-----------------------|
-| Function / method | Single Responsibility | One reason to change | Minimal side effects outward |
-| Module | Deep modules | Complete, coherent problem domain | Narrow, simple interface |
-| Architecture | Separation of Concerns | One layer per concern | Layers talk only through defined boundaries |
-| Domain | Bounded Context | Consistent ubiquitous language within the context | Explicit context maps at the edges |
-| Service | Microservices | Self-contained business capability | Loose coupling via defined APIs |
+- **Function / method** (Single Responsibility) — cohesion: one reason to
+  change; coupling: minimal side effects outward.
+- **Module** (Deep modules) — cohesion: complete, coherent problem domain;
+  coupling: narrow, simple interface.
+- **Architecture** (Separation of Concerns) — cohesion: one layer per concern;
+  coupling: layers talk only through defined boundaries.
+- **Domain** (Bounded Context) — cohesion: consistent ubiquitous language
+  within the context; coupling: explicit context maps at the edges.
+- **Service** (Microservices) — cohesion: self-contained business capability;
+  coupling: loose coupling via defined APIs.
 
 Classic failure shapes trace back to a cohesion and/or coupling root cause:
 

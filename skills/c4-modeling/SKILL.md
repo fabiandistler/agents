@@ -82,24 +82,26 @@ asking.
 4. **Components** — only for containers picked in step 1; the major structural
    building blocks behind interfaces. If the user is *designing* this
    decomposition rather than describing an existing one, hand off to
-   `logical-component-design` and resume here with its component table.
+   `logical-component-design` and resume here with its component list.
 5. **Relationships** — for every line: who calls whom, *why* (purpose, not
    "uses"), and over what technology (JSON/HTTPS, gRPC, SQL, AMQP…).
 
 Capture the result as the **model table** — the single source of truth every
-diagram is derived from:
+diagram is derived from. Keep each table at three columns so it stays
+readable on a phone: type and technology share the element cell, and a
+relationship's two ends share one cell.
 
 ```
-| ID | Element | Type | Technology | Description |
-|----|---------|------|------------|-------------|
-| customer | Customer | Person | — | Buys products via the web shop |
-| shop | Web Shop | Software System (in scope) | — | Lets customers browse and order |
-| spa | Storefront | Container | React | Browsing and checkout UI |
+| ID | Element (type, technology) | Description |
+|----|----------------------------|-------------|
+| customer | Customer — Person | Buys products via the web shop |
+| shop | Web Shop — Software System (in scope) | Lets customers browse and order |
+| spa | Storefront — Container, React | Browsing and checkout UI |
 | ... |
 
-| From | To | Purpose | Technology |
-|------|----|---------|------------|
-| customer | spa | Browses catalog, places orders | HTTPS |
+| From → To | Purpose | Technology |
+|-----------|---------|------------|
+| customer → spa | Browses catalog, places orders | HTTPS |
 | ... |
 ```
 

@@ -287,9 +287,12 @@ current loop, not a final artifact.
 - Major workflows (if Workflow): <...>
 
 ## Components
-| Component | Role / responsibility (one sentence, passes the conjunction test) | Assigned stories / requirements | Cᴀ (fan-in) | Cᴇ (fan-out) | Notes |
-|-----------|-------------------------------------------------------------------|---------------------------------|------|------|-------|
-|           |                                                                   |                                 |      |      |       |
+One bullet per component (no table, so it stays readable on a phone):
+- **<Component>** — <role / responsibility: one sentence, passes the conjunction test>
+  - Assigned stories / requirements: <...>
+  - Cᴀ (fan-in): <...>
+  - Cᴇ (fan-out): <...>
+  - Notes: <...>
 
 (Cᴀ / Cᴇ optional for designs with fewer than about 5 components.)
 

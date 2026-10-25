@@ -57,6 +57,13 @@ class TestExitCodes(unittest.TestCase):
         self.assertIn("Zone", proc.stdout)
         self.assertEqual(proc.stderr, "")
 
+    def test_example_prints_one_bullet_per_component_not_a_table(self):
+        proc = run(str(EXAMPLE))
+        bullets = [line for line in proc.stdout.splitlines() if line.startswith("- ")]
+        self.assertEqual(len(bullets), 5)
+        self.assertIn("- **core** — Zone of Pain: Ca 3, Ce 1, I 0.25, A 0.00, D 0.75", bullets)
+        self.assertNotIn("|", proc.stdout)
+
     def test_example_json_is_0_and_parses(self):
         proc = run(str(EXAMPLE), "--json")
         self.assertEqual(proc.returncode, 0)

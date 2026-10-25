@@ -58,16 +58,16 @@ what you may leave out.
 
 ### 2. Pick the document type
 
-| The reader's job | Type | Diátaxis | Reference page |
-|---|---|---|---|
-| Decide whether to use this, then get it running | README | Reference | `references/readme.md` |
-| Call this service correctly from their own code | HTTP API reference | Reference | `references/api-reference.md` |
-| Call this library's functions from their own code | Package reference | Reference | `references/package-docs.md` |
-| Execute a known operational procedure under pressure | Runbook | How-to | `references/runbook.md` |
-| Learn by doing, step by step | Tutorial | Tutorial | Inline in step 4 |
-| Solve one specific task | How-to guide | How-to | Inline in step 4 |
-| Understand how the system fits together before changing it | Architecture doc | Explanation | `references/architecture-doc.md` |
-| Become productive in an unfamiliar codebase or team | Onboarding guide | Tutorial | `references/onboarding-guide.md` |
+| The reader's job | Type (Diátaxis) | Reference page |
+|---|---|---|
+| Decide whether to use this, then get it running | README (Reference) | `references/readme.md` |
+| Call this service correctly from their own code | HTTP API reference (Reference) | `references/api-reference.md` |
+| Call this library's functions from their own code | Package reference (Reference) | `references/package-docs.md` |
+| Execute a known operational procedure under pressure | Runbook (How-to) | `references/runbook.md` |
+| Learn by doing, step by step | Tutorial (Tutorial) | Inline in step 4 |
+| Solve one specific task | How-to guide (How-to) | Inline in step 4 |
+| Understand how the system fits together before changing it | Architecture doc (Explanation) | `references/architecture-doc.md` |
+| Become productive in an unfamiliar codebase or team | Onboarding guide (Tutorial) | `references/onboarding-guide.md` |
 
 One document, one job. If two rows apply, write two documents and link them —
 a README that also tries to be an architecture doc serves neither reader.
