@@ -86,7 +86,7 @@ POC_AGENT=<runner> bash <skill-dir>/assets/loop.sh
 
 **Enforced by `loop.sh`** (mechanically, independent of model behaviour):
 
-- Before branch creation or task selection, a 45-second runner preflight must execute a shell command and write a fresh proof file. The same command checks Git metadata writes in the driver and runner. Infrastructure failures exit 4 with a bounded diagnosis and leave task attempts untouched. A model exit code or printed success alone is insufficient.
+- Before branch creation or task selection, a 45-second runner preflight must execute a shell command and write a fresh proof file. The same command checks Git metadata writes in the driver and runner. Infrastructure failures, including the driver's own Git metadata writes before the runner starts, exit 4 with a bounded diagnosis and a copyable restart command, and leave task attempts untouched. A model exit code or printed success alone is insufficient.
 - Branch `poc/<YYYY-MM-DD>`, created from `main` on first run; the loop itself only commits on that branch. A restart (from `main` or the branch) resumes the newest existing `poc/*` branch.
 - `deps` naming an id that does not exist abort the run before it starts.
 - Run logs and the last failure output live under `.git/poc-loop/`, never in the working tree, so a stopped run restarts without cleanup.

@@ -11,13 +11,16 @@ Ask the environment owner to provision a suitable session; keep the restrictions
 of the current session intact. Changing mounts, socket-directory modes or
 permission flags to escape that session is not a recovery step.
 
-The preflight runs before branch creation and task attempts. It asks the runner
-to execute an actual shell command, probe writes to the Git directory, shared
-Git directory, objects and branch refs, and create a fresh proof file. It uses
-the task's runner flags, including `POC_AGENT_FLAGS` overrides, and times out
-after 45 seconds. Exit 4 means infrastructure failed; no task attempt was used.
-The last probe output is in `.git/poc-loop/preflight.log` (in the worktree's
-Git directory for linked worktrees); stderr shows at most its final 4,000 bytes.
+The preflight runs before branch creation and task attempts. The driver first
+creates its log directory and a preflight directory under `.git/poc-loop/` and
+probes writes to the Git directory, shared Git directory, objects and branch
+refs itself; if any of that fails, the runner is not started. Then it asks the
+runner to execute the same probe as an actual shell command and create a fresh
+proof file. The runner probe uses the task's runner flags, including
+`POC_AGENT_FLAGS` overrides, and times out after 45 seconds. Exit 4 means
+infrastructure failed; no task attempt was used. The last probe output is in
+`.git/poc-loop/preflight.log` (in the worktree's Git directory for linked
+worktrees); stderr shows at most its final 4,000 bytes.
 
 For example, Codex may start and exit successfully while its shell reports:
 
@@ -29,11 +32,36 @@ Treat this as a sandbox infrastructure failure. Provision the new environment
 and rerun the same loop command there. The preflight must pass before work
 starts. A successful probe establishes current access, not future availability.
 
+## Restart after exit 4
+
+Every exit 4, from the driver's own write checks or from the runner probe,
+prints the same guidance on stderr, with the actual paths filled in and quoted:
+
+```sh
+cd <repo>
+POC_AGENT=codex bash <skill-dir>/assets/loop.sh
+```
+
+Run these from an independently started terminal in the supported environment
+above, not from the restricted session: an already restricted calling process
+stays restricted, and runner flags cannot grant it filesystem access. The
+message names the runner that was set, and the restart uses that runner's
+default flags. Three states stay separate:
+
+1. **Infrastructure stop.** Exit 4 changed nothing: task attempts,
+   `plans/prd.json` and the branch are as before, and nothing was repaired.
+2. **Restored infrastructure.** Only a preflight that passes in the new
+   environment shows this. The loop then continues with the items that are
+   still selectable.
+3. **Retry of an old blocked item.** Restored infrastructure does not unblock
+   it. It needs separate human approval naming the item, then the procedure
+   below.
+
 ## Human-approved retry of one blocked item
 
 Items already blocked by an older run retain their state: restarting does not
-reset them. After repairing the environment, obtain human approval naming the
-single item to retry, then:
+reset them. Once a preflight has passed in the restored environment, obtain
+human approval naming the single item to retry, then:
 
 1. Switch to the existing `poc/*` branch recorded in `plans/prd.json`; start
    with a clean tree. Inspect that item's failure and confirm it has
