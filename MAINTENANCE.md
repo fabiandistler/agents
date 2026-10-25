@@ -16,9 +16,9 @@ PR #412. Two findings were carried forward into *Backlog* below.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-10-17 |
-| Last job | `test-flakiness` (report-only, 0 findings, PR pending merge) |
-| Next due job | `perf-quickwins` (no run yet -> catalog order) |
+| Last run | 2026-10-24 |
+| Last job | `perf-quickwins` (report-only, 0 findings, PR pending merge) |
+| Next due job | `deps-audit` (last run 2026-10-08, cooldown 7d) |
 | Baseline status | The current check list is `scripts/check_all.sh --list`. The last run (2026-10-17) recorded its baseline in its report under `maintenance/reports/`; do not read an old report as today's status |
 | Open maintenance PRs | open PRs whose head branch starts with `maintenance/` (command below the table) |
 
@@ -88,7 +88,7 @@ One standing caveat:
 | 3 | `dead-exports` | yes | PR | 14d | 2026-10-10 |
 | 4 | `error-edges` | no | Report | 14d | 2026-10-13 |
 | 5 | `test-flakiness` | yes | PR | 30d | 2026-10-17 |
-| 6 | `perf-quickwins` | no | Report | 30d | - |
+| 6 | `perf-quickwins` | no | Report | 30d | 2026-10-24 |
 
 Open question per job (details in the external `repo-maintenance` skill's `references/jobs.md`):
 
@@ -138,6 +138,7 @@ Empty: the one carry-over (unpinned `prek` in `ci.yml`) is resolved by
 | 2026-10-10 | `dead-exports` | report: `maintenance/reports/2026-10-10-dead-exports.md` (0 findings) | maintenance/dead-exports-2026-10-10 |
 | 2026-10-13 | `error-edges` | report: `maintenance/reports/2026-10-13-error-edges.md` (6 findings) | maintenance/error-edges-2026-10-13 |
 | 2026-10-17 | `test-flakiness` | report: `maintenance/reports/2026-10-17-test-flakiness.md` (0 findings) | maintenance/test-flakiness-2026-10-17 |
+| 2026-10-24 | `perf-quickwins` | report: `maintenance/reports/2026-10-24-perf-quickwins.md` (0 findings) | maintenance/perf-quickwins-2026-10-24 |
 
 ## Sunset condition
 
