@@ -6,6 +6,8 @@ looks for, so one item passes and the loop ends with a ready PR.
 
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -177,6 +179,26 @@ def read_argv(log_dir, name):
     return (log_dir / f"{name}.argv").read_text().split("\0")[:-1]
 
 
+def fail_command(repo, name, arg_glob):
+    """Put a `name` wrapper on PATH that fails like a read-only file system.
+
+    The wrapper exits 1 when any argument matches the bash glob arg_glob and
+    otherwise runs the real command.
+    """
+    real = shlex.quote(shutil.which(name))
+    wrapper = repo.parent / "bin" / name
+    wrapper.write_text(
+        "#!/usr/bin/env bash\n"
+        'for arg in "$@"; do\n'
+        f"  if [[ $arg == {arg_glob} ]]; then\n"
+        f'    echo "{name}: $arg: Read-only file system" >&2\n'
+        "    exit 1\n"
+        "  fi\n"
+        f'done\nexec {real} "$@"\n'
+    )
+    wrapper.chmod(0o755)
+
+
 class LoopRunnerTest(unittest.TestCase):
     def poc(self, **kwargs):
         tmp = tempfile.TemporaryDirectory()
@@ -258,14 +280,7 @@ class LoopRunnerTest(unittest.TestCase):
     def test_git_metadata_write_failure_stops_before_runner(self):
         repo, log_dir, env = self.poc()
         env["POC_AGENT"] = "codex"
-        mktemp = repo.parent / "bin/mktemp"
-        mktemp.write_text(
-            "#!/usr/bin/env bash\n"
-            'for arg in "$@"; do\n'
-            "  [[ $arg != */objects/poc-preflight.* ]] || exit 1\n"
-            'done\nexec /usr/bin/mktemp "$@"\n'
-        )
-        mktemp.chmod(0o755)
+        fail_command(repo, "mktemp", "*/objects/poc-preflight.*")
         before = (repo / "plans/prd.json").read_bytes()
         result = run_loop(repo, env)
         self.assertEqual(result.returncode, 4, result.stderr)
