@@ -57,6 +57,17 @@ class TestExitCodes(unittest.TestCase):
         self.assertIn("knowledge leak", proc.stdout)
         self.assertEqual(proc.stderr, "")
 
+    def test_example_prints_one_bullet_per_dependency_not_a_table(self):
+        proc = run(str(EXAMPLE))
+        bullets = [line for line in proc.stdout.splitlines() if line.startswith("- ")]
+        self.assertEqual(len(bullets), 5)
+        self.assertIn(
+            "- **orders → inventory** — IMBALANCED (knowledge leak): strength model, "
+            "distance service, volatility core — stock entities shared verbatim in events",
+            bullets,
+        )
+        self.assertNotIn("|", proc.stdout)
+
     def test_example_json_is_0_and_parses(self):
         proc = run(str(EXAMPLE), "--json")
         self.assertEqual(proc.returncode, 0)

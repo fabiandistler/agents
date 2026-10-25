@@ -8,5 +8,5 @@
     "measure coupling in src/",
     "monolith or microservices?"
   ],
-  "expected_behavior": "States the Workflow or Actor/Action approach, delivers the component table, and applies the conjunction test; routes existing-code measurement to coupling-cohesion and topology choice to architecture-pattern-advisor."
+  "expected_behavior": "States the Workflow or Actor/Action approach, delivers the component list, and applies the conjunction test; routes existing-code measurement to coupling-cohesion and topology choice to architecture-pattern-advisor."
 }

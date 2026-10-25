@@ -46,7 +46,7 @@ Sibling sub-skills, each read via the `architecture` router:
   not about modeling domain entities.
 - `members/architecture-pattern-advisor/SKILL.md` — use it for the top-level
   domain-vs-technical partition; this skill decomposes within that split.
-- `members/c4-modeling/SKILL.md` — render the final component table as a C4 Component view.
+- `members/c4-modeling/SKILL.md` — render the final component list as a C4 Component view.
 - `members/microservices-design/SKILL.md` — reach for it when components become deployment
   units.
 
@@ -177,15 +177,19 @@ naturally belongs, don't just chase a lower number on one node.
 
 ## Output format
 
-Lead with the approach used, then the component table, then what's still open.
-Keep it proportional — a small feature needs a few rows, not a report.
+Lead with the approach used, then the component list, then what's still open.
+Keep it proportional — a small feature needs a few components, not a report.
+Give each component its own bullet rather than a table row, so the answer
+stays readable on a phone.
 
 ```
 Approach: <Workflow | Actor/Action> — <one-line why>
 
-| Component | Role / responsibility | Assigned stories | Cᴀ / Cᴇ* | Notes |
-|-----------|-----------------------|------------------|---------|-------|
-| ...       | (single-sentence role, passes the conjunction test) | ... | .. | ... |
+Components:
+- **<Component>** — <single-sentence role, passes the conjunction test>
+  - Assigned stories: <...>
+  - Cᴀ / Cᴇ*: <fan-in> / <fan-out>
+  - Notes: <...>
 
 *Cᴀ / Cᴇ is optional for designs with fewer than about 5 components.
 

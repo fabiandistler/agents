@@ -164,28 +164,16 @@ def assess(edges: list[dict]) -> list[dict]:
     return rows
 
 
-def render_table(rows: list[dict]) -> str:
-    headers = ["From", "To", "Strength", "Distance", "Volatility", "Verdict", "Balance", "Note"]
-    cells = [
-        [
-            r["from"],
-            r["to"],
-            r["strength"],
-            r["distance"],
-            r["volatility"],
-            r["verdict"],
-            r["balance"],
-            r["note"],
-        ]
-        for r in rows
-    ]
-    widths = [max(len(h), *(len(row[i]) for row in cells)) for i, h in enumerate(headers)]
-
-    def line(row: list[str]) -> str:
-        return "| " + " | ".join(v.ljust(w) for v, w in zip(row, widths)) + " |"
-
-    out = [line(headers), line(["-" * w for w in widths])]
-    out.extend(line(row) for row in cells)
+def render_list(rows: list[dict]) -> str:
+    """Render one markdown bullet per dependency, narrow enough for a phone."""
+    out = []
+    for r in rows:
+        note = f" — {r['note']}" if r["note"] else ""
+        out.append(
+            f"- **{r['from']} → {r['to']}** — {r['balance']} ({r['verdict']}): "
+            f"strength {r['strength']}, distance {r['distance']}, "
+            f"volatility {r['volatility']}{note}"
+        )
     flagged = sum(r["balance"] == "IMBALANCED" for r in rows)
     tolerated = sum(r["balance"] == "tolerated" for r in rows)
     out.append("")
@@ -198,7 +186,7 @@ def render_table(rows: list[dict]) -> str:
 
 
 def main(argv: list[str]) -> int:
-    """Assess every edge with the balance rule and print the table or JSON."""
+    """Assess every edge with the balance rule and print the list or JSON."""
     parser = argparse.ArgumentParser(
         description="Judge whether each dependency shares the right amount of knowledge.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -216,7 +204,7 @@ def main(argv: list[str]) -> int:
         "exit: 0 ok | 1 input not found | 2 usage | 3 bad input or no result",
     )
     parser.add_argument("input", type=Path, help="JSON file with edges")
-    parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
+    parser.add_argument("--json", action="store_true", help="emit JSON instead of a markdown list")
     args = parser.parse_args(argv)
     if not args.input.exists():
         print(f"error: no such file: {args.input}", file=sys.stderr)
@@ -229,7 +217,7 @@ def main(argv: list[str]) -> int:
     if args.json:
         print(json.dumps(rows, indent=2))
     else:
-        print(render_table(rows))
+        print(render_list(rows))
     return 0
 
 

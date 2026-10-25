@@ -34,14 +34,14 @@ semantics, ordering guarantees, idempotency, side effects, and worked examples.
 **Authentication.** Show how to obtain a credential, how to send it, and what
 an auth failure looks like on the wire. One curl that works end to end.
 
-**Errors.** A table of code, HTTP status, meaning, and — the part usually
+**Errors.** A table of code (with its HTTP status), meaning, and — the part usually
 missing — *what the caller should do about it*. Retryable and non-retryable
 must be distinguishable.
 
-| Code | Status | Meaning | Caller action |
-|---|---|---|---|
-| `invalid_cursor` | 400 | Cursor is malformed or expired | Restart pagination from the first page |
-| `rate_limited` | 429 | Quota exhausted for this window | Back off using `Retry-After` |
+| Code (HTTP status) | Meaning | Caller action |
+|---|---|---|
+| `invalid_cursor` (400) | Cursor is malformed or expired | Restart pagination from the first page |
+| `rate_limited` (429) | Quota exhausted for this window | Back off using `Retry-After` |
 
 **Pagination.** State the style (cursor, offset, keyset), the page-size default
 and maximum, and how the caller knows it has reached the end. Show two
