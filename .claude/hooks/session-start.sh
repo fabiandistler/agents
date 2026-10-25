@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart hook for Claude Code cloud sessions: installs the pinned check
-# tools and the prek git hook, so scripts/check_all.sh runs every gate and the
-# hooks fire on commit, before push. Idempotent; a second run only verifies.
+# tools, the prek git hook and the Bats submodules, so scripts/check_all.sh runs
+# every gate and the hooks fire on commit, before push. Idempotent; a second run only verifies.
 # Local sessions exit at once: there the developer owns the toolchain.
 # Bats exemption: a hook (instructions/45-shell-scripts.md).
 
@@ -53,3 +53,8 @@ if command -v prek >/dev/null 2>&1; then
 else
   log "MISSING prek; commit hooks not installed"
 fi
+
+# 4. The pinned Bats checkouts under test/bats/, which the bats check and its
+# pre-push hook need; a clone without them gets MISSING bats (exit 3).
+git submodule update --init --quiet >&2 ||
+  log "could not fetch the test/bats/ submodules; the bats check will report MISSING"
