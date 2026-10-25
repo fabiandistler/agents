@@ -38,7 +38,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   created.
   See `./install.sh --help` and `docs/install.md`.
 - `instructions/` holds single-topic rule fragments, ordered by numeric
-  filename prefix, in three tiers: 20, 25, 50, 55 and 60 are always on;
+  filename prefix, in three tiers: 20, 25, 45, 50, 55 and 60 are always on;
   Python and R rules are path-scoped in Claude, while Codex and opencode get
   the Python baseline by pointer and keep the R rules in their block; 70, 80
   and 85 are on demand; 85 is also repeated in this repository's `AGENTS.md`.
@@ -256,8 +256,9 @@ machine consumption prefer `skills.json`.
 - Shell scripts are tested with Bats: one `test/<script>.bats` suite per
   entry point (`install.sh` is split into `test/install*.bats`), run by
   `test/bats/bats-core/bin/bats test/` after `git submodule update --init`.
-  Shared setup lives in `test/test_helper.bash`. The bats-core, bats-support
-  and bats-assert submodule pins are bumped by hand, to release tags.
+  The rule and its exemptions are `instructions/45-shell-scripts.md`; shared
+  setup lives in `test/test_helper.bash`. The bats-core, bats-support and
+  bats-assert submodule pins are bumped by hand, to release tags.
 - The catalogue and plugin checks below read `skills.json`, not the
   `SKILL.md` files, so a stale manifest makes them answer from stale
   metadata — regenerate it before running them locally, and that is why

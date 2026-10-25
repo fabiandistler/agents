@@ -3,6 +3,7 @@
 # tools and the prek git hook, so scripts/check_all.sh runs every gate and the
 # hooks fire on commit, before push. Idempotent; a second run only verifies.
 # Local sessions exit at once: there the developer owns the toolchain.
+# Bats exemption: a hook (instructions/45-shell-scripts.md).
 
 set -euo pipefail
 

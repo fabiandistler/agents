@@ -240,7 +240,7 @@ of these skills, a skill that excludes `claude` also gets no plugin symlink.
 Skills are capabilities an agent loads on demand; shared rules use three
 tiers in `instructions/`, ordered by numeric filename prefix:
 
-- **Always on:** 20, 25, 50, 55 and 60.
+- **Always on:** 20, 25, 45, 50, 55 and 60.
 - **Path-scoped in Claude:** 30 for Python files and 40 for R files. Codex and
   opencode get a pointer for the Python baseline and keep the R rules inline.
 - **On demand:** 70, 80 and 85. Their pointers stay in the global instruction
