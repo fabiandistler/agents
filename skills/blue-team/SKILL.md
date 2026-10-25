@@ -27,6 +27,8 @@ Typical material:
 
 Out of scope: an adversarial verdict on a finished artefact (`red-team`), and wording or style signals in a German text (`ki-stil`). See [Boundaries and handover](#boundaries-and-handover).
 
+Raw or finished: raw means the claim or core is not yet written down, or the user asks to develop it (this skill). Finished means there is a text or decision the user is about to send, sign, or submit (`red-team`).
+
 ## Stance
 
 - Standalone. No chain, no prerequisite: the load test is built in.
@@ -37,7 +39,7 @@ Out of scope: an adversarial verdict on a finished artefact (`red-team`), and wo
 
 ## Language and tone
 
-- Output in German, consistently Du-Form, unless the user writes in another language.
+- Output in German, consistently Du-Form, even when the request is in English.
 - Precise, direct, at eye level. Praise only where it carries information („der Kern trägt“), never as filler.
 - Compact turns: the user often reads on a phone. The hardened version is the centre of the output; everything else justifies it.
 - In German output, use the spaced en dash (` – `) and German quotes („…“).
@@ -88,6 +90,8 @@ Empty sections are allowed. „Max. 3–5 Belastungspunkte“ is a ceiling, not 
 In doubt between Kurz- and Schnellhärtung: Kurzform. The user can always ask for the Block; an unwanted Block costs more than an answer that is too short.
 
 ## Re-Härtung
+
+A v2 goes to the skill that ran the earlier round; with no earlier round, a finished artefact goes to `red-team` and a raw idea stays here.
 
 1. **ABGLEICH first.** Go through the load points of the last round. Status per point: verstärkt / teilweise / offen / bewusst nicht übernommen.
 2. **New points only with real leverage.** What failed the gate last round fails it now. A new point appears only if the revision created it or it was missed – then mark it „übersehen“.
@@ -161,7 +165,7 @@ If no load point separates Gehärtet from Einsatzbereit, it is Einsatzbereit. Gr
 
 Default: none. The value is one coherent rewrite in dialogue with the user; splitting the hardening across agents fragments the voice, and self-refinement without an outside signal plateaus (Huang 2023).
 
-Exception, Vollhärtung only, when the user asks for a check or the idea is about to go out (pitch, post, ADR submission):
+Exception, Vollhärtung only: run an outside check when the user asks for one. When the idea is about to go out (pitch, post, ADR submission) and the user has not asked, offer it in one closing line („Außencheck auf Wunsch: ein frischer Blick sucht den stärksten Einwand deines Adressaten.“) and start it only after the user agrees. The check:
 
 1. If your agent can run an isolated subagent, give it ONLY the hardened version plus the stated audience – not the raw idea, not the load points, not the conversation. Ask for the single strongest objection that audience would raise, tied to a phrase in the version. Why isolated: a fresh context is not anchored on the reasoning that produced the version.
 2. Single-context fallback: after writing the version, run the same check as a separate step – reread only the version, take the audience's seat, name the single strongest objection.
@@ -172,9 +176,9 @@ Exception, Vollhärtung only, when the user asks for a check or the idea is abou
 
 - `red-team` critiques a finished or near-finished artefact or decision adversarially and returns a verdict. Blue team hardens the unfinished and returns a version. Each works without the other.
 - `ki-stil` checks wording and style signals in a German text. Blue team works on the content – claim, argument, audience – not on how the sentences read.
-- A formatting or writing-style skill turns the hardened core into a post, slide or document; blue team delivers the core before that.
+- Turning the hardened core into a post, slide or document is outside this skill; do it directly once the user asks.
 
-When the user moves on to `red-team` or a formatting step, hand over in German:
+When the user moves on to `red-team` or to writing the final text, hand over in German:
 
 ```text
 ÜBERGABE

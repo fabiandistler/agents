@@ -68,9 +68,11 @@ Artefact:
 
 ## Several critics
 
+- Start only after the user has asked for or agreed to several critics
+  (SKILL.md section 2).
 - Same brief for every critic; only the lenses line differs. Give each
-  critic one of the lens sets A–D from the lens catalogue, so critics
-  differ by perspective, not only by label.
+  critic one of the lens sets A–D (`stakeholder-lenses.md`, last section), so
+  critics differ by perspective, not only by label.
 - Start them independently. No critic sees another's findings, and there is
   no debate round: debate adds little beyond independent votes (Choi 2025),
   and interacting critics converge on the same points.

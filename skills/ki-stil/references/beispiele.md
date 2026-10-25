@@ -53,8 +53,6 @@ Stufe 2 – KI-Muster (voll)
 - Häufungen: Satz 1–7: Floskeln, Lehrbuchvokabular, Lehnmuster, Signifikanz, Figuren
 - Figuren: 2 Trikola, 2 „nicht X, sondern Y“, 1 „nicht nur … sondern auch“ – in sieben Sätzen wirkt das wie Schablone
 - Lehnmuster aus dem Englischen: „nahtlose“ (3), „auf dieser Reise“, „einen echten Unterschied machen“ (7)
-- Anfangsmuster: unauffällig
-- Gedankenstriche: unauffällig
 
 Stufe 3 – Authentizität
 - Eigensubstanz: nein – kein Projekt, keine Zahl, kein Name, keine eigene Beobachtung
@@ -171,7 +169,6 @@ Output:
 KI-STIL-TEST (reduziert, 10 Wörter) · Wir bauen keine Software. Wir
 Genre: Marketing-Claim – drei Kurzsätze, offensichtlich als Slogan gebaut.
 Ampel: 🟢 – die Figuren sind hier gewollt und tragen.
-- Floskeln und Lehnmuster: keine
 - Figuren: Kontrast „keine Software … Vertrauen“ und Trikolon „Schnell, sicher, skalierbar“ (bei so wenig Text nur Einzelbeobachtung)
 - Eigensubstanz: ja – „Vertrauen statt Software“ ist eine These, die man ablehnen kann
 Vorschlag: keiner nötig. Als Satz in einem Memo oder einer PR-Beschreibung wäre dieselbe Konstruktion Schablone.

@@ -16,7 +16,8 @@ one that passes a detector. Signals are counted by a script and weighed by
 genre and evidence tier; the verdict is about *how the text reads*, never about
 *who wrote it*. Why: detectors and human judges cannot decide authorship
 (OpenAI withdrew its own classifier in 2023; Weber-Wulff 2023, Fleckenstein
-2024), and they flag non-native writers far more often (Liang 2023).
+2024), and they flag non-native writers far more often (Liang 2023). Output is
+German, Du-Form, even when the request is in English.
 
 ## When to use
 
@@ -91,11 +92,15 @@ script that also handles long texts. Run the whole check in one context.
    sign it without hesitating? Then something of the author's own is missing.
    The script's `substance_hints` (digits, first person) are prompts for this
    question, not answers: an application is full of „ich“ and can still say
-   nothing.
+   nothing. Stage 3 reports only whether substance and an edge are *present*,
+   never whether the position holds or how to sharpen it: for that, point to
+   red-team (finished text) or blue-team (raw idea).
 7. **Grade** with the [Ampel](#ampel) anchors and weigh by
    [evidence tier](#evidence-tiers).
 8. **Write** the output with the [template](#output-template): the 2–4 most
-   important findings, each with location and rewrite.
+   important findings, each with location and rewrite. Omit every template
+   line that would read „keine“ or „unauffällig“; print the header, the
+   findings with rewrites, and only the stage lines that hold a finding.
 
 ## Evidence tiers
 
@@ -221,5 +226,6 @@ text is under about 80 words, else the full one, with
   cannot decide that.
 - It is no substitute for statistical detectors, and no plagiarism or
   copyright check.
-- It checks no facts and judges no argument; for content, suggest red-team,
-  for developing the idea, blue-team.
+- It checks no facts and judges no argument: stage 3 notes whether own
+  substance and an edge are present, not whether the position holds. For
+  content, suggest red-team; for developing the idea, blue-team.

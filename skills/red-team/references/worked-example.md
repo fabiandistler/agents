@@ -25,7 +25,8 @@ einer PoC-Pipeline geschätzt, und ein Rückweg fehlt. So unterschreibt die
 Teamleitung ein Quartal ohne belastbare Zahl.
 
 **Verdikt: Angreifbar** – die Aufwandsschätzung trägt die Entscheidung, ist aber
-aus einem Einzelfall hochgerechnet.
+aus einem Einzelfall hochgerechnet. Kippen würde es: der komplexeste DAG
+migriert in der geschätzten Zeit.
 
 **Stakeholder-Snapshot**
 - Teamleitung: unterschreibt nur mit Aufwand pro DAG-Typ und Abbruchkriterium – Tendenz: skeptisch
@@ -37,12 +38,10 @@ aus einem Einzelfall hochgerechnet.
    - Beleg: Schätzung aus einer PoC-Pipeline ohne Sensoren und ohne dynamische Tasks; 11 der 40 DAGs nutzen beides.
    - Warum material: Die Teamleitung entscheidet über ein Quartal; ein Faktor 2 beim Aufwand kippt die Abwägung.
    - Was ihn widerlegen würde: eine zweite PoC mit dem komplexesten DAG im selben Zeitrahmen.
-   - Verbesserung: Aufwand je DAG-Typ schätzen, den schwersten DAG zuerst migrieren.
 2. Kein Rückweg (fehlt im ADR)
    - Beleg: Abschnitt „Konsequenzen" nennt nur Vorteile.
    - Warum material: Ohne Abbruchkriterium wird eine halbe Migration zum Dauerzustand mit zwei Orchestratoren.
    - Was ihn widerlegen würde: ein definierter Abbruchpunkt mit Kosten des Zurückgehens.
-   - Verbesserung: Abbruchkriterium nach dem schwersten DAG festlegen.
 
 **Empfehlungen**
 - [BLOCKIEREND] Zweite PoC mit dem komplexesten DAG vor der Freigabe – Adressat: Autor – Zeitpunkt: vor dem Review
@@ -51,10 +50,7 @@ aus einem Einzelfall hochgerechnet.
 **Feinschliff**
 - „Halbiert die Debugging-Zeit" als PoC-Beobachtung kennzeichnen, nicht als Messwert.
 
-**Was mein Urteil kippen würde**
-Wenn der komplexeste DAG in der geschätzten Zeit migriert, ist das ADR belastbar.
-
-**Die 3 wirksamsten Änderungen**
+**Optimierte Fassung** – die 3 wirksamsten Änderungen:
 - Abschnitt Aufwand → Schätzung je DAG-Typ → Teamleitung kann das Quartal planen
 - Konsequenzen → Abbruchkriterium und Rückwegkosten → Risiko wird begrenzbar
 - Alternativen → warum nicht Airflow 2 mit Datasets → stärkster Einwand ist vorweggenommen

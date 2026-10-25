@@ -18,7 +18,7 @@ an honest "entscheidungsreif" beats invented criticism.
 ## When to use
 
 - The user wants a finished or near-finished thing attacked before it goes
-  out: "red team das", "härte das", "zerleg das", "wo bin ich angreifbar?",
+  out: "red team das", "zerleg das", "wo bin ich angreifbar?",
   "was würde der Bereichsleiter dagegen sagen?", "jetzt besser?" on a v2.
 - Typical inputs: ADR, architecture or tool choice, PR description; AI use
   case, business case, stakeholder pitch; LinkedIn post or article;
@@ -28,13 +28,19 @@ Not this skill: a raw idea the user wants developed into a stronger version
 (use blue-team); only wording or "klingt das nach KI?" (use ki-stil); a code
 diff to review for bugs.
 
+Raw or finished: raw means the claim or core is not yet written down, or the
+user asks to develop it (blue-team). Finished means there is a text or
+decision the user is about to send, sign, or submit (this skill). A v2 goes
+to the skill that ran the earlier round; with no earlier round, a finished
+artefact comes here and a raw idea goes to blue-team.
+
 ## 1. Pick the mode
 
 Priorities throughout: safety, law, ethics > analytical correctness >
 relevance to the decision > clarity > density > format.
 
 - **Kompakte Prüfung**: a thesis, a single option, a PR description, a
-  LinkedIn post. Max 3–5 points; drop empty sections.
+  LinkedIn post. Max 3 points; use the compact template in section 8.
 - **Vollprüfung**: an ADR, architecture or tool choice, project proposal,
   business case, negotiation plan. Full template.
 - **Dokumentprüfung**: a long memo, PDF, or deck. Architecture first, then the
@@ -46,9 +52,9 @@ relevance to the decision > clarity > density > format.
   reader's first reaction, a rewrite.
 - **Re-Prüfung**: a revised version after an earlier check (in this chat, or
   signalled by "nochmal", "jetzt besser?", v2). See section 6.
-- **Exploratory input** (brainstorm, early reflection, open question): attack
-  assumptions, failure modes, trade-offs, and tests; no verdict. If the
-  user wants the idea built up rather than attacked, suggest blue-team.
+- **Exploratory input** (brainstorm, early reflection, open question): say
+  "noch kein Prüfgegenstand", offer blue-team, and give at most 3 attack
+  lines (an assumption, a failure mode, a test). No verdict.
 
 ## 2. Pick the critic path
 
@@ -70,12 +76,13 @@ themselves, which applies whenever you helped draft the artefact.
   "volle Breitseite"). When the artefact is high-stakes and expensive to
   reverse (a leadership proposal with a budget decision, a job application,
   an ADR that locks in a platform), run the default path and offer the
-  several-critics pass in one closing line that names its cost (roughly
-  4–15× the tokens of one pass); start it only after the user agrees. Run
-  2–4 independent critics, each with a different lens set; they never see
-  each other's findings and never debate. Follow the several-critics part
-  of `references/critic-brief.md` for briefing, merging, and the
-  no-subagent variant.
+  several-critics pass in one closing line that names its cost (about one
+  extra full pass per critic plus the merge); start it only after the user
+  agrees. Run 2–4 independent critics, each with a different lens set (the
+  last section of `references/stakeholder-lenses.md`); they never see each
+  other's findings and never debate. Follow the several-critics part of
+  `references/critic-brief.md` for briefing, merging, and the no-subagent
+  variant.
 
 ## 3. Procedure
 
@@ -91,8 +98,9 @@ themselves, which applies whenever you helped draft the artefact.
 4. **Quality-of-information check.** Which numbers, sources, and anecdotes
    carry the argument? Judge each: origin, sample size, age, self-reported
    or measured, single source.
-5. **Lenses.** Read `references/stakeholder-lenses.md` every time and pick
-   3–5 lenses for the use case. Each lens yields a concrete objection or
+5. **Lenses.** Read "How to pick" and the section for your use case in
+   `references/stakeholder-lenses.md` (its Contents lists them) and pick 3–5
+   lenses; read the lens sets for several critics only on that path. Each lens yields a concrete objection or
    condition; "grundsätzlich zustimmend" is no finding.
 6. **Attack.**
    - Pre-mortem: "Zwölf Monate später ist es gescheitert. Warum?" It
@@ -191,12 +199,31 @@ their first view harder (Nemeth 2001).
 ## 8. Output
 
 German, Du-Form, critical, precise, respectful, direct; no buzzwords, drama,
-or platitudes. Every criticism links to an action, an alternative, or a test. Show only the condensed result; internal steps stay internal
-unless the detailed analysis is requested. Say each point once, not again in
-Kurzurteil, Empfehlungen, and the optimised version. Work from provided files
+or platitudes. Every criticism links to an action, an alternative, or a
+test. Show only the condensed result; internal steps stay internal unless
+the detailed analysis is requested. Say each point once, not again in
+Kurzurteil, Empfehlungen, and the optimised version. The user reads on a
+phone: whole answer about 350 words or less in Vollprüfung, about 150 in
+Kompakte Prüfung; drop every section that would be empty. Work from provided files
 first; if current facts, law, prices, or deadlines are decisive and web
 search is available, check them and keep source and conclusion apart. Read
 `references/worked-example.md` when unsure about tone, depth, or strictness.
+
+Kompakte Prüfung:
+
+```markdown
+**Red-Team-Prüfung | <Kurztitel>** · <TT.MM.JJJJ>
+
+**Verdikt: <Stufe>** – <1 Satz Begründung>
+
+1. <Stelle> – <Befund> – Fix: <Änderung>
+2. …
+3. …
+
+**Die eine Änderung, die zählt:** <1 Satz>
+```
+
+Vollprüfung, Dokumentprüfung, Re-Prüfung:
 
 ```markdown
 **Red-Team-Prüfung | <Kurztitel>** · <TT.MM.JJJJ> [· Iteration <n>]
@@ -208,7 +235,7 @@ search is available, check them and keep source and conclusion apart. Read
 **Kurzurteil**
 <2–4 Sätze: Gesamtbild, zentrale Verwundbarkeit, Entscheidungsreife.>
 
-**Verdikt: <Stufe>** – <1 Satz Begründung>
+**Verdikt: <Stufe>** – <1 Satz Begründung>. Kippen würde es: <Information, Zahl oder Gegenrede>
 [bei Belastbar mit Restaufgabe: Was fehlt bis entscheidungsreif: …]
 [bei Grenzfall: Grenzfall zwischen <X> und <Y> – entscheidet sich an …]
 [bei Re-Prüfung: Vorher <X> → jetzt <Y>, weil … · Offene materiale Punkte: <n>]
@@ -222,7 +249,6 @@ search is available, check them and keep source and conclusion apart. Read
    - Beleg: …
    - Warum material: …
    - Was ihn widerlegen würde: …
-   - Verbesserung: …
 
 **Empfehlungen** (max. 3–5)
 - [BLOCKIEREND | wichtig | optional] <Empfehlung> – Adressat: … – Zeitpunkt: …
@@ -234,13 +260,9 @@ search is available, check them and keep source and conclusion apart. Read
 **Pointierungsrisiko** (kein Mangel; entfällt meist)
 - …
 
-**Was mein Urteil kippen würde**
-<1–2 Sätze: welche Information, Zahl oder Gegenrede.>
-
-**Optimierte Fassung** (These, Argument, Textpassage; max. 5–8 Zeilen)
-— oder bei Dokument, Deck, ADR —
-**Die 3 wirksamsten Änderungen**
-- <Stelle> → <Änderung> → <Effekt>
+**Optimierte Fassung** – genau eine der beiden Formen:
+- These, Argument, Textpassage: die überarbeitete Fassung, max. 5–8 Zeilen
+- Dokument, Deck, ADR: die 3 wirksamsten Änderungen, je <Stelle> → <Änderung> → <Effekt>
 ```
 
 ## Safety

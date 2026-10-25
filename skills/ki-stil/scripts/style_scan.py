@@ -234,7 +234,7 @@ TRIAD_FRAGMENT = re.compile(
 
 USAGE_EPILOG = """examples:
   python3 scripts/style_scan.py draft.md
-  pbpaste | python3 scripts/style_scan.py - --max-positions 0 --output scan.json
+  python3 scripts/style_scan.py - --max-positions 0 --output scan.json < draft.md
 
 exit codes: 0 ok | 1 cannot read input or write output | 2 bad usage
             3 input contains no words | 4 marker list missing or malformed"""

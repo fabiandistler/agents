@@ -150,5 +150,5 @@ a legal brief. That is why hits are candidates and only clusters count.
    single fashionable words.
 3. Update `stand` and `naechste_pruefung` in the JSON and the as-of paragraph
    above.
-4. Run the tests next to the script (`python3 -m pytest scripts/`); one test
-   rejects an entry listed in two categories.
+4. Run the tests next to the script (`python3 -m unittest discover scripts`);
+   one test rejects an entry listed in two categories.
