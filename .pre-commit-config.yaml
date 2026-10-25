@@ -114,12 +114,14 @@ repos:
         pass_filenames: false
         files: ^(skills/.*SKILL\.md|skills\.json|instructions/.*\.md|plugins/[^/]+/agents/.*\.md|\.claude/(skills|agents|rules)/.*|\.claude/settings\.json|scripts/(build_(manifest|project_claude)|pr_merge_guard)\.py)$
 
-  # Commit subject and push gates. Both use the interpreter on PATH: the
+  # Commit subject and push gates. All use the interpreter on PATH: the
   # message check is stdlib-only and 3.9-compatible; check_all.sh honours
   # PYTHON and exits 4 with one line if the interpreter is older than 3.11.
-  # The push gate skips prek (it would recurse into this config; the commit
-  # hooks already ran) and the slow or networked mermaid and install-smoke
-  # checks, which CI still runs.
+  # The check_all push gate skips prek (it would recurse into this config; the
+  # commit hooks already ran), the networked mermaid check, which CI still
+  # runs, and bats, which has a push gate of its own: a clone without the
+  # test/bats/ submodules stops there with exit 3 and the line
+  # `MISSING bats: ... (git submodule update --init)`.
   - repo: local
     hooks:
       - id: conventional-commit-msg
@@ -128,9 +130,16 @@ repos:
         entry: python3 scripts/check_commit_msg.py
         stages: [commit-msg]
       - id: check-all-pre-push
-        name: scripts/check_all.sh (without prek, mermaid, install-smoke)
+        name: scripts/check_all.sh (without prek, mermaid, bats)
         language: system
-        entry: bash scripts/check_all.sh --skip prek,mermaid,install-smoke
+        entry: bash scripts/check_all.sh --skip prek,mermaid,bats
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: bats-pre-push
+        name: bats test/ (shell script tests)
+        language: system
+        entry: bash scripts/check_all.sh --only bats
         pass_filenames: false
         always_run: true
         stages: [pre-push]

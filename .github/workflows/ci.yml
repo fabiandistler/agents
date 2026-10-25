@@ -18,9 +18,25 @@ jobs:
         run: pip install -r scripts/check_all.requirements.txt
 
       - name: All checks
-        # The check list lives once, in scripts/check_all.sh. Mermaid runs in
-        # its own job below because it needs Node.
-        run: scripts/check_all.sh --skip mermaid --tail 0
+        # The check list lives once, in scripts/check_all.sh. Mermaid and Bats
+        # run in their own jobs below: Mermaid needs Node, Bats the submodules.
+        run: scripts/check_all.sh --skip mermaid,bats --tail 0
+
+  bats:
+    # `bats test/` with the pinned bats-core, bats-support and bats-assert
+    # submodules; the command lives in scripts/check_all.sh.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Bats suites
+        run: scripts/check_all.sh --only bats --tail 0
 
   mermaid:
     # Browserless syntax check over every tracked Markdown file with

@@ -273,7 +273,10 @@ separate workflows, not checks inside `check_all.sh`.
 A check whose tool is not installed is reported as `MISSING` and the script
 exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
 later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
-newer interpreter. The mermaid check also needs Node.js (`npx`).
+newer interpreter. The mermaid check also needs Node.js (`npx`). The bats check
+runs the shell script tests in `test/` with the bats-core, bats-support and
+bats-assert submodules pinned under `test/bats/`; fetch them once with
+`git submodule update --init` (installing the catalogue does not need them).
 
 The hooks in `.pre-commit-config.yaml` are run by
 [prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
@@ -282,9 +285,9 @@ and the secret scanner builds with the Go on `PATH` (prek downloads a
 toolchain only when none is found). Run `prek install` once and they fire on
 every commit; `check_all.sh` runs them too, so a skipped hook fails the build
 rather than landing on `main`. The same install adds a commit-msg hook that
-rejects subjects outside Conventional Commits and a pre-push hook that runs
-`check_all.sh` without its prek, mermaid and install-smoke checks (export
-`PYTHON=` as above, or the push stops with exit 4).
+rejects subjects outside Conventional Commits and two pre-push hooks: one runs
+`check_all.sh` without its prek, mermaid and bats checks, the other runs just
+the bats check (export `PYTHON=` as above, or the push stops with exit 4).
 
 `build_manifest.py --check` runs first for a reason: the catalogue and plugin
 checks read `skills.json`, so a stale manifest makes them answer from stale
