@@ -31,6 +31,17 @@
       ]
     },
     {
+      "name": "blue-team",
+      "summary": "Develops a raw early idea (tech decision, project pitch, LinkedIn thesis, personal choice) into a sharper version that holds up before its audience.",
+      "category": "communication",
+      "path": "skills/blue-team/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "c4-modeling",
       "summary": "Drafts a C4 model of a software system with the user and renders it as Mermaid at Context, Container, Component, Landscape, Dynamic, and Deployment level (not Code).",
       "category": "architecture",
@@ -119,6 +130,17 @@
       "compatibility": "Requires git and a browser to view the HTML report. Writes only to the OS temp directory, plus the repo's GLOSSARY.md and ADRs when the user agrees.",
       "environments": [
         "coding"
+      ],
+      "version": "1.0"
+    },
+    {
+      "name": "ki-stil",
+      "summary": "Checks a German draft for wording that reads generic or AI-typical, with counted, located signals and rewrites.",
+      "category": "communication",
+      "path": "skills/ki-stil/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
       ],
       "version": "1.0"
     },
@@ -216,6 +238,17 @@
       "environments": [
         "coding"
       ]
+    },
+    {
+      "name": "red-team",
+      "summary": "Red-teams a finished or near-finished artefact or decision with a materiality gate and a verdict.",
+      "category": "communication",
+      "path": "skills/red-team/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
+      ],
+      "version": "1.0"
     },
     {
       "name": "refactoring",

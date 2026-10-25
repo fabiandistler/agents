@@ -139,10 +139,13 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
+| [blue-team](skills/blue-team/SKILL.md) | Developing a raw early idea — tech decision, project pitch, LinkedIn thesis, personal choice — into a sharper version that holds up before its audience, with load points, reinforcements, and a hardness grade. |
 | [communication-analysis](skills/communication-analysis/SKILL.md) | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | [documentation](skills/documentation/SKILL.md) | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
+| [ki-stil](skills/ki-stil/SKILL.md) | Checking a German draft for wording that reads generic or AI-typical — counted, located style signals from a bundled scanner, an evidence-tiered verdict, and concrete rewrites; a heuristic, never an authorship verdict. |
 | [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing explanations — technical or not — that lead with the concrete problem before the solution. |
+| [red-team](skills/red-team/SKILL.md) | Attacking a finished or near-finished artefact or decision — ADR, proposal, LinkedIn post, application, career move — through a fresh-context critic, a materiality gate, stakeholder lenses, and a categorical verdict. |
 | [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 | [tldr](skills/tldr/SKILL.md) | Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread. |
 | [was](skills/was/SKILL.md) | Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim. |

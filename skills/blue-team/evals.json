@@ -1,0 +1,14 @@
+{
+  "should_trigger": [
+    "Härte das: Wir ersetzen das R-Shiny-Dashboard für den Vertrieb durch einen LLM-Chat auf dem Data Warehouse.",
+    "Was hältst du davon, spontan: Ich will auf LinkedIn schreiben, dass RAG für die meisten internen Use Cases Overkill ist.",
+    "Schärfe diese Idee, bevor ich sie meiner Chefin pitche: Wir klassifizieren eingehende Support-Tickets automatisch mit einem LLM und sparen so einen halben Tag pro Woche.",
+    "Ich überlege, für 15 % mehr Gehalt in eine Stelle ohne Remote-Option zu wechseln. Ist das tragfähig gedacht?",
+    "Hier meine v2 der Eval-first-These nach deiner letzten Runde – jetzt besser?"
+  ],
+  "should_not_trigger": [
+    "Red team mein fertiges ADR zur Migration auf Databricks, bevor es morgen in die Architekturrunde geht.",
+    "Klingt dieser LinkedIn-Post nach KI? Prüf mal die Formulierungen."
+  ],
+  "expected_behavior": "Reconstructs the strongest reading and names the audience (marked as an assumption if unstated); picks Kurzform (4-7 sentences, ending 'Block auf Wunsch.') for a casual one-liner and a Block otherwise; lists only load points tied to the user's wording, each with a reinforcement; delivers a hardened version that is more specific, with gaps in square brackets instead of invented numbers; gives a Härtegrad (Roh/Gehärtet/Einsatzbereit) with what is still open; asks questions only when they change the version; never silently swaps the idea (ERSATZVORSCHLAG when it does not carry); for a v2 starts with the ABGLEICH and the open-points delta; output in German, Du-Form."
+}
