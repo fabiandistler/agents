@@ -112,11 +112,32 @@ bad_deps=$(jq -r '[.items[].id] as $ids | .items[] | .id as $i | .deps[] | selec
   echo "unknown deps in $PRD:"$'\n'"$bad_deps" >&2
   exit 2
 }
-LOGDIR="$(git rev-parse --absolute-git-dir)/poc-loop"
-if ! mkdir -p "$LOGDIR"; then
-  echo "Infrastructure preflight failed: Git metadata is not writable. Use a separately provisioned container or VM." >&2
+
+# ---------- infrastructure stop ----------
+# Every exit 4 goes through here, so the driver's own write failures and the
+# runner preflight give the same restart guidance as references/runner-recovery.md.
+infrastructure_stop() { # <reason> [log to tail]; never returns
+  local repo_cmd loop_cmd
+  echo "Infrastructure preflight failed: $1. Task attempts, $PRD and the branch are unchanged." >&2
+  [[ -z ${2:-} ]] || tail -c 4000 "$2" >&2
+  printf -v repo_cmd 'cd %q' "$(git rev-parse --show-toplevel)"
+  printf -v loop_cmd 'POC_AGENT=%q bash %q' "$POC_AGENT" "$SKILL_DIR/assets/loop.sh"
+  cat >&2 <<EOF
+An already restricted calling process stays restricted. Runner flags cannot grant it
+filesystem access; keep its sandbox, mounts and permission flags as they are.
+Restart from an independently started terminal in a separately provisioned container
+or VM with the runner installed and the repository and its Git metadata writable:
+  $repo_cmd
+  $loop_cmd
+Only a passing preflight there shows restored infrastructure; this run repaired nothing.
+Items blocked by an older run stay blocked; retrying one needs separate human approval
+naming it, see "Human-approved retry of one blocked item" in
+$SKILL_DIR/references/runner-recovery.md
+EOF
   exit 4
-fi
+}
+LOGDIR="$(git rev-parse --absolute-git-dir)/poc-loop"
+mkdir -p "$LOGDIR" || infrastructure_stop "Git metadata is not writable (cannot create $LOGDIR); runner not started"
 
 # ---------- helpers ----------
 case $POC_AGENT in
@@ -233,10 +254,8 @@ azure_description() { # checklist cut to the cap (bytes >= chars, so it stays un
 
 # ---------- infrastructure preflight ----------
 # A successful model exit does not prove its shell tools can run or commit.
-preflight_dir=$(mktemp -d "$LOGDIR/preflight.XXXXXX") || {
-  echo "Infrastructure preflight failed: Git metadata is not writable." >&2
-  exit 4
-}
+preflight_dir=$(mktemp -d "$LOGDIR/preflight.XXXXXX") ||
+  infrastructure_stop "Git metadata is not writable (cannot create a preflight directory in $LOGDIR); runner not started"
 trap 'rm -rf "$preflight_dir"' EXIT
 printf -v preflight_command 'set -eu; pwd >/dev/null; '
 for metadata_dir in "$(git rev-parse --absolute-git-dir)" "$(git rev-parse --path-format=absolute --git-common-dir)" "$(git rev-parse --path-format=absolute --git-path objects)" "$(git rev-parse --path-format=absolute --git-path refs/heads)"; do
@@ -245,11 +264,8 @@ for metadata_dir in "$(git rev-parse --absolute-git-dir)" "$(git rev-parse --pat
 done
 printf -v marker_command 'printf shell-ok > %q' "$preflight_dir/shell-ok"
 preflight_command+=$marker_command
-if ! bash -c "$preflight_command" >"$LOGDIR/preflight.log" 2>&1; then
-  echo "Infrastructure preflight failed: Git metadata is not writable." >&2
-  tail -c 4000 "$LOGDIR/preflight.log" >&2
-  exit 4
-fi
+bash -c "$preflight_command" >"$LOGDIR/preflight.log" 2>&1 ||
+  infrastructure_stop "Git metadata is not writable by the driver's write probe; runner not started" "$LOGDIR/preflight.log"
 rm -f "$preflight_dir/shell-ok"
 preflight_prompt="Loop infrastructure preflight.
 $preflight_command
@@ -259,10 +275,7 @@ preflight_flags=()
 [[ $POC_AGENT != claude ]] || preflight_flags=("${AGENT_FLAGS[@]}")
 if ! timeout 45 "${AGENT_COMMAND[@]}" "$preflight_prompt" "${preflight_flags[@]}" >"$LOGDIR/preflight.log" 2>&1 ||
   [[ ! -f $preflight_dir/shell-ok ]] || [[ $(<"$preflight_dir/shell-ok") != shell-ok ]]; then
-  echo "Infrastructure preflight failed: runner shell/Git write proof missing. Task attempts unchanged." >&2
-  echo "Use a separately provisioned container or VM with writable Git metadata; preserve the existing sandbox boundary." >&2
-  tail -c 4000 "$LOGDIR/preflight.log" >&2
-  exit 4
+  infrastructure_stop "runner shell/Git write proof missing" "$LOGDIR/preflight.log"
 fi
 rm -rf "$preflight_dir"
 trap - EXIT

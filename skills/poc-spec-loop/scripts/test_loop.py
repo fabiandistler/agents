@@ -6,6 +6,8 @@ looks for, so one item passes and the loop ends with a ready PR.
 
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -177,11 +179,42 @@ def read_argv(log_dir, name):
     return (log_dir / f"{name}.argv").read_text().split("\0")[:-1]
 
 
+def fail_command(repo, name, arg_glob):
+    """Put a `name` wrapper on PATH that fails like a read-only file system.
+
+    The wrapper exits 1 when any argument matches the bash glob arg_glob and
+    otherwise runs the real command.
+    """
+    real = shlex.quote(shutil.which(name))
+    wrapper = repo.parent / "bin" / name
+    wrapper.write_text(
+        "#!/usr/bin/env bash\n"
+        'for arg in "$@"; do\n'
+        f"  if [[ $arg == {arg_glob} ]]; then\n"
+        f'    echo "{name}: $arg: Read-only file system" >&2\n'
+        "    exit 1\n"
+        "  fi\n"
+        f'done\nexec {real} "$@"\n'
+    )
+    wrapper.chmod(0o755)
+
+
 class LoopRunnerTest(unittest.TestCase):
     def poc(self, **kwargs):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         return make_poc(tmp.name, **kwargs)
+
+    def assert_restart_guidance(self, stderr, repo):
+        """Exit 4 names a copyable restart and the recovery reference, repairing nothing."""
+        lines = [line.strip() for line in stderr.splitlines()]
+        commands = [shlex.split(line) for line in lines if line.startswith(("cd ", "POC_AGENT="))]
+        self.assertEqual(
+            commands, [["cd", str(repo.resolve())], ["POC_AGENT=codex", "bash", str(LOOP)]]
+        )
+        self.assertIn(str(LOOP.parent.parent / "references" / "runner-recovery.md"), stderr)
+        self.assertIn("Runner flags cannot grant", stderr)
+        self.assertIn("separate human approval", stderr)
 
     def test_missing_or_unknown_runner_exits_2(self):
         for agent in (None, "", "gpt"):
@@ -234,6 +267,7 @@ class LoopRunnerTest(unittest.TestCase):
         result = run_loop(repo, env)
         self.assertEqual(result.returncode, 4, result.stderr)
         self.assertIn("app-server socket directory", result.stderr)
+        self.assert_restart_guidance(result.stderr, repo)
         self.assertEqual((repo / "plans/prd.json").read_bytes(), before)
         self.assertEqual(current_branch(repo), "main")
         self.assertFalse((repo / "plans/BLOCKED.md").exists())
@@ -255,24 +289,26 @@ class LoopRunnerTest(unittest.TestCase):
         self.assertEqual(current_branch(repo), "main")
         self.assertFalse((log_dir / "gh.argv").exists())
 
-    def test_git_metadata_write_failure_stops_before_runner(self):
-        repo, log_dir, env = self.poc()
-        env["POC_AGENT"] = "codex"
-        mktemp = repo.parent / "bin/mktemp"
-        mktemp.write_text(
-            "#!/usr/bin/env bash\n"
-            'for arg in "$@"; do\n'
-            "  [[ $arg != */objects/poc-preflight.* ]] || exit 1\n"
-            'done\nexec /usr/bin/mktemp "$@"\n'
-        )
-        mktemp.chmod(0o755)
-        before = (repo / "plans/prd.json").read_bytes()
-        result = run_loop(repo, env)
-        self.assertEqual(result.returncode, 4, result.stderr)
-        self.assertIn("Git metadata is not writable", result.stderr)
-        self.assertEqual((repo / "plans/prd.json").read_bytes(), before)
-        self.assertEqual(current_branch(repo), "main")
-        self.assertEqual(list(log_dir.iterdir()), [])
+    def test_driver_git_metadata_write_failure_stops_before_runner(self):
+        # Log directory, preflight directory (the EROFS report in #660), driver write probe.
+        for command, arg_glob in (
+            ("mkdir", "*/poc-loop"),
+            ("mktemp", "*/poc-loop/preflight.*"),
+            ("mktemp", "*/objects/poc-preflight.*"),
+        ):
+            with self.subTest(command=command, arg_glob=arg_glob):
+                repo, log_dir, env = self.poc()
+                env["POC_AGENT"] = "codex"
+                fail_command(repo, command, arg_glob)
+                before = (repo / "plans/prd.json").read_bytes()
+                result = run_loop(repo, env)
+                self.assertEqual(result.returncode, 4, result.stderr)
+                self.assertIn("Git metadata is not writable", result.stderr)
+                self.assert_restart_guidance(result.stderr, repo)
+                self.assertEqual((repo / "plans/prd.json").read_bytes(), before)
+                self.assertEqual(current_branch(repo), "main")
+                self.assertFalse((repo / "plans/BLOCKED.md").exists())
+                self.assertEqual(list(log_dir.iterdir()), [])  # no runner or forge call
 
     def test_flags_override_replaces_defaults(self):
         repo, log_dir, env = self.poc()
