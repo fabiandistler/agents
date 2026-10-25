@@ -98,7 +98,7 @@ why the repo is shaped this way are in the [ADR index](adr/README.md).
     files as well as the source:
 
     ```bash
-    scripts/check_all.sh --only manifest,routers,descriptions,frontmatter,docs,plugins,evals,project-claude,skill-refs,skill-paths
+    scripts/check_all.sh --only manifest,routers,descriptions,frontmatter,docs,plugins,evals,project-claude,skill-refs,skill-paths,table-width
     git status
     ```
 

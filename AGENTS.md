@@ -279,6 +279,10 @@ machine consumption prefer `skills.json`.
   into one paragraph per file that starts `As of 20YY-MM[-DD]`. Code spans,
   code blocks and URLs are exempt. CI enforces this with
   `python3 scripts/check_dated_claims.py`.
+- No Markdown table in `skills/**/*.md` is wider than three columns, fenced
+  output templates included, because skills and the answers they shape are
+  read on a phone; use a nested list or a table of at most three columns. CI
+  enforces this with `python3 scripts/check_table_width.py`.
 - Every `references/`, `scripts/`, `assets/`, `evals/` or `members/` path a
   SKILL.md or reference names exists relative to the skill directory, and
   every relative Markdown link exists relative to the linking file — code
