@@ -100,6 +100,20 @@ baselines live in SKILL.md — cross-reference, don't duplicate._
   a reference answer in the test case or a human sample on the hardest slice.
   (AgentJudgeBench)
   - ❌ promoting an uncalibrated judge-scored aggregate to a release gate   ← likely-default
+- **When an agent step sits in front of a human or CI gate (approve/reject,
+  ship/request changes, CI pass/fail, revert within N days), persist every gate
+  verdict joined to the run/trace ID and prompt version from day one.** These
+  verdicts are free labels — the gold reference the rule above asks for — and
+  without them every prompt change is tested unlabelled. (Arize)
+  - ❌ verdicts left in the review tool, never joined to traces   ← likely-default
+- **Score the agent against the gate's first verdict and count misses (agent
+  approved; gate rejected or later reverted) and false alarms (agent flagged;
+  gate shipped) separately — never as one agreement rate.** Later rounds judge a
+  revised change, not the agent's call. Promote a prompt only with fewer misses
+  and no more false alarms. (Arize)
+  - ❌ a single agreement percentage   ← likely-default
+- **Audit a sample of gate verdicts too: the gate is the reference, not
+  infallible ground truth.** (Arize)
 - **Prove construct validity at item level before a benchmark or test set becomes
   an acceptance criterion — or before publishing one.** Score individual items,
   not just the aggregate: a set can discriminate on general reasoning while
