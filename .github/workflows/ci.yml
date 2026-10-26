@@ -35,6 +35,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install pinned check tools
+        run: pip install -r scripts/check_all.requirements.txt
+
       - name: Bats suites
         run: scripts/check_all.sh --only bats --tail 0
 

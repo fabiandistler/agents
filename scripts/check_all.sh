@@ -47,7 +47,8 @@ needs() {
     frontmatter) echo "$PY pyyaml" ;;
     pytest) echo "$PY pytest pyyaml" ;;
     prek) echo "prek" ;;
-    bats) echo "bash $PY bats-submodules" ;;
+    # The install.sh suites run quick_validate.py, which imports yaml.
+    bats) echo "bash $PY pyyaml bats-submodules" ;;
     mermaid) echo "npx" ;;
     *) echo "$PY" ;;
   esac
