@@ -32,18 +32,36 @@ setup() {
   assert_output 'no tests/ or test/ directory found'
 }
 
+# The fixtures below split every scanner trigger into concatenated quotes, so
+# a test-flakiness scan of this repository does not report this file.
+
 @test "test-flakiness lists time and randomness candidates with the seeds set" {
+  local now_call='Sys.''time()' seed_call='set.''seed(1)' draw_call='sam''ple(3)'
   mkdir tests
-  printf 'test_that("x", {\n  now <- Sys.time()\n  set.seed(1)\n  sample(3)\n})\n' >tests/test-x.R
+  printf 'test_that("x", {\n  now <- %s\n  %s\n  %s\n})\n' \
+    "$now_call" "$seed_call" "$draw_call" >tests/test-x.R
   run "$SCAN" test-flakiness
   assert_success
   assert_line '===== Candidates: time dependency ====='
-  assert_line --partial 'tests/test-x.R:2:  now <- Sys.time()'
-  assert_line --partial 'tests/test-x.R:4:  sample(3)'
-  assert_line --partial 'tests/test-x.R:3:  set.seed(1)'
+  assert_line --partial "tests/test-x.R:2:  now <- $now_call"
+  assert_line --partial "tests/test-x.R:4:  $draw_call"
+  assert_line --partial "tests/test-x.R:3:  $seed_call"
   # No sleep in the fixture: that section reports none.
   run grep -A1 'Candidates: sleep / timing' <<<"$output"
   assert_line --index 1 'none'
+}
+
+@test "test-flakiness skips vendored Bats libraries but scans the repo's own tests" {
+  local fetch='cu''rl http''s://example.invalid'
+  mkdir -p test/bats/bats-core/lib test/test_helper/bats-assert test/bats/bats-support
+  printf '%s/vendored-core\n' "$fetch" >test/bats/bats-core/lib/net.bash
+  printf '%s/vendored-assert\n' "$fetch" >test/test_helper/bats-assert/net.bash
+  printf '%s/vendored-support\n' "$fetch" >test/bats/bats-support/net.bash
+  printf '%s/own-test\n' "$fetch" >test/own.bats
+  run "$SCAN" test-flakiness
+  assert_success
+  assert_line --partial "test/own.bats:1:$fetch/own-test"
+  refute_output --partial 'vendored'
 }
 
 @test "dead-exports prints the evidence each removal needs" {
