@@ -166,5 +166,6 @@ Commit subjects follow Conventional Commits; the `commit-msg` hook runs
 `scripts/check_commit_msg.py`. Keep a refactor in its own commit, and include
 tests with the change they cover.
 
-The PR body names its issue with `Closes #n`. When there is no issue, say so
-explicitly. Open the PR ready for review: only the human merges.
+The PR body names its issue with `Closes #n`. When there is no issue, write
+`No issue: <reason>`; the `issue-links` check looks for that phrase outside
+code spans. Open the PR ready for review: only the human merges.
