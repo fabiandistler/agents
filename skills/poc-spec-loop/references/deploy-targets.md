@@ -7,7 +7,7 @@ Each target is three lines. Phase 1 copies them into `SPEC.md ## Definition of D
   - Required artefact: installable package with README usage block
   - Non-goal: publishing to PyPI/CRAN
 - **`http-service`**
-  - Smoke command (`check` of last prd item): `docker rm -f t >/dev/null 2>&1; docker build -t app:test . && docker run --rm -d -p 8000:8000 --name t app:test && curl -sf --retry 10 --retry-connrefused --retry-delay 1 localhost:8000/health; rc=$?; docker rm -f t >/dev/null 2>&1; exit $rc` — the container is removed on every path, so a failed attempt never blocks the next one on the name `t`
+  - Smoke command (`check` of last prd item): `docker rm -f app-smoke >/dev/null 2>&1; docker build -t app:test . && docker run --rm -d -p 8000:8000 --name app-smoke app:test && curl -sf --retry 10 --retry-all-errors --retry-delay 1 localhost:8000/health; rc=$?; docker rm -f app-smoke >/dev/null 2>&1; exit $rc` — the container is removed on every path, so a failed attempt never blocks the next one on the name `app-smoke`. Docker 29 rejects one-character container names. `--retry-all-errors` (curl ≥ 7.71) also retries the connection reset Docker's port proxy sends while the app is still starting; `--retry-connrefused` alone fails on it
   - Required artefact: `Dockerfile` (multi-stage, `--target test` runs suite), `/health` endpoint
   - Non-goal: TLS, auth, horizontal scaling
 - **`mcp-server`**
