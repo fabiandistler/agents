@@ -11,3 +11,8 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 | `wontfix`           | `wontfix`            | Will not be actioned                     |
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
+
+`.github/workflows/triage-label.yml` adds `needs-triage` to every new issue
+that opens without a state label. It needs no model and no secret;
+`scripts/test_triage_label_workflow.py` keeps its state labels in sync with
+this table.

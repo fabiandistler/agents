@@ -1,0 +1,35 @@
+name: Triage label
+
+# Every new issue gets `needs-triage`, so nothing skips the triage queue.
+# Model-free on purpose, adapted from mattpocock/skills. An issue opened with a
+# state label already (to-tickets sets `ready-for-agent`) keeps it: a second
+# state label would break "exactly one state role". The guard's labels follow
+# docs/agents/triage-labels.md; scripts/test_triage_label_workflow.py keeps
+# them in sync.
+
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  label:
+    if: >-
+      !contains(github.event.issue.labels.*.name, 'needs-triage') &&
+      !contains(github.event.issue.labels.*.name, 'needs-info') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
+      !contains(github.event.issue.labels.*.name, 'wontfix')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Add needs-triage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: >-
+          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels"
+          -f "labels[]=needs-triage"
