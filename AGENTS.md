@@ -38,7 +38,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   created.
   See `./install.sh --help` and `docs/install.md`.
 - `instructions/` holds single-topic rule fragments, ordered by numeric
-  filename prefix, in three tiers: 20, 25, 50, 55 and 60 are always on;
+  filename prefix, in three tiers: 20, 25, 45, 50, 55 and 60 are always on;
   Python and R rules are path-scoped in Claude, while Codex and opencode get
   the Python baseline by pointer and keep the R rules in their block; 70, 80
   and 85 are on demand; 85 is also repeated in this repository's `AGENTS.md`.
@@ -249,9 +249,16 @@ machine consumption prefer `skills.json`.
   `python3 scripts/build_project_claude.py`. CI's `--check` gates catch
   whatever slips through.
 - `prek install` also installs a commit-msg hook (`scripts/check_commit_msg.py`,
-  Conventional Commits subjects) and a pre-push hook that runs
-  `scripts/check_all.sh --skip prek,mermaid,install-smoke`; set `PYTHON=` to a
-  3.11+ interpreter, or the push stops with exit 4.
+  Conventional Commits subjects) and two pre-push hooks that run
+  `scripts/check_all.sh --skip prek,mermaid,bats` and
+  `scripts/check_all.sh --only bats`; set `PYTHON=` to a 3.11+ interpreter, or
+  the push stops with exit 4.
+- Shell scripts are tested with Bats: one `test/<script>.bats` suite per
+  entry point (`install.sh` is split into `test/install*.bats`), run by
+  `test/bats/bats-core/bin/bats test/` after `git submodule update --init`.
+  The rule and its exemptions are `instructions/45-shell-scripts.md`; shared
+  setup lives in `test/test_helper.bash`. The bats-core, bats-support and
+  bats-assert submodule pins are bumped by hand, to release tags.
 - The catalogue and plugin checks below read `skills.json`, not the
   `SKILL.md` files, so a stale manifest makes them answer from stale
   metadata — regenerate it before running them locally, and that is why
