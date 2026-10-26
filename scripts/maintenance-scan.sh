@@ -123,21 +123,25 @@ NOTE
       exit 0
     fi
 
+    # Vendored Bats libraries (submodules under test/bats/, or test/test_helper/
+    # elsewhere) are not the repo's own tests; their curl and date calls are noise.
+    VENDORED_EXCLUDES=(--exclude-dir=bats-core --exclude-dir=bats-assert --exclude-dir=bats-support)
+
     hdr "Candidates: time dependency"
-    grep -rnE 'Sys\.time|Sys\.Date|datetime\.now|time\.time|date\.today' $TDIRS 2>/dev/null || echo "none"
+    grep -rnE "${VENDORED_EXCLUDES[@]}" 'Sys\.time|Sys\.Date|datetime\.now|time\.time|date\.today' $TDIRS 2>/dev/null || echo "none"
 
     hdr "Candidates: randomness"
-    grep -rnE '\b(sample|runif|rnorm|rbinom|random\.|np\.random|uuid4)\b' $TDIRS 2>/dev/null || echo "none"
+    grep -rnE "${VENDORED_EXCLUDES[@]}" '\b(sample|runif|rnorm|rbinom|random\.|np\.random|uuid4)\b' $TDIRS 2>/dev/null || echo "none"
     echo "--- Cross-check: seeds that are set ---"
-    grep -rnE 'set\.seed|local_seed|random\.seed|seed *=' $TDIRS 2>/dev/null || echo "none"
+    grep -rnE "${VENDORED_EXCLUDES[@]}" 'set\.seed|local_seed|random\.seed|seed *=' $TDIRS 2>/dev/null || echo "none"
 
     hdr "Candidates: network dependency"
-    grep -rnE 'https?://|httr|curl|requests\.|urllib|httpx' $TDIRS 2>/dev/null || echo "none"
+    grep -rnE "${VENDORED_EXCLUDES[@]}" 'https?://|httr|curl|requests\.|urllib|httpx' $TDIRS 2>/dev/null || echo "none"
     echo "--- Cross-check: mocking/fixtures ---"
-    grep -rnE 'httptest|vcr|webmock|responses|respx|mock' $TDIRS 2>/dev/null || echo "none"
+    grep -rnE "${VENDORED_EXCLUDES[@]}" 'httptest|vcr|webmock|responses|respx|mock' $TDIRS 2>/dev/null || echo "none"
 
     hdr "Candidates: sleep / timing"
-    grep -rnE 'Sys\.sleep|time\.sleep' $TDIRS 2>/dev/null || echo "none"
+    grep -rnE "${VENDORED_EXCLUDES[@]}" 'Sys\.sleep|time\.sleep' $TDIRS 2>/dev/null || echo "none"
 
     hdr "Rule for the fix"
     echo "Replace only the source of nondeterminism (withr::local_seed, fixtures, mocks)."

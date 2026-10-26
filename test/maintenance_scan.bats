@@ -46,6 +46,18 @@ setup() {
   assert_line --index 1 'none'
 }
 
+@test "test-flakiness skips vendored Bats libraries but scans the repo's own tests" {
+  mkdir -p test/bats/bats-core/lib test/test_helper/bats-assert test/bats/bats-support
+  printf 'curl https://example.invalid/vendored-core\n' >test/bats/bats-core/lib/net.bash
+  printf 'curl https://example.invalid/vendored-assert\n' >test/test_helper/bats-assert/net.bash
+  printf 'curl https://example.invalid/vendored-support\n' >test/bats/bats-support/net.bash
+  printf 'curl https://example.invalid/own-test\n' >test/own.bats
+  run "$SCAN" test-flakiness
+  assert_success
+  assert_line --partial 'test/own.bats:1:curl https://example.invalid/own-test'
+  refute_output --partial 'vendored'
+}
+
 @test "dead-exports prints the evidence each removal needs" {
   run "$SCAN" dead-exports
   assert_success
