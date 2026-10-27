@@ -5,6 +5,8 @@ application engineering, planning, and technical writing — written once as
 plain Markdown and installed into Claude Code, Codex CLI, or opencode from
 one place.
 
+Browse the [interactive skill catalogue](https://fabiandistler.github.io/agents/).
+
 A skill is a Markdown file an agent loads when it recognizes the situation it
 describes; the bulk of each one stays in `references/` pages that load only
 when they are needed. There is no runtime, no server, and nothing to install
