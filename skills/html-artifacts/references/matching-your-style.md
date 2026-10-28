@@ -83,14 +83,27 @@ th, td { padding: .5rem .75rem; border-bottom: 1px solid var(--rule);
 
 Contrast evidence: every text token meets WCAG AA (≥4.5:1) on bg and surface in both modes.
 
-| Token | Light on bg | Light on surface | Dark on bg | Dark on surface |
-| --- | --- | --- | --- | --- |
-| ink | 16.6:1 | 17.3:1 | 17.1:1 | 16.0:1 |
-| ink-soft | 7.0:1 | 7.4:1 | 8.2:1 | 7.6:1 |
-| accent | 6.4:1 | 6.7:1 | 10.7:1 | 10.0:1 |
-| warn | 4.8:1 | 5.0:1 | 11.5:1 | 10.8:1 |
-| danger | 6.2:1 | 6.5:1 | 7.0:1 | 6.5:1 |
-| ok | 4.8:1 | 5.0:1 | 11.1:1 | 10.3:1 |
+Light mode:
+
+| Token | On bg | On surface |
+| --- | --- | --- |
+| ink | 16.6:1 | 17.3:1 |
+| ink-soft | 7.0:1 | 7.4:1 |
+| accent | 6.4:1 | 6.7:1 |
+| warn | 4.8:1 | 5.0:1 |
+| danger | 6.2:1 | 6.5:1 |
+| ok | 4.8:1 | 5.0:1 |
+
+Dark mode:
+
+| Token | On bg | On surface |
+| --- | --- | --- |
+| ink | 17.1:1 | 16.0:1 |
+| ink-soft | 8.2:1 | 7.6:1 |
+| accent | 10.7:1 | 10.0:1 |
+| warn | 11.5:1 | 10.8:1 |
+| danger | 7.0:1 | 6.5:1 |
+| ok | 11.1:1 | 10.3:1 |
 
 That's enough to make a document that looks deliberate. Add complexity only when the artifact actually needs it — sliders, color swatches, charts, etc.
 

@@ -1,5 +1,7 @@
 # A/B: `improve-codebase` fork vs. Pocock's original
 
+> Experiment record, not current guidance. Current instructions: `skills/improve-codebase/`.
+
 The merge gate for spec [#492](https://github.com/fabiandistler/agents/issues/492),
 ticket [#497](https://github.com/fabiandistler/agents/issues/497), recorded per
 [ADR-0008](../adr/0008-fork-improve-codebase.md): one run of the original and

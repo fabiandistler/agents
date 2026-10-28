@@ -11,25 +11,25 @@ diagram directly.
 
 ### Elements
 
-| ID | Element | Type | Technology | Description |
-|----|---------|------|------------|-------------|
-| customer | Customer | Person | — | Buys products via the web shop |
-| shop | Web Shop | Software System (in scope) | — | Lets customers browse the catalog and place orders |
-| spa | Storefront | Container | React | Browsing and checkout UI in the browser |
-| api | Shop API | Container | Spring Boot | Business logic, exposed via JSON/HTTPS |
-| db | Shop Database | Container | PostgreSQL | Products, orders, customers |
-| payments | Payment Provider | Software System (external) | — | Card and wallet payments |
-| mail | E-Mail Service | Software System (external) | — | Transactional e-mail delivery |
+| ID | Element (type, technology) | Description |
+|----|----------------------------|-------------|
+| customer | Customer — Person | Buys products via the web shop |
+| shop | Web Shop — Software System (in scope) | Lets customers browse the catalog and place orders |
+| spa | Storefront — Container, React | Browsing and checkout UI in the browser |
+| api | Shop API — Container, Spring Boot | Business logic, exposed via JSON/HTTPS |
+| db | Shop Database — Container, PostgreSQL | Products, orders, customers |
+| payments | Payment Provider — Software System (external) | Card and wallet payments |
+| mail | E-Mail Service — Software System (external) | Transactional e-mail delivery |
 
 ### Relationships
 
-| From | To | Purpose | Technology |
-|------|----|---------|------------|
-| customer | spa | Browses catalog, places orders | HTTPS |
-| spa | api | Calls | JSON/HTTPS |
-| api | db | Reads/writes | SQL/TCP |
-| api | payments | Charges cards via | HTTPS |
-| api | mail | Sends order confirmations via | SMTP |
+| From → To | Purpose | Technology |
+|-----------|---------|------------|
+| customer → spa | Browses catalog, places orders | HTTPS |
+| spa → api | Calls | JSON/HTTPS |
+| api → db | Reads/writes | SQL/TCP |
+| api → payments | Charges cards via | HTTPS |
+| api → mail | Sends order confirmations via | SMTP |
 
 ## System Context diagram
 

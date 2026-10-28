@@ -7,16 +7,22 @@ Re-verify the versions below before each real run; `ruff` in particular moves fa
 - [Detect](#detect)
 - [Scaffold](#scaffold-prd-item-1)
 - [Commands](#commands--the-check-vocabulary-for-prd-items)
-- [CI](#ci-prd-item-2--ci-sh-plus-one-forge-file)
-- [Provenance](#provenance)
+- [CI](#ci-prd-item-2--cish-plus-one-forge-file)
 
 ## Detect
 
-| Language | Marker | Required on PATH | Install line if missing |
-|---|---|---|---|
-| Python | `pyproject.toml` | `uv` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| R | `DESCRIPTION` | `R`, `Rscript` | system R ≥ 4.1; packages come via renv in scaffold |
-| bash | `*.sh` with `#!/usr/bin/env bash` | `bats`, `shellcheck`, `shfmt` | `apt install bats shellcheck shfmt` (or brew) |
+- **Python**
+  - Marker: `pyproject.toml`
+  - Required on PATH: `uv`
+  - Install line if missing: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **R**
+  - Marker: `DESCRIPTION`
+  - Required on PATH: `R`, `Rscript`
+  - Install line if missing: system R ≥ 4.1; packages come via renv in scaffold
+- **bash**
+  - Marker: `*.sh` with `#!/usr/bin/env bash`
+  - Required on PATH: `bats`, `shellcheck`, `shfmt`
+  - Install line if missing: `apt install bats shellcheck shfmt` (or brew)
 
 Greenfield: nothing matches → Phase 1 asks once.
 
@@ -95,13 +101,24 @@ git submodule add https://github.com/bats-core/bats-assert  test/test_helper/bat
 
 ## Commands — the `check` vocabulary for prd items
 
-| Step | Python | R | bash |
-|---|---|---|---|
-| test | `uv run pytest -q` | `Rscript -e 'testthat::test_local(reporter = "llm")'` | `bats --recursive test/` |
-| test one | `uv run pytest tests/test_x.py -q` | `Rscript -e 'testthat::test_file("tests/testthat/test-x.R")'` | `bats test/x.bats` |
-| lint | `uv run ruff check . && uv run ruff format --check .` | `Rscript -e 'lintr::lint_package()'` + `air format --check .` | `shellcheck -x src/*.sh && shfmt -d -i 2 -ci .` |
-| typecheck | `uv run ty check` | — | — |
-| full gate | all of the above | `Rscript -e 'devtools::check(error_on = "warning")'` | all of the above |
+- **Python**
+  - test: `uv run pytest -q`
+  - test one: `uv run pytest tests/test_x.py -q`
+  - lint: `uv run ruff check . && uv run ruff format --check .`
+  - typecheck: `uv run ty check`
+  - full gate: all of the above
+- **R**
+  - test: `Rscript -e 'testthat::test_local(reporter = "llm")'`
+  - test one: `Rscript -e 'testthat::test_file("tests/testthat/test-x.R")'`
+  - lint: `Rscript -e 'lintr::lint_package()'` + `air format --check .`
+  - typecheck: —
+  - full gate: `Rscript -e 'devtools::check(error_on = "warning")'`
+- **bash**
+  - test: `bats --recursive test/`
+  - test one: `bats test/x.bats`
+  - lint: `shellcheck -x src/*.sh && shfmt -d -i 2 -ci .`
+  - typecheck: —
+  - full gate: all of the above
 
 `testthat::LlmReporter` (3.3+) emits agent-readable failure output — use it in the loop, not the default reporter. Select it by its short name `"llm"`: testthat appends `Reporter` itself, so `"LlmReporter"` aborts with "Cannot find test reporter".
 
@@ -111,9 +128,9 @@ git submodule add https://github.com/bats-core/bats-assert  test/test_helper/bat
 
 | Language | Setup | Then |
 |---|---|---|
-| Python | `uv sync --locked` | the **full gate** row |
-| R | `Rscript -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", repos = "https://cloud.r-project.org"); renv::restore(prompt = FALSE)'` | the **full gate** row |
-| bash | — | the **full gate** row |
+| Python | `uv sync --locked` | the **full gate** entry |
+| R | `Rscript -e 'if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv", repos = "https://cloud.r-project.org"); renv::restore(prompt = FALSE)'` | the **full gate** entry |
+| bash | — | the **full gate** entry |
 
 The forge file (forge detected from `origin`, see `SKILL.md`) only provides the interpreter, then runs `bash ci.sh`. Runs on push to `main` and on pull requests; changes under `plans/` alone trigger nothing.
 

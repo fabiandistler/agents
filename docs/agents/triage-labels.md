@@ -12,7 +12,10 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
-Edit the right-hand column to match whatever vocabulary you actually use.
+`.github/workflows/triage-label.yml` adds `needs-triage` to every new issue
+that opens without a state label. It needs no model and no secret;
+`scripts/test_triage_label_workflow.py` keeps its state labels in sync with
+this table.
 
 Pull-request risk and verdict labels are documented separately in the
 [PR review runbook](pr-review-runbook.md#labels-and-troubleshooting).

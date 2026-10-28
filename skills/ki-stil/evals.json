@@ -1,0 +1,15 @@
+{
+  "should_trigger": [
+    "Klingt das nach KI? Ich will den LinkedIn-Post morgen früh posten: [Text eingefügt]",
+    "Kannst du mein Anschreiben auf KI-Floskeln prüfen, bevor ich es abschicke?",
+    "Mach mal einen KI-Stil-Test für diese PR-Beschreibung, die liest sich so glatt.",
+    "Mein Projektantrag für den RAG-Use-Case wirkt irgendwie generisch und austauschbar. Woran liegt das sprachlich?",
+    "Does this German LinkedIn article read like ChatGPT wrote it? Point me to the worst sentences."
+  ],
+  "should_not_trigger": [
+    "Red team meinen Projektantrag: Hält der Business Case für das Churn-Modell, wenn der CFO nachbohrt?",
+    "Ich habe eine grobe Idee für einen LinkedIn-Artikel über Evals für LLM-Apps. Hilf mir, sie zu einer starken These zu schärfen.",
+    "Korrigier bitte nur Rechtschreibung und Kommas in dieser Mail an mein Team."
+  ],
+  "expected_behavior": "Asks for the text if none is given; names or assumes the genre; runs scripts/style_scan.py (or marks numbers as estimated when no code can run); reports stage 1-3 findings at quoted text locations with density per 100 words and clusters rather than single hits; gives a 🟢/🟡/🔴 Ampel with the written anchors (only 🟢 or 🟡 under 80 words); offers 2-4 rewrites that use placeholders instead of invented facts; output in German, Du-Form, no table wider than three columns; never states that the text is AI-generated or human-written."
+}

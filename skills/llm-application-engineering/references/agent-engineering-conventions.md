@@ -70,6 +70,15 @@ not tool-as-interface design._
 - **Return token-efficient responses by default: paginate lists, accept filters, truncate with a default limit.**
   - ✅ `list_orders(limit=20, status="open") -> page plus next cursor`
   - ❌ `list_orders() -> all 10,000 rows`   ← likely-default
+- **When a tool's result can exceed a token budget (~20k tokens), write the full
+  result to a file or handle and return only its path, size and a short
+  head/tail preview; pair it with a paged read tool (`offset`, `limit`) so the
+  agent reads only the slice it needs.** Truncation drops the part the agent may
+  need; offloading keeps it reachable without filling the window. This is the
+  registered-tool counterpart of the output bound in the "Scripts an agent
+  runs" instruction (85).
+  - ✅ `export_orders() -> {"path": "results/export_42.json", "tokens": 180000, "head": "...", "tail": "..."}` plus `read_file(path, offset=0, limit=100)`
+  - ❌ `export_orders() -> the full 180k-token export inline`   ← likely-default
 - **Return high-signal values, not raw IDs — resolve names the agent can act on.**
   - ✅ `{"id": 42, "customer": "Acme GmbH", "status": "open"}`
   - ❌ `{"id": 42, "cid": 7, "s": 1}`   ← likely-default

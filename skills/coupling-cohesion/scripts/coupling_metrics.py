@@ -130,22 +130,21 @@ def classify(
     return "Zone of Pain" if (abstract + instability) < 1 else "Zone of Uselessness"
 
 
-def render_table(rows: list[dict]) -> str:
-    """Render rows as a GitHub-flavored markdown table."""
-    header = "| Component | Ca | Ce | I | A | D | Zone |"
-    divider = "|---|---|---|---|---|---|---|"
-    lines = [header, divider]
+def render_list(rows: list[dict]) -> str:
+    """Render one markdown bullet per component, narrow enough for a phone."""
+    lines = []
     for r in rows:
         a = "—" if r["A"] is None else f"{r['A']:.2f}"
         d = "—" if r["D"] is None else f"{r['D']:.2f}"
         lines.append(
-            f"| {r['name']} | {r['Ca']} | {r['Ce']} | {r['I']:.2f} | {a} | {d} | {r['zone']} |"
+            f"- **{r['name']}** — {r['zone']}: Ca {r['Ca']}, Ce {r['Ce']}, "
+            f"I {r['I']:.2f}, A {a}, D {d}"
         )
     return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Load the JSON model, compute the metrics, and print the table or JSON."""
+    """Load the JSON model, compute the metrics, and print the list or JSON."""
     parser = argparse.ArgumentParser(
         description="Measure codebase brittleness per component, with its zone.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -167,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
         default=0.5,
         help="flag components with D above this (default: 0.5)",
     )
-    parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
+    parser.add_argument("--json", action="store_true", help="emit JSON instead of a markdown list")
     args = parser.parse_args(argv)
 
     if not args.input.exists():
@@ -184,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(rows, indent=2))
     else:
-        print(render_table(rows))
+        print(render_list(rows))
         flagged = [r["name"] for r in rows if r["zone"].startswith("Zone")]
         if flagged:
             print(f"\nOff the main sequence (D > {args.threshold}): {', '.join(flagged)}")

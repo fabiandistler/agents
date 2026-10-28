@@ -250,11 +250,18 @@ unfamiliar exercises.
 
 ### The three protocols
 
-| Protocol | Best fit | Stop criterion | Worked example |
-|---|---|---|---|
-| **5% Fatigue Rule** | Heavy compounds, 1–6RM, plates fine enough to drop ~5% | Start set at 1 RIR; drop load ~5% and repeat the same rep count; keep dropping until 1 RIR is reached again — then stop | 100kg×4 @1RIR → 95kg×4 @2RIR (still light) → 95kg×4 @1RIR → **stop** |
-| **Rep Drop** | Moderate-to-high reps, 6–15+RM, where fine load jumps aren't practical | Start set at 1 RIR; keep the same load; continue until reps fall 2 below the starting set's rep count — then stop. Safety cap: even with exceptional work capacity, stop at a maximum of 5 sets regardless of rep reduction | 80kg×10 @1RIR → 80kg×9 @1RIR → 80kg×9 @1RIR → 80kg×8 (−2 reps) → **stop** |
-| **Myo-Reps** | Time-efficient work using an activation set + mini-sets | Perform an activation set, then mini-sets at 0–1 RIR; stop when a mini-set falls 1 rep below the *initial* mini-set. Failure on the very last mini-set is common and acceptable, since volume is already auto-regulated | 80kg×10 (activation) + 4 + 4 + 3 (1 rep below the first mini-set) → **stop** |
+- **5% Fatigue Rule**
+  - Best fit: Heavy compounds, 1–6RM, plates fine enough to drop ~5%
+  - Stop criterion: Start set at 1 RIR; drop load ~5% and repeat the same rep count; keep dropping until 1 RIR is reached again — then stop
+  - Worked example: 100kg×4 @1RIR → 95kg×4 @2RIR (still light) → 95kg×4 @1RIR → **stop**
+- **Rep Drop**
+  - Best fit: Moderate-to-high reps, 6–15+RM, where fine load jumps aren't practical
+  - Stop criterion: Start set at 1 RIR; keep the same load; continue until reps fall 2 below the starting set's rep count — then stop. Safety cap: even with exceptional work capacity, stop at a maximum of 5 sets regardless of rep reduction
+  - Worked example: 80kg×10 @1RIR → 80kg×9 @1RIR → 80kg×9 @1RIR → 80kg×8 (−2 reps) → **stop**
+- **Myo-Reps**
+  - Best fit: Time-efficient work using an activation set + mini-sets
+  - Stop criterion: Perform an activation set, then mini-sets at 0–1 RIR; stop when a mini-set falls 1 rep below the *initial* mini-set. Failure on the very last mini-set is common and acceptable, since volume is already auto-regulated
+  - Worked example: 80kg×10 (activation) + 4 + 4 + 3 (1 rep below the first mini-set) → **stop**
 
 Rough volume equivalence for Myo-Reps: one Myo-Rep set (5–15 reps after
 activation) ≈ 2–4 traditional sets; 1–2 Myo-Rep sets (15–25 reps after
@@ -343,14 +350,30 @@ replace the therapy. Re-read the scope and safety note above before using it:
 completed PT and medical clearance are preconditions, and a clinician's
 advice overrides anything here.
 
-| Phase | What | Load / intensity | Gate to the next phase |
-|---|---|---|---|
-| **1. Finish PT** | Complete physical therapy as prescribed | — | Cleared for most activities of daily living |
-| **2. Occluded isolation** | Occlusion training, isolation only. Start with **1 set** in the first session; target muscle at most **3×/week**; only as much ROM as is pain-free. Raise set count slowly, but soreness must clear between sessions — especially at the injury site. Skip this phase for muscles that cannot be occluded (e.g. pecs) | **~20% 1RM**, very slowly toward ~30%, **≥3 RIR** | 30% 1RM reached |
-| **3. Short-rest isolation + ROM increases** | Drop occlusion, keep isolation. Rest only long enough for the metabolite burn to clear. 2–3 sessions/week with full recovery between them. Widen ROM gradually | **30 → 50% 1RM**; first working set **~25+ reps**; toward the end of the phase down to **1 RIR** | Full or near-full joint ROM at minimal discomfort |
-| **4. Add compounds** | Bring compounds in (e.g. leg press or squat for quads). Full pauses between eccentric and concentric; prioritize stability. Isolation work can be cut back or dropped — **if kept, put it before the compound** in the session so less load is needed on the compound | up to **~60% 1RM**, i.e. first sets at **~15–20 reps** | 60% 1RM with clean technique and minimal to no discomfort |
-| **5. Load increases** | Raise load on the compounds slowly and steadily | toward **10RM**; takes **at least a month** from the end of Phase 4 | 10RM across several sets with no symptoms of the old injury |
-| **6. Normal training** | Regularly programmed training (Parts A and B) | — | — |
+- **1. Finish PT**
+  - What: Complete physical therapy as prescribed
+  - Load / intensity: —
+  - Gate to the next phase: Cleared for most activities of daily living
+- **2. Occluded isolation**
+  - What: Occlusion training, isolation only. Start with **1 set** in the first session; target muscle at most **3×/week**; only as much ROM as is pain-free. Raise set count slowly, but soreness must clear between sessions — especially at the injury site. Skip this phase for muscles that cannot be occluded (e.g. pecs)
+  - Load / intensity: **~20% 1RM**, very slowly toward ~30%, **≥3 RIR**
+  - Gate to the next phase: 30% 1RM reached
+- **3. Short-rest isolation + ROM increases**
+  - What: Drop occlusion, keep isolation. Rest only long enough for the metabolite burn to clear. 2–3 sessions/week with full recovery between them. Widen ROM gradually
+  - Load / intensity: **30 → 50% 1RM**; first working set **~25+ reps**; toward the end of the phase down to **1 RIR**
+  - Gate to the next phase: Full or near-full joint ROM at minimal discomfort
+- **4. Add compounds**
+  - What: Bring compounds in (e.g. leg press or squat for quads). Full pauses between eccentric and concentric; prioritize stability. Isolation work can be cut back or dropped — **if kept, put it before the compound** in the session so less load is needed on the compound
+  - Load / intensity: up to **~60% 1RM**, i.e. first sets at **~15–20 reps**
+  - Gate to the next phase: 60% 1RM with clean technique and minimal to no discomfort
+- **5. Load increases**
+  - What: Raise load on the compounds slowly and steadily
+  - Load / intensity: toward **10RM**; takes **at least a month** from the end of Phase 4
+  - Gate to the next phase: 10RM across several sets with no symptoms of the old injury
+- **6. Normal training**
+  - What: Regularly programmed training (Parts A and B)
+  - Load / intensity: —
+  - Gate to the next phase: —
 
 The same progression as a load ladder — read left to right, one column at a
 time:
@@ -379,7 +402,7 @@ what keeps the middle phases from feeling like wasted work.
 followed literally: *isolation → compound, high RIR → low RIR, low load →
 high load, restricted ROM → full ROM.* Loosen **one variable at a time**,
 with the order fixed in advance rather than decided in the moment. The gates
-in the table are what make that enforceable; without them the variables all
+in the phase list are what make that enforceable; without them the variables all
 loosen at once on the first good day.
 
 ## Realistic expectations

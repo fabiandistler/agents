@@ -44,12 +44,22 @@ asks to delete it.
 Fitness functions overlap several existing mechanism families. Pick the one
 that can observe the characteristic *earliest* and *most objectively*:
 
-| Mechanism | Observes | Use for | Canonical example |
-|---|---|---|---|
-| Unit-test-style structural check | Source / build artifacts | Modularity, layering, dependency rules, naming, test integrity | JDepend cycle test, ArchUnit layer rules |
-| Metric with threshold | Source / build artifacts | Gradual qualities that need a tolerance, not a boolean | Distance from the Main Sequence ≤ tolerance per package |
-| Monitor / production check | Running system | Availability, error rates, conformity of deployed services | Netflix Conformity & Security Monkeys |
-| Chaos engineering | Running system under injected failure | Resilience, fault tolerance — "not *if* it breaks, but *when*" | Chaos Monkey (latency), Chaos Kong (datacenter loss) |
+- **Unit-test-style structural check**
+  - Observes: Source / build artifacts
+  - Use for: Modularity, layering, dependency rules, naming, test integrity
+  - Canonical example: JDepend cycle test, ArchUnit layer rules
+- **Metric with threshold**
+  - Observes: Source / build artifacts
+  - Use for: Gradual qualities that need a tolerance, not a boolean
+  - Canonical example: Distance from the Main Sequence ≤ tolerance per package
+- **Monitor / production check**
+  - Observes: Running system
+  - Use for: Availability, error rates, conformity of deployed services
+  - Canonical example: Netflix Conformity & Security Monkeys
+- **Chaos engineering**
+  - Observes: Running system under injected failure
+  - Use for: Resilience, fault tolerance — "not *if* it breaks, but *when*"
+  - Canonical example: Chaos Monkey (latency), Chaos Kong (datacenter loss)
 
 Prefer build-time checks when the characteristic is visible in the code —
 they fail fastest and cheapest. Reserve monitors and chaos for characteristics

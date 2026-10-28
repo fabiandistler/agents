@@ -4,6 +4,16 @@ This repository is a catalogue of skills and small utilities for AI coding
 agents. It targets any agent that can read Markdown instructions — Claude
 Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 
+## Start here
+
+- Documentation map: [`docs/README.md`](docs/README.md).
+- Add or change a skill: [`docs/contributing.md`](docs/contributing.md); the
+  conventions below are the reference.
+- Install and use the catalogue: [`README.md`](README.md) and
+  [`docs/install.md`](docs/install.md).
+- Vocabulary: [`GLOSSARY.md`](GLOSSARY.md). Decisions:
+  [`docs/adr/README.md`](docs/adr/README.md).
+
 ## How to use this repo
 
 - Each directory under `skills/` that contains a `SKILL.md` file is a
@@ -22,12 +32,13 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `.claude/settings.json` carries it via `scripts/build_project_claude.py`.
   `--secret-guard` adds the same kind of hook, `scripts/secret_read_guard.py`,
   which stops agents from reading credential files or dumping the environment.
-  Claude Code gets skills, subagents and the merge guard from the plugin
-  marketplace only; `--target=claude` syncs just `--instructions` and removes
-  the links and settings entry older versions created.
+  Claude Code gets skills, subagents, the merge guard and the secret read guard
+  from the plugin marketplace only; `--target=claude` syncs just
+  `--instructions` and removes the links and settings entry older versions
+  created.
   See `./install.sh --help` and `docs/install.md`.
 - `instructions/` holds single-topic rule fragments, ordered by numeric
-  filename prefix, in three tiers: 20, 25, 50, 55 and 60 are always on;
+  filename prefix, in three tiers: 20, 25, 45, 50, 55 and 60 are always on;
   Python and R rules are path-scoped in Claude, while Codex and opencode get
   the Python baseline by pointer and keep the R rules in their block; 70, 80
   and 85 are on demand; 85 is also repeated in this repository's `AGENTS.md`.
@@ -55,7 +66,7 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   `scripts/build_project_claude.py` (CI checks drift), including the
   `Bash(uv init*)` hook that reads `instructions/30-python.md`, plus Matt
   Pocock's skills vendored by `scripts/vendor_mattpocock_skills.py`. See
-  `docs/install.md#cloud-sessions-claude-in-this-repo`.
+  `docs/maintainers/install-internals.md`.
 - Reference material stays inside the skill that owns it, under
   `skills/<skill>/references/`. SKILL.md names the pages it has; an agent
   opens one only when it needs it. There is no lookup service in front of
@@ -128,10 +139,13 @@ Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
 
 | Skill | When to use |
 |---|---|
+| [blue-team](skills/blue-team/SKILL.md) | Developing a raw early idea — tech decision, project pitch, LinkedIn thesis, personal choice — into a sharper version that holds up before its audience, with load points, reinforcements, and a hardness grade. |
 | [communication-analysis](skills/communication-analysis/SKILL.md) | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
 | [documentation](skills/documentation/SKILL.md) | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
 | [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
+| [ki-stil](skills/ki-stil/SKILL.md) | Checking a German draft for wording that reads generic or AI-typical — counted, located style signals from a bundled scanner, an evidence-tiered verdict, and concrete rewrites; a heuristic, never an authorship verdict. |
 | [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing explanations — technical or not — that lead with the concrete problem before the solution. |
+| [red-team](skills/red-team/SKILL.md) | Attacking a finished or near-finished artefact or decision — ADR, proposal, LinkedIn post, application, career move — through a fresh-context critic, a materiality gate, stakeholder lenses, and a categorical verdict. |
 | [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 | [tldr](skills/tldr/SKILL.md) | Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread. |
 | [was](skills/was/SKILL.md) | Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim. |
@@ -153,8 +167,10 @@ machine consumption prefer `skills.json`.
   - `name` — must match the directory name (`scripts/quick_validate.py` enforces it).
   - `category` — one of `architecture`, `refactoring`,
     `ai-ml`, `workflow`, `communication`, `personal` (the fixed list in
-    `scripts/build_manifest.py`). Determines the catalogue section, the
-    `install.sh --category` subset, and which plugin bundles the skill.
+    `scripts/catalogue.py`; `scripts/quick_validate.py` mirrors it so the
+    validator also works on skills outside this repo). Determines the
+    catalogue section, the `install.sh --category` subset, and which plugin
+    bundles the skill.
   - `description` — single paragraph; the first sentence becomes the
     `summary` in `skills.json` (for a router the whole description does, since
     it is the category's entire trigger surface). Keep it within the description budget:
@@ -233,9 +249,16 @@ machine consumption prefer `skills.json`.
   `python3 scripts/build_project_claude.py`. CI's `--check` gates catch
   whatever slips through.
 - `prek install` also installs a commit-msg hook (`scripts/check_commit_msg.py`,
-  Conventional Commits subjects) and a pre-push hook that runs
-  `scripts/check_all.sh --skip prek,mermaid,install-smoke`; set `PYTHON=` to a
-  3.11+ interpreter, or the push stops with exit 4.
+  Conventional Commits subjects) and two pre-push hooks that run
+  `scripts/check_all.sh --skip prek,mermaid,bats` and
+  `scripts/check_all.sh --only bats`; set `PYTHON=` to a 3.11+ interpreter, or
+  the push stops with exit 4.
+- Shell scripts are tested with Bats: one `test/<script>.bats` suite per
+  entry point (`install.sh` is split into `test/install*.bats`), run by
+  `test/bats/bats-core/bin/bats test/` after `git submodule update --init`.
+  The rule and its exemptions are `instructions/45-shell-scripts.md`; shared
+  setup lives in `test/test_helper.bash`. The bats-core, bats-support and
+  bats-assert submodule pins are bumped by hand, to release tags.
 - The catalogue and plugin checks below read `skills.json`, not the
   `SKILL.md` files, so a stale manifest makes them answer from stale
   metadata — regenerate it before running them locally, and that is why
@@ -248,10 +271,15 @@ machine consumption prefer `skills.json`.
   tables by hand — `README.md` and `AGENTS.md` (`## Skill catalogue`) —
   keeping their text identical and each skill under the section matching
   its `category`. CI enforces this with `python3 scripts/check_docs.py`.
-- Also keep the skill's plugin in sync: add/rename/remove the relative
-  symlink `plugins/<category>/skills/<skill-name>` →
-  `../../../skills/<skill-name>`. CI enforces this with
+- Keep the plugin in sync for **top-level** skills: add/rename/remove the
+  relative symlink `plugins/<category>/skills/<skill-name>` →
+  `../../../skills/<skill-name>`. A router member is a normal skill directory
+  under `skills/` but gets no plugin symlink: `build_routers.py` creates
+  `skills/<router>/members/<name>` and the generated member table, and the
+  category plugin contains only the router. CI enforces this with
   `python3 scripts/check_plugins.py`.
+- Fast loop for a docs or plugin change:
+  `scripts/check_all.sh --only docs,plugins`; `--list` shows every check name.
 - A reference file over 100 lines carries a `## Contents` heading with
   section links within its first 20 lines, so a partial read still shows its
   scope. CI enforces this with `python3 scripts/check_reference_tocs.py`.
@@ -261,6 +289,10 @@ machine consumption prefer `skills.json`.
   into one paragraph per file that starts `As of 20YY-MM[-DD]`. Code spans,
   code blocks and URLs are exempt. CI enforces this with
   `python3 scripts/check_dated_claims.py`.
+- No Markdown table in `skills/**/*.md` is wider than three columns, fenced
+  output templates included, because skills and the answers they shape are
+  read on a phone; use a nested list or a table of at most three columns. CI
+  enforces this with `python3 scripts/check_table_width.py`.
 - Every `references/`, `scripts/`, `assets/`, `evals/` or `members/` path a
   SKILL.md or reference names exists relative to the skill directory, and
   every relative Markdown link exists relative to the linking file — code
@@ -317,9 +349,10 @@ they change.
   (`python3 scripts/tool.py <repo-path>`), never via a repo-root path
   (`skills/<name>/scripts/`, `members/<name>/scripts/`). The skill is
   installed elsewhere, so the target repo is always passed as an argument.
-- Per-skill eval prompts live in `skills/<name>/evals.json` (>=3
-  `should_trigger`, >=1 `should_not_trigger`, optional `expected_behavior`;
-  see `docs/adr/0006-skill-eval-prompts.md`). The `evals` check in
+- Every auto or router skill ships eval prompts in `skills/<name>/evals.json`
+  (>=3 `should_trigger`, >=1 `should_not_trigger`, optional
+  `expected_behavior`; see `docs/adr/0006-skill-eval-prompts.md`). Command
+  skills are exempt and may ship one. The `evals` check in
   `scripts/check_all.sh` (the list CI calls) runs `check_evals.py --strict`,
   so a missing or malformed file fails.
 

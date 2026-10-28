@@ -6,7 +6,8 @@ Accepted (2026-10-19).
 
 Superseded (2026-10-20): the `pr-description` skill is removed
 ([#544](https://github.com/fabiandistler/agents/issues/544)); the user does not
-need it. Pocock's `pr` stays unvendored. The text below is kept as history.
+need it. Pocock's `pr` stays unvendored in the catalogue. The text below is
+kept as history.
 
 Amended (2026-10-20): at the user's request Pocock's `pr` is vendored into
 `.claude/skills/` again; the catalogue ships no PR-description skill.
@@ -35,10 +36,10 @@ where it sits today:
 
 ## Decision
 
-Fork `pr` into the catalogue as a new skill,
-[`pr-description`](../../skills/pr-description/SKILL.md), in category
-`workflow`, `activation: auto`, so it triggers whenever an agent writes a PR
-body:
+Fork `pr` into the catalogue as a new skill, `pr-description` (since removed;
+see [`.out-of-scope/pr-description-skill.md`](../../.out-of-scope/pr-description-skill.md)),
+in category `workflow`, `activation: auto`, so it triggers whenever an agent
+writes a PR body:
 
 - **Body in English, output in German**, the same split as `was`; English
   output only on explicit request.
@@ -114,8 +115,8 @@ unverified facts (an undocumented 4,000-character cap, unconfirmed Mermaid on
 Azure DevOps Server). The rest of this ADR stands; where the text above names
 the Azure DevOps rules as a reason for the fork, the remaining differences
 (German output, the title, the reading order, executed evidence) still carry
-it. `.out-of-scope/pr-description-forge-rules.md` records what would reopen
-the question.
+it. The [out-of-scope record](../../.out-of-scope/pr-description-skill.md) folds
+in the former forge-rules note and records what would reopen the question.
 
 ## Notes
 

@@ -24,6 +24,9 @@
 #
 # Run logs and last-failure output live under $(git rev-parse --git-dir)/poc-loop,
 # never in the working tree, so a stopped run can be restarted as is.
+#
+# Bats exemption: a skill asset, exempt like templates; scripts/test_loop.py
+# exercises it with stub CLIs.
 
 set -euo pipefail
 # bash >= 5.2: `&` in a ${var//pat/rep} replacement would expand to the match.
@@ -57,6 +60,7 @@ Exit codes:
   2  usage or preconditions failed (bad flag; POC_AGENT missing or unknown; origin not on
      a supported forge; missing tool; dirty tree; prd.json missing or not approved)
   3  blocked stop (3 consecutive blocked items, or prd-01/prd-02 blocked)
+  4  infrastructure preflight failed; task attempts unchanged
 EOF
   exit 0
 fi
@@ -111,31 +115,45 @@ bad_deps=$(jq -r '[.items[].id] as $ids | .items[] | .id as $i | .deps[] | selec
   echo "unknown deps in $PRD:"$'\n'"$bad_deps" >&2
   exit 2
 }
-LOGDIR="$(git rev-parse --absolute-git-dir)/poc-loop"
-mkdir -p "$LOGDIR"
 
-# ---------- branch ----------
-# .branch is written on the poc branch only, so a restart from main finds the
-# existing branch via its ref instead of creating a second one.
-BRANCH=$(jq -r '.branch // empty' "$PRD")
-[[ -n $BRANCH ]] || BRANCH=$(git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/poc/*' | head -n1)
-if [[ -z $BRANCH ]]; then
-  BRANCH="poc/$(date +%F)"
-  git switch -c "$BRANCH" main
-  jq --arg b "$BRANCH" '.branch=$b' "$PRD" >"$PRD.tmp" && mv "$PRD.tmp" "$PRD"
-  git commit -qam "chore(plans): start loop on $BRANCH"
-else
-  git switch "$BRANCH"
-fi
-BASE=$(git merge-base main "$BRANCH")
+# ---------- infrastructure stop ----------
+# Every exit 4 goes through here, so the driver's own write failures and the
+# runner preflight give the same restart guidance as references/runner-recovery.md.
+infrastructure_stop() { # <reason> [log to tail]; never returns
+  local repo_cmd loop_cmd
+  echo "Infrastructure preflight failed: $1. Task attempts, $PRD and the branch are unchanged." >&2
+  [[ -z ${2:-} ]] || tail -c 4000 "$2" >&2
+  printf -v repo_cmd 'cd %q' "$(git rev-parse --show-toplevel)"
+  printf -v loop_cmd 'POC_AGENT=%q bash %q' "$POC_AGENT" "$SKILL_DIR/assets/loop.sh"
+  cat >&2 <<EOF
+An already restricted calling process stays restricted. Runner flags cannot grant it
+filesystem access; keep its sandbox, mounts and permission flags as they are.
+Restart from an independently started terminal in a separately provisioned container
+or VM with the runner installed and the repository and its Git metadata writable:
+  $repo_cmd
+  $loop_cmd
+Only a passing preflight there shows restored infrastructure; this run repaired nothing.
+Items blocked by an older run stay blocked; retrying one needs separate human approval
+naming it, see "Human-approved retry of one blocked item" in
+$SKILL_DIR/references/runner-recovery.md
+EOF
+  exit 4
+}
+LOGDIR="$(git rev-parse --absolute-git-dir)/poc-loop"
+mkdir -p "$LOGDIR" || infrastructure_stop "Git metadata is not writable (cannot create $LOGDIR); runner not started"
 
 # ---------- helpers ----------
+case $POC_AGENT in
+  claude) AGENT_COMMAND=(claude -p) ;;
+  codex) AGENT_COMMAND=(codex exec "${AGENT_FLAGS[@]}") ;;
+  opencode) AGENT_COMMAND=(opencode run "${AGENT_FLAGS[@]}") ;;
+esac
 run_agent() { # one fresh, headless agent context per call
-  case $POC_AGENT in
-    claude) claude -p "$1" "${AGENT_FLAGS[@]}" ;;
-    codex) codex exec "${AGENT_FLAGS[@]}" "$1" ;;
-    opencode) opencode run "${AGENT_FLAGS[@]}" "$1" ;;
-  esac
+  if [[ $POC_AGENT == claude ]]; then
+    "${AGENT_COMMAND[@]}" "$1" "${AGENT_FLAGS[@]}"
+  else
+    "${AGENT_COMMAND[@]}" "$1"
+  fi
 }
 next_item() { # first item: not passed, attempts<MAX, all deps passed, check != null
   jq -r --argjson m "$MAX_ATTEMPTS" '
@@ -236,6 +254,49 @@ azure_description() { # checklist cut to the cap (bytes >= chars, so it stays un
   awk -v max="$AZURE_DESCRIPTION_MAX" '/^$/{exit} {n+=length($0)+1; if(n>max){print "- …"; exit} print}' "$PR_MD"
   printf '\nFull body (blocked items, findings, deployment): `%s` on branch `%s`.\n' "$PR_MD" "$BRANCH"
 }
+
+# ---------- infrastructure preflight ----------
+# A successful model exit does not prove its shell tools can run or commit.
+preflight_dir=$(mktemp -d "$LOGDIR/preflight.XXXXXX") ||
+  infrastructure_stop "Git metadata is not writable (cannot create a preflight directory in $LOGDIR); runner not started"
+trap 'rm -rf "$preflight_dir"' EXIT
+printf -v preflight_command 'set -eu; pwd >/dev/null; '
+for metadata_dir in "$(git rev-parse --absolute-git-dir)" "$(git rev-parse --path-format=absolute --git-common-dir)" "$(git rev-parse --path-format=absolute --git-path objects)" "$(git rev-parse --path-format=absolute --git-path refs/heads)"; do
+  printf -v probe_command 'probe=$(mktemp %q); rm -f "$probe"; ' "$metadata_dir/poc-preflight.XXXXXX"
+  preflight_command+=$probe_command
+done
+printf -v marker_command 'printf shell-ok > %q' "$preflight_dir/shell-ok"
+preflight_command+=$marker_command
+bash -c "$preflight_command" >"$LOGDIR/preflight.log" 2>&1 ||
+  infrastructure_stop "Git metadata is not writable by the driver's write probe; runner not started" "$LOGDIR/preflight.log"
+rm -f "$preflight_dir/shell-ok"
+preflight_prompt="Loop infrastructure preflight.
+$preflight_command
+Execute the shell command above using your shell tool. Do not edit project files or access credentials. Report shell errors verbatim."
+# Match the task flags, including explicit overrides, but bound the probe to 45s.
+preflight_flags=()
+[[ $POC_AGENT != claude ]] || preflight_flags=("${AGENT_FLAGS[@]}")
+if ! timeout 45 "${AGENT_COMMAND[@]}" "$preflight_prompt" "${preflight_flags[@]}" >"$LOGDIR/preflight.log" 2>&1 ||
+  [[ ! -f $preflight_dir/shell-ok ]] || [[ $(<"$preflight_dir/shell-ok") != shell-ok ]]; then
+  infrastructure_stop "runner shell/Git write proof missing" "$LOGDIR/preflight.log"
+fi
+rm -rf "$preflight_dir"
+trap - EXIT
+
+# ---------- branch ----------
+# .branch is written on the poc branch only, so a restart from main finds the
+# existing branch via its ref instead of creating a second one.
+BRANCH=$(jq -r '.branch // empty' "$PRD")
+[[ -n $BRANCH ]] || BRANCH=$(git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/poc/*' | head -n1)
+if [[ -z $BRANCH ]]; then
+  BRANCH="poc/$(date +%F)"
+  git switch -c "$BRANCH" main
+  jq --arg b "$BRANCH" '.branch=$b' "$PRD" >"$PRD.tmp" && mv "$PRD.tmp" "$PRD"
+  git commit -qam "chore(plans): start loop on $BRANCH"
+else
+  git switch "$BRANCH"
+fi
+BASE=$(git merge-base main "$BRANCH")
 
 # ---------- loop ----------
 consecutive_blocked=0

@@ -49,7 +49,7 @@ Constraints:
 - Bash is for read-only inspection and for running the bundled script only.
 - Do not echo file contents you scanned; the caller needs conclusions.
 
-Report back: the unit of analysis, a metric table for flagged components only,
+Report back: the unit of analysis, a metric list (one bullet per flagged component),
 a per-flag interpretation (real problem vs. earned stability), and concrete
 remediation drawn from <skill>/references/remediation.md. Keep the final
 report under roughly 60 lines.

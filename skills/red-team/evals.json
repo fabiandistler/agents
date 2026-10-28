@@ -1,0 +1,15 @@
+{
+  "should_trigger": [
+    "Red team das mal, bevor ich es ins Architektur-Review gebe: ADR 012 – wir ersetzen Airflow durch Dagster für alle Batch-Pipelines. [ADR text follows]",
+    "Red team meinen fertigen Projektvorschlag für den RAG-Assistenten im Kundenservice, bevor ich ihn dem Bereichsleiter vorlege. Wo bin ich angreifbar?",
+    "Here is my LinkedIn post about why we dropped LLM-as-judge for pass/fail checks. Tear it apart before I publish it tomorrow.",
+    "Ich will im Gehaltsgespräch 85k fordern, hier meine Argumente. Was würde HR dagegenhalten?",
+    "Hier ist v2 vom Business Case nach deiner Kritik von vorhin – jetzt besser?"
+  ],
+  "should_not_trigger": [
+    "Ich hab eine vage Idee für ein internes Tool, das Meeting-Notizen in Jira-Tickets verwandelt. Hilf mir, daraus was Gutes zu machen.",
+    "Klingt dieser LinkedIn-Post nach KI geschrieben? Welche Formulierungen verraten das?",
+    "Streich die Floskeln aus meinem ADR-Text, inhaltlich passt er."
+  ],
+  "expected_behavior": "Steelmans the artefact and runs a key-assumptions and quality-of-information check. Applies 3-5 use-case-specific stakeholder lenses and filters every finding through the generic and materiality tests. Answers in German Du-Form with one of five categorical verdicts (none for exploratory input), at most 3-5 critical points each with place, evidence, impact and what would refute it, and Feinschliff kept separate; a compact input gets the compact template. Uses a fresh-context critic that never sees ownership or affect cues when the agent supports isolated subagents, and runs several critics only after the user agrees. Calls a strong artefact entscheidungsreif instead of inventing criticism. On a re-check reports 'Vorher X -> jetzt Y, weil ...' with the count of open material points, and keeps an objection under pushback unless new evidence refutes it."
+}

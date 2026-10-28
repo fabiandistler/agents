@@ -1,0 +1,5 @@
+# ty configuration, read by the ty hook in .pre-commit-config.yaml.
+
+[src]
+# Pinned third-party Bats checkouts (git submodules), not our Python.
+exclude = ["test/bats/"]

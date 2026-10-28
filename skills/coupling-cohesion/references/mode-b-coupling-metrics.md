@@ -80,9 +80,9 @@ Run the bundled script:
 python3 scripts/coupling_metrics.py <your-input>.json
 ```
 
-It prints a markdown table of incoming dependencies (Ca), outgoing
-dependencies (Ce), instability (I), abstractness (A), distance from the ideal
-(D) and a zone label per component, sorted worst-distance first, and flags
+It prints one markdown bullet per component with its zone label, incoming
+dependencies (Ca), outgoing dependencies (Ce), instability (I), abstractness
+(A) and distance from the ideal (D), sorted worst-distance first, and flags
 everything past the threshold (`--threshold`, default 0.5). Use `--json` to
 pipe the numbers elsewhere. See
 [metrics.md](metrics.md) for how each number is derived.

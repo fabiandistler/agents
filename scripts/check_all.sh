@@ -15,8 +15,8 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 # Order matters: the catalogue and plugin checks read skills.json, so the
 # manifest check runs first.
 CHECKS=(manifest routers descriptions docs plugins instructions python-baseline project-claude
-  frontmatter evals vocab gh-graphql skill-refs reference-tocs dated-claims skill-paths secret-argv pytest prek
-  compileall install-smoke mermaid)
+  frontmatter evals vocab gh-graphql skill-refs reference-tocs dated-claims table-width skill-paths secret-argv pytest prek
+  compileall bats mermaid)
 
 usage() {
   cat <<'EOF'
@@ -40,13 +40,15 @@ Examples:
 EOF
 }
 
-# Tools a check needs; "pyyaml" and "pytest" are Python modules of $PY.
+# Tools a check needs; "pyyaml" and "pytest" are Python modules of $PY,
+# "bats-submodules" the pinned Bats checkouts under test/bats/.
 needs() {
   case "$1" in
     frontmatter) echo "$PY pyyaml" ;;
     pytest) echo "$PY pytest pyyaml" ;;
     prek) echo "prek" ;;
-    install-smoke) echo "bash $PY" ;;
+    # The install.sh suites run quick_validate.py, which imports yaml.
+    bats) echo "bash $PY pyyaml bats-submodules" ;;
     mermaid) echo "npx" ;;
     *) echo "$PY" ;;
   esac
@@ -56,6 +58,10 @@ have() {
   case "$1" in
     pyyaml) "$PY" -c 'import yaml' 2>/dev/null ;;
     pytest) "$PY" -c 'import pytest' 2>/dev/null ;;
+    bats-submodules)
+      [ -x test/bats/bats-core/bin/bats ] && [ -f test/bats/bats-support/load.bash ] &&
+        [ -f test/bats/bats-assert/load.bash ]
+      ;;
     *) command -v "$1" >/dev/null 2>&1 ;;
   esac
 }
@@ -89,6 +95,7 @@ run_check() {
     skill-refs) "$PY" scripts/check_skill_refs.py ;;
     reference-tocs) "$PY" scripts/check_reference_tocs.py ;;
     dated-claims) "$PY" scripts/check_dated_claims.py ;;
+    table-width) "$PY" scripts/check_table_width.py ;;
     skill-paths) "$PY" scripts/check_skill_paths.py ;;
     secret-argv) "$PY" scripts/check_secret_argv.py ;;
     # Every test_*.py under scripts/ and skills/; naming one file left the
@@ -96,7 +103,9 @@ run_check() {
     pytest) "$PY" -m pytest -q scripts skills ;;
     prek) prek run --all-files --show-diff-on-failure ;;
     compileall) "$PY" -m compileall -q scripts skills ;;
-    install-smoke) bash scripts/test_install.sh ;;
+    # Top-level test/*.bats only: the submodules under test/bats/ carry their
+    # own suites, which are not ours to run.
+    bats) test/bats/bats-core/bin/bats test/ ;;
     mermaid)
       # Prove the guard can go red first; a validator that parses nothing
       # would otherwise pass forever.
@@ -203,6 +212,7 @@ for name in "${CHECKS[@]}"; do
   if [ -n "$absent" ]; then
     case "$absent" in
       *npx*) fix="install Node.js (provides npx)" ;;
+      *bats-submodules*) fix="git submodule update --init" ;;
       *) fix="pip install -r scripts/check_all.requirements.txt" ;;
     esac
     echo "MISSING $name: not installed:$absent ($fix)"

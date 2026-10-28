@@ -5,12 +5,60 @@ two normal paths; this page answers *what exactly did it write, and how do I
 undo it* — read it when an install touched a config file you maintain by hand,
 or when you want a subset of the catalogue.
 
-Everything here is reversible with the same command plus `--uninstall`, and
-every command accepts `--dry-run`.
+## Contents
 
-Claude Code is the exception: it gets skills, subagents and the merge guard
-from the plugin marketplace only, and `install.sh --target=claude` only syncs
-`--instructions`. See [Claude Code: plugins only](#claude-code-plugins-only).
+- [Verify the install](#verify-the-install) and [Troubleshooting](#troubleshooting)
+- [Exit codes](#exit-codes)
+- [Check](#check-the-managed-installation), [replay](#replay-the-last-install) and [update](#update-after-a-merge-or-rebase)
+- [Detect installed agents](#detect-installed-agents)
+- [OpenCode subagents](#opencode-subagents)
+- [What gets linked where](#what-gets-linked-where)
+- [Selecting a subset](#selecting-a-subset)
+- [Shared instructions](#shared-instructions---instructions)
+- [PR merge guard](#pr-merge-guard---merge-guard) and [secret read guard](#secret-read-guard---secret-guard)
+- [Codex CLI](#codex-cli-specifics) and [Claude Code](#claude-code-plugins-only)
+- [Uninstall](#uninstall) and [maintainer notes](#maintainer-notes)
+
+An install is reversed by the same command plus `--uninstall`; `--dry-run`
+works on install, uninstall and `--update`, while `--check` rejects it.
+`--update` replays the saved install and cannot be combined with
+`--uninstall`.
+
+Claude Code is the exception: it gets skills, commands, subagents and both
+guard hooks from the plugin marketplace only, and `install.sh --target=claude`
+only syncs `--instructions`. Remove those plugins with `claude plugin
+uninstall`, not with `--uninstall`. See
+[Claude Code: plugins only](#claude-code-plugins-only).
+
+## Verify the install
+
+`--check` verifies the installer's managed files, not that the runtime loaded a
+skill. Verify the installer's state with `./install.sh --update --check` (or
+repeat the flags you installed with), then the runtime separately per target:
+
+- **Claude Code.** Open `/plugin` and confirm the marketplace
+  `fabiandistler-agents` and the plugins you installed are listed. Run one
+  namespaced command skill, such as `/communication:tldr`, and ask one
+  question the catalogue covers. Plugin files live where Claude loaded the
+  marketplace (its cache for a GitHub marketplace), not in `~/.claude/skills`.
+- **Codex CLI.** Restart Codex and confirm the skill appears in its skill list.
+  If a guard is installed, open `/hooks` once and trust it.
+- **opencode.** Restart opencode and confirm the skill appears. If Codex is
+  installed too, confirm the skill is listed once, not twice.
+
+## Troubleshooting
+
+| Symptom | Where to look |
+|---|---|
+| Skill missing in Claude Code | Is the marketplace added and the plugin installed? Check `/plugin`; see [Claude Code: plugins only](#claude-code-plugins-only). |
+| Codex skill missing | Check `~/.agents/skills/` and the legacy `~/.codex/skills/`; restart Codex; run `--update --check`. |
+| The same skill appears twice | Codex and opencode share `~/.agents/skills/`; see [What gets linked where](#what-gets-linked-where). |
+| A guard hook does not fire | Codex skips an untrusted hook until you open `/hooks`; opencode does not run plugin hooks under `opencode run` or in the Desktop app. See the guard sections below. |
+| A command skill does not fire on its own | Expected: command skills run only on explicit invocation (`$name` in Codex, `/name` in opencode, `/<plugin>:<name>` in Claude Code); see [Usage](../README.md#usage). |
+| The Codex skill list looks incomplete | Codex truncates the skill list past roughly 2% of its context. Remove a category with `--category`, or disable unused skills. |
+| `--update` exits 4 | No saved state. Run a successful install with `--target=...` first; see [Replay the last install](#replay-the-last-install). |
+| `--check` reports `foreign` or `unbalanced` markers | An unmanaged file or a hand-edited managed block blocks the path. See the report states under [Check the managed installation](#check-the-managed-installation). |
+| The install prints a `python3` warning, or `--update` says it is required | `python3` is missing: `--update` cannot read its state, and subagents, a guard hook, or the Claude `uv init` hook are skipped. Install it and re-run. |
 
 ## Exit codes
 
@@ -39,7 +87,8 @@ The report states are `missing` (expected managed state is absent), `stale`
 file or unbalanced marker blocks the managed path), `duplicate` (more than one
 managed block or link occupies the selected state), and `untrusted-hook` (Codex
 will skip a guard that is disabled or whose saved trust hash does not match its
-current hook).
+current hook). Lowercase `missing` is this report state; uppercase `MISSING` in
+`scripts/check_all.sh` means a check's tool is not installed.
 Passing a guard flag makes that guard part of the expected state; existing
 Codex guard blocks are checked for stale checkout paths and hook trust even
 without a guard flag. Pass `--instructions`, `--merge-guard`, and
@@ -87,9 +136,10 @@ writing anything: that directory belongs to the hook manager, so call
 configuration directory exists: `claude` or `~/.claude/`, `codex` or
 `~/.codex/`, and `opencode` or `~/.config/opencode/`. The installer prints the
 resolved targets and saves that explicit list for later checks and updates, so
-an agent installed later is reported by `--update --check` rather than written
-to silently. A bare `./install.sh` still writes nothing and exits 2; pass a
-target or use `--target=detected` explicitly.
+an agent installed after that run is neither added nor reported by `--update
+--check`. Re-run `./install.sh --target=detected` to include it. A bare
+`./install.sh` still writes nothing and exits 2; pass a target or use
+`--target=detected` explicitly.
 
 ## OpenCode subagents
 
@@ -173,9 +223,10 @@ skill without the field belongs to every environment.
 ```
 
 Neither filter applies to Claude: there you choose a subset by installing only
-some plugins, one per category. The plugins have no coding/chat split.
-Passing `--env` or `--category` with `--target=claude` or `--target=all`
-prints one warning to say so, and changes nothing else.
+some plugins, one per category. The plugins have no coding/chat split. Passing
+`--env` or `--category` with `--target=claude` prints a warning that the filter
+does not apply to Claude. With `--target=all`, the same warning appears for
+Claude while the filters still select the Codex and opencode skills.
 
 **Skills that skip an agent.** A skill can opt out of individual agents with a
 `targets` field (a comma-separated subset of `claude`, `codex`, `opencode`;
@@ -189,7 +240,7 @@ of these skills, a skill that excludes `claude` also gets no plugin symlink.
 Skills are capabilities an agent loads on demand; shared rules use three
 tiers in `instructions/`, ordered by numeric filename prefix:
 
-- **Always on:** 20, 25, 50, 55 and 60.
+- **Always on:** 20, 25, 45, 50, 55 and 60.
 - **Path-scoped in Claude:** 30 for Python files and 40 for R files. Codex and
   opencode get a pointer for the Python baseline and keep the R rules inline.
 - **On demand:** 70, 80 and 85. Their pointers stay in the global instruction
@@ -242,8 +293,10 @@ its own and no rule loads twice. Once that file exists, opencode stops reading
 `~/.claude/CLAUDE.md`: anything you wrote there outside the markers and want in
 opencode too belongs in `~/.config/opencode/AGENTS.md` as well.
 
-The flag is opt-in — plain `./install.sh --target=...` only touches skills.
-Claude plugins cannot ship `CLAUDE.md` content or path-scoped rules, so
+The flag is opt-in. For Codex and opencode, a plain `./install.sh --target=...`
+writes skill links plus the generated subagent files and, for Codex, the
+managed `skills.config` block; `--instructions` is the opt-in for the shared
+rules. Claude plugins cannot ship `CLAUDE.md` content or path-scoped rules, so
 `--instructions` installs the instruction blocks, path rules, on-demand files,
 and Python `uv init` hook for Claude.
 
@@ -273,14 +326,16 @@ UI or your own terminal. The guard only checks the agent's tool calls.
 
 | Agent | What gets installed | Hook |
 |---|---|---|
-| `claude` | the `merge-guard` plugin: `hooks/hooks.json` runs the script bundled in the plugin; `install.sh --merge-guard` only prints the install command | [PreToolUse](https://code.claude.com/docs/en/hooks), exit 2 blocks |
+| `claude` | the `merge-guard` plugin: `hooks/hooks.json` runs `scripts/pr_merge_guard.py`, which the plugin ships as a symlink to the repository's script; `install.sh --merge-guard` only prints the install command | [PreToolUse](https://code.claude.com/docs/en/hooks), exit 2 blocks |
 | `codex` | a managed `[[hooks.PreToolUse]]` block in `~/.codex/config.toml` | [PreToolUse](https://developers.openai.com/codex/hooks), exit 2 blocks |
 | `opencode` | symlink `~/.config/opencode/plugins/pr-merge-guard.js` | [`tool.execute.before`](https://opencode.ai/docs/plugins/) (1.x) and `ctx.tool.hook("execute.before")` ([2.x](https://opencode.ai/v2/docs/build/plugins)); a throw blocks |
 
 All other settings, hooks and config stay as they are. The hook needs
 `python3` on `PATH` when it runs. For Codex and opencode the hook command
 points into this clone, so do not move the clone after installing. The Claude
-plugin carries its own copy of the script.
+plugin ships the guard script as a symlink to the repository's copy; Claude
+dereferences it into its plugin cache, while a marketplace added from a local
+clone resolves it in place.
 
 Limits:
 
@@ -352,9 +407,11 @@ agents](https://developers.openai.com/codex/subagents) under
 files you created yourself are never overwritten, and `--uninstall` removes
 only marker-carrying files. Every Codex run also removes marker-carrying
 files whose subagent no longer exists in the repo (renamed or deleted).
-Model and sandbox are inherited from your Codex
-session — the Claude-specific `model:` and `tools:` fields have no Codex
-equivalent.
+Sandbox is inherited from your Codex session. Codex supports `model` and
+`model_reasoning_effort` on custom agents, but the installer does not map
+Claude's `model:` value into the generated TOML; add one there if you want it.
+Claude's `tools:` allowlist has no direct Codex equivalent, so Codex agents
+inherit their tools and permissions.
 
 **Router members.** Codex discovers skills recursively and follows symlinks
 ([openai/codex#22275](https://github.com/openai/codex/issues/22275)), so each
@@ -437,39 +494,27 @@ Otherwise update by hand with
 `claude plugin update <plugin>@fabiandistler-agents`. A marketplace added from
 a local clone loads its plugins in place, so a `git pull` is enough there.
 
-## Cloud sessions (`.claude/` in this repo)
+## Uninstall
 
-Claude Code cloud sessions start from a fresh clone: they never see
-`~/.claude/`, and they do not install plugins a repository enables in
-`.claude/settings.json`. So this repo commits what a cloud session in it
-should have:
+`./install.sh --target=... --uninstall` removes the selected target's managed
+artifacts: skill links, generated agent files, managed config and instruction
+blocks, guard hooks, and its saved-state entry. Add `--dry-run` to preview.
+When the whole saved selection is removed, the state file is deleted, so a
+later `--update` exits 4. `--uninstall --instructions` also prunes on-demand
+payload files that no remaining managed block refers to. Files this installer
+does not own are never touched.
 
-| Path | Contents | Maintained by |
-| --- | --- | --- |
-| `.claude/skills/<name>` | symlinks to this repo's `coding` skills (routers, unrouted skills, command skills) | `scripts/build_project_claude.py` |
-| `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
-| `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
-| `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
-| `.claude/settings.json` `PreToolUse` entries | the PR merge guard (`scripts/pr_merge_guard.py`) and the Python `Bash(uv init*)` context hook (`scripts/python_init_context.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
-| `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
+Claude plugins are outside this mechanism: `--uninstall` does not remove them,
+because Claude owns the marketplace copy (a cache for a GitHub marketplace, or
+the clone for a local one). Remove them in Claude Code instead:
 
-After changing a skill's frontmatter or an instruction fragment, the prek
-commit hooks regenerate the manifest and `.claude/` (stage the result and
-commit again); without them, regenerate the manifest and then run
-`python3 scripts/build_project_claude.py`. CI fails on drift (`--check`). Refresh the vendored skills with
-`python3 scripts/vendor_mattpocock_skills.py` (optionally `--ref <sha>`).
-Upstream skills named in the script's `EXCLUDED` set are never vendored:
-`improve-codebase-architecture` is left out because this catalogue forks it
-as `improve-codebase` (#492), so cloud sessions offer one such command, not two.
-`ask-matt` is left out because it was deleted by hand on 2026-10-13, and a re-run
-would bring it back. Pocock's `pr` is vendored again since 2026-10-20 at the
-user's request; the catalogue itself still ships no PR-description skill
-(`.out-of-scope/pr-description-skill.md`).
-`chief-of-staff` is still in upstream's `in-progress/` and is vendored anyway
-(`INCLUDED_IN_PROGRESS`): it runs the long-lived goal sessions recorded in
-`docs/wiki/`.
+```sh
+claude plugin uninstall architecture@fabiandistler-agents
+claude plugin marketplace remove fabiandistler-agents
+```
 
-Locally the same project skills would duplicate the marketplace plugins, so
-`.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
-off for sessions inside this repo only. The vendored `code-review` shadows
-Claude Code's built-in skill of that name in this repo.
+## Maintainer notes
+
+The Claude cloud-session mirror, the vendored skills, and the regeneration
+order are maintainer material, not part of the user install path:
+[install internals](maintainers/install-internals.md).

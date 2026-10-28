@@ -209,6 +209,7 @@ Usage:
   ./install.sh --uninstall --git-hook
 
 Options:
+  --target=AGENT               Agent to install into or uninstall from
   --env=coding|chat|all        Filter skills (default: all)
   --category=NAME[,NAME...]    Filter skill categories
   --instructions               Install shared instruction rules
