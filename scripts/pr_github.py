@@ -227,7 +227,10 @@ def _map_file(entry: dict) -> dict:
         "status": status,
         "additions": additions,
         "deletions": deletions,
-        "binary": entry.get("patch") is None and additions + deletions > 0,
+        # GitHub omits the patch for binary content and reports it as 0/0, so a
+        # missing patch counts as binary unless the file is only renamed.
+        "binary": entry.get("patch") is None
+        and not (status == "renamed" and additions + deletions == 0),
         "renamed_from": renamed_from if isinstance(renamed_from, str) and renamed_from else None,
     }
 

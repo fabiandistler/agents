@@ -488,7 +488,7 @@ def test_base_file_404_is_skipped_but_other_fetch_errors_propagate():
     [
         (api_file("a.py", patch="@@ -1 +1 @@\n", additions=1), False),
         (binary_api_file("b.png", additions=3), True),
-        (binary_api_file("c.txt", additions=0, deletions=0), False),
+        (binary_api_file("c.png", additions=0, deletions=0), True),
         (api_file("d.py", patch="", additions=1), False),
         (binary_api_file("e.bin", additions=0, deletions=2), True),
     ],
@@ -501,10 +501,27 @@ def test_binary_detection_fails_safe_when_the_patch_is_missing(entry, binary):
     assert file["binary"] is binary
 
 
-def test_missing_patch_with_zero_changes_is_not_binary():
+def test_missing_patch_with_zero_changes_counts_as_binary():
+    # GitHub reports a binary file as 0/0 without a patch; a mode-only change
+    # looks the same, so both fail safe as binary.
     entry = {
-        "filename": "scripts/mode-only.sh",
+        "filename": "docs/diagram.png",
         "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+    }
+    client = FakeClient(file_pages=([entry],))
+
+    (file,) = fetch(client)["files"]
+
+    assert file["binary"] is True
+
+
+def test_pure_rename_without_a_patch_is_not_binary():
+    entry = {
+        "filename": "docs/new-name.md",
+        "status": "renamed",
+        "previous_filename": "docs/old-name.md",
         "additions": 0,
         "deletions": 0,
     }
