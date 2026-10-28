@@ -1,9 +1,10 @@
-# ADR-0011: Decide the docs-only CI merge exception separately
+# ADR-0011: A narrow docs-only CI merge exception
 
 ## Status
 
-Proposed. No merge exception is active; #635 and #636 remain pending the
-maintainer's decision. The interactive merge guard remains unchanged.
+Accepted (2026-10-28) by the maintainer on #621, for the gated cases below
+only. Not yet active: the merge capability ships with #635 and the merge-rule
+text with #636. The interactive merge guard remains unchanged.
 
 ## Context
 
@@ -14,15 +15,15 @@ currently reserves merging for humans. Automating even low-risk merges would
 change that governance boundary, so a ready issue or a passing model verdict
 cannot grant the exception.
 
-## Proposed decision
+## Decision
 
-Keep the advisory review pipeline and the human merge rule as implemented.
-Review the proposed docs-only CI exception independently before adding any
-merge capability. Approval would authorize one model-free CI publisher to
-enable GitHub native auto-merge, never direct merging and never bot approval.
-Interactive agents would retain the existing merge prohibition.
+Ship the advisory review pipeline first, then add the docs-only CI exception
+as a separately reviewed change (#635). The exception authorizes one
+model-free CI publisher to enable GitHub native auto-merge, never direct
+merging and never bot approval. Interactive agents keep the existing merge
+prohibition.
 
-The proposed exception would require all of these gates together:
+The exception requires all of these gates together:
 
 - An explicit, off-by-default `PR_AUTO_MERGE=true` operator setting.
 - Low deterministic risk and a complete passing model review; the model may
@@ -39,15 +40,15 @@ The proposed exception would require all of these gates together:
 The runbook's [acceptance record](../agents/pr-review-runbook.md#acceptance-record)
 tracks the required manual evidence. The existing code, workflow permissions,
 repository ruleset, variables, secrets and interactive guard are unchanged by
-this proposal. An accepted decision must precede a separately reviewed merge
-implementation and operator rollout.
+this decision. The merge implementation and the operator rollout are reviewed
+separately.
 
 ## Considered options
 
-- **Advisory review with human merges (current).** Provides labels and findings
+- **Advisory review with human merges only.** Provides labels and findings
   with a small write surface, but routine documentation still waits on a human.
-- **Narrow native auto-merge exception (proposed).** Could reduce that queue;
-  requires a new governance decision, tested revocation and enforced checks.
+- **Narrow native auto-merge exception (chosen).** Reduces that queue;
+  requires tested revocation and enforced checks.
 - **LLM-held write or merge credential.** Rejected: untrusted review input must
   not control repository writes.
 - **Direct bot merge or general auto-merge.** Rejected: it would bypass native
@@ -55,7 +56,7 @@ implementation and operator rollout.
 
 ## Consequences
 
-The current review feature can be evaluated without granting merge authority.
-#635 and the merge-rule portion of #636 cannot be marked complete yet. If the
-exception is approved, the maintainer must review the exact rule change and
-its implementation, configure required checks and record live acceptance.
+The review feature can be evaluated before any merge authority is live. #635
+and the merge-rule portion of #636 remain open until the maintainer reviews
+the exact rule change and its implementation, configures the required checks
+and records live acceptance.

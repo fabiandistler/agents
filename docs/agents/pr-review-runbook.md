@@ -221,10 +221,11 @@ permissions, provider availability, label writes or ruleset enforcement.
 
 Auto-merge remains unavailable. Setting `PR_AUTO_MERGE=true` cannot activate it
 because the workflow does not pass that variable and the writer rejects merge
-actions. The proposed [CI exception decision](../adr/0011-pr-review-merge-exception.md)
-records #635/#636's remaining choice; it does not change the current merge rule.
+actions. The accepted [CI exception decision](../adr/0011-pr-review-merge-exception.md)
+allows the exception, but it is not active and does not yet change the merge
+rule.
 
-If that exception is approved, a separate reviewed implementation must add
+A separate reviewed implementation (#635) must add
 native auto-merge behind an off-by-default variable, validate every gate, and
 update the merge rule precisely. The maintainer must then protect `main` with
 required `checks`, `mermaid` and `secrets` checks before any enablement. The
