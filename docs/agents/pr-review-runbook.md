@@ -191,7 +191,7 @@ has no verdict label; a provider failure uses `review:unavailable`.
 | `pull_request_closed` | The PR closed during the run. No action is needed unless it is intentionally reopened. |
 | Conflicting `risk:*` or `review:*` labels | A fresh successful publish replaces stale labels within each family. Check that the latest run succeeded rather than editing a label to override the policy. |
 | Duplicate sticky comments | Check whether concurrent publishers bypassed the per-PR workflow concurrency. The final snapshot reuses an existing marker comment instead of creating a second one. |
-| Publish rejects `disable_auto_merge` | Remove the reserved `auto-merge:bot` label as a maintainer. The writer deliberately refuses auto-merge actions until #635 is approved and implemented. |
+| Publish rejects `disable_auto_merge` | GitHub reports auto-merge as active on a PR that carries `auto-merge:bot`. Disable auto-merge on the PR by hand; the writer deliberately refuses auto-merge actions until #635 is implemented. |
 
 There is no separate daily request quota: one eligible review job makes one
 provider request, with bounded input and a 60-second timeout. Superseded runs
@@ -251,10 +251,11 @@ merge guard remains unchanged throughout.
   holds a secret. They get risk labels and a comment saying the review was
   skipped.
 - **No auto-merge.** `PR_AUTO_MERGE` is not passed, and `pr_apply.py` refuses
-  `enable_auto_merge` and `disable_auto_merge` actions. Do not add the
-  `auto-merge:bot` label by hand: the planner then emits
-  `disable_auto_merge`, `pr_apply.py` rejects the plan, and publish fails
-  without writing. Remove the label to recover. See #635 and #636.
+  `enable_auto_merge` and `disable_auto_merge` actions. A stale
+  `auto-merge:bot` label is removed on the next publish. Only when GitHub
+  also reports auto-merge as active does the planner emit
+  `disable_auto_merge`, which `pr_apply.py` rejects; see the troubleshooting
+  table. See #635 and #636.
 - **Advisory only.** The bot never approves and never merges. The merge rule
   and the interactive merge guard (`scripts/pr_merge_guard.py`) are unchanged.
 - **Pipeline changes take effect only after merge.** A PR that edits

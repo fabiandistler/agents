@@ -411,6 +411,7 @@ def fetch_context(
         "draft": bool(pull.get("draft")),
         "fork": fork,
         "mergeable": pull.get("mergeable") is True,
+        "auto_merge_active": pull.get("auto_merge") is not None,
         "labels": labels,
         "files": files,
         "diff": diff,

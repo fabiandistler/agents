@@ -159,7 +159,6 @@ def _plan_labels(
     risk: str,
     review: dict,
     enable_auto_merge: bool,
-    disable_auto_merge: bool,
 ) -> tuple[list[str], list[str]]:
     existing = _labels(context)
     add: list[str] = []
@@ -192,7 +191,7 @@ def _plan_labels(
 
     if enable_auto_merge and AUTO_MERGE_LABEL not in existing:
         add.append(AUTO_MERGE_LABEL)
-    if disable_auto_merge:
+    if not enable_auto_merge and AUTO_MERGE_LABEL in existing:
         remove.append(AUTO_MERGE_LABEL)
 
     return add, remove
@@ -423,8 +422,14 @@ def plan_publish(
     enable_auto_merge = not _auto_merge_blocked(
         context, risk, review, _auto_merge_enabled(auto_merge)
     )
-    disable_auto_merge = not enable_auto_merge and AUTO_MERGE_LABEL in _labels(context)
-    add, remove = _plan_labels(context, risk, review, enable_auto_merge, disable_auto_merge)
+    # Only the bot's own auto-merge is disabled, and only while GitHub still has
+    # it on; a stale label without active auto-merge is just removed.
+    disable_auto_merge = (
+        not enable_auto_merge
+        and AUTO_MERGE_LABEL in _labels(context)
+        and context.get("auto_merge_active") is True
+    )
+    add, remove = _plan_labels(context, risk, review, enable_auto_merge)
 
     actions: list[dict] = []
     if add or remove:

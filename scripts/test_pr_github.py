@@ -264,6 +264,7 @@ def test_fetch_context_maps_every_contract_field():
     assert context["draft"] is True
     assert context["fork"] is False
     assert context["mergeable"] is False
+    assert context["auto_merge_active"] is False
     assert context["labels"] == ["risk:low", "x"]
     assert context["files"] == [
         {
@@ -530,6 +531,12 @@ def test_pure_rename_without_a_patch_is_not_binary():
     (file,) = fetch(client)["files"]
 
     assert file["binary"] is False
+
+
+def test_enabled_auto_merge_is_reported_as_active():
+    client = FakeClient(pull_request(auto_merge={"merge_method": "merge"}))
+
+    assert fetch(client)["auto_merge_active"] is True
 
 
 def test_check_run_without_a_conclusion_maps_to_its_status():

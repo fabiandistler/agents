@@ -64,6 +64,7 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
         "draft": False,
         "fork": False,
         "mergeable": True,
+        "auto_merge_active": False,
         "labels": [],
         "files": [file_entry("docs/guide.md")] if files is None else files,
         "diff": "",
@@ -175,7 +176,9 @@ def test_decision_reports_enabled_auto_merge():
 
 
 def test_decision_reports_disabled_auto_merge():
-    context = make_context(labels=["risk:low", "review:pass", "auto-merge:bot"])
+    context = make_context(
+        labels=["risk:low", "review:pass", "auto-merge:bot"], auto_merge_active=True
+    )
 
     plan = pr_publish.plan_publish(context, make_assessment(), make_review(), auto_merge=False)
 
@@ -544,6 +547,7 @@ def test_a_raised_risk_disables_the_bots_auto_merge():
     context = make_context(
         files=[file_entry("skills/x/SKILL.md")],
         labels=["risk:low", "review:pass", "auto-merge:bot"],
+        auto_merge_active=True,
     )
 
     plan = pr_publish.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
@@ -556,7 +560,9 @@ def test_a_raised_risk_disables_the_bots_auto_merge():
 
 
 def test_turning_the_variable_off_disables_the_bots_auto_merge():
-    context = make_context(labels=["risk:low", "review:pass", "auto-merge:bot"])
+    context = make_context(
+        labels=["risk:low", "review:pass", "auto-merge:bot"], auto_merge_active=True
+    )
 
     plan = pr_publish.plan_publish(context, make_assessment(), make_review(), auto_merge=False)
 
@@ -576,12 +582,22 @@ def test_do_not_merge_is_never_removed_by_the_publisher():
 
 
 def test_a_human_enabled_auto_merge_is_never_touched():
-    context = make_context(labels=["risk:low", "review:pass"])
+    context = make_context(labels=["risk:low", "review:pass"], auto_merge_active=True)
 
     plan = pr_publish.plan_publish(context, make_assessment(), make_review(), auto_merge=False)
 
     assert actions_of(plan, "disable_auto_merge") == []
     assert actions_of(plan, "set_labels") == []
+
+
+def test_a_stale_bot_label_without_active_auto_merge_is_only_removed():
+    context = make_context(labels=["risk:low", "review:pass", "auto-merge:bot"])
+
+    plan = pr_publish.plan_publish(context, make_assessment(), make_review(), auto_merge=False)
+
+    assert actions_of(plan, "disable_auto_merge") == []
+    assert label_action(plan)["remove"] == ["auto-merge:bot"]
+    assert plan["decision"]["auto_merge"] == "off"
 
 
 def test_auto_merge_is_not_enabled_twice():
