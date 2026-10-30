@@ -137,7 +137,7 @@ The catalog-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
+| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand. A cloud session cannot read third-party GitHub releases ("GitHub access to this repository is not enabled for this session"): the report then marks each affected update "risk unverified: changelog not readable in this session" instead of estimating a risk from the version number |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` and the Bats suites `test/*.bats` |
 
