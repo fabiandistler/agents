@@ -213,7 +213,9 @@ for name in "${CHECKS[@]}"; do
     case "$absent" in
       *npx*) fix="install Node.js (provides npx)" ;;
       *bats-submodules*) fix="git submodule update --init" ;;
-      *) fix="pip install -r scripts/check_all.requirements.txt" ;;
+      # $PY's own pip: a bare `pip` can install into another interpreter,
+      # and the check stays MISSING after a successful install.
+      *) fix="$PY -m pip install -r scripts/check_all.requirements.txt" ;;
     esac
     echo "MISSING $name: not installed:$absent ($fix)"
     missing+=("$name")
