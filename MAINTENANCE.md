@@ -72,6 +72,28 @@ Tool versions are pinned in `scripts/check_all.requirements.txt` and
 `.pre-commit-config.yaml`; ruff runs as a prek hook at the version pinned there. A check
 reported `MISSING` counts as not run, never as green.
 
+In a cloud session the check tools come from `.claude/hooks/session-start.sh`, which runs
+only when the session starts inside this checkout. A routine with several repositories
+starts in `/home/user`, so the hook never runs: `pytest` reports `MISSING`, and prek's
+`gitleaks` hook fails trying to fetch Go from the blocked `go.dev` (routine run of
+2026-10-28). Run the hook once by hand from the checkout root before the baseline, then
+source its env file in every shell that runs a check, because each tool call starts a
+fresh shell:
+
+```bash
+CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$PWD" \
+  CLAUDE_ENV_FILE="$HOME/.cache/agents-check-tools.env" .claude/hooks/session-start.sh
+. "$HOME/.cache/agents-check-tools.env" && scripts/check_all.sh
+```
+
+Do not `pip install` the tools into the image's Python instead; the hook's venv is the
+path that keeps them where `check_all.sh` looks. If the hook logs `MISSING go`, it then
+exits non-zero at `prek install-hooks`, its last step, after the venv and the Bats
+submodules are in place. That is expected: run the baseline and every commit with
+`SKIP=gitleaks` (`. "$HOME/.cache/agents-check-tools.env" && SKIP=gitleaks
+scripts/check_all.sh`), which keeps prek from building the hook, and say so in the
+report. The gitleaks job of `maintenance-gate` still scans every pull request in CI.
+
 One standing caveat:
 
 - On a WSL host ruff reports none of the `flake8-executable` rules (`EXE001`-`EXE003`)
@@ -115,7 +137,7 @@ The catalog-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
+| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand. A cloud session cannot read third-party GitHub releases ("GitHub access to this repository is not enabled for this session"): the report then marks each affected update "risk unverified: changelog not readable in this session" instead of estimating a risk from the version number |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` and the Bats suites `test/*.bats` |
 

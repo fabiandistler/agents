@@ -74,6 +74,14 @@ make_bare_checkout() {
   grep -q '^===== instructions (exit 2)$' "$bare_checkout/full.log"
 }
 
+@test "a missing Python tool names the pip of the interpreter the checks use" {
+  "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/bare"
+  bare_python="$BATS_TEST_TMPDIR/bare/bin/python3"
+  run env PYTHON="$bare_python" "$CHECK_ALL" --only pytest
+  assert_failure 3
+  assert_line "MISSING pytest: not installed: pytest pyyaml ($bare_python -m pip install -r scripts/check_all.requirements.txt)"
+}
+
 @test "missing Bats submodules report MISSING with the fix and exit 3" {
   make_bare_checkout
   run "$bare_checkout/scripts/check_all.sh" --only bats
