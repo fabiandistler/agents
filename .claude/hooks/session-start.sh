@@ -48,16 +48,17 @@ else
   log "MISSING go; the gitleaks hook cannot be built (use SKIP=gitleaks)"
 fi
 
-# 3. Git hook plus every hook environment (ruff, ty, shellcheck, shfmt,
+# 3. The pinned Bats checkouts under test/bats/, which the bats check and its
+# pre-push hook need; a clone without them gets MISSING bats (exit 3).
+git submodule update --init --quiet >&2 ||
+  log "could not fetch the test/bats/ submodules; the bats check will report MISSING"
+
+# 4. Git hook plus every hook environment (ruff, ty, shellcheck, shfmt,
 # gitleaks at the revs in .pre-commit-config.yaml), so the first commit is fast.
+# Last, because without go the gitleaks build fails and ends the script here.
 if command -v prek >/dev/null 2>&1; then
   prek install >&2
   prek install-hooks >&2
 else
   log "MISSING prek; commit hooks not installed"
 fi
-
-# 4. The pinned Bats checkouts under test/bats/, which the bats check and its
-# pre-push hook need; a clone without them gets MISSING bats (exit 3).
-git submodule update --init --quiet >&2 ||
-  log "could not fetch the test/bats/ submodules; the bats check will report MISSING"

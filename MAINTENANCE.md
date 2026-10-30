@@ -87,9 +87,12 @@ CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$PWD" \
 ```
 
 Do not `pip install` the tools into the image's Python instead; the hook's venv is the
-path that keeps them where `check_all.sh` looks. If the hook logs `MISSING go`, record
-the baseline with `SKIP=gitleaks` and say so in the report: the gitleaks job of
-`maintenance-gate` still scans every pull request in CI.
+path that keeps them where `check_all.sh` looks. If the hook logs `MISSING go`, it then
+exits non-zero at `prek install-hooks`, its last step, after the venv and the Bats
+submodules are in place. That is expected: run the baseline and every commit with
+`SKIP=gitleaks` (`. "$HOME/.cache/agents-check-tools.env" && SKIP=gitleaks
+scripts/check_all.sh`), which keeps prek from building the hook, and say so in the
+report. The gitleaks job of `maintenance-gate` still scans every pull request in CI.
 
 One standing caveat:
 
