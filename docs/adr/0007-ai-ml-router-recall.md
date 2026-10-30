@@ -1,8 +1,9 @@
-# ADR-0007: ai-ml router recall prompts and deferred routed-vs-flat measurement
+# ADR-0007: Keep the ai-ml router, measured routed against flat
 
 ## Status
 
-Proposed (2026-09-27) — prompts and method recorded, measurement open, no keep/drop verdict yet.
+Accepted (2026-10-30) — measured: routed 61/70 against flat 45/70, keep the router.
+Proposed (2026-09-27) with the prompts and method below.
 
 ## Context
 
@@ -21,9 +22,9 @@ run both arms.
 
 ## Decision
 
-Record seven positive and two negative ai-ml recall prompts below, with the
-routed-vs-flat method to run once the description rewrite lands. Measurement
-itself is an open follow-up. No keep/drop verdict is made here.
+Keep the `ai-ml` router. The seven positive and two negative recall prompts
+below and the routed-vs-flat method were recorded first; the measurement under
+**Result** decides for routed.
 
 Positive prompts (should trigger `ai-ml`):
 
@@ -49,14 +50,40 @@ and the pooled headline. Negatives must fire zero times. If flat wins, drop
 the router along with its Codex disable block and plugin wrapper; if routed
 wins, keep the router as in ADR-0002.
 
+## Result
+
+Run 2026-10-30 with `recall/hillclimb_live.py` in eval-suite (commit
+5e953f9, flow `.claude/hillclimb/ai-ml-recall`): both arms concurrently on
+agents 4c1bd9d, `claude-opus-5-5` served for every session, 21 cases × 5 reps
+per arm, 210 sessions, no failed or retried runs. The nine prompts above are
+kept verbatim; twelve more were merged in from `live_prompts.json` and the
+skills' `evals.json` files.
+
+- Expected member reached: routed 61/70 (87.1%), flat 45/70 (64.3%). The
+  23-point gap is about twice the ±12-point noise floor at this n, and close
+  to ADR-0002's 28 points for `architecture`.
+- Per member: llm-application-engineering 31/35 against 23/35,
+  ml-project-lifecycle 30/35 against 22/35.
+- Flat beat routed on no case. Routed won 6 of the 14 named-member cases
+  (`adr-ship-image` 5/5 against 0/5, `adr-tabular-model` and
+  `adr-finetune-rag` 5/5 against 2/5), and the other 8 tied.
+- Negatives: 0/25 fires in either arm. No run in either arm reached the wrong
+  member; flat misses are sessions that answered without any skill.
+- Weak in both arms, so a description problem rather than a layout one:
+  `demand-forecast` 0/5 and 0/5, `rag-wrong-docs` 1/5 and 0/5, and the two
+  either-member cases 1/10 and 0/10.
+
+Per the method, routed wins, so the router stays as in ADR-0002.
+
 ## Consequences
 
-- The recall set above is the input to the future measurement; it does not
-  itself decide routed against flat.
-- The external eval-suite sync (`live_prompts.json`, `check_live.py` runs) is a
-  separate follow-up in the other repo, not part of this change.
-- Until the numbers exist, the router stays as rewritten in #211 with the
-  member first sentences from #213.
+- The router stays as rewritten in #211 with the member first sentences from
+  #213, with its Codex disable block and plugin wrapper.
+- The eval lives in eval-suite (`.claude/hillclimb/ai-ml-recall`); a change to
+  the router or member descriptions can be measured against the same 21
+  cases.
+- The four prompts weak in both arms are the next target for description
+  work, not for the layout.
 
 ## Notes
 
