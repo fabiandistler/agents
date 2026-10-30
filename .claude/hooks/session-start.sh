@@ -3,6 +3,9 @@
 # tools, the prek git hook and the Bats submodules, so scripts/check_all.sh runs
 # every gate and the hooks fire on commit, before push. Idempotent; a second run only verifies.
 # Local sessions exit at once: there the developer owns the toolchain.
+# A session that starts outside this checkout (a routine with several repos
+# starts in /home/user) never runs it; MAINTENANCE.md (Baseline) shows the
+# manual call.
 # Bats exemption: a hook (instructions/45-shell-scripts.md).
 
 set -euo pipefail

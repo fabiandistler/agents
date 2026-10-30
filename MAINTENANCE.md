@@ -72,6 +72,25 @@ Tool versions are pinned in `scripts/check_all.requirements.txt` and
 `.pre-commit-config.yaml`; ruff runs as a prek hook at the version pinned there. A check
 reported `MISSING` counts as not run, never as green.
 
+In a cloud session the check tools come from `.claude/hooks/session-start.sh`, which runs
+only when the session starts inside this checkout. A routine with several repositories
+starts in `/home/user`, so the hook never runs: `pytest` reports `MISSING`, and prek's
+`gitleaks` hook fails trying to fetch Go from the blocked `go.dev` (routine run of
+2026-10-28). Run the hook once by hand from the checkout root before the baseline, then
+source its env file in every shell that runs a check, because each tool call starts a
+fresh shell:
+
+```bash
+CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$PWD" \
+  CLAUDE_ENV_FILE="$HOME/.cache/agents-check-tools.env" .claude/hooks/session-start.sh
+. "$HOME/.cache/agents-check-tools.env" && scripts/check_all.sh
+```
+
+Do not `pip install` the tools into the image's Python instead; the hook's venv is the
+path that keeps them where `check_all.sh` looks. If the hook logs `MISSING go`, record
+the baseline with `SKIP=gitleaks` and say so in the report: the gitleaks job of
+`maintenance-gate` still scans every pull request in CI.
+
 One standing caveat:
 
 - On a WSL host ruff reports none of the `flake8-executable` rules (`EXE001`-`EXE003`)
