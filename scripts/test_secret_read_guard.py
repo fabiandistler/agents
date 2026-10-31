@@ -41,6 +41,8 @@ BLOCKED_COMMANDS = [
     "jq . ~/.codex/auth.json",
     "cat ~/.local/share/opencode/auth.json",
     "cat ~/.password-store/github.gpg",
+    "cat ~/.password-store/*.gpg",
+    "cat ~/.gnupg/private-keys-v1.d/*.key",
     "pass show github/token",
     "pass github/token",
     "gpg --decrypt secret.gpg",

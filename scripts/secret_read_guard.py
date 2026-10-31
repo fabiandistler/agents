@@ -123,6 +123,11 @@ def secret_file(path: str) -> str | None:
     parts = PurePosixPath(path).parts
     if not parts:
         return None  # "."
+    # Every file under these directories is secret, so a glob in the name changes nothing.
+    if ".password-store" in parts:
+        return "the pass password store"
+    if ".gnupg" in parts and "private-keys-v1.d" in parts:
+        return "a gpg secret key"
     name, parent = parts[-1], parts[-2] if len(parts) > 1 else ""
     if GLOB_CHARS.search(name):
         # A shell glob skips dotfiles unless the pattern starts with a dot.
@@ -137,9 +142,7 @@ def secret_file(path: str) -> str | None:
         return SECRET_FILES[(parent, name)]
     if parent == ".ssh" and name.startswith("id_") and not name.endswith(".pub"):
         return "an SSH private key"
-    if ".password-store" in parts:
-        return "the pass password store"
-    if ".gnupg" in parts and ("private-keys-v1.d" in parts or name == "secring.gpg"):
+    if ".gnupg" in parts and name == "secring.gpg":
         return "a gpg secret key"
     return None
 
