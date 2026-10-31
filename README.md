@@ -277,8 +277,9 @@ exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
 later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
 newer interpreter. The mermaid check also needs Node.js (`npx`). The bats check
 runs the shell script tests in `test/` with the bats-core, bats-support and
-bats-assert submodules pinned under `test/bats/`; fetch them once with
-`git submodule update --init` (installing the catalogue does not need them).
+bats-assert submodules pinned under `test/bats/`; fetch them once per clone and
+per worktree (`git worktree add` does not) with `git submodule update --init`
+(installing the catalogue does not need them).
 
 The hooks in `.pre-commit-config.yaml` are run by
 [prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
