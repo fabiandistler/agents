@@ -60,8 +60,10 @@ repos:
         args: [-S, warning]
         # Python >=3.13 rejects the Zscaler proxy root (no critical Basic Constraints) when the installer downloads.
         language_version: "3.12"
-        # Vendored upstream skills: re-vendoring overwrites any local fix.
-        exclude: ^\.claude/skills/
+        # Vendored upstream code: re-vendoring overwrites any local fix. The
+        # scanner comes from scripts/vendor_repo_maintenance.py, whose --check
+        # (the vendor-lock check) fails on any byte shfmt would change.
+        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$)
 
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
@@ -70,7 +72,7 @@ repos:
         args: [-i, '2', '-ci', --write]
         # Python >=3.13 rejects the Zscaler proxy root (no critical Basic Constraints) when the installer downloads.
         language_version: "3.12"
-        exclude: ^\.claude/skills/
+        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$)
 
   # Secret scanning, included for every project type: the commit hook is the
   # last point before a secret lands in history. Mirrors the gitleaks job of
