@@ -1,6 +1,6 @@
 # deps-audit - 2026-10-31
 
-Result: **5 updates available, 0 advisories, 0 findings that need an issue.** No tool
+Result: **4 updates available, 0 advisories, 0 findings that need an issue.** No tool
 coverage from the scanner (see below); the list comes from the manual analogues named in
 `MAINTENANCE.md`.
 
