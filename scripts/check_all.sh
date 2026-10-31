@@ -6,6 +6,14 @@
 
 set -uo pipefail
 
+# Git exports these to hooks. From a linked worktree GIT_DIR is absolute, so a
+# check's `git init` / `git config` / `git commit` in a tmp dir would act on the
+# real repo instead. Every check runs from REPO_ROOT, where git finds this
+# checkout without them. Keep the list in step with GIT_REPO_LOCATING_VARS in
+# conftest.py, which does the same for pytest.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="${PYTHON:-python3}"
 # Pinned browserless Mermaid validator; mermaid is pinned next to mmdlint
