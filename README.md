@@ -290,6 +290,8 @@ rather than landing on `main`. The same install adds a commit-msg hook that
 rejects subjects outside Conventional Commits and two pre-push hooks: one runs
 `check_all.sh` without its prek, mermaid and bats checks, the other runs just
 the bats check (export `PYTHON=` as above, or the push stops with exit 4).
+A clone runs only the hook types that `default_install_hook_types` listed
+when `prek install` last ran, so run it again after a pull adds one.
 
 `build_manifest.py --check` runs first for a reason: the catalogue and plugin
 checks read `skills.json`, so a stale manifest makes them answer from stale
