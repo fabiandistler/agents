@@ -1,0 +1,9 @@
+{
+  "upstream": "https://github.com/fabiandistler/repo-maintenance",
+  "commit": "177c3a71c8ac751f0bc3ee8f2faa47a1d0f19a3c",
+  "files": {
+    "scripts/maintenance-scan.sh": "fe6570028a1644f46db4e5517ffd271e12fb083890ec029985bf2809aae5cacd",
+    "scripts/maintenance-r-advisories.py": "3fcfa81fcf5b0246bc51aaf133d072b70e72c673eb619b0a3d309717cc51056d",
+    "scripts/maintenance-new-deps.py": "9a778266386c0dfe5b44b904a8ee3ea08f92274510d46fc23636f739e0502c4f"
+  }
+}
