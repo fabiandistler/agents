@@ -75,6 +75,25 @@ BLOCKED_COMMANDS = [
     "cat .envrc",
     "jq .oauthAccount ~/.claude.json",
     "cat ~/.claude.json",
+    "cat ~/.claude.json.backup",
+    "cat ~/.claude/backups/.claude.json.backup.1",
+    "cat ~/.claude.json.*",
+    "cat ~/.config/secrets.env",
+    "grep KEY deploy/prod.env",
+    "cat ~/.config/*.env",
+    "cat ~/.config/rclone/rclone.conf",
+    "cat ~/.config/rclone/rclone.conf.backup-1",
+    "cat ~/.config/rclone/*",
+    "cat ~/.pyicloud/me.session",
+    "cat ~/.pyicloud-new/*",
+    "cat ~/.azure/msal_token_cache.json",
+    "strings ~/.azure/msal_http_cache.bin",
+    "cat ~/.kaggle/kaggle.json",
+    "cat ~/.kaggle/access_token",
+    "cat ~/.config/kaggle/access_token",
+    "cat ~/.gemini/oauth_creds.json",
+    "cat ~/.gemini/gemini-credentials.json",
+    "cat ~/.config/todoist-cli/config.json",
     "gopass show github/token",
     "gopass github/token",
     "sops -d secrets.enc.yaml",
@@ -137,6 +156,10 @@ ALLOWED_COMMANDS = [
     "python3 - <<'EOF'\nprint(open('.env.example').read())\nEOF",
     "git commit -F - <<EOF\nIgnore .env\nEOF",
     "cat .venv/pyvenv.cfg",
+    "cat config/example.env",
+    "find ~ -name '*.env'",
+    "ls ~/.pyicloud",
+    "cat ~/.gemini/settings.json",
 ]
 
 BLOCKED_TOOLS = [
@@ -154,6 +177,10 @@ BLOCKED_TOOLS = [
     ("opencode", {"tool": "read", "args": {"filePath": "/home/me/.config/gh/hosts.yml"}}),
     ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/repo/.envrc"}}),
     ("opencode", {"tool": "bash", "args": {"command": "env"}}),
+    ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/home/me/.config/secrets.env"}}),
+    ("claude", {"tool_name": "Grep", "tool_input": {"pattern": "KEY", "glob": "*.env"}}),
+    ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/home/me/.pyicloud/me.session"}}),
+    ("opencode", {"tool": "read", "args": {"filePath": "/home/me/.claude.json.backup"}}),
 ]
 
 ALLOWED_TOOLS = [

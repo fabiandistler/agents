@@ -369,13 +369,19 @@ claude plugin install secret-guard@fabiandistler-agents  # Claude Code
 
 It blocks reading these files through a shell command or a file tool (Claude
 `Read`, `Edit`, `Grep`; opencode `read`, `edit`, `grep`; MCP tools with a
-`path`): `.env` and `.env.*` (but not `.env.example`, `.env.sample`,
-`.env.template`), `.Renviron`, `.git-credentials`, `.netrc`, `.npmrc`,
-`.pypirc`, `.envrc`, `.aws/credentials`, `.docker/config.json`,
-`.kube/config` (also as `--kubeconfig`), `gh/hosts.yml`, private SSH keys
-(`.ssh/id_*` without `.pub`), `~/.claude.json`, `.claude/.credentials.json`,
-`.codex/auth.json`, opencode's `auth.json` and `mcp-auth.json`, the `pass`
-store, gpg secret keys. Globs count (`cat ~/.ssh/*`). Some of these files often
+`path`): `.env`, `.env.*` and `*.env` (but not their `example`, `sample` and
+`template` variants such as `.env.example` or `example.env`), `.Renviron`,
+`.git-credentials`, `.netrc`, `.npmrc`, `.pypirc`, `.envrc`,
+`.aws/credentials`, `.docker/config.json`, `.kube/config` (also as
+`--kubeconfig`), `gh/hosts.yml`, `rclone/rclone.conf*`, private SSH keys
+(`.ssh/id_*` without `.pub`), `~/.claude.json` and its copies
+(`.claude.json.*`), `.claude/.credentials.json`, `.codex/auth.json`,
+opencode's `auth.json` and `mcp-auth.json`, `.gemini/oauth_creds.json` and
+`gemini-credentials.json`, `.azure/msal_token_cache.json` and
+`msal_http_cache.bin`, `.kaggle/kaggle.json` and `access_token` (also under
+`$XDG_CONFIG_HOME/kaggle`), `todoist-cli/config.json`, anything under
+`.pyicloud*/`, the `pass` store, gpg secret keys. Globs in the file name count
+(`cat ~/.ssh/*`, `cat ~/.config/*.env`). Some of these files often
 hold no secret (a registry-only `.npmrc`); they are blocked anyway, because an
 over-block costs one question and a leaked token a rotation. It also blocks
 environment dumps: bare `env`, `printenv` without a name or with a secret-looking
@@ -392,7 +398,9 @@ passes too. Malformed hook input fails open (exit 3), as with the merge guard.
 The table above applies with `secret-guard`, `secret-read-guard.js` and the
 `secret read guard` markers. Limits: it keeps secrets out of the context by
 accident, it does not sandbox a determined agent. `echo $TOKEN`, a script or
-`python -c` that opens `.env`, or `grep -r TOKEN .` get through.
+`python -c` that opens `.env`, or `grep -r TOKEN .` get through. So do a bare
+`cat *` next to a `secrets.env` and a glob in a directory name
+(`cat ~/.config/*/rclone.conf`).
 
 ## Codex CLI specifics
 
