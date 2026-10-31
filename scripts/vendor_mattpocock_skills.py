@@ -32,6 +32,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from vendoring import clone_at
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI_DESCRIPTION = (
     "Vendor Matt Pocock's skills (github.com/mattpocock/skills) into `.claude/skills/`."
@@ -47,16 +49,6 @@ EXCLUDED = frozenset({"ask-matt", "improve-codebase-architecture"})
 # Unreleased upstream skills vendored anyway: chief-of-staff runs the long-lived
 # goal sessions whose record lives in docs/wiki/.
 INCLUDED_IN_PROGRESS = ("chief-of-staff",)
-
-
-def git(*args: str, cwd: Path) -> str:
-    return subprocess.run(  # noqa: S603 -- Git args select an intentional operation; no shell.
-        ["git", *args],  # noqa: S607 -- Git intentionally resolves from PATH.
-        cwd=cwd,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
 
 
 def main() -> int:
@@ -77,12 +69,10 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         clone = Path(tmp) / "skills"
         try:
-            git("clone", "--quiet", "--filter=blob:none", UPSTREAM, str(clone), cwd=Path(tmp))
-            git("checkout", "--quiet", args.ref, cwd=clone)
+            commit = clone_at(UPSTREAM, args.ref, clone)
         except subprocess.CalledProcessError as exc:
             sys.stderr.write(f"git failed: {exc.stderr}")
             return 1
-        commit = git("rev-parse", "HEAD", cwd=clone)
         plugin = json.loads((clone / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
         sources = {
             Path(p).name: clone / p for p in plugin["skills"] if Path(p).name not in EXCLUDED
