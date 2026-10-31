@@ -5,6 +5,8 @@ application engineering, planning, and technical writing — written once as
 plain Markdown and installed into Claude Code, Codex CLI, or opencode from
 one place.
 
+Browse the [interactive skill catalogue](https://fabiandistler.github.io/agents/).
+
 A skill is a Markdown file an agent loads when it recognizes the situation it
 describes; the bulk of each one stays in `references/` pages that load only
 when they are needed. There is no runtime, no server, and nothing to install
@@ -275,8 +277,9 @@ exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
 later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
 newer interpreter. The mermaid check also needs Node.js (`npx`). The bats check
 runs the shell script tests in `test/` with the bats-core, bats-support and
-bats-assert submodules pinned under `test/bats/`; fetch them once with
-`git submodule update --init` (installing the catalogue does not need them).
+bats-assert submodules pinned under `test/bats/`; fetch them once per clone and
+per worktree (`git worktree add` does not) with `git submodule update --init`
+(installing the catalogue does not need them).
 
 The hooks in `.pre-commit-config.yaml` are run by
 [prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
@@ -288,6 +291,8 @@ rather than landing on `main`. The same install adds a commit-msg hook that
 rejects subjects outside Conventional Commits and two pre-push hooks: one runs
 `check_all.sh` without its prek, mermaid and bats checks, the other runs just
 the bats check (export `PYTHON=` as above, or the push stops with exit 4).
+A clone runs only the hook types that `default_install_hook_types` listed
+when `prek install` last ran, so run it again after a pull adds one.
 
 `build_manifest.py --check` runs first for a reason: the catalogue and plugin
 checks read `skills.json`, so a stale manifest makes them answer from stale

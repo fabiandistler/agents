@@ -16,6 +16,7 @@ product page; this page routes from a job to the page that does it.
 - [Agent conventions](../AGENTS.md) — frontmatter, description budgets, generated files, checks
 - [Checks and CI gates](../README.md#contributing) — `scripts/check_all.sh` and the prek hooks
 - [Install internals](maintainers/install-internals.md) — Claude cloud mirror, vendored skills, regeneration order
+- [Homepage](maintainers/homepage.md) — local preview and GitHub Pages deployment
 - [Weekly skill audit](agents/skill-audit.md) — the scheduled content review and its checklist
 
 ## Reference and records

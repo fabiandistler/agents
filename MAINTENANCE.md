@@ -16,9 +16,9 @@ PR #412. Two findings were carried forward into *Backlog* below.
 
 | Field | Value |
 |---|---|
-| Last run | 2026-10-24 |
-| Last job | `perf-quickwins` (report-only, 0 findings, PR pending merge) |
-| Next due job | `deps-audit` (last run 2026-10-08, cooldown 7d) |
+| Last run | 2026-10-31 |
+| Last job | `deps-audit` (report-only, 4 updates available, 0 advisories, PR pending merge) |
+| Next due job | `doc-drift` (last run 2026-10-08, cooldown 14d) |
 | Baseline status | The current check list is `scripts/check_all.sh --list`. The last run (2026-10-17) recorded its baseline in its report under `maintenance/reports/`; do not read an old report as today's status |
 | Open maintenance PRs | open PRs whose head branch starts with `maintenance/` (command below the table) |
 
@@ -72,6 +72,34 @@ Tool versions are pinned in `scripts/check_all.requirements.txt` and
 `.pre-commit-config.yaml`; ruff runs as a prek hook at the version pinned there. A check
 reported `MISSING` counts as not run, never as green.
 
+In a cloud session the check tools come from `.claude/hooks/session-start.sh`, which runs
+only when the session starts inside this checkout. A routine with several repositories
+starts in `/home/user`, so the hook never runs: `pytest` reports `MISSING`, and prek's
+`gitleaks` hook fails trying to fetch Go from the blocked `go.dev` (routine run of
+2026-10-28). Run the hook once by hand from the checkout root before the baseline, then
+source its env file in every shell that runs a check, because each tool call starts a
+fresh shell:
+
+```bash
+CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$PWD" \
+  CLAUDE_ENV_FILE="$HOME/.cache/agents-check-tools.env" .claude/hooks/session-start.sh
+. "$HOME/.cache/agents-check-tools.env" && scripts/check_all.sh
+```
+
+`git push` is one of those shells: the pre-push hooks run `scripts/check_all.sh` with the
+`python3` on `PATH`. From an unsourced shell that is the image's interpreter without
+`pytest`, so the hook reports `MISSING pytest` and rejects the push. Push with
+`. "$HOME/.cache/agents-check-tools.env" && git push …`; never fall back to
+`git push --no-verify`.
+
+Do not `pip install` the tools into the image's Python instead; the hook's venv is the
+path that keeps them where `check_all.sh` looks. If the hook logs `MISSING go`, it then
+exits non-zero at `prek install-hooks`, its last step, after the venv and the Bats
+submodules are in place. That is expected: run the baseline and every commit with
+`SKIP=gitleaks` (`. "$HOME/.cache/agents-check-tools.env" && SKIP=gitleaks
+scripts/check_all.sh`), which keeps prek from building the hook, and say so in the
+report. The gitleaks job of `maintenance-gate` still scans every pull request in CI.
+
 One standing caveat:
 
 - On a WSL host ruff reports none of the `flake8-executable` rules (`EXE001`-`EXE003`)
@@ -83,7 +111,7 @@ One standing caveat:
 
 | # | Job | Scanner | Output | Cooldown | Last run |
 |---|---|---|---|---|---|
-| 1 | `deps-audit` | yes | Report | 7d | 2026-10-08 |
+| 1 | `deps-audit` | yes | Report | 7d | 2026-10-31 |
 | 2 | `doc-drift` | no | PR | 14d | 2026-10-08 |
 | 3 | `dead-exports` | yes | PR | 14d | 2026-10-10 |
 | 4 | `error-edges` | no | Report | 14d | 2026-10-13 |
@@ -115,7 +143,7 @@ The catalog-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand |
+| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand. Read each changelog from the upstream file on `raw.githubusercontent.com` (`https://raw.githubusercontent.com/<owner>/<repo>/<branch>/CHANGELOG.md`), which a cloud session can fetch (routine run of 2026-10-31: pytest, prek, ruff); its GitHub access may refuse third-party repositories ("GitHub access to this repository is not enabled for this session"), so do not depend on release pages. Only if the raw file cannot be read either, the report marks the update "risk unverified: changelog not readable in this session" instead of estimating a risk from the version number |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` and the Bats suites `test/*.bats` |
 
@@ -139,6 +167,7 @@ Empty: the one carry-over (unpinned `prek` in `ci.yml`) is resolved by
 | 2026-10-13 | `error-edges` | report: `maintenance/reports/2026-10-13-error-edges.md` (6 findings) | maintenance/error-edges-2026-10-13 |
 | 2026-10-17 | `test-flakiness` | report: `maintenance/reports/2026-10-17-test-flakiness.md` (0 findings) | maintenance/test-flakiness-2026-10-17 |
 | 2026-10-24 | `perf-quickwins` | report: `maintenance/reports/2026-10-24-perf-quickwins.md` (0 findings) | maintenance/perf-quickwins-2026-10-24 |
+| 2026-10-31 | `deps-audit` | report: `maintenance/reports/2026-10-31-deps-audit.md` (4 updates, 0 advisories) | maintenance/deps-audit-2026-10-31 |
 
 ## Sunset condition
 

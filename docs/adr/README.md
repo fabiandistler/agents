@@ -16,7 +16,7 @@ governs; the replacement ADR or current record is named).
 | [0004](0004-distribution-channels-per-surface.md) | Superseded in part (2026-10-22) by [0010](0010-claude-marketplace-hybrid.md) | One distribution channel per install surface. The `claude` row stands; the `codex` and `opencode` rows do not. |
 | [0005](0005-release-pr-version-model.md) | Accepted (2026-09-19) | `release-pr` uses a corrected per-PR version bump and stops at the PR, or tags after the merge. |
 | [0006](0006-skill-eval-prompts.md) | Accepted (2026-09-27); strict CI since 2026-10-19 | Every auto or router skill ships `skills/<name>/evals.json`; command skills are exempt. |
-| [0007](0007-ai-ml-router-recall.md) | Proposed (2026-09-27) | Record the ai-ml router recall prompts and defer the routed-vs-flat measurement. |
+| [0007](0007-ai-ml-router-recall.md) | Accepted (2026-10-30) | Keep the `ai-ml` router: routed reached the expected member 61/70 against flat 45/70. |
 | [0008](0008-fork-improve-codebase.md) | Accepted (2026-10-13); A/B gate passed | Fork `improve-codebase` into the catalogue instead of patching the vendored command. |
 | [0009](0009-fork-pr-description.md) | Superseded (2026-10-20); amended same day | Fork `pr-description` instead of patching `pr`. The skill was removed; Pocock's `pr` is vendored again. |
 | [0010](0010-claude-marketplace-hybrid.md) | Accepted (2026-10-22); amended for `secret-guard`; supersedes [0004](0004-distribution-channels-per-surface.md) in part | `claude` gets plugins from the marketplace only; `codex` and `opencode` keep `install.sh`. |

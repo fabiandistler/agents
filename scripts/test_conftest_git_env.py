@@ -1,9 +1,13 @@
 """Regression test: tests that set up git repos must not reach the repo a hook runs in."""
 
+import site
 import subprocess
 from pathlib import Path
 
 ROOT_CONFTEST = Path(__file__).resolve().parent.parent / "conftest.py"
+# Read at import, before pytester points HOME at its tmp dir: a pytest
+# installed with `pip --user` lives under the real HOME.
+OUTER_USER_BASE = site.getuserbase()
 
 FIXTURE_STYLE_GIT_SETUP = """
 import subprocess
@@ -36,6 +40,8 @@ def _run_inner_session(pytester, monkeypatch, decoy_git_dir: Path):
     pytester.makepyfile(test_scratch_repo=FIXTURE_STYLE_GIT_SETUP)
     # What a pre-push hook in a linked worktree hands its children.
     monkeypatch.setenv("GIT_DIR", str(decoy_git_dir))
+    # Without it the child looks for its pytest under pytester's HOME.
+    monkeypatch.setenv("PYTHONUSERBASE", OUTER_USER_BASE)
     return pytester.runpytest_subprocess("-p", "no:cacheprovider")
 
 

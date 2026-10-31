@@ -17,6 +17,34 @@ make_bare_checkout() {
   cp "$CHECK_ALL" "$REPO_ROOT/scripts/require_python.sh" "$bare_checkout/scripts/"
 }
 
+# A bare checkout whose Bats runner only sets up a scratch repo the way the
+# suites' fixtures do: `git init` in a temp dir, then `git config` in it.
+make_checkout_with_scratch_repo_runner() {
+  make_bare_checkout
+  local bats_dir="$bare_checkout/test/bats"
+  mkdir -p "$bats_dir/bats-core/bin" "$bats_dir/bats-support" "$bats_dir/bats-assert"
+  touch "$bats_dir/bats-support/load.bash" "$bats_dir/bats-assert/load.bash"
+  scratch_repo_runner="$bats_dir/bats-core/bin/bats"
+  cat >"$scratch_repo_runner" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+scratch="$(mktemp -d)"
+git init -q "$scratch"
+git -C "$scratch" config user.name Test
+EOF
+  chmod +x "$scratch_repo_runner"
+}
+
+# A throwaway repository standing in for the one a pre-push hook runs in.
+make_decoy_repo() {
+  git init -q "$BATS_TEST_TMPDIR/decoy"
+  decoy_git_dir="$BATS_TEST_TMPDIR/decoy/.git"
+}
+
+decoy_config() {
+  git config --file "$decoy_git_dir/config" --list
+}
+
 @test "--help prints the usage and exit codes" {
   run "$CHECK_ALL" --help
   assert_success
@@ -74,10 +102,39 @@ make_bare_checkout() {
   grep -q '^===== instructions (exit 2)$' "$bare_checkout/full.log"
 }
 
+@test "a missing Python tool names the pip of the interpreter the checks use" {
+  "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/bare"
+  bare_python="$BATS_TEST_TMPDIR/bare/bin/python3"
+  run env PYTHON="$bare_python" "$CHECK_ALL" --only pytest
+  assert_failure 3
+  assert_line "MISSING pytest: not installed: pytest pyyaml ($bare_python -m pip install -r scripts/check_all.requirements.txt)"
+}
+
 @test "missing Bats submodules report MISSING with the fix and exit 3" {
   make_bare_checkout
   run "$bare_checkout/scripts/check_all.sh" --only bats
   assert_failure 3
   assert_line 'MISSING bats: not installed: bats-submodules (git submodule update --init)'
   assert_line 'summary: 0 failed, 1 missing (bats)'
+}
+
+@test "check_all.sh keeps a check's scratch-repo setup off the hook's GIT_DIR" {
+  # From a linked worktree, git hands the pre-push hook an absolute GIT_DIR.
+  make_checkout_with_scratch_repo_runner
+  make_decoy_repo
+  before="$(decoy_config)"
+  run env GIT_DIR="$decoy_git_dir" "$bare_checkout/scripts/check_all.sh" --only bats
+  # PASS proves the runner ran; MISSING or exit 4 would leave the decoy clean.
+  assert_success
+  assert_line --regexp '^PASS bats \([0-9]+s\)$'
+  assert_equal "$(decoy_config)" "$before"
+}
+
+@test "without check_all.sh the scratch-repo setup writes into the hook's GIT_DIR" {
+  # Proves the test above can go red, so its pass is not vacuous.
+  make_checkout_with_scratch_repo_runner
+  make_decoy_repo
+  before="$(decoy_config)"
+  env GIT_DIR="$decoy_git_dir" "$scratch_repo_runner"
+  assert_not_equal "$(decoy_config)" "$before"
 }
