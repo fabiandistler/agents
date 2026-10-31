@@ -43,6 +43,8 @@ repos:
     rev: v0.0.84
     hooks:
       - id: ty
+        # pytest is imported directly by the test modules, so ty must resolve
+        # it from the hook environment; there is no pyproject.toml to read.
         additional_dependencies: ["pyyaml>=6", "pytest"]
 
   # Shell: linting and formatting.

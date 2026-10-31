@@ -20,6 +20,7 @@ governs; the replacement ADR or current record is named).
 | [0008](0008-fork-improve-codebase.md) | Accepted (2026-10-13); A/B gate passed | Fork `improve-codebase` into the catalogue instead of patching the vendored command. |
 | [0009](0009-fork-pr-description.md) | Superseded (2026-10-20); amended same day | Fork `pr-description` instead of patching `pr`. The skill was removed; Pocock's `pr` is vendored again. |
 | [0010](0010-claude-marketplace-hybrid.md) | Accepted (2026-10-22); amended for `secret-guard`; supersedes [0004](0004-distribution-channels-per-surface.md) in part | `claude` gets plugins from the marketplace only; `codex` and `opencode` keep `install.sh`. |
+| [0011](0011-pr-review-merge-exception.md) | Accepted (2026-10-28); not yet active (#635) | One model-free CI publisher may enable native auto-merge for gated docs-only PRs; interactive agents still never merge. |
 
 ## Supersession
 
