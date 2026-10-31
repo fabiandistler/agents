@@ -12,12 +12,13 @@ copy of it drifted from upstream, so every scanner fix had to be ported by hand
 (#673, #675). This script copies the scanner from upstream
 `plugins/repo-maintenance/assets/` together with the two helpers it loads from its
 own directory, so the three stay siblings and keep upstream's file mode. The
-pinned commit, a sha256 per file and upstream's license live in
+pinned commit, a sha256 and git file mode per file, and upstream's license live in
 `vendor/repo-maintenance/`. A re-run at the same ref changes nothing.
 
-`--check` hashes the vendored files and compares them with the lock, without
-network access; `scripts/check_all.sh` runs it as the `vendor-lock` check. Fixes go
-upstream, then a re-vendor brings them here: a local edit fails the check.
+`--check` hashes the vendored files, reads their mode, and compares both with the
+lock, without network access; `scripts/check_all.sh` runs it as the `vendor-lock`
+check. Fixes go upstream, then a re-vendor brings them here: a local edit, a
+flipped executable bit or a hand-edited lock fails the check.
 
 Exit codes are in EPILOG below. Needs git (except --check); stdlib-only.
 """
@@ -28,6 +29,7 @@ import argparse
 import hashlib
 import json
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -48,42 +50,94 @@ REVENDOR = "python3 scripts/vendor_repo_maintenance.py --ref"
 
 DESCRIPTION = """\
 Copy maintenance-scan.sh and its two helpers from fabiandistler/repo-maintenance
-(plugins/repo-maintenance/assets/) into scripts/; pin the commit and a sha256 per
-file in vendor/repo-maintenance/lock.json."""
+(plugins/repo-maintenance/assets/) into scripts/; pin the commit and each file's
+sha256 and git mode in vendor/repo-maintenance/lock.json."""
 EPILOG = """\
 examples:
   python3 scripts/vendor_repo_maintenance.py --ref <commit>
   python3 scripts/vendor_repo_maintenance.py --check
 
 exit: 0 ok | 1 git clone/checkout failed | 2 usage error
-      3 a vendored file is missing upstream at REF (nothing written)
-      4 --check: a vendored file differs from the lock or is missing, or there is no lock"""
+      3 a vendored file or LICENSE is missing upstream at REF (nothing written)
+      4 --check: the lock is missing or malformed or lists other files than the
+        three, or a vendored file is missing or differs in content or mode"""
+
+
+class LockError(Exception):
+    """lock.json is not JSON, or a field --check reads is missing or of the wrong type."""
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def git_mode(path: Path) -> str:
+    """The mode git records for a regular file: only the owner's execute bit counts,
+    so a checkout under another umask (0664 instead of 0644) still matches."""
+    return "100755" if path.stat().st_mode & stat.S_IXUSR else "100644"
+
+
 def rel(path: Path) -> str:
     return path.relative_to(REPO_ROOT).as_posix()
+
+
+def read_lock() -> dict:
+    """Parse the lock and check the type of every field --check reads."""
+    where = rel(LOCK_PATH)
+    try:
+        lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise LockError(f"{where}: not valid JSON (line {exc.lineno}, column {exc.colno})") from exc
+    if not isinstance(lock, dict):
+        raise LockError(f"{where}: must be a JSON object")
+    if not isinstance(lock.get("commit"), str):
+        raise LockError(f'{where}: field "commit" is missing or not a string')
+    if not isinstance(lock.get("files"), dict):
+        raise LockError(f'{where}: field "files" is missing or not an object')
+    for path, entry in lock["files"].items():
+        if not (
+            isinstance(entry, dict)
+            and isinstance(entry.get("sha256"), str)
+            and isinstance(entry.get("mode"), str)
+        ):
+            raise LockError(
+                f'{where}: field files["{path}"] must be an object with string fields'
+                ' "sha256" and "mode"'
+            )
+    return lock
 
 
 def check() -> int:
     if not LOCK_PATH.is_file():
         sys.stderr.write(f"no lock at {rel(LOCK_PATH)}; vendor first: {REVENDOR} <commit>\n")
         return 4
-    lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+    try:
+        lock = read_lock()
+    except LockError as exc:
+        sys.stderr.write(
+            f"{exc}\nFix: re-vendor instead of editing the lock: {REVENDOR} <commit>\n"
+        )
+        return 4
     commit = lock["commit"]
-    drifted = []
+    locked_files = lock["files"]
+    vendored_paths = {rel(SCRIPTS_DIR / name) for name in VENDORED}
+    drifted = [
+        f"{path}: in {rel(LOCK_PATH)} but not vendored"
+        for path in sorted(locked_files.keys() - vendored_paths)
+    ]
     for name in VENDORED:
         target = SCRIPTS_DIR / name
-        locked = lock["files"].get(rel(target))
+        locked = locked_files.get(rel(target))
         if locked is None:
             drifted.append(f"{rel(target)}: not in {rel(LOCK_PATH)}")
-        elif not target.is_file():
+            continue
+        if not target.is_file():
             drifted.append(f"{rel(target)}: missing")
-        elif sha256(target) != locked:
+            continue
+        if sha256(target) != locked["sha256"]:
             drifted.append(f"{rel(target)}: differs from repo-maintenance {commit[:12]}")
+        if git_mode(target) != locked["mode"]:
+            drifted.append(f"{rel(target)}: mode {git_mode(target)}, lock has {locked['mode']}")
     if drifted:
         sys.stderr.write(f"vendored repo-maintenance files: {len(drifted)} drifted\n")
         for line in drifted:
@@ -106,11 +160,14 @@ def vendor(ref: str, dry_run: bool) -> int:
             sys.stderr.write(f"git failed: {exc.stderr}")
             return 1
         sources = {name: clone / UPSTREAM_ASSETS / name for name in VENDORED}
-        missing = [name for name, source in sources.items() if not source.is_file()]
+        license_source = clone / "LICENSE"
+        missing = [
+            source.relative_to(clone).as_posix()
+            for source in [*sources.values(), license_source]
+            if not source.is_file()
+        ]
         if missing:
-            sys.stderr.write(
-                f"missing upstream in {UPSTREAM_ASSETS}/ at {commit[:12]}: {', '.join(missing)}\n"
-            )
+            sys.stderr.write(f"missing upstream at {commit[:12]}: {', '.join(missing)}\n")
             return 3
 
         print(f"repo-maintenance {commit[:12]}: {len(sources)} files into {rel(SCRIPTS_DIR)}/")
@@ -123,11 +180,17 @@ def vendor(ref: str, dry_run: bool) -> int:
             # shutil.copy keeps upstream's mode, so the scanner stays executable.
             shutil.copy(source, SCRIPTS_DIR / name)
         VENDOR_DIR.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(clone / "LICENSE", VENDOR_DIR / "LICENSE")
+        shutil.copyfile(license_source, VENDOR_DIR / "LICENSE")
         lock = {
             "upstream": UPSTREAM,
             "commit": commit,
-            "files": {rel(SCRIPTS_DIR / name): sha256(SCRIPTS_DIR / name) for name in VENDORED},
+            "files": {
+                rel(SCRIPTS_DIR / name): {
+                    "sha256": sha256(SCRIPTS_DIR / name),
+                    "mode": git_mode(SCRIPTS_DIR / name),
+                }
+                for name in VENDORED
+            },
         }
         LOCK_PATH.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
     print(f"lock at {rel(LOCK_PATH)}")

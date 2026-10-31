@@ -2,9 +2,12 @@
 
 The three files land in `scripts/` byte-identical to upstream, the scanner keeps
 its executable bit, a re-run at the same ref changes nothing, and `--check`
-reports a one-byte edit by file name without touching the network.
+reports a one-byte edit, a flipped executable bit, a deleted file and a lock
+whose file list differs from the vendored one, by file name and without touching
+the network. A malformed lock exits 4 with the broken field, not a traceback.
 """
 
+import hashlib
 import json
 import stat
 import subprocess
@@ -19,6 +22,9 @@ ASSETS = {
     "maintenance-r-advisories.py": b"#!/usr/bin/env python3\nprint('advisories')\n",
     "maintenance-new-deps.py": b"#!/usr/bin/env python3\nprint('new deps')\n",
 }
+# Upstream ships all three executable; this fake one is not, so the lock's
+# "100644" mode is exercised as well as "100755".
+NOT_EXECUTABLE = "maintenance-new-deps.py"
 
 
 def _git(cwd: Path, *args: str) -> None:
@@ -30,14 +36,16 @@ def _git(cwd: Path, *args: str) -> None:
 
 
 def _fake_upstream(tmp_path: Path, *, skip: str | None = None) -> Path:
+    """A local upstream repo; `skip` names an asset or "LICENSE" to leave out."""
     upstream = tmp_path / "upstream"
     assets = upstream / vendor.UPSTREAM_ASSETS
     assets.mkdir(parents=True)
     for name, content in ASSETS.items():
         if name != skip:
             (assets / name).write_bytes(content)
-            (assets / name).chmod(0o755)
-    (upstream / "LICENSE").write_text("MIT\n", encoding="utf-8")
+            (assets / name).chmod(0o644 if name == NOT_EXECUTABLE else 0o755)
+    if skip != "LICENSE":
+        (upstream / "LICENSE").write_text("MIT\n", encoding="utf-8")
     _git(upstream, "init", "-q", "-b", "main")
     _git(upstream, "add", "-A")
     _git(upstream, "commit", "-qm", "fake")
@@ -67,6 +75,16 @@ def _vendor(tmp_path, monkeypatch, *args: str, skip: str | None = None) -> int:
     return _main(monkeypatch, *args)
 
 
+def _lock_path(repo: Path) -> Path:
+    return repo / "vendor" / "repo-maintenance" / "lock.json"
+
+
+def _edit_lock(repo: Path, edit) -> None:
+    lock = json.loads(_lock_path(repo).read_text("utf-8"))
+    edit(lock)
+    _lock_path(repo).write_text(json.dumps(lock), encoding="utf-8")
+
+
 def test_files_are_byte_identical_and_scanner_stays_executable(repo, tmp_path, monkeypatch):
     assert _vendor(tmp_path, monkeypatch) == 0
     for name, content in ASSETS.items():
@@ -75,21 +93,28 @@ def test_files_are_byte_identical_and_scanner_stays_executable(repo, tmp_path, m
     assert (repo / "vendor" / "repo-maintenance" / "LICENSE").read_text(encoding="utf-8") == "MIT\n"
 
 
-def test_lock_pins_commit_and_hashes(repo, tmp_path, monkeypatch):
+def test_lock_pins_commit_hashes_and_modes(repo, tmp_path, monkeypatch):
     assert _vendor(tmp_path, monkeypatch) == 0
-    lock = json.loads((repo / "vendor" / "repo-maintenance" / "lock.json").read_text("utf-8"))
+    lock = json.loads(_lock_path(repo).read_text("utf-8"))
     assert lock["upstream"] == vendor.UPSTREAM
     assert len(lock["commit"]) == 40
-    assert sorted(lock["files"]) == sorted(f"scripts/{name}" for name in ASSETS)
+    assert lock["files"] == {
+        f"scripts/{name}": {
+            "sha256": hashlib.sha256(content).hexdigest(),
+            "mode": "100644" if name == NOT_EXECUTABLE else "100755",
+        }
+        for name, content in ASSETS.items()
+    }
 
 
 def test_rerun_at_same_ref_changes_nothing(repo, tmp_path, monkeypatch):
     assert _vendor(tmp_path, monkeypatch) == 0
-    lock_path = repo / "vendor" / "repo-maintenance" / "lock.json"
-    first = {p: p.read_bytes() for p in [lock_path, *(repo / "scripts").iterdir()]}
+    lock_path = _lock_path(repo)
+    paths = [lock_path, *(repo / "scripts").iterdir()]
+    first = {p: (p.read_bytes(), p.stat().st_mode) for p in paths}
     commit = json.loads(lock_path.read_text("utf-8"))["commit"]
     assert _main(monkeypatch, "--ref", commit) == 0
-    assert {p: p.read_bytes() for p in first} == first
+    assert {p: (p.read_bytes(), p.stat().st_mode) for p in paths} == first
 
 
 def test_dry_run_writes_nothing(repo, tmp_path, monkeypatch):
@@ -98,9 +123,18 @@ def test_dry_run_writes_nothing(repo, tmp_path, monkeypatch):
     assert not (repo / "vendor").exists()
 
 
-def test_asset_missing_upstream_fails_without_writing(repo, tmp_path, monkeypatch, capsys):
-    assert _vendor(tmp_path, monkeypatch, skip="maintenance-new-deps.py") == 3
-    assert "maintenance-new-deps.py" in capsys.readouterr().err
+@pytest.mark.parametrize(
+    ("skip", "upstream_path"),
+    [
+        ("maintenance-new-deps.py", f"{vendor.UPSTREAM_ASSETS}/maintenance-new-deps.py"),
+        ("LICENSE", "LICENSE"),
+    ],
+)
+def test_file_missing_upstream_fails_without_writing(
+    repo, tmp_path, monkeypatch, capsys, skip, upstream_path
+):
+    assert _vendor(tmp_path, monkeypatch, skip=skip) == 3
+    assert upstream_path in capsys.readouterr().err
     assert list((repo / "scripts").iterdir()) == []
     assert not (repo / "vendor").exists()
 
@@ -121,6 +155,93 @@ def test_check_names_a_one_byte_edit(repo, tmp_path, monkeypatch, capsys, name):
     assert "vendor_repo_maintenance.py --ref" in err
     others = [other for other in ASSETS if other != name]
     assert not any(f"scripts/{other}" in err for other in others)
+
+
+@pytest.mark.parametrize("name", list(ASSETS))
+def test_check_names_a_flipped_executable_bit(repo, tmp_path, monkeypatch, capsys, name):
+    assert _vendor(tmp_path, monkeypatch) == 0
+    capsys.readouterr()
+    target = repo / "scripts" / name
+    target.chmod(target.stat().st_mode ^ 0o111)
+    assert _main(monkeypatch, "--check") == 4
+    err = capsys.readouterr().err
+    assert f"scripts/{name}: mode" in err
+    others = [other for other in ASSETS if other != name]
+    assert not any(f"scripts/{other}" in err for other in others)
+
+
+def test_check_ignores_permission_bits_git_does_not_track(repo, tmp_path, monkeypatch):
+    # Checkouts differ by umask (0644 vs 0664); git records only the owner's x bit.
+    assert _vendor(tmp_path, monkeypatch) == 0
+    (repo / "scripts" / "maintenance-scan.sh").chmod(0o775)
+    (repo / "scripts" / NOT_EXECUTABLE).chmod(0o664)
+    assert _main(monkeypatch, "--check") == 0
+
+
+def test_check_names_a_deleted_file(repo, tmp_path, monkeypatch, capsys):
+    assert _vendor(tmp_path, monkeypatch) == 0
+    capsys.readouterr()
+    (repo / "scripts" / "maintenance-r-advisories.py").unlink()
+    assert _main(monkeypatch, "--check") == 4
+    assert "scripts/maintenance-r-advisories.py: missing" in capsys.readouterr().err
+
+
+def test_check_names_a_file_the_lock_lacks(repo, tmp_path, monkeypatch, capsys):
+    assert _vendor(tmp_path, monkeypatch) == 0
+    capsys.readouterr()
+    _edit_lock(repo, lambda lock: lock["files"].pop("scripts/maintenance-r-advisories.py"))
+    assert _main(monkeypatch, "--check") == 4
+    assert "scripts/maintenance-r-advisories.py: not in" in capsys.readouterr().err
+
+
+def test_check_names_a_lock_entry_that_is_not_vendored(repo, tmp_path, monkeypatch, capsys):
+    assert _vendor(tmp_path, monkeypatch) == 0
+    capsys.readouterr()
+    # A copy of a well-formed entry, so only the file set is wrong.
+    _edit_lock(
+        repo,
+        lambda lock: lock["files"].update(
+            {"scripts/maintenance-extra.sh": lock["files"]["scripts/maintenance-scan.sh"]}
+        ),
+    )
+    assert _main(monkeypatch, "--check") == 4
+    err = capsys.readouterr().err
+    assert "scripts/maintenance-extra.sh" in err
+    assert not any(f"scripts/{name}" in err for name in ASSETS)
+
+
+SHA = "0" * 64
+COMMIT = "1" * 40
+
+
+@pytest.mark.parametrize(
+    ("lock_text", "field"),
+    [
+        ("{}", '"commit"'),
+        # A merge conflict committed without resolving it.
+        ("<<<<<<< HEAD\n{}\n=======\n{}\n>>>>>>> main\n", "not valid JSON"),
+        ("[]", "JSON object"),
+        (json.dumps({"commit": COMMIT, "files": []}), '"files"'),
+        # The format before modes were locked: a bare sha256 per file.
+        (
+            json.dumps({"commit": COMMIT, "files": {"scripts/maintenance-scan.sh": SHA}}),
+            'files["scripts/maintenance-scan.sh"]',
+        ),
+        (
+            json.dumps(
+                {"commit": COMMIT, "files": {"scripts/maintenance-scan.sh": {"sha256": SHA}}}
+            ),
+            'files["scripts/maintenance-scan.sh"]',
+        ),
+    ],
+)
+def test_check_names_the_broken_lock_field(repo, monkeypatch, capsys, lock_text, field):
+    _lock_path(repo).parent.mkdir(parents=True)
+    _lock_path(repo).write_text(lock_text, encoding="utf-8")
+    assert _main(monkeypatch, "--check") == 4
+    err = capsys.readouterr().err
+    assert "vendor/repo-maintenance/lock.json" in err
+    assert field in err
 
 
 def test_check_without_lock_fails(repo, monkeypatch, capsys):
