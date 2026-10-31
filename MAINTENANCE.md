@@ -86,6 +86,12 @@ CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$PWD" \
 . "$HOME/.cache/agents-check-tools.env" && scripts/check_all.sh
 ```
 
+`git push` is one of those shells: the pre-push hooks run `scripts/check_all.sh` with the
+`python3` on `PATH`. From an unsourced shell that is the image's interpreter without
+`pytest`, so the hook reports `MISSING pytest` and rejects the push. Push with
+`. "$HOME/.cache/agents-check-tools.env" && git push …`; never fall back to
+`git push --no-verify`.
+
 Do not `pip install` the tools into the image's Python instead; the hook's venv is the
 path that keeps them where `check_all.sh` looks. If the hook logs `MISSING go`, it then
 exits non-zero at `prek install-hooks`, its last step, after the venv and the Bats
