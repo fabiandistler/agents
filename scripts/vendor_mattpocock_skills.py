@@ -12,6 +12,8 @@ copied in as plain project skills. The skill list is upstream's own
 not part of it), plus the `in-progress/` skills named in INCLUDED_IN_PROGRESS. The pinned commit, the vendored names and upstream's MIT
 license live in `.claude/vendor/mattpocock-skills/`. A re-run replaces exactly
 the previously vendored directories, so a skill upstream dropped disappears.
+A newly vendored skill also needs a `.claude/skills/<name>/** linguist-vendored`
+line in `.gitattributes`; scripts/test_gitattributes.py fails until it has one.
 
 Upstream skills named in the EXCLUDED constant are never vendored; the reason
 sits next to the constant. An excluded name is neither copied nor reported as a
