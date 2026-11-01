@@ -177,6 +177,9 @@ rather than landing on `main`. The same install adds a commit-msg hook that
 rejects subjects outside Conventional Commits and two pre-push hooks: one runs
 `check_all.sh` without its prek, mermaid and bats checks, the other runs just
 the bats check (export `PYTHON=` as above, or the push stops with exit 4).
+The `check-file-tokens` hook blocks a commit that stages a text file over 5000
+tokens (bytes / 4, so over 20000 bytes) and prints how to split it along its
+seams; mark a generated file `linguist-generated` in `.gitattributes` instead.
 A clone runs only the hook types that `default_install_hook_types` listed
 when `prek install` last ran, so run it again after a pull adds one.
 

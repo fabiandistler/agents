@@ -85,6 +85,20 @@ repos:
     hooks:
       - id: gitleaks
 
+  # Agent context budget: blocks staged text files over 5000 tokens
+  # (tokens = bytes / 4) and prints how to split them. The script is vendored
+  # from repo-maintenance by scripts/vendor_repo_maintenance.py; lockfiles,
+  # minified bundles and generated or vendored files (generator banner, or
+  # linguist-generated / linguist-vendored in .gitattributes) are skipped.
+  # bash runs it, so a lost executable bit does not break the hook.
+  - repo: local
+    hooks:
+      - id: check-file-tokens
+        name: files stay under 5000 tokens (bytes / 4)
+        entry: bash scripts/hooks/check-file-tokens.sh
+        language: system
+        types: [text]
+
   # Generated files: skills.json, the router member tables and the .claude/
   # mirror. Each hook runs its generator's --check and, on drift, regenerates
   # and fails, so the commit stops with the regenerated files ready to stage
