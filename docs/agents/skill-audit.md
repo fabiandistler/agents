@@ -44,7 +44,8 @@ Per run, at most:
 1. **Prepare.** From the repo root on the default branch:
    `git fetch --shallow-since='8 days ago' origin main` (the routine's clone
    is shallow; without this, step 3 undercounts changed skills). Read
-   `AGENTS.md`, `docs/agents/skill-audit-checklist.md`, and the open
+   `AGENTS.md`, `docs/skill-conventions.md`,
+   `docs/agents/skill-audit-checklist.md`, and the open
    `skill-audit` issue, if any, including its *Accepted* section. Note
    whether an audit PR (head branch `claude/skill-audit-*`) is still open.
 
