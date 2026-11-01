@@ -1,0 +1,5 @@
+# install.sh sources its parts from scripts/install/. Follow those
+# `# shellcheck source=` directives even when install.sh is checked without
+# its parts on the command line: a commit that stages install.sh alone, or a
+# prek batch that splits the file list.
+external-sources=true
