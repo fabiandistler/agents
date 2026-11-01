@@ -149,9 +149,9 @@ Scanner fixes go upstream, then a re-vendor brings them here: the `vendor-lock` 
 against the lock offline. It does not compare the lock against upstream, so after a merge
 conflict in `lock.json`, re-vendor instead of hand-merging.
 
-Four hooks skip the vendored files: ruff (`ruff-check` and `ruff-format`) and ty skip the two
-Python helpers (`ruff.toml`, `ty.toml`), and shellcheck and shfmt skip the scanner
-(`.pre-commit-config.yaml`). trailing-whitespace and end-of-file-fixer still run on all
+These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the two
+Python helpers (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner
+(`.pre-commit-config.yaml`). `trailing-whitespace` and `end-of-file-fixer` still run on all
 three, as they do upstream.
 
 The scanner keys off `DESCRIPTION` (R) and `pyproject.toml` / `requirements.txt` (Python)
