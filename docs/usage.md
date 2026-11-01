@@ -50,10 +50,10 @@ markers is never touched.
 requests or enabling auto-merge: the `merge-guard` plugin in Claude Code,
 `./install.sh --merge-guard` for Codex CLI and opencode. This repo's
 `.claude/settings.json` carries the same hook for cloud sessions. Details and limits:
-[docs/install.md](install.md#pr-merge-guard---merge-guard).
+[docs/install-optional-components.md](install-optional-components.md#pr-merge-guard---merge-guard).
 The `secret-guard` plugin (`--secret-guard`) likewise blocks reading credential
 files and dumping the environment:
-[docs/install.md](install.md#secret-read-guard---secret-guard).
+[docs/install-optional-components.md](install-optional-components.md#secret-read-guard---secret-guard).
 
 **Reading without installing.** [`skills.json`](../skills.json) is the generated
 machine-readable manifest: `scripts/build_manifest.py` writes it from each
