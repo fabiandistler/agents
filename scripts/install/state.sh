@@ -274,8 +274,8 @@ plan_uninstall_state() {
       UNINSTALL_STATE_INSTRUCTIONS=$((SAVED_INSTRUCTIONS && ! INSTRUCTIONS))
       UNINSTALL_STATE_MERGE="$SAVED_MERGE"
       [[ "$GUARDS" != *' merge'* ]] || UNINSTALL_STATE_MERGE=0
-      UNINSTALL_STATE_SECRET="$SAVED_SECRET"
-      [[ "$GUARDS" != *' secret'* ]] || UNINSTALL_STATE_SECRET=0
+      UNINSTALL_STATE_READ_GUARD="$SAVED_SECRET"
+      [[ "$GUARDS" != *' secret'* ]] || UNINSTALL_STATE_READ_GUARD=0
     fi
   elif [[ -z "$kept_categories" ]]; then
     UNINSTALL_STATE_ACTION=rewrite
@@ -283,7 +283,7 @@ plan_uninstall_state() {
     UNINSTALL_STATE_CATEGORY="$SAVED_CATEGORY"
     UNINSTALL_STATE_INSTRUCTIONS="$SAVED_INSTRUCTIONS"
     UNINSTALL_STATE_MERGE="$SAVED_MERGE"
-    UNINSTALL_STATE_SECRET="$SAVED_SECRET"
+    UNINSTALL_STATE_READ_GUARD="$SAVED_SECRET"
   else
     UNINSTALL_STATE_ACTION=partial
   fi
@@ -313,7 +313,7 @@ apply_uninstall_state() {
     printf '  removed   %s (install state)\n' "$file"
   else
     write_install_state "$UNINSTALL_STATE_TARGETS" "$SAVED_ENV" "$UNINSTALL_STATE_CATEGORY" \
-      "$UNINSTALL_STATE_INSTRUCTIONS" "$UNINSTALL_STATE_MERGE" "$UNINSTALL_STATE_SECRET" \
+      "$UNINSTALL_STATE_INSTRUCTIONS" "$UNINSTALL_STATE_MERGE" "$UNINSTALL_STATE_READ_GUARD" \
       "$SAVED_REPO_ROOT"
     printf '  updated   %s (install state)\n' "$file"
   fi
