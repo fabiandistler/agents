@@ -32,4 +32,5 @@ governs; the replacement ADR or current record is named).
 - **0008:** the A/B gate passed. The runs and their verdict are in
   [`docs/evals/improve-codebase-ab.md`](../evals/improve-codebase-ab.md).
 - **0010:** amended for the `secret-guard` plugin, which follows the same
-  split as the merge guard.
+  split as the merge guard, and for `install.sh` installing both guard
+  plugins through the `claude` CLI.

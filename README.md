@@ -75,12 +75,12 @@ behaviour is in [`docs/install.md`](docs/install.md).
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--target=claude\|codex\|opencode\|all\|detected` | required for installs | Which agent's skill directory to link into (`claude`: none, only `--instructions` plus cleanup of old links; `detected`: every agent whose command or config directory exists). `--update` rejects it; the targetless `--uninstall --git-hook` removes only the Git hooks |
+| `--target=claude\|codex\|opencode\|all\|detected` | required for installs | Which agent's skill directory to link into (`claude`: none, only `--instructions`, the guard plugins and cleanup of old links; `detected`: every agent whose command or config directory exists). `--update` rejects it; the targetless `--uninstall --git-hook` removes only the Git hooks |
 | `--category=<name>[,<name>...]` | all | Restrict to categories: `architecture`, `refactoring`, `ai-ml`, `workflow`, `communication`, `personal` (not Claude: install only some plugins instead) |
 | `--env=coding\|chat\|all` | `all` | Restrict by each skill's `environments:` field — coding agent vs chat app (not Claude) |
 | `--instructions` | off | Compose always-on rules and pointers, install on-demand files, and add Claude's `uv init` context hook |
-| `--merge-guard` | off | Also install the PR merge guard hook (Codex, opencode; Claude uses the `merge-guard` plugin) |
-| `--secret-guard` | off | Also install the secret read guard hook (Codex, opencode; Claude uses the `secret-guard` plugin) |
+| `--merge-guard` | off | Also install the PR merge guard hook (Codex, opencode; for Claude the `merge-guard` plugin, through the `claude` CLI) |
+| `--secret-guard` | off | Also install the secret read guard hook (Codex, opencode; for Claude the `secret-guard` plugin, through the `claude` CLI) |
 | `--dry-run` | off | Print every action, change nothing |
 | `--uninstall` | off | Remove every artifact this installer created for the selected target: links, generated agent files, managed blocks, guard hooks and config. Drop it from the saved state, deleting that file when the selection is empty. Foreign files are never touched |
 | `--check` | off | Report drift between the selected install and the managed files; exit 0 clean, 3 drift; writes no managed files, and `--output` writes the report |

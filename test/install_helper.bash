@@ -17,6 +17,106 @@ install_setup() {
   # real state directory.
   XDG_STATE_HOME="$(mktemp -d)"
   export XDG_STATE_HOME
+  install_claude_stub
+}
+
+# A fake claude CLI first on PATH, so the guard plugin code never reaches a
+# real Claude Code install. Per HOME it keeps one list per file under
+# claude_stub_dir: installed (user scope, enabled), disabled (user scope),
+# project (project scope), marketplaces, and calls, its call log. A call
+# matching the line in a `fail` file there exits 1; a call it does not know
+# exits 64.
+install_claude_stub() {
+  CLAUDE_STUB_ROOT="$(mktemp -d)"
+  mkdir "$CLAUDE_STUB_ROOT/bin"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf 'stub_root=%q\n' "$CLAUDE_STUB_ROOT"
+    cat <<'STUB'
+set -euo pipefail
+state="$stub_root/home${HOME//\//_}"
+mkdir -p "$state"
+touch "$state/installed" "$state/disabled" "$state/project" "$state/marketplaces"
+printf '%s\n' "$*" >>"$state/calls"
+if [[ -f "$state/fail" && "$*" == "$(cat "$state/fail")" ]]; then
+  echo "claude stub: failing on request: $*" >&2
+  exit 1
+fi
+entries=""
+add_plugins() {
+  local id
+  while IFS= read -r id; do
+    entries+=",{\"id\":\"$id\",\"scope\":\"$2\",\"enabled\":$3}"
+  done <"$state/$1"
+}
+case "$*" in
+  "plugin list --json")
+    add_plugins installed user true
+    add_plugins disabled user false
+    add_plugins project project true
+    printf '[%s]\n' "${entries#,}"
+    ;;
+  "plugin marketplace list --json")
+    while IFS= read -r name; do entries+=",{\"name\":\"$name\"}"; done <"$state/marketplaces"
+    printf '[%s]\n' "${entries#,}"
+    ;;
+  "plugin marketplace add fabiandistler/agents")
+    echo fabiandistler-agents >>"$state/marketplaces"
+    ;;
+  "plugin install "*@fabiandistler-agents)
+    grep -Fxq fabiandistler-agents "$state/marketplaces" || {
+      echo "claude stub: marketplace fabiandistler-agents not added" >&2
+      exit 1
+    }
+    echo "$3" >>"$state/installed"
+    ;;
+  "plugin uninstall "*)
+    grep -Fxq "$3" "$state/installed" "$state/disabled" || {
+      echo "claude stub: $3 not installed" >&2
+      exit 1
+    }
+    for list in installed disabled; do
+      grep -Fxv "$3" "$state/$list" >"$state/$list.new" || true
+      mv "$state/$list.new" "$state/$list"
+    done
+    ;;
+  *)
+    echo "claude stub: unexpected call: $*" >&2
+    exit 64
+    ;;
+esac
+STUB
+  } >"$CLAUDE_STUB_ROOT/bin/claude"
+  chmod +x "$CLAUDE_STUB_ROOT/bin/claude"
+  PATH="$CLAUDE_STUB_ROOT/bin:$PATH"
+}
+
+# claude_stub_dir HOME: the stub's state directory for HOME, created on demand
+# so a test can seed it before install.sh runs.
+claude_stub_dir() {
+  local dir="$CLAUDE_STUB_ROOT/home${1//\//_}"
+  mkdir -p "$dir"
+  printf '%s' "$dir"
+}
+
+# PATH without any claude command: drops the stub and replaces every other
+# directory that holds a claude command with links to its other commands.
+path_without_claude() {
+  local dir entry shadow new_path=""
+  local -a dirs
+  IFS=: read -ra dirs <<<"$PATH"
+  for dir in "${dirs[@]}"; do
+    [[ "$dir" == "$CLAUDE_STUB_ROOT/bin" ]] && continue
+    if [[ -x "$dir/claude" ]]; then
+      shadow="$(mktemp -d)"
+      for entry in "$dir"/*; do
+        [[ "${entry##*/}" == claude ]] || ln -s "$entry" "$shadow/"
+      done
+      dir="$shadow"
+    fi
+    new_path+="${new_path:+:}$dir"
+  done
+  printf '%s' "$new_path"
 }
 
 # run_install HOME ARGS...: install.sh under HOME through Bats' run, so
