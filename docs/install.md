@@ -310,10 +310,9 @@ guard is a model-free pre-tool hook: before each shell or MCP tool call it runs
 call and tells the agent to ask you to merge.
 
 ```sh
-./install.sh --target=all --merge-guard             # Codex and opencode
+./install.sh --target=all --merge-guard             # Claude Code, Codex and opencode
 ./install.sh --target=all --merge-guard --dry-run   # preview
 ./install.sh --target=all --merge-guard --uninstall # remove it again
-claude plugin install merge-guard@fabiandistler-agents  # Claude Code
 ```
 
 It blocks `gh pr merge` (including `--auto`), `gh api` or `curl` writes to
@@ -326,7 +325,7 @@ UI or your own terminal. The guard only checks the agent's tool calls.
 
 | Agent | What gets installed | Hook |
 |---|---|---|
-| `claude` | the `merge-guard` plugin: `hooks/hooks.json` runs `scripts/pr_merge_guard.py`, which the plugin ships as a symlink to the repository's script; `install.sh --merge-guard` only prints the install command | [PreToolUse](https://code.claude.com/docs/en/hooks), exit 2 blocks |
+| `claude` | the `merge-guard` plugin: `hooks/hooks.json` runs `scripts/pr_merge_guard.py`, which the plugin ships as a symlink to the repository's script; `install.sh --merge-guard` installs the plugin with the `claude` CLI (see [Claude Code: plugins only](#claude-code-plugins-only)) | [PreToolUse](https://code.claude.com/docs/en/hooks), exit 2 blocks |
 | `codex` | a managed `[[hooks.PreToolUse]]` block in `~/.codex/config.toml` | [PreToolUse](https://developers.openai.com/codex/hooks), exit 2 blocks |
 | `opencode` | symlink `~/.config/opencode/plugins/pr-merge-guard.js` | [`tool.execute.before`](https://opencode.ai/docs/plugins/) (1.x) and `ctx.tool.hook("execute.before")` ([2.x](https://opencode.ai/v2/docs/build/plugins)); a throw blocks |
 
@@ -362,9 +361,8 @@ call and tells the agent to ask you to run the command or to provide a
 sanitized value.
 
 ```sh
-./install.sh --target=all --secret-guard             # Codex and opencode
+./install.sh --target=all --secret-guard             # Claude Code, Codex and opencode
 ./install.sh --target=all --secret-guard --uninstall # remove it again
-claude plugin install secret-guard@fabiandistler-agents  # Claude Code
 ```
 
 It blocks reading these files through a shell command or a file tool (Claude
@@ -477,7 +475,16 @@ claude plugin install secret-guard@fabiandistler-agents
 
 For Claude, skills, commands, subagents, and merge/secret guard hooks come from
 plugins (#567). `--target=claude` syncs only shared instructions, path rules,
-the Python `uv init` context hook, and cleanup of old links. Plugins cannot ship
+the Python `uv init` context hook, the guard plugins, and cleanup of old links.
+
+With `--merge-guard` or `--secret-guard`, `install.sh` installs the
+`merge-guard` or `secret-guard` plugin in user scope with the `claude` CLI and
+first adds the marketplace if Claude does not know it yet. It leaves a plugin
+you disabled in `/plugin` disabled and warns instead, and `--check` reports
+it as `missing`. Without the `claude` CLI on `PATH`, it warns and prints the
+`claude plugin install` command. `--uninstall` with the same guard flag runs
+`claude plugin uninstall`. It does not update a plugin Claude already has;
+run `claude plugin marketplace update fabiandistler-agents` for that. Plugins cannot ship
 `CLAUDE.md` content or path-scoped rules. Every `--target=claude` run, install
 or `--uninstall`, also removes what earlier versions created, so skills do not
 load twice next to the plugins:

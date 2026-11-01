@@ -34,8 +34,8 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   which stops agents from reading credential files or dumping the environment.
   Claude Code gets skills, subagents, the merge guard and the secret read guard
   from the plugin marketplace only; `--target=claude` syncs just
-  `--instructions` and removes the links and settings entry older versions
-  created.
+  `--instructions`, installs the guard plugins through the `claude` CLI, and
+  removes the links and settings entry older versions created.
   See `./install.sh --help` and `docs/install.md`.
 - `instructions/` holds single-topic rule fragments, ordered by numeric
   filename prefix, in three tiers: 20, 25, 45, 50, 55 and 60 are always on;
