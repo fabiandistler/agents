@@ -96,74 +96,12 @@ behaviour is in [`docs/install.md`](docs/install.md).
 
 ## Usage
 
-**Skills fire on their description.** Most skills are model-triggered: the
-agent reads the one-paragraph `description` in every `SKILL.md` and loads the
-body when a request matches. You do not name them.
-
-**Two categories go through a router.** `architecture` and `ai-ml` register a
-single broad entry point that routes to the right sub-skill, so the category
-costs one trigger entry instead of one per sub-skill. Members live under the
-router's `members/` directory and load only when routed to. Ask for the
-situation, not for a member: the router loads and reads the member itself. A
-member has no registered name of its own, so do not expect `/architecture:ddd`;
-on Claude the registered entry is the router.
-
-**Command skills are invoked explicitly.** Skills marked `activation: command`
-are user-invoked only and install as commands. In Claude Code they carry the
-plugin namespace:
-
-- `/refactoring:improve-codebase`
-- `/workflow:oss-scouting`
-- `/workflow:poc-spec-loop`
-- `/workflow:pypet-snippets`
-- `/workflow:release-pr`
-- `/workflow:repo-status`
-- `/communication:tldr`
-- `/communication:was`
-
-OpenCode discovers them as `/name` slash commands from the ordinary skill
-directory through `opencode/slash` and `opencode/autoinvoke` metadata. Codex
-gets them as skills that run only on an explicit `$name`, such as
-`$oss-scouting`. The list above is hand-maintained; `skills.json` records
-`activation: command` for each one.
-
-**Shared rules are separate from skills.** Skills are capabilities loaded on
-demand. `instructions/` has three tiers: always-on rules, Claude path-scoped
-rules, and on-demand rules whose pointers stay in the global instruction file.
-`./install.sh --instructions` composes the always-on rules and pointers into
-`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` or
-`~/.config/opencode/AGENTS.md`, and installs the on-demand files under
-`~/.agents/instructions/`. Claude loads path-scoped rules only for matching
-files; the installer and this repo's cloud mirror add a Claude hook that
-supplies the Python baseline before `uv init`. Content outside the managed
-markers is never touched.
-
-**Only the human merges.** A pre-tool hook blocks the agent from merging pull
-requests or enabling auto-merge: the `merge-guard` plugin in Claude Code,
-`./install.sh --merge-guard` for Codex CLI and opencode. This repo's
-`.claude/settings.json` carries the same hook for cloud sessions. Details and limits:
-[docs/install.md](docs/install.md#pr-merge-guard---merge-guard).
-The `secret-guard` plugin (`--secret-guard`) likewise blocks reading credential
-files and dumping the environment:
-[docs/install.md](docs/install.md#secret-read-guard---secret-guard).
-
-**Reading without installing.** [`skills.json`](skills.json) is the generated
-machine-readable manifest: `scripts/build_manifest.py` writes it from each
-`SKILL.md`, so do not edit it by hand. It carries a `version` and a `skills`
-array whose entries hold `name`, `category`, `path`, `summary` and
-`activation` (`auto` is omitted because it is the default), plus
-`compatibility`, `version`, `environments` and `targets` when the skill
-declares them. For an ordinary skill the `summary` is the description's first
-sentence, truncated at 200 characters; for a router it is the whole
-description, with `when_to_use` appended the way Claude does. Query it with
-`jq`:
-
-```sh
-jq -r '.skills[] | [.category, (.activation // "auto"), .name] | @tsv' skills.json
-```
-
-[`AGENTS.md`](AGENTS.md) is the agent-facing entry point with links to every
-`SKILL.md`.
+Most skills fire on their `description`: ask for the situation, not the skill.
+`architecture` and `ai-ml` each register one router that loads the right
+sub-skill. Command skills run only when invoked, such as
+`/refactoring:improve-codebase` in Claude Code. [`docs/usage.md`](docs/usage.md)
+covers routers, the list of command skills, the shared instructions, the merge
+and secret guards, and reading `skills.json` without installing.
 
 ## Skill catalogue
 
@@ -256,45 +194,10 @@ wants directly:
 
 ## Contributing
 
-Skill-authoring conventions — frontmatter fields, description budgets, the
-manifest and catalogue that must stay in sync — are in
-[`AGENTS.md`](AGENTS.md); the step-by-step checklist is
-[`docs/contributing.md`](docs/contributing.md). Before opening a PR, run what
-CI runs — `ci.yml` calls the same script, so this is its whole list:
-
-```sh
-pip install -r scripts/check_all.requirements.txt  # pinned prek, pytest, pyyaml
-scripts/check_all.sh          # one PASS/FAIL/MISSING line per check
-scripts/check_all.sh --list   # the checks and the tools each needs
-scripts/check_all.sh --only docs,plugins  # the fast loop for a docs or plugin change
-```
-
-`--only` and `--skip` omit the other checks entirely; they are not reported as
-skipped. The pull-request gates `pr-issue-links` and `maintenance-gate` are
-separate workflows, not checks inside `check_all.sh`.
-
-A check whose tool is not installed is reported as `MISSING` and the script
-exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
-later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
-newer interpreter. The mermaid check also needs Node.js (`npx`). The bats check
-runs the shell script tests in `test/` with the bats-core, bats-support and
-bats-assert submodules pinned under `test/bats/`; fetch them once per clone and
-per worktree (`git worktree add` does not) with `git submodule update --init`
-(installing the catalogue does not need them).
-
-The hooks in `.pre-commit-config.yaml` are run by
-[prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
-the secret scanner. The shellcheck and shfmt hooks install under Python 3.12,
-and the secret scanner builds with the Go on `PATH` (prek downloads a
-toolchain only when none is found). Run `prek install` once and they fire on
-every commit; `check_all.sh` runs them too, so a skipped hook fails the build
-rather than landing on `main`. The same install adds a commit-msg hook that
-rejects subjects outside Conventional Commits and two pre-push hooks: one runs
-`check_all.sh` without its prek, mermaid and bats checks, the other runs just
-the bats check (export `PYTHON=` as above, or the push stops with exit 4).
-A clone runs only the hook types that `default_install_hook_types` listed
-when `prek install` last ran, so run it again after a pull adds one.
-
-`build_manifest.py --check` runs first for a reason: the catalogue and plugin
-checks read `skills.json`, so a stale manifest makes them answer from stale
-metadata.
+Before opening a PR, run what CI runs: `scripts/check_all.sh` prints one
+PASS/FAIL/MISSING line per check, `--list` names them, and `--only docs,plugins`
+is the fast loop for a docs or plugin change. The step-by-step checklist is
+[`docs/contributing.md`](docs/contributing.md); its
+[Run checks](docs/contributing.md#run-checks) section covers the check setup
+and the prek hooks. Skill-authoring conventions are in
+[`docs/skill-conventions.md`](docs/skill-conventions.md).
