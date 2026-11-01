@@ -13,6 +13,10 @@
     "scripts/maintenance-new-deps.py": {
       "sha256": "9a778266386c0dfe5b44b904a8ee3ea08f92274510d46fc23636f739e0502c4f",
       "mode": "100755"
+    },
+    "scripts/hooks/check-file-tokens.sh": {
+      "sha256": "7f707de828ff6d603acce61e0ecb07a997d5419d2cdf6f956cbb45f45a36400f",
+      "mode": "100755"
     }
   }
 }

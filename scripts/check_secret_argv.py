@@ -20,7 +20,8 @@ plugins/ and scripts/, and reports:
 - secret-var: a variable named like a secret (TOKEN, SECRET, PASSWORD,
   API_KEY, a PAT segment) expanded into a command's arguments. Assigning,
   exporting or testing it passes, and so does handing it to a shell builtin
-  (echo, printf), whose arguments never reach a process's argv.
+  (echo, printf), whose arguments never reach a process's argv. A plural
+  TOKENS names a count (MAX_TOKENS), not a credential, and passes too.
 
 Safe forms stay quiet: the program reading the variable from its environment
 (`GH_TOKEN=... gh api`, `os.environ`), a token file, stdin, gh's own auth,
@@ -63,7 +64,7 @@ DIRECTION = (
     "curl -H @<(printf 'Authorization: Bearer %s\\n' \"$TOKEN\"))"
 )
 
-CREDENTIAL_NAME_PATTERN = r"[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY)[A-Z0-9_]*|(?:[A-Z0-9_]*_)?PAT(?:_[A-Z0-9_]*)?"
+CREDENTIAL_NAME_PATTERN = r"[A-Z0-9_]*(?:TOKEN(?!S)|SECRET|PASSWORD|PASSWD|API_?KEY)[A-Z0-9_]*|(?:[A-Z0-9_]*_)?PAT(?:_[A-Z0-9_]*)?"
 SECRET_VAR = re.compile(rf"\$\{{?(?:{CREDENTIAL_NAME_PATTERN})\b")
 FLAG_EDGE = r"(?<![\w-])"
 # A value that is plainly data, not the next word of a sentence: a variable,

@@ -61,9 +61,9 @@ repos:
         # Python >=3.13 rejects the Zscaler proxy root (no critical Basic Constraints) when the installer downloads.
         language_version: "3.12"
         # Vendored upstream code: re-vendoring overwrites any local fix. The
-        # scanner comes from scripts/vendor_repo_maintenance.py, whose --check
-        # (the vendor-lock check) fails on any byte shfmt would change.
-        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$)
+        # scanner and the token hook come from scripts/vendor_repo_maintenance.py,
+        # whose --check (the vendor-lock check) fails on any byte shfmt would change.
+        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$|scripts/hooks/check-file-tokens\.sh$)
 
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
@@ -72,7 +72,7 @@ repos:
         args: [-i, '2', '-ci', --write]
         # Python >=3.13 rejects the Zscaler proxy root (no critical Basic Constraints) when the installer downloads.
         language_version: "3.12"
-        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$)
+        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$|scripts/hooks/check-file-tokens\.sh$)
 
   # Secret scanning, included for every project type: the commit hook is the
   # last point before a secret lands in history. Mirrors the gitleaks job of
@@ -84,6 +84,20 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks
+
+  # Agent context budget: blocks staged text files over 5000 tokens
+  # (tokens = bytes / 4) and prints how to split them. The script is vendored
+  # from repo-maintenance by scripts/vendor_repo_maintenance.py; lockfiles,
+  # minified bundles and generated or vendored files (generator banner, or
+  # linguist-generated / linguist-vendored in .gitattributes) are skipped.
+  # bash runs it, so a lost executable bit does not break the hook.
+  - repo: local
+    hooks:
+      - id: check-file-tokens
+        name: files stay under 5000 tokens (bytes / 4)
+        entry: bash scripts/hooks/check-file-tokens.sh
+        language: system
+        types: [text]
 
   # Generated files: skills.json, the router member tables and the .claude/
   # mirror. Each hook runs its generator's --check and, on drift, regenerates
