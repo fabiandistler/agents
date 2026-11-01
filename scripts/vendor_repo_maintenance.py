@@ -48,6 +48,8 @@ UPSTREAM_PREK_HOOKS = "plugins/repo-maintenance/skills/prek-hooks/references"
 # Destination in this repo -> path in the upstream repo. The scanner runs the
 # two helpers from its own directory (SCRIPT_DIR), and
 # maintenance-r-advisories.py imports maintenance-new-deps.py the same way.
+# Each destination is also marked linguist-vendored in .gitattributes
+# (scripts/test_gitattributes.py checks it).
 VENDORED = {
     "scripts/maintenance-scan.sh": f"{UPSTREAM_ASSETS}/maintenance-scan.sh",
     "scripts/maintenance-r-advisories.py": f"{UPSTREAM_ASSETS}/maintenance-r-advisories.py",
