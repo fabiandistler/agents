@@ -10,6 +10,12 @@ Amended: the `secret-guard` plugin was added after this decision. It follows
 the same split — `claude` gets it from the marketplace as a hook-only plugin,
 `codex` and `opencode` get it from `install.sh --secret-guard`.
 
+Amended: `install.sh --merge-guard` and `--secret-guard` now install the
+guard plugins for `claude` with the `claude` CLI instead of printing the
+command, so the saved install state (`--update`) delivers them too. The
+plugins still come from the marketplace; `install.sh` links nothing into
+`~/.claude`.
+
 ## Context
 
 ADR-0004 gave each install surface one distribution channel and moved `claude`

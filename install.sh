@@ -23,13 +23,13 @@
 #   ./install.sh --update --dry-run              # preview the replay
 #   ./install.sh --uninstall --git-hook           # remove this clone's hooks
 #
-# Claude gets skills, command skills, subagents and the PR merge guard from the
-# plugin marketplace only (claude plugin marketplace add fabiandistler/agents,
-# then claude plugin install <category>@fabiandistler-agents and
-# merge-guard@fabiandistler-agents). --target=claude therefore only syncs
-# --instructions, and every claude run (install or uninstall) removes what
-# earlier versions created: our links in ~/.claude/skills and
-# ~/.claude/commands and the merge-guard entry in ~/.claude/settings.json.
+# Claude gets skills, command skills and subagents from the plugin marketplace
+# only (claude plugin marketplace add fabiandistler/agents, then claude plugin
+# install <category>@fabiandistler-agents). --target=claude therefore only syncs
+# --instructions and the guard plugins (--merge-guard, --secret-guard; see
+# below), and every claude run (install or uninstall) removes what earlier
+# versions created: our links in ~/.claude/skills and ~/.claude/commands and
+# the merge-guard entry in ~/.claude/settings.json.
 # --env and --category do not apply to claude; passing either with a claude
 # target prints one WARN line and changes nothing else.
 #
@@ -111,9 +111,10 @@
 # The check is scripts/pr_merge_guard.py (needs python3 at hook time). codex: a
 # managed [hooks] block in ~/.codex/config.toml (trust it once in Codex's
 # /hooks); opencode: a plugin symlink in ~/.config/opencode/plugins/; claude:
-# nothing, it prints the plugin command (the merge-guard plugin carries the
-# hook). --merge-guard --uninstall removes exactly these, leaving other
-# settings and hooks alone.
+# the merge-guard plugin, installed with the claude CLI, which first adds the
+# marketplace if Claude lacks it (a plugin the user disabled stays disabled).
+# --merge-guard --uninstall removes exactly these, leaving other settings and
+# hooks alone.
 #
 # --secret-guard (off by default) installs scripts/secret_read_guard.py the same
 # way (secret-guard plugin for claude): it blocks reading credential files
@@ -2104,10 +2105,11 @@ remove_claude_python_hook() {
 # from merging; a pre-tool hook can. The decision and the hook entry both live
 # in scripts/pr_merge_guard.py; this section only places the entry in each
 # agent's user-level config. Claude gets the guard from the merge-guard plugin
-# instead; earlier versions wrote it into ~/.claude/settings.json, and the
-# Claude migration below removes that entry. settings.json is JSON and cannot
-# carry marker comments, so our entry is identified by the script name in its
-# command, and only that entry is ever removed.
+# instead, which this section installs with the claude CLI; earlier versions
+# wrote it into ~/.claude/settings.json, and the Claude migration below removes
+# that entry. settings.json is JSON and cannot carry marker comments, so our
+# entry is identified by the script name in its command, and only that entry is
+# ever removed.
 #
 # The secret read guard (scripts/secret_read_guard.py) is installed the same
 # way: it keeps credential files and environment dumps out of the agent's
@@ -2415,19 +2417,116 @@ remove_claude_settings_merge_guard() {
   printf '  removed   PR merge guard hook from %s (now the merge-guard plugin)\n' "$file"
 }
 
+# The guard plugin's state in Claude Code's user scope: enabled, disabled or
+# absent. A project-scope install does not count: it covers one project only.
+claude_plugin_state() {
+  local listing
+  listing="$(claude plugin list --json)" || return 1
+  python3 - "$1" "$listing" <<'PY'
+import json
+import sys
+
+plugin, listing = sys.argv[1:]
+for entry in json.loads(listing):
+    if entry["id"] == plugin and entry["scope"] == "user":
+        print({True: "enabled", False: "disabled"}[entry["enabled"]])
+        break
+else:
+    print("absent")
+PY
+}
+
+# The names of the plugin marketplaces Claude Code knows, one per line.
+claude_marketplace_names() {
+  local listing
+  listing="$(claude plugin marketplace list --json)" || return 1
+  python3 - "$listing" <<'PY'
+import json
+import sys
+
+for marketplace in json.loads(sys.argv[1]):
+    print(marketplace["name"])
+PY
+}
+
+# Install the guard plugin with the claude CLI, after adding the marketplace if
+# Claude does not know it under any source yet. A plugin the user disabled
+# stays disabled: claude plugin install would turn it back on without asking.
+install_claude_guard_plugin() {
+  local guard="$1" label plugin marketplace kind state marketplaces
+  label="$(guard_label "$guard")"
+  plugin="$(guard_plugin "$guard")"
+  marketplace="${plugin#*@}"
+  kind="$(check_kind_for_what "$label")"
+  if ! command -v claude >/dev/null 2>&1; then
+    check_record claude "$kind" "$plugin" missing
+    printf '  WARN      claude CLI not found; install the %s with: claude plugin install %s\n' \
+      "$label" "$plugin" >&2
+    return 0
+  fi
+  state="$(claude_plugin_state "$plugin")"
+  case "$state" in
+    enabled)
+      printf '  ok        %s (%s plugin)\n' "$plugin" "$label"
+      return 0
+      ;;
+    disabled)
+      check_record claude "$kind" "$plugin" missing
+      printf '  WARN      %s is disabled in Claude Code; turn it on with: claude plugin enable %s\n' \
+        "$plugin" "$plugin" >&2
+      return 0
+      ;;
+  esac
+  check_record claude "$kind" "$plugin" missing
+  marketplaces="$(claude_marketplace_names)"
+  if ! grep -Fxq "$marketplace" <<<"$marketplaces"; then
+    if ((DRY_RUN)); then
+      printf '[dry-run] claude plugin marketplace add %s\n' "$MARKETPLACE"
+    else
+      claude plugin marketplace add "$MARKETPLACE" >/dev/null
+      printf '  added     %s marketplace from %s\n' "$marketplace" "$MARKETPLACE"
+    fi
+  fi
+  if ((DRY_RUN)); then
+    printf '[dry-run] claude plugin install %s\n' "$plugin"
+    return 0
+  fi
+  claude plugin install "$plugin" >/dev/null
+  printf '  installed %s (%s plugin)\n' "$plugin" "$label"
+}
+
+# Remove the guard plugin with the claude CLI if Claude has it in user scope.
+uninstall_claude_guard_plugin() {
+  local guard="$1" label plugin tool state
+  label="$(guard_label "$guard")"
+  plugin="$(guard_plugin "$guard")"
+  for tool in claude python3; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      printf '  WARN      %s not found; remove the %s with: claude plugin uninstall %s\n' \
+        "$tool" "$label" "$plugin" >&2
+      return 0
+    fi
+  done
+  state="$(claude_plugin_state "$plugin")"
+  [[ "$state" != absent ]] || return 0
+  if ((DRY_RUN)); then
+    printf '[dry-run] claude plugin uninstall %s\n' "$plugin"
+    return 0
+  fi
+  claude plugin uninstall "$plugin" >/dev/null
+  printf '  removed   %s (%s plugin)\n' "$plugin" "$label"
+}
+
 install_guard() {
   local guard="$1" target="$2" label toml
   label="$(guard_label "$guard")"
-  if [[ "$target" == "claude" ]]; then
-    printf '  note      claude: claude plugin install %s\n' "$(guard_plugin "$guard")"
-    return 0
-  fi
   if ! command -v python3 >/dev/null 2>&1; then
     printf '  WARN      python3 not found; the %s needs it (skipping %s)\n' \
       "$label" "$target" >&2
     return 0
   fi
   case "$target" in
+    claude) install_claude_guard_plugin "$guard" ;;
     codex)
       if ! toml="$(render_codex_guard_toml "$guard")"; then
         printf '  WARN      cannot render the Codex %s hook (skipping)\n' "$label" >&2
@@ -2447,9 +2546,7 @@ install_guard() {
 uninstall_guard() {
   local guard="$1"
   case "$2" in
-    claude)
-      printf '  note      claude: claude plugin uninstall %s\n' "$(guard_plugin "$guard")"
-      ;;
+    claude) uninstall_claude_guard_plugin "$guard" ;;
     codex)
       managed_block_remove "$(codex_config_path)" "$(guard_begin_marker "$guard")" \
         "$(guard_end_marker "$guard")" "$(guard_label "$guard") hook"
