@@ -27,7 +27,7 @@ repos:
   # existing repo reports many findings. Keep the default (extend-select,
   # never select); clear them with ruff check --fix, then --add-noqa.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.10
+    rev: v0.17.2
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -40,7 +40,7 @@ repos:
   # mypy needs additional_dependencies for project dependencies,
   # ty resolves them via uv from pyproject.toml.
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: v0.0.84
+    rev: v0.0.91
     hooks:
       - id: ty
         additional_dependencies: ["pyyaml>=6", "pytest"]
