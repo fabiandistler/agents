@@ -1,9 +1,10 @@
 # Contributing
 
 This page is the end-to-end checklist for changing this repository. The rules
-behind each step are in [`AGENTS.md`](../AGENTS.md); this page only puts them in
-order. Vocabulary lives in [`GLOSSARY.md`](../GLOSSARY.md), and the records of
-why the repo is shaped this way are in the [ADR index](adr/README.md).
+behind each step are in [`skill-conventions.md`](skill-conventions.md); this
+page only puts them in order. Vocabulary lives in
+[`GLOSSARY.md`](../GLOSSARY.md), and the records of why the repo is shaped this
+way are in the [ADR index](adr/README.md).
 
 ## Contents
 
@@ -18,8 +19,9 @@ why the repo is shaped this way are in the [ADR index](adr/README.md).
 1. **Create the skill directory and its frontmatter.** `name` must match the
    directory, `category` must be one of the six values in `CATEGORIES`
    (`scripts/catalogue.py`; `scripts/quick_validate.py` mirrors the list), and
-   `description` must fit the budget described in `AGENTS.md`. The other
-   frontmatter fields (`activation`, `when_to_use`, `environments`, `targets`,
+   `description` must fit the budget described in
+   [`skill-conventions.md`](skill-conventions.md). The other frontmatter
+   fields (`activation`, `when_to_use`, `environments`, `targets`,
    `metadata.version`, `argument-hint`, `compatibility`) are documented there
    too.
 
@@ -142,23 +144,45 @@ a `--check` form, which is what CI runs.
 
 ## Run checks
 
-`scripts/check_all.sh --list` shows every check and the tools it needs. The
-fast loop for a docs or plugin change is:
+Install the pinned check tools once, then run the whole list before opening a
+pull request. `ci.yml` calls the same script, so this is CI's whole list:
 
 ```bash
-scripts/check_all.sh --only docs,plugins
+pip install -r scripts/check_all.requirements.txt  # pinned prek, pytest, pyyaml
+scripts/check_all.sh          # one PASS/FAIL/MISSING line per check
+scripts/check_all.sh --list   # the checks and the tools each needs
+scripts/check_all.sh --only docs,plugins  # the fast loop for a docs or plugin change
 ```
 
-Run the whole list before opening a pull request:
+`--only` and `--skip` omit the other checks entirely; they are not reported as
+skipped. The PR-only gates, `pr-issue-links` and `maintenance-gate`, run as
+separate workflows, not checks inside `check_all.sh`.
 
-```bash
-scripts/check_all.sh
-```
+A check whose tool is not installed is reported as `MISSING` and the script
+exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
+later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
+newer interpreter. The mermaid check also needs Node.js (`npx`). The bats check
+runs the shell script tests in `test/` with the bats-core, bats-support and
+bats-assert submodules pinned under `test/bats/`; fetch them once per clone and
+per worktree (`git worktree add` does not) with `git submodule update --init`
+(installing the catalogue does not need them).
 
-That script is the check list CI runs from `ci.yml`. The PR-only gates,
-`pr-issue-links` and `maintenance-gate`, run as separate workflows. A missing
-tool reports `MISSING` and exits 3; set `PYTHON=` to a 3.11+ interpreter if the
-default is older.
+The hooks in `.pre-commit-config.yaml` are run by
+[prek](https://github.com/j178/prek); they pin ruff, ty, shellcheck, shfmt and
+the secret scanner. The shellcheck and shfmt hooks install under Python 3.12,
+and the secret scanner builds with the Go on `PATH` (prek downloads a
+toolchain only when none is found). Run `prek install` once and they fire on
+every commit; `check_all.sh` runs them too, so a skipped hook fails the build
+rather than landing on `main`. The same install adds a commit-msg hook that
+rejects subjects outside Conventional Commits and two pre-push hooks: one runs
+`check_all.sh` without its prek, mermaid and bats checks, the other runs just
+the bats check (export `PYTHON=` as above, or the push stops with exit 4).
+A clone runs only the hook types that `default_install_hook_types` listed
+when `prek install` last ran, so run it again after a pull adds one.
+
+`build_manifest.py --check` runs first for a reason: the catalogue and plugin
+checks read `skills.json`, so a stale manifest makes them answer from stale
+metadata.
 
 ## Open the pull request
 
