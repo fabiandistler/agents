@@ -16,3 +16,6 @@ When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the 
 that opens without a state label. It needs no model and no secret;
 `scripts/test_triage_label_workflow.py` keeps its state labels in sync with
 this table.
+
+Pull-request risk and verdict labels are documented separately in the
+[PR review runbook](pr-review-runbook.md#labels-and-troubleshooting).
