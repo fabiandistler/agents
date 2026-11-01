@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
-# install.sh for opencode: subagents rendered from the plugin agents, and
-# command skills installed as ordinary skills.
+# install.sh for opencode: subagents rendered from the plugin agents, command
+# skills installed as ordinary skills, and the skill roots opencode shares
+# with codex.
 
 load install_helper
 
@@ -222,4 +223,105 @@ PY
     --target=opencode --category=workflow --uninstall >/dev/null
   [[ ! -e "$skill_link" && ! -e "$legacy_link" && -L "$foreign_link" ]] ||
     fail "OpenCode command-skill uninstall removed a foreign path or kept the link"
+}
+
+@test "opencode skips skills codex already links" {
+  # opencode reads ~/.agents/skills too, and wants skill names unique across
+  # its roots (#564): with codex installed first, opencode links none of the
+  # shared skills, including command skills.
+  OPENCODE_ONLY_EXPECTED="$(opencode_only_expected)"
+  HOME_OCS="$(mktemp -d)"
+  OCS_SKILLS="$HOME_OCS/.config/opencode/skills"
+  HOME="$HOME_OCS" "$INSTALL" --target=codex >/dev/null
+  HOME="$HOME_OCS" "$INSTALL" --target=opencode >/dev/null
+  got="$(count_links "$OCS_SKILLS")"
+  [[ "$got" -eq "$OPENCODE_ONLY_EXPECTED" ]] || fail "opencode after codex: $got duplicate skill links"
+  [[ ! -e "$HOME_OCS/.config/opencode/command" ]] ||
+    fail "opencode after codex created the legacy command directory"
+}
+
+@test "codex and opencode, in either order, leave opencode no duplicate links" {
+  # the reverse order ends in the same state: a codex install removes the
+  # opencode links it now shadows, a foreign entry there survives, and
+  # uninstalling codex alone says how to restore opencode's own links.
+  OPENCODE_EXPECTED="$(opencode_expected)"
+  OPENCODE_ONLY_EXPECTED="$(opencode_only_expected)"
+  HOME_OCR="$(mktemp -d)"
+  OCR_SKILLS="$HOME_OCR/.config/opencode/skills"
+  HOME="$HOME_OCR" "$INSTALL" --target=opencode >/dev/null
+  got="$(count_links "$OCR_SKILLS")"
+  [[ "$got" -eq "$OPENCODE_EXPECTED" ]] || fail "opencode alone: expected $OPENCODE_EXPECTED links, got $got"
+  foreign_oc="$(mktemp -d)/foreign"
+  mkdir "$foreign_oc"
+  ln -s "$foreign_oc" "$OCR_SKILLS/foreign-skill"
+  HOME="$HOME_OCR" "$INSTALL" --target=codex --dry-run >/dev/null
+  got="$(count_links "$OCR_SKILLS")"
+  [[ "$got" -eq $((OPENCODE_EXPECTED + 1)) ]] || fail "dry-run removed opencode links"
+  HOME="$HOME_OCR" "$INSTALL" --target=codex >/dev/null
+  got="$(count_links "$OCR_SKILLS")"
+  [[ "$got" -eq $((OPENCODE_ONLY_EXPECTED + 1)) && -L "$OCR_SKILLS/foreign-skill" ]] ||
+    fail "codex after opencode: expected only the foreign link, found $got links"
+  oc_note="$(HOME="$HOME_OCR" "$INSTALL" --target=codex --uninstall 2>&1 >/dev/null)"
+  grep -q 'note .*re-run --target=opencode' <<<"$oc_note" ||
+    fail "codex uninstall did not tell how to restore opencode's links"
+  HOME="$HOME_OCR" "$INSTALL" --target=opencode >/dev/null
+  got="$(count_links "$OCR_SKILLS")"
+  [[ "$got" -eq $((OPENCODE_EXPECTED + 1)) ]] || fail "opencode re-run: expected all links back, got $got"
+}
+
+@test "opencode links what codex lacks, and dry-run plans the shared state" {
+  # a narrower --env for codex leaves the rest to opencode's own links, and
+  # a whole-tree dry-run plans exactly what the real run does.
+  OPENCODE_EXPECTED="$(opencode_expected)"
+  OPENCODE_ONLY_EXPECTED="$(opencode_only_expected)"
+  HOME_OCE="$(mktemp -d)"
+  HOME="$HOME_OCE" "$INSTALL" --target=codex --env=chat >/dev/null
+  HOME="$HOME_OCE" "$INSTALL" --target=opencode >/dev/null
+  shared=0
+  for link in "$HOME_OCE/.agents/skills"/*; do
+    [[ -L "$link" ]] || continue
+    skill_matches_target "$REPO_ROOT/skills/${link##*/}" opencode || continue
+    shared=$((shared + 1))
+  done
+  for link in "$HOME_OCE/.config/opencode/skills"/*; do
+    [[ -L "$link" ]] || continue
+    [[ ! -e "$HOME_OCE/.agents/skills/${link##*/}" ]] ||
+      fail "opencode linked ${link##*/} although codex has it"
+  done
+  got="$(count_links "$HOME_OCE/.config/opencode/skills")"
+  want=$((OPENCODE_EXPECTED - shared))
+  [[ "$got" -eq "$want" ]] || fail "opencode with codex --env=chat: expected $want links, got $got"
+  oc_dry="$(HOME="$(mktemp -d)" "$INSTALL" --target=all --dry-run 2>&1)"
+  [[ "$(grep -c '^\[dry-run\] link .*/\.config/opencode/skills/' <<<"$oc_dry")" -eq "$OPENCODE_ONLY_EXPECTED" ]] ||
+    fail "dry-run --target=all planned opencode links that codex shares"
+  if grep -q '^  linked .*\.config/opencode/skills/' <<<"$oc_dry"; then
+    fail "dry-run reported a link twice"
+  fi
+  grep -q 'shared .*/\.config/opencode/skills/' <<<"$oc_dry" ||
+    fail "dry-run --target=all did not report the shared skills"
+}
+
+@test "opencode install links skills/ and cleans the legacy agent dir" {
+  # opencode install migrates our symlinks out of the legacy agent dir
+  # (~/.config/opencode/agent) while preserving foreign entries there.
+  OPENCODE_EXPECTED="$(opencode_expected)"
+  HOME_OC="$(mktemp -d)"
+  legacy_dir="$HOME_OC/.config/opencode/agent"
+  mkdir -p "$legacy_dir"
+  first_skill=""
+  for d in "$REPO_ROOT"/skills/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    first_skill="$(basename "$d")"
+    break
+  done
+  [[ -n "$first_skill" ]] || fail "no skill found for legacy migration test"
+  ln -s "$REPO_ROOT/skills/$first_skill" "$legacy_dir/$first_skill"
+  foreign_agent_src="$(mktemp -d)/foreign-agent"
+  mkdir "$foreign_agent_src"
+  ln -s "$foreign_agent_src" "$legacy_dir/foreign-agent"
+  HOME="$HOME_OC" "$INSTALL" --target=opencode >/dev/null
+  [[ ! -L "$legacy_dir/$first_skill" ]] || fail "legacy opencode symlink for $first_skill not migrated"
+  [[ -L "$legacy_dir/foreign-agent" ]] || fail "legacy cleanup removed a foreign symlink"
+  got="$(count_links "$HOME_OC/.config/opencode/skills")"
+  [[ "$got" -eq "$OPENCODE_EXPECTED" ]] || fail "opencode install: expected $OPENCODE_EXPECTED links, got $got"
 }
