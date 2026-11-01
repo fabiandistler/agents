@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor the repo-maintenance scanner and its two Python helpers into `scripts/`.
+"""Vendor the repo-maintenance scanner, its two helpers and a prek hook into `scripts/`.
 
 Run from repo root:
     python3 scripts/vendor_repo_maintenance.py              # update to upstream main
@@ -12,8 +12,10 @@ copy of it drifted from upstream, so every scanner fix had to be ported by hand
 (#673, #675). This script copies the scanner from upstream
 `plugins/repo-maintenance/assets/` together with the two helpers it loads from its
 own directory, so the three stay siblings and keep upstream's file mode. The
-pinned commit, a sha256 and git file mode per file, and upstream's license live in
-`vendor/repo-maintenance/`. A re-run at the same ref changes nothing.
+`check-file-tokens` prek hook comes from the same commit, from the prek-hooks
+skill's references, into `scripts/hooks/`. The pinned commit, a sha256 and git
+file mode per file, and upstream's license live in `vendor/repo-maintenance/`. A
+re-run at the same ref changes nothing.
 
 `--check` hashes the vendored files, reads their mode, and compares both with the
 lock, without network access; `scripts/check_all.sh` runs it as the `vendor-lock`
@@ -42,6 +44,7 @@ VENDOR_DIR = REPO_ROOT / "vendor" / "repo-maintenance"
 LOCK_PATH = VENDOR_DIR / "lock.json"
 UPSTREAM = "https://github.com/fabiandistler/repo-maintenance"
 UPSTREAM_ASSETS = "plugins/repo-maintenance/assets"
+UPSTREAM_PREK_HOOKS = "plugins/repo-maintenance/skills/prek-hooks/references"
 # Destination in this repo -> path in the upstream repo. The scanner runs the
 # two helpers from its own directory (SCRIPT_DIR), and
 # maintenance-r-advisories.py imports maintenance-new-deps.py the same way.
@@ -49,13 +52,17 @@ VENDORED = {
     "scripts/maintenance-scan.sh": f"{UPSTREAM_ASSETS}/maintenance-scan.sh",
     "scripts/maintenance-r-advisories.py": f"{UPSTREAM_ASSETS}/maintenance-r-advisories.py",
     "scripts/maintenance-new-deps.py": f"{UPSTREAM_ASSETS}/maintenance-new-deps.py",
+    # The check-file-tokens hook in .pre-commit-config.yaml runs this copy.
+    "scripts/hooks/check-file-tokens.sh": f"{UPSTREAM_PREK_HOOKS}/check-file-tokens.sh",
 }
 REVENDOR = "python3 scripts/vendor_repo_maintenance.py --ref"
 
 DESCRIPTION = """\
 Copy maintenance-scan.sh and its two helpers from fabiandistler/repo-maintenance
-(plugins/repo-maintenance/assets/) into scripts/; pin the commit and each file's
-sha256 and git mode in vendor/repo-maintenance/lock.json."""
+(plugins/repo-maintenance/assets/) into scripts/, and the check-file-tokens.sh
+prek hook (plugins/repo-maintenance/skills/prek-hooks/references/) into
+scripts/hooks/; pin the commit and each file's sha256 and git mode in
+vendor/repo-maintenance/lock.json."""
 EPILOG = """\
 examples:
   python3 scripts/vendor_repo_maintenance.py --ref <commit>
@@ -64,7 +71,7 @@ examples:
 exit: 0 ok | 1 git clone/checkout failed | 2 usage error
       3 a vendored file or LICENSE is missing upstream at REF (nothing written)
       4 --check: the lock is missing or malformed or lists other files than the
-        three, or a vendored file is missing or differs in content or mode"""
+        four, or a vendored file is missing or differs in content or mode"""
 
 
 class LockError(Exception):
@@ -175,9 +182,9 @@ def vendor(ref: str, dry_run: bool) -> int:
             sys.stderr.write(f"missing upstream at {commit[:12]}: {', '.join(missing)}\n")
             return 3
 
-        print(f"repo-maintenance {commit[:12]}: {len(sources)} files into scripts/")
+        print(f"repo-maintenance {commit[:12]}: {len(sources)} files")
         for destination in VENDORED:
-            print(f"  {Path(destination).name}")
+            print(f"  {destination}")
         if dry_run:
             return 0
 

@@ -1,10 +1,10 @@
 """Vendoring rules of scripts/vendor_repo_maintenance.py, against a local fake upstream.
 
-The three files land in `scripts/` byte-identical to upstream, the scanner keeps
-its executable bit, a re-run at the same ref changes nothing, and `--check`
-reports a one-byte edit, a flipped executable bit, a deleted file and a lock
-whose file list differs from the vendored one, by file name and without touching
-the network. A malformed lock exits 4 with the broken field, not a traceback.
+The vendored files land at their destinations (`scripts/`, `scripts/hooks/`)
+byte-identical to upstream, the scanner keeps its executable bit, a re-run at the
+same ref changes nothing, and `--check` reports a one-byte edit, a flipped
+executable bit, a deleted file and a lock whose file list differs from the
+vendored one, by file name and without touching the network. A malformed lock exits 4 with the broken field, not a traceback.
 """
 
 import hashlib
@@ -23,8 +23,9 @@ ASSETS = {
     "scripts/maintenance-scan.sh": b"#!/usr/bin/env bash\necho scan\n",
     "scripts/maintenance-r-advisories.py": b"#!/usr/bin/env python3\nprint('advisories')\n",
     "scripts/maintenance-new-deps.py": b"#!/usr/bin/env python3\nprint('new deps')\n",
+    "scripts/hooks/check-file-tokens.sh": b"#!/usr/bin/env bash\necho tokens\n",
 }
-# Upstream ships all three executable; this fake one is not, so the lock's
+# Upstream ships all four executable; this fake one is not, so the lock's
 # "100644" mode is exercised as well as "100755".
 NOT_EXECUTABLE = "scripts/maintenance-new-deps.py"
 
