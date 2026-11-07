@@ -11,6 +11,7 @@ test_pr_workflow_publish.py.
 
 from __future__ import annotations
 
+import copy
 import re
 from pathlib import Path
 from typing import Any
@@ -230,20 +231,54 @@ def test_every_action_is_pinned_to_a_commit_sha(
     )
 
 
+HEAD_MARKERS = (
+    "github.event.pull_request.head.sha",
+    "github.event.pull_request.head.ref",
+    "refs/pull/",
+    "gh pr checkout",
+)
+
+
+def head_checkouts(workflow: dict[Any, Any], workflow_text: str) -> list[str]:
+    """Name every way the workflow would check out the pull request head."""
+    found: list[str] = []
+    for name, job in jobs_of(workflow).items():
+        for step in steps_of(job):
+            if "actions/checkout@" not in str(step.get("uses", "")):
+                continue
+            # Without these keys the checkout is the base commit of this repository;
+            # `repository:` could point at the fork that holds the head.
+            for key in ("ref", "repository"):
+                if key in (step.get("with") or {}):
+                    found.append(f"job {name!r} checks out with {key}:")
+    found.extend(f"references {marker}" for marker in HEAD_MARKERS if marker in workflow_text)
+    return found
+
+
 def test_no_job_checks_out_the_pull_request_head(
     workflow: dict[Any, Any], workflow_text: str
 ) -> None:
-    for name, job in jobs_of(workflow).items():
-        for step in steps_of(job):
-            if "actions/checkout@" in str(step.get("uses", "")):
-                assert "ref" not in (step.get("with") or {}), (
-                    f"job {name!r} checks out a ref; the workflow runs from the base commit"
-                )
-
-    for marker in ("github.event.pull_request.head.sha", "github.event.pull_request.head.ref"):
-        assert marker not in workflow_text, (
-            f"the workflow references {marker}: the pull request head is never checked out"
-        )
-    assert "refs/pull/" not in workflow_text, (
-        "the workflow must not check out the pull request merge ref"
+    assert head_checkouts(workflow, workflow_text) == [], (
+        "the workflow runs from the base commit: the pull request head is never checked out"
     )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("ref", "${{ github.event.pull_request.head.sha }}"),
+        ("repository", "${{ github.event.pull_request.head.repo.full_name }}"),
+    ],
+)
+def test_the_head_checkout_check_catches_a_head_checkout(
+    workflow: dict[Any, Any], workflow_text: str, key: str, value: str
+) -> None:
+    tampered = copy.deepcopy(workflow)
+    checkout = next(
+        step
+        for step in steps_of(job_named(tampered, "publish"))
+        if "actions/checkout@" in str(step.get("uses", ""))
+    )
+    checkout.setdefault("with", {})[key] = value
+
+    assert f"job 'publish' checks out with {key}:" in head_checkouts(tampered, workflow_text)
