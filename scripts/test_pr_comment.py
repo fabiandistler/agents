@@ -93,6 +93,8 @@ def test_comment_warns_about_a_partial_review():
     plan = pr_plan.plan_publish(make_context(), make_assessment(), review, auto_merge=True)
 
     assert "Partial review" in comment_body(plan)
+    # Partial covers both causes: cut to the limits, or hidden markup removed.
+    assert "hidden markup" in comment_body(plan)
     assert actions_of(plan, "enable_auto_merge") == []
 
 

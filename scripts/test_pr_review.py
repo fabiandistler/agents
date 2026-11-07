@@ -74,6 +74,25 @@ def test_a_diff_truncated_upstream_marks_the_review_partial() -> None:
 
 
 @pytest.mark.parametrize(
+    "hidden",
+    ["<!-- note -->", "zero\u200bwidth", "<div hidden>x</div>", "A" * 240],
+)
+def test_markup_removed_from_the_diff_marks_the_review_partial(hidden: str) -> None:
+    # The removed part was never reviewed, so auto-merge must stay off.
+    diff = f"diff --git a/docs/review.md b/docs/review.md\n+Visible {hidden}\n"
+    request, partial = pr_review.build_request(base_context(diff=diff))
+    assert partial is True
+    assert "hidden markup was removed from the diff" in user_payload(request).lower()
+
+
+def test_markup_removed_from_the_body_alone_keeps_the_review_complete() -> None:
+    # Pull request templates carry HTML comments; the body is not reviewed code.
+    request, partial = pr_review.build_request(base_context(body="Intro <!-- template -->"))
+    assert partial is False
+    assert "hidden markup was removed" not in user_payload(request).lower()
+
+
+@pytest.mark.parametrize(
     "overrides",
     [
         {"diff_status": "maybe"},

@@ -79,8 +79,8 @@ def _render_comment(
         lines += [
             "",
             (
-                "> **Partial review.** The input was truncated, so parts of the diff were not "
-                "reviewed. Auto-merge stays off."
+                "> **Partial review.** The input was truncated or hidden markup was removed "
+                "from the diff, so parts of it were not reviewed. Auto-merge stays off."
             ),
         ]
 

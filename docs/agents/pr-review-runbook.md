@@ -276,5 +276,7 @@ is high risk and needs a human review.
   disables it moments later.
 - **Fork pull requests are never reviewed by the model,** including those
   from the maintainer's own fork.
-- **Partial reviews never auto-merge.** A capped diff marks the review
-  partial in the comment.
+- **Partial reviews never auto-merge.** A capped diff, or hidden markup
+  (HTML comments, hidden elements, zero-width characters, base64 blobs)
+  removed from the diff, marks the review partial in the comment. A docs
+  pull request that adds a Markdown comment therefore waits for a human.
