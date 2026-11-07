@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pr_risk
 import pytest
-from test_pr_risk import file_entry, make_context
+from pr_risk_testkit import file_entry, make_context
 
 PATH_CASES = [
     # low

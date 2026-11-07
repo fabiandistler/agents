@@ -17,6 +17,7 @@ from pathlib import Path
 import pr_actions
 import pr_comment
 import pr_github_client
+from pr_risk_testkit import file_entry
 
 SCRIPT = Path(__file__).resolve().parent / "pr_publish.py"
 MARKER = pr_comment.COMMENT_MARKER
@@ -26,25 +27,6 @@ MAINTAINER = pr_actions.MAINTAINER_LOGIN
 
 # The kinds the writer resolves; a plan must name no other.
 ACTION_KINDS = set(pr_actions.RESOLVERS)
-
-
-def file_entry(
-    path: str,
-    *,
-    status: str = "modified",
-    additions: int = 1,
-    deletions: int = 0,
-    binary: bool = False,
-    renamed_from: str | None = None,
-) -> dict:
-    return {
-        "path": path,
-        "status": status,
-        "additions": additions,
-        "deletions": deletions,
-        "binary": binary,
-        "renamed_from": renamed_from,
-    }
 
 
 def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
