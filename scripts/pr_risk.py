@@ -40,38 +40,68 @@ PATH_RULES = (
     (re.compile(r"^scripts/quick_validate\.py$"), HIGH, "gate-script"),
     (re.compile(r"^scripts/require_python\.sh$"), HIGH, "gate-script"),
     (re.compile(r"^scripts/catalogue\.py$"), HIGH, "gate-script"),
+    # Gate helpers: imported by a check script, or run as a check_all.sh check.
+    (
+        re.compile(
+            r"^scripts/(?:skill_frontmatter|instruction_fragments|vendoring"
+            r"|vendor_repo_maintenance)\.py$"
+        ),
+        HIGH,
+        "gate-script",
+    ),
     (re.compile(r"^scripts/build_[^/]*\.py$"), HIGH, "build-script"),
     (re.compile(r"^scripts/opencode/"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/hooks/"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/python_init_context\.py$"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/install/"), HIGH, "installer"),
+    (re.compile(r"^scripts/plugin_agents\.py$"), HIGH, "installer"),
     (re.compile(r"^plugins/[^/]+/hooks/"), HIGH, "hook-settings"),
     # Configuration and dependency pins.
     (re.compile(r"^\.claude/settings\.json$"), HIGH, "hook-settings"),
     (re.compile(r"^\.pre-commit-config\.yaml$"), HIGH, "hook-settings"),
     (re.compile(r"^conftest\.py$"), HIGH, "test-config"),
-    (re.compile(r"^(?:ruff\.toml|pyrightconfig\.json)$"), HIGH, "lint-config"),
-    (re.compile(r"^pyproject\.toml$"), HIGH, "project-config"),
+    (
+        re.compile(r"^(?:ruff\.toml|pyrightconfig\.json|ty\.toml|\.shellcheckrc)$"),
+        HIGH,
+        "lint-config",
+    ),
+    (re.compile(r"^(?:pyproject\.toml|\.gitattributes|\.gitignore)$"), HIGH, "project-config"),
     (
         re.compile(r"(?:^|/)[^/]*\.requirements\.txt$|^(?:package|package-lock)\.json$"),
         HIGH,
         "dependency-pins",
     ),
+    # Pinned Bats submodules and the lock of the vendored maintenance scanner.
+    (re.compile(r"^(?:\.gitmodules$|test/bats/|vendor/)"), HIGH, "dependency-pins"),
     # Medium: skills, instructions, agent docs, mirror, tests and support code.
     (
         re.compile(r"^plugins/(?![^/]+/hooks/)(?!(?:merge-guard|secret-guard)/)"),
         MEDIUM,
         "plugins",
     ),
+    (re.compile(r"^\.claude-plugin/"), MEDIUM, "plugins"),
     (re.compile(r"^\.claude/"), MEDIUM, "claude-mirror"),
     (re.compile(r"^skills/"), MEDIUM, "skills"),
     (re.compile(r"^instructions/"), MEDIUM, "instructions"),
     (re.compile(r"^docs/agents/"), MEDIUM, "agent-docs"),
+    # Agents load AGENTS.md and CLAUDE.md as instructions wherever they sit.
+    (re.compile(r"(?:^|/)(?:AGENTS|CLAUDE)\.md$"), MEDIUM, "agent-docs"),
+    # Declined ideas that the triage agent checks new requests against.
+    (re.compile(r"^\.out-of-scope/"), MEDIUM, "agent-docs"),
     # README.md and the ADRs state repository policy, such as the merge rule.
     (re.compile(r"^README\.md$"), MEDIUM, "policy-docs"),
     (re.compile(r"^docs/adr/"), MEDIUM, "adr"),
     (re.compile(r"^skills\.json$"), MEDIUM, "catalogue"),
     (re.compile(r"^scripts/test_[^/]*\.py$"), MEDIUM, "tests"),
     (re.compile(r"^scripts/test_install\.sh$"), MEDIUM, "tests"),
+    (re.compile(r"^scripts/fixtures/"), MEDIUM, "tests"),
+    (re.compile(r"^test/(?!bats/)"), MEDIUM, "tests"),
+    # Non-gate scripts. The maintenance scanner is vendored; its lock is a pin.
     (
-        re.compile(r"^scripts/(?:vendor_mattpocock_skills\.py|skill_audit_select\.py)$"),
+        re.compile(
+            r"^scripts/(?:vendor_mattpocock_skills\.py|skill_audit_select\.py"
+            r"|maintenance-scan\.sh|maintenance-new-deps\.py|maintenance-r-advisories\.py)$"
+        ),
         MEDIUM,
         "scripts",
     ),
@@ -98,10 +128,31 @@ def _classify_path(path: str) -> tuple[str, str]:
     return best_risk, best_label
 
 
-def _count(value: object) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        return 0
-    return max(value, 0)
+# The statuses GitHub reports for a changed file; pr_github.py folds the last
+# three into "added" and "modified".
+FILE_STATUSES = frozenset(
+    {"added", "removed", "modified", "renamed", "copied", "changed", "unchanged"}
+)
+
+
+def _count(value: object) -> int | None:
+    """Return a line count, or None when the value is not a non-negative integer."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _malformed_fields(entry: dict) -> list[str]:
+    """Name the fields of one file entry the policy cannot rely on."""
+    malformed = [field for field in ("additions", "deletions") if _count(entry.get(field)) is None]
+    if entry.get("status") not in FILE_STATUSES:
+        malformed.append("status")
+    if not isinstance(entry.get("binary"), bool):
+        malformed.append("binary")
+    renamed_from = entry.get("renamed_from")
+    if renamed_from is not None and not (isinstance(renamed_from, str) and renamed_from):
+        malformed.append("renamed_from")
+    return malformed
 
 
 def _raise_risk(current: str, candidate: str) -> str:
@@ -148,10 +199,16 @@ def classify_pull_request(context: dict) -> dict:
                 reasons_unreadable = True
                 reasons.append(f"unreadable-file-list: entry at index {index} has no path")
                 continue
+            for field in _malformed_fields(entry):
+                reasons_unreadable = True
+                reasons.append(
+                    f"unreadable-file-list: entry at index {index} has a malformed {field}"
+                )
             entries.append(entry)
 
-    additions = sum(_count(entry.get("additions")) for entry in entries)
-    deletions = sum(_count(entry.get("deletions")) for entry in entries)
+    # A malformed count already made the result high; it adds nothing here.
+    additions = sum(_count(entry.get("additions")) or 0 for entry in entries)
+    deletions = sum(_count(entry.get("deletions")) or 0 for entry in entries)
     changed_lines = additions + deletions
 
     risk = HIGH if reasons_unreadable else LOW
@@ -199,12 +256,16 @@ def classify_pull_request(context: dict) -> dict:
             reasons.append(f"binary: {path}")
             risk = HIGH
 
-    fork = bool(context.get("fork"))
-    draft = bool(context.get("draft"))
-    if fork:
+    fork = context.get("fork")
+    draft = context.get("draft")
+    for field, flag in (("fork", fork), ("draft", draft)):
+        if not isinstance(flag, bool):
+            reasons.append(f"unreadable-metadata: {field} is not a boolean")
+            risk = HIGH
+    if fork is True:
         reasons.append("fork: head repository differs from base")
         risk = HIGH
-    if draft:
+    if draft is True:
         reasons.append("draft: auto-merge disabled")
 
     return {
@@ -213,7 +274,7 @@ def classify_pull_request(context: dict) -> dict:
         "head_sha": context.get("head_sha"),
         "risk": risk,
         "reasons": reasons,
-        "auto_merge_eligible": risk == LOW and not fork and not draft,
+        "auto_merge_eligible": risk == LOW and fork is False and draft is False,
         "counts": {
             "files": len(entries),
             "additions": additions,
