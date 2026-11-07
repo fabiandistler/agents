@@ -35,7 +35,7 @@ python3 scripts/build_project_claude.py
 ```
 
 CI fails on drift (`--check`). The conventions behind those steps are in
-[`AGENTS.md`](../../AGENTS.md); the contributor checklist is
+[`docs/skill-conventions.md`](../skill-conventions.md); the contributor checklist is
 [`docs/contributing.md`](../contributing.md).
 
 Refresh the vendored skills with

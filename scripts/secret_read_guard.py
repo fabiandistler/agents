@@ -9,13 +9,15 @@ reads the pending tool call as JSON on stdin and blocks it when it would read a
 credential file or dump the environment. The block reason tells the agent to
 ask the user instead.
 
-Blocked: reading `.env`/`.env.*` (not `.env.example`, `.env.sample`,
-`.env.template`), `.Renviron`, `.git-credentials`, `.netrc`, `.npmrc`,
-`.pypirc`, `.envrc`, `.claude.json`, `gh/hosts.yml`, `.aws/credentials`,
-`.docker/config.json`, `.kube/config`, private SSH keys, the Claude, Codex and
-opencode auth files, the `pass` store and gpg secret keys (also via `gopass`,
-`sops -d`), through a shell command or a file tool (Read, Edit, Grep, MCP
-tools with a path); dumping the environment with bare `env`, `printenv`,
+Blocked: reading dotenv files (`.env`, `.env.*`, `*.env`, but not their
+`example`, `sample` and `template` variants), `.Renviron`, `.git-credentials`,
+`.netrc`, `.npmrc`, `.pypirc`, `.envrc`, `.claude.json` and its copies,
+`gh/hosts.yml`, `.aws/credentials`, `.docker/config.json`, `.kube/config`,
+`rclone/rclone.conf*`, private SSH keys, pyicloud sessions, the Claude, Codex,
+opencode, Gemini, Azure, Kaggle and Todoist CLI credential files, the `pass`
+store and gpg secret keys (also via `gopass`, `sops -d`), through a shell
+command or a file tool (Read, Edit, Grep, MCP tools with a path); dumping the
+environment with bare `env`, `printenv`,
 `export -p`, `declare -x`/`-p`, bare `set` or `/proc/<pid>/environ`.
 Allowed: `env FOO=bar cmd` (a launcher), `printenv NAME` for a name that does
 not look secret, commands that only name a file (`ls`, `rm`, `git add`,
@@ -85,11 +87,24 @@ SECRET_FILES = {
     (".codex", "auth.json"): "Codex credentials",
     ("opencode", "auth.json"): "opencode credentials",
     ("opencode", "mcp-auth.json"): "opencode MCP credentials",
+    (".gemini", "oauth_creds.json"): "Gemini CLI credentials",
+    (".gemini", "gemini-credentials.json"): "Gemini CLI credentials",
+    (".azure", "msal_token_cache.json"): "Azure CLI tokens",
+    (".azure", "msal_http_cache.bin"): "Azure CLI tokens",
+    # The Kaggle CLI uses $XDG_CONFIG_HOME/kaggle where ~/.kaggle does not exist.
+    (".kaggle", "kaggle.json"): "Kaggle credentials",
+    (".kaggle", "access_token"): "Kaggle credentials",
+    ("kaggle", "kaggle.json"): "Kaggle credentials",
+    ("kaggle", "access_token"): "Kaggle credentials",
+    ("todoist-cli", "config.json"): "Todoist CLI credentials",
 }
 # Names a glob is tried against, so `cat ~/.ssh/*` counts as reading id_rsa.
-GLOB_PROBES = [".env", ".env.local", "id_rsa", "id_ed25519", *SECRET_NAMES] + [
-    name for _, name in SECRET_FILES
-]
+# The last three stand for the names that secret_file() matches by prefix.
+GLOB_PROBES = (
+    [".env", ".env.local", "id_rsa", "id_ed25519", *SECRET_NAMES]
+    + [name for _, name in SECRET_FILES]
+    + [".claude.json.backup", "rclone.conf", "rclone.conf.backup"]
+)
 PROC_ENVIRON = re.compile(r"(?:^|/)proc/[^/]+/environ$")
 GLOB_CHARS = re.compile(r"[*?\[]")
 
@@ -123,23 +138,37 @@ def secret_file(path: str) -> str | None:
     parts = PurePosixPath(path).parts
     if not parts:
         return None  # "."
+    # Every file under these directories is secret, so a glob in the name changes nothing.
+    if ".password-store" in parts:
+        return "the pass password store"
+    if ".gnupg" in parts and "private-keys-v1.d" in parts:
+        return "a gpg secret key"
+    if any(part.startswith(".pyicloud") for part in parts):
+        return "a pyicloud session file"
     name, parent = parts[-1], parts[-2] if len(parts) > 1 else ""
     if GLOB_CHARS.search(name):
+        if name.endswith(".env"):
+            # No probe stands for every `*.env` name, such as secrets.env.
+            return "a dotenv file"
         # A shell glob skips dotfiles unless the pattern starts with a dot.
         probes = [p for p in GLOB_PROBES if name.startswith(".") or not p.startswith(".")]
         hits = (secret_file(f"{parent}/{p}") for p in probes if fnmatch(p, name))
         return next((hit for hit in hits if hit), None)
-    if name == ".env" or (name.startswith(".env.") and name[5:] not in DOTENV_TEMPLATES):
+    if name.endswith(".env") and name.removesuffix(".env") not in DOTENV_TEMPLATES:
+        return "a dotenv file"
+    if name.startswith(".env.") and name.removeprefix(".env.") not in DOTENV_TEMPLATES:
         return "a dotenv file"
     if name in SECRET_NAMES:
         return f"`{name}`"
+    if name.startswith(".claude.json"):
+        return "a copy of Claude Code's `.claude.json`"
+    if parent == "rclone" and name.startswith("rclone.conf"):
+        return "rclone remote credentials"
     if (parent, name) in SECRET_FILES:
         return SECRET_FILES[(parent, name)]
     if parent == ".ssh" and name.startswith("id_") and not name.endswith(".pub"):
         return "an SSH private key"
-    if ".password-store" in parts:
-        return "the pass password store"
-    if ".gnupg" in parts and ("private-keys-v1.d" in parts or name == "secring.gpg"):
+    if ".gnupg" in parts and name == "secring.gpg":
         return "a gpg secret key"
     return None
 

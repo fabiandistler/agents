@@ -38,8 +38,8 @@ with `--strict`, so report its gaps as failures.
 `scripts/quick_validate.py` (run by CI in step 2) owns the frontmatter
 allowlist, name rules and vocabularies. Here, check only that its allowlist
 has not drifted from the documented conventions: compare
-`ALLOWED_PROPERTIES` in that script with the field list in AGENTS.md
-(*Conventions for skill authors*) and report any field documented in one and
+`ALLOWED_PROPERTIES` in that script with the field list in
+`docs/skill-conventions.md` and report any field documented in one and
 missing from the other.
 
 ## Step 4 — qualitative SKILL.md review
@@ -49,7 +49,7 @@ For each SKILL.md (Read the frontmatter and skim the body):
 - Description: written in the third person, and says both *what* the
   skill does and *when* to use it. Flag vague ones ("Helps with X").
 - Body avoids agent-specific vocabulary (slash-commands, "the Skill
-  tool", proprietary tool names) per the conventions in AGENTS.md.
+  tool", proprietary tool names) per the conventions in `docs/skill-conventions.md`.
 - Every relative path the body references (`references/…`, `scripts/…`,
   other files in the skill directory) exists on disk.
 - Flag SKILL.md bodies over ~500 lines as candidates for moving material

@@ -23,7 +23,7 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 # Order matters: the catalogue and plugin checks read skills.json, so the
 # manifest check runs first.
 CHECKS=(manifest routers descriptions docs plugins instructions python-baseline project-claude
-  frontmatter evals vocab gh-graphql skill-refs reference-tocs dated-claims table-width skill-paths secret-argv pytest prek
+  vendor-lock frontmatter evals vocab gh-graphql skill-refs reference-tocs dated-claims table-width skill-paths secret-argv pytest prek
   compileall bats mermaid)
 
 usage() {
@@ -84,6 +84,8 @@ run_check() {
     instructions) "$PY" scripts/check_instructions.py ;;
     python-baseline) "$PY" scripts/check_python_baseline.py ;;
     project-claude) "$PY" scripts/build_project_claude.py --check ;;
+    # Offline: the vendored repo-maintenance scanner still matches its lock.
+    vendor-lock) "$PY" scripts/vendor_repo_maintenance.py --check ;;
     frontmatter)
       # Running the validator, not just compiling it, proves its allowlist
       # still matches the frontmatter this repo ships.

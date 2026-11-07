@@ -12,3 +12,8 @@ Related: [router cross-references](router-cross-references.md).
   `repositories/<id>` link), release-pr exit code 3 on `open-heading`, and
   `gh pr list` in MAINTENANCE.md fixed in #542, each reproduced first.
   The general "execute snippets in CI" idea remains undecided.
+- 2026-11-01: the 2026-10-28 audit (#466, `repo-status:C1`) reports that the
+  new paging loop in `skills/repo-status/SKILL.md` ends with `|| break`, so a
+  403 or rate-limit failure drops PRs from the update silently. Open as of
+  `fabiandistler/agents@5f41611`. The "execute snippets in CI" idea remains
+  undecided.

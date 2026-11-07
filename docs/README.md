@@ -6,6 +6,7 @@ product page; this page routes from a job to the page that does it.
 ## Use it
 
 - [Install](install.md) — per-agent paths, verification, troubleshooting, uninstall
+- [Usage](usage.md) — how skills fire, command skills, shared instructions, guards
 - [Skill catalogue](../README.md#skill-catalogue) — every skill and when it fires
 - [`skills.json`](../skills.json) — generated manifest; query it instead of crawling `skills/`
 - [Glossary](../GLOSSARY.md) — the repo's canonical vocabulary
@@ -13,8 +14,9 @@ product page; this page routes from a job to the page that does it.
 ## Develop it
 
 - [Contributing](contributing.md) — end-to-end checklist for adding or changing a skill
-- [Agent conventions](../AGENTS.md) — frontmatter, description budgets, generated files, checks
-- [Checks and CI gates](../README.md#contributing) — `scripts/check_all.sh` and the prek hooks
+- [Agent entry point](../AGENTS.md) — repo layout and skill catalogue, loaded by every agent session
+- [Skill conventions](skill-conventions.md) — frontmatter, description budgets, generated files, checks
+- [Checks and CI gates](contributing.md#run-checks) — `scripts/check_all.sh` and the prek hooks
 - [Install internals](maintainers/install-internals.md) — Claude cloud mirror, vendored skills, regeneration order
 - [Homepage](maintainers/homepage.md) — local preview and GitHub Pages deployment
 - [Weekly skill audit](agents/skill-audit.md) — the scheduled content review and its checklist

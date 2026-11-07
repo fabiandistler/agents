@@ -1,0 +1,52 @@
+# Files no one here edits by hand. The check-file-tokens prek hook skips files
+# marked linguist-vendored or linguist-generated, so a re-vendor or a
+# regeneration that grows a file over 5000 tokens does not block its own
+# commit. Mark only files a script writes whole: hand-written files that a
+# generator splices into (router SKILL.md member tables, .claude/settings.json)
+# stay unmarked. Symlinks are not listed: their blob is a short target path.
+#
+# scripts/test_gitattributes.py fails when a path in
+# vendor/repo-maintenance/lock.json or a skill in
+# .claude/vendor/mattpocock-skills/lock.json is not marked vendored here.
+
+# Vendored by scripts/vendor_repo_maintenance.py (vendor/repo-maintenance/lock.json).
+vendor/** linguist-vendored
+scripts/maintenance-scan.sh linguist-vendored
+scripts/maintenance-r-advisories.py linguist-vendored
+scripts/maintenance-new-deps.py linguist-vendored
+scripts/hooks/check-file-tokens.sh linguist-vendored
+
+# Vendored by scripts/vendor_mattpocock_skills.py
+# (.claude/vendor/mattpocock-skills/lock.json, one line per skill).
+.claude/vendor/** linguist-vendored
+.claude/skills/chief-of-staff/** linguist-vendored
+.claude/skills/code-review/** linguist-vendored
+.claude/skills/codebase-design/** linguist-vendored
+.claude/skills/diagnosing-bugs/** linguist-vendored
+.claude/skills/domain-modeling/** linguist-vendored
+.claude/skills/grill-me/** linguist-vendored
+.claude/skills/grill-with-docs/** linguist-vendored
+.claude/skills/grilling/** linguist-vendored
+.claude/skills/handoff/** linguist-vendored
+.claude/skills/implement/** linguist-vendored
+.claude/skills/implement-spec/** linguist-vendored
+.claude/skills/pr/** linguist-vendored
+.claude/skills/prototype/** linguist-vendored
+.claude/skills/research/** linguist-vendored
+.claude/skills/retro/** linguist-vendored
+.claude/skills/setup-matt-pocock-skills/** linguist-vendored
+.claude/skills/tdd/** linguist-vendored
+.claude/skills/teach/** linguist-vendored
+.claude/skills/to-questionnaire/** linguist-vendored
+.claude/skills/to-spec/** linguist-vendored
+.claude/skills/to-tickets/** linguist-vendored
+.claude/skills/triage/** linguist-vendored
+.claude/skills/wait-what/** linguist-vendored
+.claude/skills/wayfinder/** linguist-vendored
+.claude/skills/wizard/** linguist-vendored
+.claude/skills/writing-for-agents/** linguist-vendored
+
+# Written by scripts/build_manifest.py.
+skills.json linguist-generated
+# Written by scripts/build_project_claude.py (each carries its managed-by marker).
+.claude/rules/agents-*.md linguist-generated

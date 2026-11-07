@@ -29,6 +29,7 @@ POSITIVE = [
     ("git clone https://x-access-token:${GH_TOKEN}@github.com/o/r.git", "secret-var"),
     ('cat notes | upload "$CLIENT_SECRET"', "secret-var"),
     ('curl -H "X-Custom: $(printf %s "$SERVICE_TOKEN")" https://x', "secret-var"),
+    ('upload --verbose "${ACCESS_TOKEN_FILE}"', "secret-var"),
 ]
 
 SAFE = [
@@ -48,6 +49,9 @@ SAFE = [
     "docker run -u 1000:1000 image",
     'echo "$PATH" | tr : "\\n"',
     "Pass the --token flag only in tests.",
+    # A plural TOKENS is a token count, not a credential.
+    "Files stay under ${MAX_TOKENS} tokens so an agent can read any file whole",
+    'summarize "$TOKENS" report.md',
     "curl -s https://api.example.com/v1/orders?limit=2",
 ]
 

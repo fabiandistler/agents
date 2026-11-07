@@ -11,8 +11,8 @@ eval-file shape —
 is CI's job (`.github/workflows/ci.yml`); the audit runs those scripts once
 and never re-reports their findings per skill.
 
-Sources: this repo's conventions in `AGENTS.md` (*Conventions for skill
-authors*, *Scripts an agent runs*) and Anthropic's *Skill authoring best
+Sources: this repo's conventions in `docs/skill-conventions.md` and
+`AGENTS.md` (*Scripts an agent runs*) and Anthropic's *Skill authoring best
 practices*
 (<https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices>).
 When that page gains a checkable rule, add an item here in a normal PR
@@ -44,7 +44,8 @@ rather than applying it ad hoc.
 - **D2** Specific key terms a user would actually type; no vague verbs
   ("helps with", "handles"). (warn)
 - **D3** Trigger lists and feature enumerations sit in the body's leading
-  `## When to use`, not the frontmatter (AGENTS.md budget rule). (warn)
+  `## When to use`, not the frontmatter (skill-conventions.md budget rule).
+  (warn)
 - **D4** The description matches what the body actually does — no promised
   capability the body lacks, no major workflow the description hides. (error)
 - **D5** Name is specific, not generic (`helper`, `utils`, `data`), and
@@ -119,6 +120,6 @@ Applied once per run across all selected skills, not per skill.
 - **X1** Two skills' descriptions claim the same trigger without a
   "not for … (use X)" boundary on at least one side. (warn)
 - **X2** A cross-skill reference names a skill that is not registered or not
-  model-invocable (AGENTS.md: command skills are suggested, router members are
-  read via their router file). (error)
+  model-invocable (skill-conventions.md: command skills are suggested, router
+  members are read via their router file). (error)
 - **X3** The same rule is stated differently in two skills. (warn)

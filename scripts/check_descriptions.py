@@ -26,7 +26,8 @@ from __future__ import annotations
 import re
 import sys
 
-from catalogue import find_skill_files, parse_skill_frontmatter
+from catalogue import find_skill_files
+from skill_frontmatter import parse_skill_frontmatter
 
 # Per-skill budgets, in characters.
 DEFAULT_BUDGET = 250

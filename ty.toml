@@ -1,5 +1,11 @@
 # ty configuration, read by the ty hook in .pre-commit-config.yaml.
 
 [src]
-# Pinned third-party Bats checkouts (git submodules), not our Python.
-exclude = ["test/bats/"]
+# Pinned third-party Bats checkouts (git submodules), not our Python, and the
+# scanner helpers vendored by scripts/vendor_repo_maintenance.py (fixes go
+# upstream to fabiandistler/repo-maintenance).
+exclude = [
+    "test/bats/",
+    "scripts/maintenance-new-deps.py",
+    "scripts/maintenance-r-advisories.py",
+]

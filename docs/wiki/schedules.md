@@ -15,3 +15,9 @@
   - 2026-10-19: User chose to leave `scripts/skill_audit_select.py` as is
     (option A). Manual fires within a week should pass `--week <next>`;
     the week 53/1 collision is accepted.
+- 2026-11-01 superseded (wiki-lint setup line): the wiki-lint prompt no
+  longer attaches the repo via `add_repo`. The auto-mode classifier blocked
+  that call in an unattended run on 2026-10-28; the repo is now attached to
+  the scheduled task and cloned at session start, with `gh api` as fallback
+  and a "RUN FAILED" notification if the checkout is missing. Source: the
+  stored prompt of the 2026-11-01 run.

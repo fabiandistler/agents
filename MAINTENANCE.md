@@ -133,11 +133,44 @@ Open question per job (details in the external `repo-maintenance` skill's `refer
 
 ## Notes on the pre-stages in this repository
 
-`scripts/maintenance-scan.sh` keys off `DESCRIPTION` (R) and `pyproject.toml` /
-`requirements.txt` (Python) **at the repository root**, and this repo has none of them, at
-the root or below it. All three pre-stages therefore return empty here. A run must treat an
-empty pre-stage as "no tooling coverage", not as "nothing found", and say so in the report
-instead of inventing findings by hand.
+`scripts/maintenance-scan.sh` and the two helpers it calls
+(`scripts/maintenance-r-advisories.py`, `scripts/maintenance-new-deps.py`) are vendored
+from [fabiandistler/repo-maintenance](https://github.com/fabiandistler/repo-maintenance)
+(`plugins/repo-maintenance/assets/`), and so is the `check-file-tokens` prek hook
+(`scripts/hooks/check-file-tokens.sh`, from the prek-hooks skill's references).
+`vendor/repo-maintenance/lock.json` pins the upstream commit and each file's sha256 and
+git mode. To update, run
+
+```sh
+python3 scripts/vendor_repo_maintenance.py --ref <commit>
+```
+
+and commit the four files and `vendor/repo-maintenance/LICENSE` together with the lock.
+Scanner and hook fixes go upstream, then a re-vendor brings them here: the `vendor-lock` check in
+`scripts/check_all.sh` fails on any local edit or mode change. `--check` compares the files
+against the lock offline. It does not compare the lock against upstream, so after a merge
+conflict in `lock.json`, re-vendor instead of hand-merging.
+
+These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the two
+Python helpers (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner and
+the token hook (`.pre-commit-config.yaml`). `trailing-whitespace` and `end-of-file-fixer`
+still run on all four, as they do upstream.
+
+The scanner keys off `DESCRIPTION` (R) and `pyproject.toml` / `requirements.txt` (Python)
+**at the repository root**, and this repo has none of them, at the root or below it. What
+each pre-stage covers here:
+
+- `deps-audit` exits 0 and prints `[skipped] no DESCRIPTION, pyproject.toml or
+  requirements.txt -> R and Python package audit`; it only checks that Renovate or
+  Dependabot is configured.
+- `dead-exports` exits 3 (`Nothing to scan.`).
+- `test-flakiness` scans `test/`: this repo's Bats suites, without the vendored Bats
+  libraries under `test/bats/`. The pytest files under `scripts/` and `skills/*/scripts/`
+  are outside its reach.
+
+The `[skipped]` package audit and the `dead-exports` exit 3 mean "no tooling coverage", not
+"nothing found". A run says so in the report and works through the analogue below by hand
+instead of inventing findings.
 
 The catalog-relevant analogues in this repository are:
 

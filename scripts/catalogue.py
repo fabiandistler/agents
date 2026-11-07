@@ -12,7 +12,8 @@ as its first gate for that reason — and a missing manifest raises rather than
 reporting an empty catalogue.
 
 `build_manifest.py` stays the sole writer of `skills.json`; this module is the
-sole parser of SKILL.md frontmatter and owns the selection rules (routed
+sole caller of the SKILL.md frontmatter parser in `skill_frontmatter.py` and
+owns the selection rules (routed
 members, top-level entries, per-target and per-environment subsets), while
 callers decide where selected entries are placed. Stdlib-only.
 """
@@ -25,6 +26,8 @@ import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+
+from skill_frontmatter import parse_skill_frontmatter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
@@ -135,19 +138,6 @@ def find_skill_files(skills_dir: Path = SKILLS_DIR) -> list[Path]:
         if skill_md.is_file():
             skills.append(skill_md)
     return skills
-
-
-def parse_skill_frontmatter(text: str, source: Path | str = "SKILL.md") -> dict[str, object]:
-    """Parse the repository's limited SKILL.md frontmatter subset.
-
-    The parser accepts the top-level scalar fields and nested
-    `metadata.version` shape used by this catalogue. It rejects malformed
-    delimiters, unclosed quoted values, and plain scalars that strict YAML
-    consumers would interpret as mappings.
-    """
-    block = _extract_frontmatter(text, source)
-    _check_strict_yaml(block, source)
-    return _parse_frontmatter(block, source)
 
 
 def entry_from_skill_file(skill_md: Path, repo_root: Path = REPO_ROOT) -> SkillEntry:
@@ -340,89 +330,6 @@ def unique_real_files(paths: Iterable[Path]) -> list[Path]:
     return files
 
 
-def _extract_frontmatter(text: str, source: Path | str) -> str:
-    if not text.startswith("---\n"):
-        raise ValueError(f"{source}: missing opening '---' frontmatter delimiter")
-    end = text.find("\n---", 4)
-    if end == -1:
-        raise ValueError(f"{source}: missing closing '---' frontmatter delimiter")
-    return text[4:end]
-
-
-def _parse_frontmatter(block: str, source: Path | str) -> dict[str, object]:
-    fields: dict[str, object] = {}
-    lines = block.splitlines()
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        if not line.strip() or line.lstrip().startswith("#"):
-            index += 1
-            continue
-        if not line.startswith(" ") and ":" in line:
-            key, _, rest = line.partition(":")
-            key = key.strip()
-            value = rest.strip()
-            if value == "":
-                # Nested block (e.g. `metadata:`); collect indented children.
-                nested: dict[str, str] = {}
-                index += 1
-                while index < len(lines) and lines[index].startswith((" ", "\t")):
-                    sub = lines[index].strip()
-                    if sub and ":" in sub:
-                        nested_key, _, nested_value = sub.partition(":")
-                        # Nested values are short scalars (metadata.version), so
-                        # unlike top-level ones they never span lines.
-                        nested[nested_key.strip()] = _strip_quotes(nested_value.strip())
-                    index += 1
-                fields[key] = nested
-                continue
-            # Multi-line folded value? Our skills sometimes wrap descriptions.
-            value, consumed = _maybe_join_continuation(value, lines, index, source)
-            fields[key] = _strip_quotes(value)
-            index += 1 + consumed
-            continue
-        index += 1
-    return fields
-
-
-def _maybe_join_continuation(
-    value: str, lines: list[str], index: int, source: Path | str
-) -> tuple[str, int]:
-    if not value or value[0] not in ("'", '"'):
-        return value, 0
-    quote = value[0]
-    if value.endswith(quote) and len(value) > 1:
-        return value, 0
-    consumed = 0
-    parts = [value]
-    cursor = index + 1
-    while cursor < len(lines):
-        parts.append(lines[cursor])
-        consumed += 1
-        if lines[cursor].rstrip().endswith(quote):
-            return " ".join(part.strip() for part in parts), consumed
-        cursor += 1
-    raise ValueError(f"{source}: unterminated quoted frontmatter value")
-
-
-def _check_strict_yaml(block: str, source: Path | str) -> None:
-    """Reject frontmatter our lenient parser accepts but strict YAML rejects.
-
-    An unquoted scalar containing ': ' is a YAML mapping error, so consumers
-    like Claude.ai fail to load the skill even though skills.json builds fine.
-    """
-    for line in block.splitlines():
-        if line.startswith((" ", "\t")) or not line.strip() or line.lstrip().startswith("#"):
-            continue
-        key, _, rest = line.partition(":")
-        value = rest.strip()
-        if value and value[0] not in ("'", '"') and ": " in value:
-            raise ValueError(
-                f"{source}: unquoted '{key.strip()}' value contains ': ' — invalid YAML;"
-                " rephrase (e.g. use an em-dash) or quote the value"
-            )
-
-
 def _validated_category(value: str, source: Path | str) -> str:
     if value not in CATEGORIES:
         raise ValueError(
@@ -546,12 +453,6 @@ def _validate_manifest_path(path: str, name: str, location: str) -> None:
         raise ValueError(
             f"{location}: 'path' must be the relative source path skills/{name}/SKILL.md"
         )
-
-
-def _strip_quotes(value: str) -> str:
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-        return value[1:-1]
-    return value
 
 
 def _truncate_summary(sentence: str, limit: int = SUMMARY_LIMIT) -> str:

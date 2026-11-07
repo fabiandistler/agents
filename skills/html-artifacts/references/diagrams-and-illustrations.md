@@ -1,6 +1,6 @@
 # Diagrams & Illustrations
 
-Inline SVG gives the agent a real pen. The output is vector art the user can tweak by hand and copy out. Don't fall back to ASCII or "imagine a flowchart that…" prose — render it.
+Inline SVG gives the agent a real pen. The output is vector art the user can tweak by hand and copy out. Don't fall back to ASCII or "imagine a flowchart that…" prose — render it. Read this when the page is built around how the parts of a system connect: services, pipelines, request paths.
 
 ## Figure sheet for a post or doc
 
