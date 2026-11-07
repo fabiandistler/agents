@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import posixpath
 import sys
 import urllib.error
 import urllib.request
@@ -45,10 +46,13 @@ MAX_BASE_BYTES = 100_000
 MAX_TOTAL_BYTES = 300_000
 MAX_TITLE_BYTES = 500
 MAX_BODY_BYTES = 50_000
+MAX_TREE_BYTES = 20_000
+DIFF_STATUSES = ("complete", "truncated", "unavailable")
 
 EXIT_OK = 0
 EXIT_USAGE = 2
 EXIT_BAD_INPUT = 3
+EXIT_WRITE_FAILED = 4
 
 MISSING_KEY_SUMMARY = "Review unavailable: the provider is not configured."
 PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
@@ -59,10 +63,10 @@ Environment:
   PR_REVIEW_MODEL    model override (default deepseek-v4.1-flash-free)
   OPENCODE_BASE_URL  base URL (default https://opencode.ai/zen/v1)
 Exit: 0 artifact produced (including an unavailable review), 2 usage,
-  3 bad context or response file. A missing key or provider failure is an
-  unavailable artifact with exit 0, never a pass.
+  3 bad context or response file, 4 --output not writable. A missing key or
+  provider failure is an unavailable artifact with exit 0, never a pass.
 Examples:
-  python3 scripts/pr_review.py --context context.json --dry-run
+  python3 scripts/pr_review.py --context context.json --dry-run --output request.json
   python3 scripts/pr_review.py --response reply.txt --context context.json
 """
 
@@ -85,7 +89,7 @@ def _as_text(value: object) -> str:
 
 
 def _single_line(text: str, limit: int) -> str:
-    return _truncate_bytes(" ".join(text.split()), limit)
+    return _truncate_bytes(" ".join(sanitize_text(text).split()), limit)
 
 
 def _truncate_bytes(text: str, limit: int) -> str:
@@ -112,18 +116,12 @@ def _system_prompt() -> str:
     return Path(__file__).with_name("pr_review_prompt.md").read_text(encoding="utf-8")
 
 
-def _render_files(files: object) -> list[str]:
+def _render_files(files: list[dict]) -> list[str]:
     rendered: list[str] = []
-    for item in files if isinstance(files, list) else []:
-        if not isinstance(item, dict):
-            continue
-        path = _single_line(_as_text(item.get("path")), 300) or "(unknown)"
-        status = _single_line(_as_text(item.get("status")), 40) or "modified"
-        additions = item.get("additions")
-        deletions = item.get("deletions")
-        additions = additions if isinstance(additions, int) else 0
-        deletions = deletions if isinstance(deletions, int) else 0
-        line = f"- {path} [{status}, +{additions}/-{deletions}]"
+    for item in files:
+        path = _single_line(item["path"], 300)
+        status = _single_line(item["status"], 40)
+        line = f"- {path} [{status}, +{item['additions']}/-{item['deletions']}]"
         if item.get("binary"):
             line += " binary"
         renamed_from = _single_line(_as_text(item.get("renamed_from")), 300)
@@ -131,6 +129,34 @@ def _render_files(files: object) -> list[str]:
             line += f" (renamed from {renamed_from})"
         rendered.append(line)
     return rendered or ["(no changed files)"]
+
+
+def _render_base_paths(context: dict) -> list[str]:
+    """List base tree paths, changed-file directories first, within MAX_TREE_BYTES.
+
+    The list orients the reviewer; cutting it does not make the review partial.
+    """
+    changed_dirs = set()
+    for item in context["files"]:
+        for path in (item["path"], item.get("renamed_from")):
+            if isinstance(path, str):
+                changed_dirs.add(posixpath.dirname(path))
+    paths = sorted(
+        context["base_paths"], key=lambda path: (posixpath.dirname(path) not in changed_dirs, path)
+    )
+    rendered: list[str] = []
+    used = 0
+    for path in paths:
+        line = f"- {_single_line(path, 300)}"
+        used += len(line.encode("utf-8")) + 1
+        if used > MAX_TREE_BYTES:
+            break
+        rendered.append(line)
+    if len(rendered) < len(paths):
+        rendered.append(f"({len(paths) - len(rendered)} more paths not shown)")
+    if context["base_paths_truncated"]:
+        rendered.append("(The tree is incomplete: the base commit has more paths than listed.)")
+    return rendered or ["(none)"]
 
 
 def _cap_diff(diff: str) -> tuple[str, bool]:
@@ -143,12 +169,11 @@ def _cap_diff(diff: str) -> tuple[str, bool]:
     return capped, truncated or bytes_cut
 
 
-def _cap_base_files(base_files: object) -> tuple[list[tuple[str, str]], bool]:
+def _cap_base_files(base_files: dict) -> tuple[list[tuple[str, str]], bool]:
     entries: list[tuple[str, str]] = []
     used = 0
     truncated = False
-    items = base_files.items() if isinstance(base_files, dict) else []
-    for raw_path, raw_content in items:
+    for raw_path, raw_content in base_files.items():
         path = _single_line(_as_text(raw_path), 300)
         content = sanitize_text(_as_text(raw_content))
         size = len(content.encode("utf-8"))
@@ -166,7 +191,6 @@ def _render_payload(
     body: str,
     diff: str,
     base_entries: list[tuple[str, str]],
-    base_paths: list[str],
     partial: bool,
 ) -> str:
     lines = [
@@ -190,10 +214,10 @@ def _render_payload(
         body or "(empty)",
         "",
         "CHANGED FILES:",
-        *_render_files(context.get("files")),
+        *_render_files(context["files"]),
         "",
-        "BASE TREE PATHS (content available for review):",
-        *(base_paths or ["(none)"]),
+        "BASE TREE PATHS (files at the base commit, changed directories first):",
+        *_render_base_paths(context),
         "",
         "BASE FILE CONTENTS (at the base commit):",
     ]
@@ -213,13 +237,12 @@ def build_request(context: dict) -> tuple[dict, bool]:
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
     )
     body, body_cut = _truncate_text(sanitize_text(_as_text(context.get("body"))), MAX_BODY_BYTES)
-    diff, diff_cut = _cap_diff(sanitize_text(_as_text(context.get("diff"))))
-    raw_base_files = context.get("base_files")
-    base_files = raw_base_files if isinstance(raw_base_files, dict) else {}
-    base_entries, base_cut = _cap_base_files(base_files)
-    base_paths = [f"- {_single_line(_as_text(path), 300)}" for path in sorted(base_files)]
-    partial = title_cut or body_cut or diff_cut or base_cut
-    payload = _render_payload(context, title, body, diff, base_entries, base_paths, partial)
+    diff, diff_cut = _cap_diff(sanitize_text(context["diff"]))
+    if context["diff_status"] == "unavailable":
+        diff = "(The diff is unavailable: GitHub did not return it. Only the file list is known.)"
+    base_entries, base_cut = _cap_base_files(context["base_files"])
+    partial = title_cut or body_cut or diff_cut or base_cut or context["diff_status"] != "complete"
+    payload = _render_payload(context, title, body, diff, base_entries, partial)
 
     budget = MAX_TOTAL_BYTES - len(system_prompt.encode("utf-8"))
     if len(payload.encode("utf-8")) > budget:
@@ -245,14 +268,36 @@ def build_request(context: dict) -> tuple[dict, bool]:
 # --- Review entry points -----------------------------------------------------
 
 
+def _is_count(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 def _validate_context(context: dict) -> None:
+    """Reject a context that does not match what ``pr_github.py`` emits."""
     validate_identity(context)
     if not isinstance(context.get("diff"), str):
         raise ContextError("context field 'diff' is not a string")
-    if not isinstance(context.get("files", []), list):
+    if context.get("diff_status") not in DIFF_STATUSES:
+        raise ContextError(f"context field 'diff_status' is not one of {DIFF_STATUSES}")
+    files = context.get("files")
+    if not isinstance(files, list):
         raise ContextError("context field 'files' is not a list")
-    if not isinstance(context.get("base_files", {}), dict):
+    for item in files:
+        if not (
+            isinstance(item, dict)
+            and isinstance(item.get("path"), str)
+            and isinstance(item.get("status"), str)
+            and _is_count(item.get("additions"))
+            and _is_count(item.get("deletions"))
+        ):
+            raise ContextError("context field 'files' has an entry without path, status or counts")
+    if not isinstance(context.get("base_files"), dict):
         raise ContextError("context field 'base_files' is not an object")
+    paths = context.get("base_paths")
+    if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+        raise ContextError("context field 'base_paths' is not a list of strings")
+    if not isinstance(context.get("base_paths_truncated"), bool):
+        raise ContextError("context field 'base_paths_truncated' is not a boolean")
 
 
 def _skipped_reason(context: dict) -> str | None:
@@ -344,6 +389,30 @@ def _emit(payload: dict) -> None:
     sys.stdout.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
 
 
+def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
+    """Print a bounded summary; the full request (up to ~300 KB) goes to `output`."""
+    if output is not None:
+        try:
+            Path(output).write_text(
+                json.dumps(request, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+        except OSError:
+            sys.stderr.write("pr_review: --output file is not writable\n")
+            return EXIT_WRITE_FAILED
+    system, user = (message["content"].encode("utf-8") for message in request["messages"])
+    _emit(
+        {
+            "url": request["url"],
+            "model": request["model"],
+            "partial": partial,
+            "system_bytes": len(system),
+            "user_bytes": len(user),
+            "output": output,
+        }
+    )
+    return EXIT_OK
+
+
 def _read_json_file(path: str) -> dict:
     raw = Path(path).read_text(encoding="utf-8")
     parsed = json.loads(raw)
@@ -364,14 +433,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
-        "--dry-run", action="store_true", help="print the provider request JSON; no network call"
+        "--dry-run",
+        action="store_true",
+        help="print a request summary; no network call",
     )
     mode.add_argument(
         "--response",
         metavar="FILE",
         help="parse this canned response instead of calling the provider",
     )
+    parser.add_argument(
+        "--output", metavar="FILE", help="with --dry-run, write the full request JSON to FILE"
+    )
     args = parser.parse_args(argv)
+    if args.output is not None and not args.dry_run:
+        parser.error("--output needs --dry-run")
 
     try:
         context = _read_json_file(args.context)
@@ -387,12 +463,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run:
         try:
-            request, _ = build_request(context)
+            request, partial = build_request(context)
         except ContextError as err:
             sys.stderr.write(f"pr_review: {err}\n")
             return EXIT_BAD_INPUT
-        _emit(request)
-        return EXIT_OK
+        return _emit_dry_run(request, partial, args.output)
 
     if args.response is not None:
         try:

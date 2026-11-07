@@ -96,7 +96,7 @@ mkdir -p "$out" && cd "$out"
 export GITHUB_TOKEN="$(gh auth token)"
 python3 "$scripts/pr_github.py" --repo fabiandistler/agents --pr "$pr" --output context.json
 python3 "$scripts/pr_risk.py" --context context.json --output assessment.json
-python3 "$scripts/pr_review.py" --context context.json --dry-run      # provider request, no network
+python3 "$scripts/pr_review.py" --context context.json --dry-run --output request.json  # no network
 python3 "$scripts/pr_review.py" --context context.json > review.json  # model call if OPENCODE_API_KEY is set
 python3 "$scripts/pr_publish.py" --live --repo fabiandistler/agents --pr "$pr" \
   --assessment assessment.json --review review.json
