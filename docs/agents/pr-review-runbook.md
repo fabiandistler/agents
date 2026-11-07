@@ -166,6 +166,13 @@ the file there, and `pull_request_target` reads it from there.
 5. Set `PR_AUTO_MERGE` to `true`, then record the acceptance runs in the
    [acceptance record](pr-review-acceptance.md).
 
+**Test pull requests must still have checks running.** A docs pull request
+whose CI finishes before `publish` runs is already mergeable, so GitHub
+refuses to arm auto-merge as "clean" ([decision D](#auto-merge)): the run
+stays green but adds `needs-review` and nothing merges. To see an armed
+auto-merge, open the test pull request (or push to it) and let `publish` run
+while `checks`, `mermaid` and `secrets` are still in progress.
+
 ## Dry run
 
 **Locally, read-only.** Runs the same scripts against a real pull request.
