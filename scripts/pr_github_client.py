@@ -16,7 +16,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-DEFAULT_BASE_URL = "https://api.github.com"
+BASE_URL = "https://api.github.com"
+TIMEOUT_SECONDS = 30
 JSON_ACCEPT = "application/vnd.github+json"
 USER_AGENT = "agents-pr-review"
 API_VERSION = "2022-11-28"
@@ -69,13 +70,9 @@ class GitHubClient:
     def __init__(
         self,
         token: str | None,
-        base_url: str = DEFAULT_BASE_URL,
-        timeout: float = 30,
         opener: Callable[..., Any] | None = None,
     ) -> None:
         self.token = token
-        self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
         self._opener: Callable[..., Any] = opener or urllib.request.urlopen
 
     def get(
@@ -95,10 +92,6 @@ class GitHubClient:
     def delete(self, path: str, payload: dict[str, object] | None = None) -> Response:
         return self._request("DELETE", path, payload=payload)
 
-    def graphql(self, query: str, variables: dict[str, object] | None = None) -> Any:
-        response = self.post("/graphql", {"query": query, "variables": variables or {}})
-        return response.json()
-
     def _request(
         self,
         method: str,
@@ -107,7 +100,7 @@ class GitHubClient:
         accept: str | None = None,
         payload: dict[str, object] | None = None,
     ) -> Response:
-        url = self.base_url + path
+        url = BASE_URL + path
         if params:
             url = f"{url}?{urllib.parse.urlencode(params, doseq=True)}"
         headers = {
@@ -121,12 +114,12 @@ class GitHubClient:
         if payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
-        # base_url is fixed; repo and number are validated before this call.
+        # BASE_URL is fixed; repo and number are validated before this call.
         request = urllib.request.Request(  # noqa: S310
             url, data=data, headers=headers, method=method
         )
         try:
-            with self._opener(request, timeout=self.timeout) as response:
+            with self._opener(request, timeout=TIMEOUT_SECONDS) as response:
                 return Response(
                     status=response.status,
                     body=response.read(),

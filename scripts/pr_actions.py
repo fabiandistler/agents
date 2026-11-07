@@ -18,8 +18,6 @@ SCHEMA_VERSION = 1
 
 BOT_LOGIN = "fabiandistler"
 
-ACTION_KINDS = ("set_labels", "upsert_comment", "request_reviewer", "assign")
-
 # The ten labels the pipeline uses. Creating them is idempotent, so a fresh
 # repository needs no manual setup before the first publish run.
 LABELS = {

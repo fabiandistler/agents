@@ -88,26 +88,6 @@ def test_client_write_helpers_send_the_named_method(method, payload):
         assert json.loads(request.data) == payload
 
 
-def test_graphql_posts_the_query_and_returns_the_response_body():
-    captured = {}
-
-    def opener(request, timeout=None):
-        captured["request"] = request
-        return FakeHTTPResponse(b'{"data": {"viewer": {"login": "me"}}}')
-
-    client = pr_github_client.GitHubClient("token", opener=opener)
-
-    result = client.graphql("query { viewer { login } }", {"n": 1})
-
-    assert result == {"data": {"viewer": {"login": "me"}}}
-    request = captured["request"]
-    assert request.full_url == "https://api.github.com/graphql"
-    assert json.loads(request.data) == {
-        "query": "query { viewer { login } }",
-        "variables": {"n": 1},
-    }
-
-
 def test_http_error_becomes_fetch_error_without_leaking_the_token():
     def opener(request, timeout=None):
         raise urllib.error.HTTPError(
