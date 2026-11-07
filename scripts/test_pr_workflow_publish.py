@@ -105,7 +105,7 @@ def test_publish_reconstructs_a_missing_review(workflow: dict[Any, Any]) -> None
 
 def test_publish_prints_the_plan(workflow: dict[Any, Any]) -> None:
     command = run_containing(job_named(workflow, "publish"), "scripts/pr_publish.py")
-    assert "--context context.json" in command
+    assert "--live" in command
     assert "--assessment assessment.json" in command
     assert "--review review.json" in command
     assert "plan.json" in command, "the plan must be written out and printed"

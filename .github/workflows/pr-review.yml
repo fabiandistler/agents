@@ -250,8 +250,12 @@ jobs:
               --review review.json \
               --write > plan.json
           else
+            # The dry run plans from a fresh fetch too, so it re-checks the head
+            # SHA and runs the current policy exactly as the write path does.
             python3 scripts/pr_publish.py \
-              --context context.json \
+              --live \
+              --repo "${{ github.repository }}" \
+              --pr "$PR" \
               --assessment assessment.json \
               --review review.json > plan.json
           fi

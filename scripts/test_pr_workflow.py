@@ -132,9 +132,14 @@ def test_the_write_flag_appears_once_in_the_guarded_publish_branch(
     assert "--review review.json" in write_branch
 
     dry_branch = match.group("dry")
-    assert "--context context.json" in dry_branch, "the dry run uses the downloaded context"
     assert "--write" not in dry_branch
-    assert "--live" not in dry_branch
+    # A manual dry run plans like the write path: from a fresh fetch, so the
+    # head SHA re-check and the current policy run, not the assess-time context.
+    assert "--live" in dry_branch, "the dry run re-fetches the pull request"
+    assert '--pr "$PR"' in dry_branch
+    assert "--context" not in dry_branch, "the dry run must not plan from assess-time data"
+    assert "--assessment assessment.json" in dry_branch
+    assert "--review review.json" in dry_branch
 
 
 def test_concurrency_is_keyed_by_pull_request(workflow: dict[Any, Any]) -> None:

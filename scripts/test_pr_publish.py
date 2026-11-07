@@ -42,6 +42,16 @@ def test_live_dry_run_fetches_once_and_writes_nothing():
     assert write_calls(fake) == []
 
 
+def test_live_dry_run_rechecks_the_head_sha_against_the_assessment():
+    fake = FakeGitHub(["def456"])
+
+    plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)
+
+    assert plan["status"] == "aborted"
+    assert plan["abort_reason"] == "head_sha_changed"
+    assert write_calls(fake) == []
+
+
 def test_live_write_applies_exactly_the_planned_actions():
     fake = FakeGitHub(["abc123", "abc123"])
 
