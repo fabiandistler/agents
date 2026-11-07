@@ -24,12 +24,6 @@ import pr_summary
 AUTO_MERGE_ENV = "PR_AUTO_MERGE"
 
 
-def _fetch_context(repo: str, number: int, token: str | None, client=None) -> dict:
-    if client is None:
-        return pr_github.fetch_context(repo, number, token=token)
-    return pr_github.fetch_context(repo, number, token=token, client=client)
-
-
 def publish_live(
     repo: str,
     number: int,
@@ -53,14 +47,14 @@ def publish_live(
     review = pr_plan.validate_review(review)
     token = _token(write, client)
 
-    context = _fetch_context(repo, number, token, client)
+    context = pr_github.fetch_context(repo, number, token=token, client=client)
     plan = pr_plan.plan_publish(
         context, assessment, review, auto_merge=os.environ.get(AUTO_MERGE_ENV)
     )
     if not write or plan["status"] == "aborted":
         return plan
 
-    fresh = _fetch_context(repo, number, token, client)
+    fresh = pr_github.fetch_context(repo, number, token=token, client=client)
     plan = pr_plan.plan_publish(
         fresh, assessment, review, auto_merge=os.environ.get(AUTO_MERGE_ENV)
     )
@@ -70,7 +64,7 @@ def publish_live(
     if not any(result.get("armed") is False for result in applied["results"]):
         return applied
 
-    after = _fetch_context(repo, number, token, client)
+    after = pr_github.fetch_context(repo, number, token=token, client=client)
     follow_up = pr_plan.plan_publish(
         after,
         assessment,
@@ -95,7 +89,7 @@ def hold_live(repo: str, number: int, write: bool = False, client=None):
     ``do-not-merge`` is added. Return values follow ``publish_live``.
     """
     token = _token(write, client)
-    plan = pr_plan.plan_hold(_fetch_context(repo, number, token, client))
+    plan = pr_plan.plan_hold(pr_github.fetch_context(repo, number, token=token, client=client))
     if not write or plan["status"] == "aborted":
         return plan
     return _apply(plan, token, client)

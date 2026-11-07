@@ -295,8 +295,6 @@ def classify_pull_request(context: dict) -> dict:
     }
 
 
-REPO_PATTERN = pr_github_client.REPO_PATTERN
-
 USAGE = f"""usage: pr_risk.py --context FILE [--output FILE]
        pr_risk.py --live --pr N --repo OWNER/REPO [--output FILE]
 
@@ -372,7 +370,7 @@ def _parse_arguments(argv: list[str]) -> dict:
         if number <= 0:
             raise UsageError("--pr must be a positive integer")
         options["pr"] = number
-        if not REPO_PATTERN.fullmatch(str(options["repo"])):
+        if not pr_github_client.REPO_PATTERN.fullmatch(str(options["repo"])):
             raise UsageError("--repo must be OWNER/REPO")
     elif options["pr"] is not None or options["repo"] is not None:
         raise UsageError("--pr and --repo are only valid with --live")

@@ -140,7 +140,7 @@ def test_cli_malformed_artifact_exits_three(tmp_path):
 
 
 def test_cli_live_fetch_failure_exits_four(monkeypatch, tmp_path):
-    def fail(repo, number, token=None):
+    def fail(repo, number, token=None, client=None):
         raise pr_github_client.FetchError("boom")
 
     monkeypatch.setattr(pr_publish.pr_github, "fetch_context", fail)
@@ -165,7 +165,7 @@ def test_cli_live_fetch_failure_exits_four(monkeypatch, tmp_path):
 def test_cli_live_plan_uses_the_fetched_context(monkeypatch, tmp_path, capsys):
     fetched = make_context(head_sha="fresh456", labels=["risk:high"])
 
-    def fetch(repo, number, token=None):
+    def fetch(repo, number, token=None, client=None):
         assert (repo, number) == ("fabiandistler/agents", 42)
         return fetched
 
