@@ -28,7 +28,7 @@ TREE_PATH = f"/repos/{REPO}/git/trees/base-sha"
 SCRIPT = Path(__file__).resolve().parent / "pr_github.py"
 DIFF_ACCEPT = "application/vnd.github.v3.diff"
 
-_MISSING = object()
+OMITTED = object()
 
 
 @dataclass
@@ -160,7 +160,7 @@ def api_file(
     status: str = "modified",
     additions: int = 1,
     deletions: int = 0,
-    patch: object = _MISSING,
+    patch: object = OMITTED,
     previous: str | None = None,
 ) -> dict:
     entry = {
@@ -169,7 +169,7 @@ def api_file(
         "additions": additions,
         "deletions": deletions,
     }
-    if patch is not _MISSING:
+    if patch is not OMITTED:
         entry["patch"] = patch
     else:
         entry["patch"] = "@@ -1 +1 @@\n"

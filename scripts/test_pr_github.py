@@ -15,6 +15,7 @@ from pr_github_fake import (
     DIFF_ACCEPT,
     FILES_PATH,
     NUMBER,
+    OMITTED,
     PR_PATH,
     REPO,
     REVIEWS_PATH,
@@ -354,3 +355,28 @@ def test_fork_is_detected_from_the_head_repository(head_repo, fork):
     client = FakeClient(pull_request(head={"sha": "abc123", "ref": "fix/x", "repo": head_repo}))
 
     assert fetch(client)["fork"] is fork
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("additions", None),
+        ("additions", "3"),
+        ("additions", -1),
+        ("deletions", True),
+        ("deletions", 1.5),
+        ("status", None),
+        ("status", ""),
+        ("status", OMITTED),
+    ],
+)
+def test_a_malformed_changed_file_fails_the_fetch(field, value):
+    # A count read as 0 or a status read as "modified" could lower the risk floor.
+    entry = api_file("docs/guide.md")
+    if value is OMITTED:
+        del entry[field]
+    else:
+        entry[field] = value
+
+    with pytest.raises(pr_github.FetchError, match=field):
+        fetch(FakeClient(file_pages=([entry],)))

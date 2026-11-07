@@ -176,10 +176,11 @@ class GitHubClient:
             raise FetchError(f"GitHub API request failed for {path}: {error.reason}") from error
 
 
-def _count(value: object) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        return 0
-    return max(value, 0)
+def _line_count(entry: dict, field: str) -> int:
+    value = entry.get(field)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise FetchError(f"GitHub API returned a changed file with a malformed {field!r} count")
+    return value
 
 
 def _get_json(client: ReadClient, path: str, params: dict[str, object] | None = None) -> Any:
@@ -216,11 +217,11 @@ def _map_file(entry: dict) -> dict:
     path = entry.get("filename")
     if not isinstance(path, str) or not path:
         raise FetchError("GitHub API returned a changed file without a filename")
-    additions = _count(entry.get("additions"))
-    deletions = _count(entry.get("deletions"))
+    additions = _line_count(entry, "additions")
+    deletions = _line_count(entry, "deletions")
     status = entry.get("status")
     if not isinstance(status, str) or not status:
-        status = "modified"
+        raise FetchError("GitHub API returned a changed file without a 'status'")
     status = STATUS_ALIASES.get(status, status)
     renamed_from = entry.get("previous_filename")
     return {
@@ -332,8 +333,8 @@ def _base_files(
 def _diff(client: ReadClient, pr_path: str) -> tuple[str, str]:
     """Return the capped diff and its status: complete, truncated or unavailable.
 
-    GitHub refuses a too-large diff (HTTP 406, ``too_large``); any failed diff
-    request yields ``unavailable``, which the risk policy classifies as high.
+    GitHub refuses a too-large diff (HTTP 406, ``too_large``); any failed
+    request yields ``unavailable``, which the risk policy rates high.
     """
     try:
         response = client.get(pr_path, accept=DIFF_ACCEPT)
