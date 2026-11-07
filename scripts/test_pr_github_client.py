@@ -12,7 +12,7 @@ from email.message import Message
 import pr_github
 import pr_github_client
 import pytest
-from pr_github_fake import NUMBER, REPO, SCRIPT
+from pr_github_fake import NUMBER, REPO, SCRIPT, FakeClient, api_file, fetch
 
 
 def test_missing_token_without_an_injected_client_raises_before_any_request(monkeypatch):
@@ -141,7 +141,7 @@ def test_network_error_becomes_fetch_error():
 
 
 def test_cli_writes_the_context_and_exits_zero(tmp_path, monkeypatch, capsys):
-    context = {"schema_version": 1, "number": NUMBER, "files": []}
+    context = fetch(FakeClient())
     monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
     output = tmp_path / "context.json"
 
@@ -149,17 +149,32 @@ def test_cli_writes_the_context_and_exits_zero(tmp_path, monkeypatch, capsys):
 
     assert code == 0
     assert json.loads(output.read_text(encoding="utf-8")) == context
-    assert capsys.readouterr().out == ""
+    assert json.loads(capsys.readouterr().out)["output"] == str(output)
 
 
-def test_cli_prints_the_context_to_stdout(monkeypatch, capsys):
-    context = {"schema_version": 1, "number": NUMBER, "files": []}
+def test_cli_prints_a_bounded_summary_without_output(monkeypatch, capsys):
+    # The full context carries the diff (up to 400 KB); stdout gets a summary.
+    context = fetch(
+        FakeClient(
+            file_pages=([api_file("docs/guide.md")],),
+            diff="+" + "x" * 300_000 + "\n",
+        )
+    )
     monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
 
     code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO])
 
+    out = capsys.readouterr().out
     assert code == 0
-    assert json.loads(capsys.readouterr().out) == context
+    assert len(out) < 1000
+    summary = json.loads(out)
+    assert "diff" not in summary
+    assert summary["number"] == NUMBER
+    assert summary["head_sha"] == "abc123"
+    assert summary["files"] == 1
+    assert summary["diff_status"] == "complete"
+    assert summary["diff_bytes"] == 300_002
+    assert summary["output"] is None
 
 
 def test_cli_maps_missing_token_to_exit_five(monkeypatch):

@@ -40,13 +40,13 @@ STATUS_ALIASES = {"copied": "added", "changed": "modified", "unchanged": "modifi
 
 USAGE = """usage: pr_github.py --pr N --repo OWNER/REPO [--output FILE]
 
-Fetch a pull request through the GitHub REST API and emit the context JSON
-consumed by the risk policy and review pipeline. Reads GITHUB_TOKEN; without
---output the JSON goes to stdout.
+Fetch a pull request through the GitHub REST API and write the context JSON
+consumed by the risk policy and review pipeline. Reads GITHUB_TOKEN. Stdout
+gets a short JSON summary; the full context (diff included) only goes to FILE.
 
   --pr N          pull request number
   --repo O/R      repository as OWNER/REPO
-  --output FILE   write the context JSON to FILE instead of stdout
+  --output FILE   write the full context JSON to FILE
   -h, --help      show this message
 
 examples:
@@ -377,16 +377,32 @@ def _parse_arguments(argv: list[str]) -> dict:
     return options
 
 
+def _summary(context: dict, output: str | None) -> dict:
+    """The bounded stdout view of a context: identity, flags and sizes, no diff."""
+    return {
+        "repo": context["repo"],
+        "number": context["number"],
+        "head_sha": context["head_sha"],
+        "draft": context["draft"],
+        "fork": context["fork"],
+        "files": len(context["files"]),
+        "diff_status": context["diff_status"],
+        "diff_bytes": len(context["diff"].encode("utf-8")),
+        "base_files": len(context["base_files"]),
+        "base_paths": len(context["base_paths"]),
+        "comments": len(context["comments"]),
+        "output": output,
+    }
+
+
 def _emit(context: dict, output: str | None) -> int:
-    text = json.dumps(context, indent=2) + "\n"
-    if output is None:
-        sys.stdout.write(text)
-        return 0
-    try:
-        Path(output).write_text(text, encoding="utf-8")
-    except OSError as error:
-        print(f"pr_github.py: cannot write --output: {error}", file=sys.stderr)
-        return 3
+    if output is not None:
+        try:
+            Path(output).write_text(json.dumps(context, indent=2) + "\n", encoding="utf-8")
+        except OSError as error:
+            print(f"pr_github.py: cannot write --output: {error}", file=sys.stderr)
+            return 3
+    sys.stdout.write(json.dumps(_summary(context, output), indent=2) + "\n")
     return 0
 
 
