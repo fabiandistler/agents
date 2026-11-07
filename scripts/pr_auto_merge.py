@@ -11,9 +11,17 @@ import pr_risk
 
 DO_NOT_MERGE = "do-not-merge"
 AUTO_MERGE_LABEL = "auto-merge:bot"
+# Branch deletion after the merge comes from the repository setting
+# `delete_branch_on_merge`: the enablePullRequestAutoMerge mutation has no
+# field for it.
 AUTO_MERGE_METHOD = "merge"
-AUTO_MERGE_DELETE_BRANCH = True
-REQUIRED_CHECKS = ("checks", "mermaid", "secrets")
+
+GATES_HOLD = "hold"
+GATES_UNKNOWN = "unknown"
+GATES_FAIL = "fail"
+
+# The auto-merge states a plan reports; the bot's label belongs to the first two.
+BOT_STATES = ("enabled", "kept")
 
 
 def context_labels(context: dict) -> list[str]:
@@ -29,44 +37,76 @@ def variable_enabled(value: object) -> bool:
     return value is True or value == "true"
 
 
-def _blocked(context: dict, risk: str, review: dict, enabled: bool) -> bool:
+def _gates(context: dict, risk: str, review: dict, enabled: bool) -> str:
+    """Return whether every auto-merge gate holds: hold, unknown or fail.
+
+    Check results are no gate: the required checks in the default ruleset make
+    native auto-merge wait for them, so pending checks never disable. The API
+    reports mergeability as ``None`` while it is still computing it; that is
+    unknown, which blocks enabling but never disables.
+    """
     if not enabled or risk != pr_risk.LOW:
-        return True
+        return GATES_FAIL
     if review["status"] != "ok" or review["verdict"] != "pass":
-        return True
+        return GATES_FAIL
     if review.get("partial") is not False:
-        return True
-    if context.get("fork") or context.get("draft"):
-        return True
-    if context.get("mergeable") is not True:
-        return True
+        return GATES_FAIL
+    if context.get("fork") is not False or context.get("draft") is not False:
+        return GATES_FAIL
     base_ref = context.get("base_ref")
     default_branch = context.get("default_branch")
     if not isinstance(base_ref, str) or base_ref != default_branch:
-        return True
+        return GATES_FAIL
     if context["reviews"]["changes_requested"]:
-        return True
+        return GATES_FAIL
     if DO_NOT_MERGE in context_labels(context):
-        return True
-    checks = context.get("checks")
-    if not isinstance(checks, dict):
-        return True
-    return any(checks.get(name) != "success" for name in REQUIRED_CHECKS)
+        return GATES_FAIL
+    mergeable = context.get("mergeable")
+    if mergeable is None:
+        return GATES_UNKNOWN
+    return GATES_HOLD if mergeable is True else GATES_FAIL
+
+
+def _state(context: dict, gates: str) -> str:
+    """Decide the auto-merge state: enabled, kept, disabled, human or off.
+
+    The ``auto-merge:bot`` label marks the bot's own auto-merge. An active
+    auto-merge without it is a human's and is never taken over or disabled,
+    except that ``do-not-merge`` disables any auto-merge.
+    """
+    labels = context_labels(context)
+    active = context.get("auto_merge_active") is True
+    if active and DO_NOT_MERGE in labels:
+        return "disabled"
+    if active and AUTO_MERGE_LABEL not in labels:
+        return "human"
+    if gates == GATES_HOLD:
+        return "kept" if active else "enabled"
+    if active:
+        return "disabled" if gates == GATES_FAIL else "kept"
+    return "off"
+
+
+def _action(context: dict, state: str) -> dict | None:
+    if state == "enabled":
+        return {
+            "kind": "enable_auto_merge",
+            "pull_request_id": context["node_id"],
+            "method": AUTO_MERGE_METHOD,
+            "expected_head_oid": context["head_sha"],
+        }
+    if state == "disabled":
+        return {"kind": "disable_auto_merge", "pull_request_id": context["node_id"]}
+    return None
 
 
 def plan_auto_merge(
     context: dict, risk: str, review: dict, variable: object
 ) -> tuple[str, dict | None]:
-    """Return the auto-merge state (enabled, disabled or off) and its action."""
-    if not _blocked(context, risk, review, variable_enabled(variable)):
-        action = {
-            "kind": "enable_auto_merge",
-            "method": AUTO_MERGE_METHOD,
-            "delete_branch": AUTO_MERGE_DELETE_BRANCH,
-        }
-        return "enabled", action
-    # Only the bot's own auto-merge is disabled, and only while GitHub still has
-    # it on; a stale label without active auto-merge is just removed.
-    if AUTO_MERGE_LABEL in context_labels(context) and context.get("auto_merge_active") is True:
-        return "disabled", {"kind": "disable_auto_merge"}
-    return "off", None
+    """Return the auto-merge state and the action it needs, if any.
+
+    ``kept`` and ``human`` need no write: the bot's auto-merge stays as it is,
+    and a human's is left alone.
+    """
+    state = _state(context, _gates(context, risk, review, variable_enabled(variable)))
+    return state, _action(context, state)

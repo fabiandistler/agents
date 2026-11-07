@@ -16,6 +16,7 @@ from pr_publish_testkit import (
     PR_PATH,
     REPO,
     FakeGitHub,
+    actions_of,
     comment_action,
     json_response,
     label_action,
@@ -175,3 +176,36 @@ def test_a_failed_write_is_reported_in_the_results():
 
     assert payload["ok"] is False
     assert [result["ok"] for result in payload["results"]] == [False, True, True]
+
+
+# --- Auto-merge on the live path ----------------------------------------------
+
+BOT_LABELS = ["risk:low", "review:pass", "auto-merge:bot"]
+ACTIVE_AUTO_MERGE = {"merge_method": "merge", "enabled_by": {"login": "github-actions[bot]"}}
+
+
+def test_live_plan_enables_auto_merge_on_the_fetched_node_id(monkeypatch):
+    monkeypatch.setenv("PR_AUTO_MERGE", "true")
+    fake = FakeGitHub(["abc123"])
+
+    plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)
+
+    assert actions_of(plan, "enable_auto_merge") == [
+        {
+            "kind": "enable_auto_merge",
+            "pull_request_id": "PR_kwDOtest42",
+            "method": "merge",
+            "expected_head_oid": "abc123",
+        }
+    ]
+
+
+@pytest.mark.parametrize(("mergeable", "expected"), [(None, "kept"), (False, "disabled")])
+def test_live_mergeability_still_being_computed_never_disables(monkeypatch, mergeable, expected):
+    monkeypatch.setenv("PR_AUTO_MERGE", "true")
+    fake = FakeGitHub(["abc123"], labels=BOT_LABELS)
+    fake.pull_overrides = {"mergeable": mergeable, "auto_merge": ACTIVE_AUTO_MERGE}
+
+    plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)
+
+    assert plan["decision"]["auto_merge"] == expected

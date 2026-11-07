@@ -6,6 +6,8 @@ plan JSON that ``pr_plan.plan_publish`` returns.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pr_plan
 import pytest
 from pr_publish_testkit import (
@@ -34,36 +36,6 @@ AUTO_MERGE_BLOCKERS = [
     ("wrong base branch", {}, {"base_ref": "release"}, {}),
     ("human change request", {}, {"reviews": {"changes_requested": True}}, {}),
     ("do-not-merge label", {}, {"labels": ["do-not-merge"]}, {}),
-    (
-        "checks failing",
-        {},
-        {"checks": {"checks": "failure", "mermaid": "success", "secrets": "success"}},
-        {},
-    ),
-    (
-        "checks pending",
-        {},
-        {"checks": {"checks": "pending", "mermaid": "success", "secrets": "success"}},
-        {},
-    ),
-    (
-        "checks missing",
-        {},
-        {"checks": {"mermaid": "success", "secrets": "success"}},
-        {},
-    ),
-    (
-        "mermaid failing",
-        {},
-        {"checks": {"checks": "success", "mermaid": "failure", "secrets": "success"}},
-        {},
-    ),
-    (
-        "secrets skipped",
-        {},
-        {"checks": {"checks": "success", "mermaid": "success", "secrets": "skipped"}},
-        {},
-    ),
     (
         "review unavailable",
         {},
@@ -107,6 +79,22 @@ def test_every_auto_merge_gate_blocks(auto_merge, context_overrides, review_over
     assert actions_of(plan, "enable_auto_merge") == []
 
 
+BOT_LABELS = ["risk:low", "review:pass", "auto-merge:bot"]
+NODE_ID = "PR_kwDOtest42"
+# Every gate except unknown mergeability is a failed gate: it disables an
+# active bot auto-merge. Unknown mergeability only blocks enabling.
+FAILED_GATES = [case for case in AUTO_MERGE_BLOCKERS if case[0] != "mergeability unknown"]
+
+
+def bot_auto_merge_context(labels: list[str] | None = None, **overrides: Any) -> dict:
+    return make_context(labels=[*BOT_LABELS, *(labels or [])], auto_merge_active=True, **overrides)
+
+
+def auto_merge_actions(plan: dict) -> list[dict]:
+    kinds = ("enable_auto_merge", "disable_auto_merge")
+    return [action for action in plan["actions"] if action["kind"] in kinds]
+
+
 def test_low_risk_pass_enables_native_auto_merge():
     plan = pr_plan.plan_publish(make_context(), make_assessment(), make_review(), auto_merge=True)
 
@@ -116,12 +104,39 @@ def test_low_risk_pass_enables_native_auto_merge():
         "request_reviewer",
         "enable_auto_merge",
     ]
+    # Merge commit, pinned to the reviewed head. Branch deletion comes from the
+    # repository setting delete_branch_on_merge, not from the plan.
     assert plan["actions"][-1] == {
         "kind": "enable_auto_merge",
+        "pull_request_id": NODE_ID,
         "method": "merge",
-        "delete_branch": True,
+        "expected_head_oid": "abc123",
     }
     assert label_action(plan)["add"] == ["risk:low", "review:pass", "auto-merge:bot"]
+    assert plan["decision"]["auto_merge"] == "enabled"
+
+
+@pytest.mark.parametrize(
+    "checks",
+    [
+        {"checks": "pending", "mermaid": "pending", "secrets": "pending"},
+        {"checks": "failure", "mermaid": "success", "secrets": "success"},
+        {},
+    ],
+    ids=["pending", "failing", "not reported yet"],
+)
+def test_check_results_never_gate_auto_merge(checks):
+    # The required checks in the default ruleset do the waiting (decision A).
+    enabled = pr_plan.plan_publish(
+        make_context(checks=checks), make_assessment(), make_review(), auto_merge=True
+    )
+    kept = pr_plan.plan_publish(
+        bot_auto_merge_context(checks=checks), make_assessment(), make_review(), auto_merge=True
+    )
+
+    assert len(actions_of(enabled, "enable_auto_merge")) == 1
+    assert auto_merge_actions(kept) == []
+    assert kept["decision"]["auto_merge"] == "kept"
 
 
 def test_auto_merge_variable_must_be_exactly_true():
@@ -137,31 +152,74 @@ def test_auto_merge_variable_must_be_exactly_true():
     assert len(actions_of(enabled, "enable_auto_merge")) == 1
 
 
-def test_a_raised_risk_disables_the_bots_auto_merge():
-    context = make_context(
-        files=[file_entry("skills/x/SKILL.md")],
-        labels=["risk:low", "review:pass", "auto-merge:bot"],
-        auto_merge_active=True,
+def test_an_active_bot_auto_merge_is_kept_without_writes_while_the_gates_hold():
+    plan = pr_plan.plan_publish(
+        bot_auto_merge_context(), make_assessment(), make_review(), auto_merge=True
     )
 
-    plan = pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
+    assert auto_merge_actions(plan) == []
+    assert actions_of(plan, "set_labels") == []
+    assert plan["decision"]["auto_merge"] == "kept"
 
-    assert actions_of(plan, "disable_auto_merge") == [{"kind": "disable_auto_merge"}]
+
+def test_unknown_mergeability_keeps_an_active_bot_auto_merge():
+    plan = pr_plan.plan_publish(
+        bot_auto_merge_context(mergeable=None), make_assessment(), make_review(), auto_merge=True
+    )
+
+    assert auto_merge_actions(plan) == []
+    assert plan["decision"]["auto_merge"] == "kept"
+
+
+@pytest.mark.parametrize(
+    ("auto_merge", "context_overrides", "review_overrides"),
+    [case[1:] for case in FAILED_GATES],
+    ids=[case[0] for case in FAILED_GATES],
+)
+def test_every_failed_gate_disables_the_bots_auto_merge(
+    auto_merge, context_overrides, review_overrides
+):
+    plan = pr_plan.plan_publish(
+        bot_auto_merge_context(**context_overrides),
+        make_assessment(),
+        make_review(**review_overrides),
+        auto_merge=auto_merge,
+    )
+
+    assert auto_merge_actions(plan) == [{"kind": "disable_auto_merge", "pull_request_id": NODE_ID}]
     labels = label_action(plan)
     assert "auto-merge:bot" in labels["remove"]
     assert "auto-merge:bot" not in labels["add"]
-    assert "risk:medium" in labels["add"]
+    assert plan["decision"]["auto_merge"] == "disabled"
 
 
-def test_turning_the_variable_off_disables_the_bots_auto_merge():
-    context = make_context(
-        labels=["risk:low", "review:pass", "auto-merge:bot"], auto_merge_active=True
-    )
+def test_a_raised_risk_relabels_while_it_disables():
+    context = bot_auto_merge_context(files=[file_entry("skills/x/SKILL.md")])
 
-    plan = pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=False)
+    plan = pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
 
-    assert actions_of(plan, "disable_auto_merge") == [{"kind": "disable_auto_merge"}]
-    assert "auto-merge:bot" in label_action(plan)["remove"]
+    assert "risk:medium" in label_action(plan)["add"]
+    assert len(actions_of(plan, "disable_auto_merge")) == 1
+
+
+def test_a_human_enabled_auto_merge_is_never_taken_over():
+    context = make_context(labels=["risk:low", "review:pass"], auto_merge_active=True)
+
+    plan = pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
+
+    assert auto_merge_actions(plan) == []
+    assert actions_of(plan, "set_labels") == []
+    assert plan["decision"]["auto_merge"] == "human"
+
+
+def test_do_not_merge_disables_a_human_enabled_auto_merge():
+    context = make_context(labels=["do-not-merge"], auto_merge_active=True)
+
+    plan = pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
+
+    assert auto_merge_actions(plan) == [{"kind": "disable_auto_merge", "pull_request_id": NODE_ID}]
+    assert "auto-merge:bot" not in label_action(plan)["add"]
+    assert plan["decision"]["auto_merge"] == "disabled"
 
 
 def test_do_not_merge_is_never_removed_by_the_publisher():
@@ -175,7 +233,7 @@ def test_do_not_merge_is_never_removed_by_the_publisher():
     assert actions_of(plan, "enable_auto_merge") == []
 
 
-def test_a_human_enabled_auto_merge_is_never_touched():
+def test_a_human_enabled_auto_merge_is_never_disabled_by_a_failed_gate():
     context = make_context(labels=["risk:low", "review:pass"], auto_merge_active=True)
 
     plan = pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=False)
@@ -201,3 +259,11 @@ def test_auto_merge_is_not_enabled_twice():
 
     assert len(actions_of(plan, "enable_auto_merge")) == 1
     assert actions_of(plan, "set_labels") == []
+
+
+def test_a_context_without_a_node_id_is_bad_input():
+    context = make_context()
+    del context["node_id"]
+
+    with pytest.raises(pr_plan.ArtifactError, match="node_id"):
+        pr_plan.plan_publish(context, make_assessment(), make_review())

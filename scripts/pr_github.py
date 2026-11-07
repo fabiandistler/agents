@@ -410,7 +410,10 @@ def fetch_context(
         "default_branch": default_branch if isinstance(default_branch, str) else "",
         "draft": bool(pull.get("draft")),
         "fork": fork,
-        "mergeable": pull.get("mergeable") is True,
+        # The GraphQL id the auto-merge mutations take.
+        "node_id": pull.get("node_id") if isinstance(pull.get("node_id"), str) else "",
+        # null while GitHub is still computing it; the planner treats that as unknown.
+        "mergeable": pull.get("mergeable") if isinstance(pull.get("mergeable"), bool) else None,
         "auto_merge_active": pull.get("auto_merge") is not None,
         "labels": labels,
         "files": files,

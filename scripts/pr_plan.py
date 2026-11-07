@@ -54,6 +54,9 @@ def _validate_context(context: object) -> dict:
     head_sha = context.get("head_sha")
     if not isinstance(head_sha, str) or not head_sha:
         raise ArtifactError("context is missing head_sha")
+    node_id = context.get("node_id")
+    if not isinstance(node_id, str) or not node_id:
+        raise ArtifactError("context is missing the pull request node_id")
     reviews = context.get("reviews")
     if not isinstance(reviews, dict) or not isinstance(reviews.get("changes_requested"), bool):
         raise ArtifactError("context field 'reviews' must carry a boolean changes_requested")
@@ -254,7 +257,7 @@ def plan_publish(
     auto_merge_state, auto_merge_action = pr_auto_merge.plan_auto_merge(
         context, risk, review, auto_merge
     )
-    add, remove = _plan_labels(context, risk, review, auto_merge_state == "enabled")
+    add, remove = _plan_labels(context, risk, review, auto_merge_state in pr_auto_merge.BOT_STATES)
 
     actions: list[dict] = []
     if add or remove:

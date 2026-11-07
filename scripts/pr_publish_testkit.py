@@ -53,6 +53,7 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
         "schema_version": 1,
         "repo": "fabiandistler/agents",
         "number": 42,
+        "node_id": "PR_kwDOtest42",
         "title": "A change",
         "body": "",
         "author": "someone-else",
@@ -155,8 +156,10 @@ def pull_request(head_sha: str, labels: list[str]) -> dict:
             "ref": "main",
             "repo": {"full_name": REPO, "default_branch": "main"},
         },
+        "node_id": "PR_kwDOtest42",
         "draft": False,
         "mergeable": True,
+        "auto_merge": None,
         "labels": [{"name": label} for label in labels],
     }
 
@@ -170,12 +173,15 @@ class FakeGitHub:
         self.calls: list[dict] = []
         self.pull_fetches = 0
         self.fail_paths: set[str] = set()
+        # Fields to override in every pull request payload, e.g. mergeable.
+        self.pull_overrides: dict = {}
 
     def get(self, path: str, params: dict | None = None, accept: str | None = None):
         self.calls.append({"method": "GET", "path": path, "payload": None})
         if path == PR_PATH and accept is None:
             self.pull_fetches += 1
-            return json_response(pull_request(self.head_shas.pop(0), self.labels))
+            payload = pull_request(self.head_shas.pop(0), self.labels)
+            return json_response({**payload, **self.pull_overrides})
         if path == PR_PATH:
             return pr_github.Response(status=200, body=b"diff --git a/x b/x\n")
         if path == FILES_PATH:
