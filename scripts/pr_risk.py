@@ -128,10 +128,31 @@ def _classify_path(path: str) -> tuple[str, str]:
     return best_risk, best_label
 
 
-def _count(value: object) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        return 0
-    return max(value, 0)
+# The statuses GitHub reports for a changed file; pr_github.py folds the last
+# three into "added" and "modified".
+FILE_STATUSES = frozenset(
+    {"added", "removed", "modified", "renamed", "copied", "changed", "unchanged"}
+)
+
+
+def _count(value: object) -> int | None:
+    """Return a line count, or None when the value is not a non-negative integer."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _malformed_fields(entry: dict) -> list[str]:
+    """Name the fields of one file entry the policy cannot rely on."""
+    malformed = [field for field in ("additions", "deletions") if _count(entry.get(field)) is None]
+    if entry.get("status") not in FILE_STATUSES:
+        malformed.append("status")
+    if not isinstance(entry.get("binary"), bool):
+        malformed.append("binary")
+    renamed_from = entry.get("renamed_from")
+    if renamed_from is not None and not (isinstance(renamed_from, str) and renamed_from):
+        malformed.append("renamed_from")
+    return malformed
 
 
 def _raise_risk(current: str, candidate: str) -> str:
@@ -178,10 +199,16 @@ def classify_pull_request(context: dict) -> dict:
                 reasons_unreadable = True
                 reasons.append(f"unreadable-file-list: entry at index {index} has no path")
                 continue
+            for field in _malformed_fields(entry):
+                reasons_unreadable = True
+                reasons.append(
+                    f"unreadable-file-list: entry at index {index} has a malformed {field}"
+                )
             entries.append(entry)
 
-    additions = sum(_count(entry.get("additions")) for entry in entries)
-    deletions = sum(_count(entry.get("deletions")) for entry in entries)
+    # A malformed count already made the result high; it adds nothing here.
+    additions = sum(_count(entry.get("additions")) or 0 for entry in entries)
+    deletions = sum(_count(entry.get("deletions")) or 0 for entry in entries)
     changed_lines = additions + deletions
 
     risk = HIGH if reasons_unreadable else LOW
@@ -229,12 +256,16 @@ def classify_pull_request(context: dict) -> dict:
             reasons.append(f"binary: {path}")
             risk = HIGH
 
-    fork = bool(context.get("fork"))
-    draft = bool(context.get("draft"))
-    if fork:
+    fork = context.get("fork")
+    draft = context.get("draft")
+    for field, flag in (("fork", fork), ("draft", draft)):
+        if not isinstance(flag, bool):
+            reasons.append(f"unreadable-metadata: {field} is not a boolean")
+            risk = HIGH
+    if fork is True:
         reasons.append("fork: head repository differs from base")
         risk = HIGH
-    if draft:
+    if draft is True:
         reasons.append("draft: auto-merge disabled")
 
     return {
@@ -243,7 +274,7 @@ def classify_pull_request(context: dict) -> dict:
         "head_sha": context.get("head_sha"),
         "risk": risk,
         "reasons": reasons,
-        "auto_merge_eligible": risk == LOW and not fork and not draft,
+        "auto_merge_eligible": risk == LOW and fork is False and draft is False,
         "counts": {
             "files": len(entries),
             "additions": additions,

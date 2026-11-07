@@ -64,18 +64,81 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
     return context
 
 
-def test_negative_counts_are_clamped_to_zero():
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("additions", -5),
+        ("additions", "3"),
+        ("additions", None),
+        ("additions", True),
+        ("deletions", -1),
+        ("deletions", 2.5),
+        ("status", None),
+        ("status", "moved"),
+        ("binary", None),
+        ("binary", "false"),
+        ("renamed_from", 7),
+    ],
+)
+def test_malformed_entry_field_is_high_and_names_the_field(field, value):
+    entry = file_entry("docs/guide.md")
+    entry[field] = value
+
+    decision = pr_risk.classify_pull_request(make_context([entry]))
+
+    assert decision["risk"] == "high"
+    assert decision["auto_merge_eligible"] is False
+    assert (
+        f"unreadable-file-list: entry at index 0 has a malformed {field}" in (decision["reasons"])
+    )
+    assert "docs: docs/guide.md" in decision["reasons"]
+
+
+@pytest.mark.parametrize("field", ["additions", "deletions", "status", "binary"])
+def test_missing_entry_field_is_high(field):
+    entry = file_entry("docs/guide.md")
+    del entry[field]
+
+    decision = pr_risk.classify_pull_request(make_context([entry]))
+
+    assert decision["risk"] == "high"
+    assert (
+        f"unreadable-file-list: entry at index 0 has a malformed {field}" in (decision["reasons"])
+    )
+
+
+@pytest.mark.parametrize("status", ["copied", "changed", "unchanged"])
+def test_other_github_statuses_are_readable(status):
     decision = pr_risk.classify_pull_request(
-        make_context([file_entry("docs/guide.md", additions=-5, deletions=-1)])
+        make_context([file_entry("docs/guide.md", status=status)])
     )
 
     assert decision["risk"] == "low"
-    assert decision["counts"] == {
-        "files": 1,
-        "additions": 0,
-        "deletions": 0,
-        "changed_lines": 0,
-    }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("fork", None), ("fork", "false"), ("draft", None), ("draft", 0)],
+)
+def test_malformed_fork_or_draft_flag_is_high(field, value):
+    context = make_context([file_entry("docs/guide.md")])
+    context[field] = value
+
+    decision = pr_risk.classify_pull_request(context)
+
+    assert decision["risk"] == "high"
+    assert decision["auto_merge_eligible"] is False
+    assert f"unreadable-metadata: {field} is not a boolean" in decision["reasons"]
+
+
+def test_missing_fork_flag_is_high():
+    context = make_context([file_entry("docs/guide.md")])
+    del context["fork"]
+
+    decision = pr_risk.classify_pull_request(context)
+
+    assert decision["risk"] == "high"
+    assert "unreadable-metadata: fork is not a boolean" in decision["reasons"]
 
 
 def test_decision_echoes_identity_and_counts():
