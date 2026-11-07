@@ -22,7 +22,7 @@ this table.
 Pull requests use separate label families, written by the model-free `hold`
 and `publish` jobs of `.github/workflows/pr-review.yml` ([runbook](pr-review-runbook.md)).
 They never carry the issue roles above. `publish` creates all ten labels on
-first use (`LABELS` in `scripts/pr_actions.py`) and keeps one label per
+first use (`LABELS` in `scripts/pr_labels.py`) and keeps one label per
 family, removing stale ones.
 
 **Risk** (deterministic, `scripts/pr_risk.py`; the model can only raise it):
