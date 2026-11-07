@@ -1,0 +1,219 @@
+"""Tests for the REST client and the CLI of scripts/pr_github.py; none touches the network."""
+
+from __future__ import annotations
+
+import io
+import json
+import subprocess
+import sys
+import urllib.error
+from email.message import Message
+
+import pr_github
+import pytest
+from pr_github_fake import NUMBER, REPO, SCRIPT
+
+
+def test_missing_token_without_an_injected_client_raises_before_any_request(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    with pytest.raises(pr_github.MissingTokenError):
+        pr_github.fetch_context(REPO, NUMBER)
+
+    with pytest.raises(pr_github.MissingTokenError):
+        pr_github.fetch_context(REPO, NUMBER, token="")
+
+
+class FakeHTTPResponse:
+    def __init__(self, body: bytes, status: int = 200, headers: dict | None = None) -> None:
+        self._body = body
+        self.status = status
+        self.headers = headers or {}
+
+    def read(self) -> bytes:
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        return None
+
+
+def test_github_client_sends_auth_and_parses_json():
+    captured = {}
+
+    def opener(request, timeout=None):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return FakeHTTPResponse(b'{"ok": true}')
+
+    client = pr_github.GitHubClient("s3cret-token", opener=opener)
+
+    response = client.get("/repos/o/r", params={"page": 2})
+
+    assert response.json() == {"ok": True}
+    request = captured["request"]
+    assert request.full_url == "https://api.github.com/repos/o/r?page=2"
+    assert request.get_header("Authorization") == "Bearer s3cret-token"
+    assert request.get_header("Accept") == "application/vnd.github+json"
+    assert captured["timeout"] == 30
+
+
+@pytest.mark.parametrize(
+    ("method", "payload"),
+    [
+        ("post", {"a": 1}),
+        ("patch", {"a": 1}),
+        ("delete", None),
+    ],
+)
+def test_client_write_helpers_send_the_named_method(method, payload):
+    captured = {}
+
+    def opener(request, timeout=None):
+        captured["request"] = request
+        return FakeHTTPResponse(b"{}")
+
+    client = pr_github.GitHubClient("token", opener=opener)
+
+    getattr(client, method)("/repos/o/r/thing", payload)
+
+    request = captured["request"]
+    assert request.get_method() == method.upper()
+    if payload is None:
+        assert request.data is None
+    else:
+        assert json.loads(request.data) == payload
+
+
+def test_graphql_posts_the_query_and_returns_the_response_body():
+    captured = {}
+
+    def opener(request, timeout=None):
+        captured["request"] = request
+        return FakeHTTPResponse(b'{"data": {"viewer": {"login": "me"}}}')
+
+    client = pr_github.GitHubClient("token", opener=opener)
+
+    result = client.graphql("query { viewer { login } }", {"n": 1})
+
+    assert result == {"data": {"viewer": {"login": "me"}}}
+    request = captured["request"]
+    assert request.full_url == "https://api.github.com/graphql"
+    assert json.loads(request.data) == {
+        "query": "query { viewer { login } }",
+        "variables": {"n": 1},
+    }
+
+
+def test_http_error_becomes_fetch_error_without_leaking_the_token():
+    def opener(request, timeout=None):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            403,
+            "Forbidden",
+            Message(),
+            io.BytesIO(b'{"message": "nope"}'),
+        )
+
+    client = pr_github.GitHubClient("s3cret-token", opener=opener)
+
+    with pytest.raises(pr_github.FetchError) as info:
+        client.get("/repos/o/r")
+
+    assert info.value.status == 403
+    assert "403" in str(info.value)
+    assert "s3cret-token" not in str(info.value)
+
+
+def test_network_error_becomes_fetch_error():
+    def opener(request, timeout=None):
+        raise urllib.error.URLError("connection refused")
+
+    client = pr_github.GitHubClient("token", opener=opener)
+
+    with pytest.raises(pr_github.FetchError) as info:
+        client.get("/repos/o/r")
+
+    assert "connection refused" in str(info.value)
+
+
+def test_cli_writes_the_context_and_exits_zero(tmp_path, monkeypatch, capsys):
+    context = {"schema_version": 1, "number": NUMBER, "files": []}
+    monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
+    output = tmp_path / "context.json"
+
+    code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(output)])
+
+    assert code == 0
+    assert json.loads(output.read_text(encoding="utf-8")) == context
+    assert capsys.readouterr().out == ""
+
+
+def test_cli_prints_the_context_to_stdout(monkeypatch, capsys):
+    context = {"schema_version": 1, "number": NUMBER, "files": []}
+    monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
+
+    code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO])
+
+    assert code == 0
+    assert json.loads(capsys.readouterr().out) == context
+
+
+def test_cli_maps_missing_token_to_exit_five(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO])
+
+    assert code == 5
+
+
+def test_cli_maps_fetch_failure_to_exit_four(monkeypatch):
+    def fail(repo, number, token=None):
+        raise pr_github.FetchError("boom")
+
+    monkeypatch.setattr(pr_github, "fetch_context", fail)
+
+    assert pr_github.main(["--pr", str(NUMBER), "--repo", REPO]) == 4
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        [],
+        ["--pr", str(NUMBER)],
+        ["--repo", REPO],
+        ["--pr", "zero", "--repo", REPO],
+        ["--pr", "0", "--repo", REPO],
+        ["--pr", str(NUMBER), "--repo", "no-slash"],
+        ["--pr", str(NUMBER), "--repo", REPO, "--unknown"],
+    ],
+)
+def test_cli_usage_errors_exit_two(argv):
+    assert pr_github.main(argv) == 2
+
+
+def test_cli_output_write_failure_exits_three(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        pr_github,
+        "fetch_context",
+        lambda repo, number, token=None: {"schema_version": 1, "files": []},
+    )
+
+    assert pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(tmp_path)]) == 3
+
+
+def test_cli_help_is_short_and_documents_exit_codes():
+    result = subprocess.run(  # noqa: S603 -- fixed interpreter and script path, no shell
+        [sys.executable, str(SCRIPT), "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert len(result.stdout.splitlines()) < 25
+    assert "usage:" in result.stdout
+    assert "exit:" in result.stdout
+    assert result.stderr == ""
