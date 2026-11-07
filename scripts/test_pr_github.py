@@ -146,7 +146,10 @@ def test_fetch_context_maps_every_contract_field():
         "scripts/modified.py": "print('x')\n",
         "scripts/new_name.py": "old\n",
     }
-    assert context["comments"] == [{"id": 1, "body": "first"}, {"id": 2, "body": ""}]
+    assert context["comments"] == [
+        {"id": 1, "body": "first", "author": "someone"},
+        {"id": 2, "body": "", "author": ""},
+    ]
     assert context["checks"] == {"checks": "success", "mermaid": "in_progress"}
     assert context["reviews"] == {"changes_requested": True}
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pr_plan
 from pr_publish_testkit import (
+    BOT_AUTHOR,
     MARKER,
     actions_of,
     comment_action,
@@ -162,7 +163,7 @@ def test_comment_shows_an_unparseable_response_verbatim():
 def test_unchanged_sticky_comment_plans_no_comment_action():
     first = pr_plan.plan_publish(make_context(), make_assessment(), make_review())
     body = comment_body(first)
-    context = make_context(comments=[{"id": 7, "body": body}])
+    context = make_context(comments=[{"id": 7, "body": body, "author": BOT_AUTHOR}])
 
     second = pr_plan.plan_publish(context, make_assessment(), make_review())
 
@@ -170,7 +171,9 @@ def test_unchanged_sticky_comment_plans_no_comment_action():
 
 
 def test_existing_sticky_comment_is_updated_in_place():
-    context = make_context(comments=[{"id": 7, "body": f"{MARKER}\nold assessment"}])
+    context = make_context(
+        comments=[{"id": 7, "body": f"{MARKER}\nold assessment", "author": BOT_AUTHOR}]
+    )
 
     plan = pr_plan.plan_publish(context, make_assessment(), make_review())
 
@@ -182,8 +185,31 @@ def test_existing_sticky_comment_is_updated_in_place():
 def test_comment_ignores_comments_without_the_marker():
     context = make_context(
         comments=[
-            {"id": 1, "body": "Looks good to me."},
-            {"id": 7, "body": f"{MARKER}\nold assessment"},
+            {"id": 1, "body": "Looks good to me.", "author": BOT_AUTHOR},
+            {"id": 7, "body": f"{MARKER}\nold assessment", "author": BOT_AUTHOR},
+        ]
+    )
+
+    plan = pr_plan.plan_publish(context, make_assessment(), make_review())
+
+    assert comment_action(plan)["comment_id"] == 7
+
+
+def test_a_human_comment_quoting_the_marker_is_never_overwritten():
+    context = make_context(
+        comments=[{"id": 3, "body": f"Why does it say {MARKER}?", "author": "someone-else"}]
+    )
+
+    plan = pr_plan.plan_publish(context, make_assessment(), make_review())
+
+    assert comment_action(plan)["comment_id"] is None, "a human comment is never edited"
+
+
+def test_the_bot_comment_is_found_after_a_human_comment_quoting_the_marker():
+    context = make_context(
+        comments=[
+            {"id": 3, "body": f"{MARKER} copied here", "author": "someone-else"},
+            {"id": 7, "body": f"{MARKER}\nold assessment", "author": BOT_AUTHOR},
         ]
     )
 

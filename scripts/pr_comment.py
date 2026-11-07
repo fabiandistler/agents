@@ -1,8 +1,8 @@
 """Render the review bot's sticky pull request comment.
 
 One comment per pull request carries the risk, the verdict, the summary, the
-risk reasons and the findings. It is found again by its marker and updated in
-place; an unchanged body plans no action.
+risk reasons and the findings. It is found again by its marker and its author,
+the workflow bot, and updated in place; an unchanged body plans no action.
 """
 
 from __future__ import annotations
@@ -10,6 +10,9 @@ from __future__ import annotations
 import re
 
 COMMENT_MARKER = "<!-- pr-review-bot -->"
+# The login the workflow's GITHUB_TOKEN writes as. A comment by anyone else is
+# never the sticky comment, even when it quotes the marker.
+COMMENT_AUTHOR = "github-actions[bot]"
 SEVERITIES = ("info", "warning", "blocker")
 
 
@@ -103,7 +106,11 @@ def _sticky_comment(context: dict) -> dict | None:
         if not isinstance(comment, dict):
             continue
         body = comment.get("body")
-        if isinstance(body, str) and COMMENT_MARKER in body:
+        if (
+            comment.get("author") == COMMENT_AUTHOR
+            and isinstance(body, str)
+            and COMMENT_MARKER in body
+        ):
             return comment
     return None
 

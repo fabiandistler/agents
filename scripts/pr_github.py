@@ -121,7 +121,14 @@ def _map_file(entry: dict) -> dict:
 
 def _comment(entry: dict) -> dict:
     body = entry.get("body")
-    return {"id": entry.get("id"), "body": body if isinstance(body, str) else ""}
+    user = entry.get("user")
+    login = user.get("login") if isinstance(user, dict) else None
+    # The author tells the bot's sticky comment apart from a human one quoting its marker.
+    return {
+        "id": entry.get("id"),
+        "body": body if isinstance(body, str) else "",
+        "author": login if isinstance(login, str) else "",
+    }
 
 
 def _check_map(runs: list[dict]) -> dict[str, str]:

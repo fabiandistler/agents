@@ -10,6 +10,7 @@ import pr_publish
 import pytest
 from pr_publish_testkit import (
     ACTIVE_AUTO_MERGE,
+    BOT_AUTHOR,
     COMMENTS_PATH,
     FILES_PATH,
     MARKER,
@@ -121,7 +122,12 @@ def test_a_stale_assessment_aborts_before_the_second_fetch():
             "high",
             None,
         ),
-        (COMMENTS_PATH, [{"id": 77, "body": f"{MARKER}\nprevious review"}], "low", 77),
+        (
+            COMMENTS_PATH,
+            [{"id": 77, "body": f"{MARKER}\nprevious review", "user": {"login": BOT_AUTHOR}}],
+            "low",
+            77,
+        ),
     ],
 )
 def test_live_write_replans_using_the_final_context(

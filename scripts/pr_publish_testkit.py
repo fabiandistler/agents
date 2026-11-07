@@ -17,6 +17,8 @@ import pr_github_client
 
 SCRIPT = Path(__file__).resolve().parent / "pr_publish.py"
 MARKER = "<!-- pr-review-bot -->"
+# The login GITHUB_TOKEN writes as; only its comments can be the sticky comment.
+BOT_AUTHOR = "github-actions[bot]"
 BOT = "fabiandistler"
 
 ACTION_KINDS = {
