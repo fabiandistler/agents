@@ -1,115 +1,194 @@
 # PR review runbook
 
-Repository maintainers use this runbook to operate PR review, with GitHub
-Actions access and an understanding of the repository's human merge rule.
+For the repository maintainer, who operates the PR review workflow with admin
+access to the repository settings.
 
 `.github/workflows/pr-review.yml` assesses, reviews and labels every pull
-request. It adds risk and verdict labels, keeps one sticky comment up to date,
-and asks the maintainer for a review. It never approves, never merges and
-never enables auto-merge.
+request, keeps one sticky comment up to date and requests the maintainer's
+review. For a gated docs-only pull request it may also enable GitHub's native
+auto-merge, once `PR_AUTO_MERGE` is `true`. It never approves, never requests
+changes and never merges directly: the merge happens when GitHub's auto-merge
+sees the required checks pass. Why this exception exists, and its limits:
+[ADR-0011](../adr/0011-pr-review-merge-exception.md).
+
+Related pages:
+
+- [Labels and thresholds](triage-labels.md#pull-request-labels)
+- [Troubleshooting and reading a run](pr-review-troubleshooting.md)
+- [Acceptance record](pr-review-acceptance.md)
 
 ## Contents
 
-- [What the workflow does](#what-the-workflow-does)
+- [Jobs and security model](#jobs-and-security-model)
+- [Auto-merge](#auto-merge)
 - [Setup](#setup)
+- [Rollout](#rollout)
 - [Dry run](#dry-run)
-- [Going live](#going-live)
-- [Read a run](#read-a-run)
-- [Labels and troubleshooting](#labels-and-troubleshooting)
-- [Acceptance record](#acceptance-record)
-- [Auto-merge decision](#auto-merge-decision)
+- [Manual re-run](#manual-re-run)
+- [Model change](#model-change)
+- [Quota and cost](#quota-and-cost)
 - [Disable and roll back](#disable-and-roll-back)
 - [Known limits](#known-limits)
 
-## What the workflow does
+## Jobs and security model
 
-Three jobs per pull request event (`opened`, `synchronize`, `reopened`,
-`ready_for_review`) or manual dispatch:
+The workflow triggers on `pull_request_target` (`opened`, `synchronize`,
+`reopened`, `ready_for_review`, `labeled`) and on a manual `workflow_dispatch`
+with a pull request number and `dry_run` (default `true`).
 
-| Job     | Permissions                                  | Model key          | Does                                                                                   |
-| ------- | -------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------- |
-| assess  | read: contents, pull-requests, issues, checks | none               | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies the paths        |
-| review  | `contents: read`                             | `OPENCODE_API_KEY` | `pr_review.py` sanitizes and caps the diff, calls the model, parses the verdict         |
-| publish | `pull-requests: write`, `issues: write`      | none               | `pr_publish.py` re-fetches the PR, plans, and `pr_apply.py` writes labels and comment |
+| Job | Permissions and secrets | Does |
+| --- | --- | --- |
+| `hold` | write: contents, pull-requests, issues; no model key | On a push, disables the bot's auto-merge; when `do-not-merge` is added, disables any auto-merge. Never enables. |
+| `assess` | read: contents, pull-requests, issues, checks | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies it. |
+| `review` | `contents: read`; `OPENCODE_API_KEY` | `pr_review.py` sanitizes and caps the input, calls the model, parses the verdict. |
+| `publish` | write: contents, pull-requests, issues; no model key | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes. |
 
-- The workflow runs on `pull_request_target`, so the workflow file and the
-  scripts always come from the default branch. The pull request head is never
-  checked out or executed; diff and base files arrive through the REST API.
-- The review job is skipped for drafts and for pull requests whose head lives
-  in a fork. Publish still runs and records the review as `skipped`.
-- The model's risk can only raise the path-based risk, never lower it. A
-  missing key, a provider error or a timeout (60 s) becomes
-  `review:unavailable`, never a pass.
-- Publish re-reads the pull request right before writing and rebuilds its
-  plan from the current files, labels and comments. If the head moved, it
-  aborts with `head_sha_changed`; a closed PR aborts with
-  `pull_request_closed`. Both cases write nothing.
+- **Base code only.** `pull_request_target` runs the workflow file and scripts
+  from the default branch. No job checks out or executes the pull request
+  head; the diff, file list and base files arrive through the REST API. A
+  pull request that edits the pipeline is reviewed by the version on `main`.
+- **Credential split.** Only `review` holds the model key, and it has no
+  write scope. The jobs that write hold no model key and check out with
+  `persist-credentials: false`. The workflow default is `permissions: {}`.
+- **The model only advises.** Its risk can raise the path-based risk, never
+  lower it. Title, body and diff are untrusted data: HTML comments,
+  zero-width characters and base64 blobs are stripped before the prompt is
+  built. Unparseable output becomes `concerns` and `high`.
+- **Drafts and forks** are assessed and labeled but not reviewed; their
+  review is `skipped`. A fork's diff never reaches the job that holds a
+  secret, and a fork never auto-merges.
+- **Fresh data before writing.** `publish` re-fetches the pull request,
+  plans, then re-fetches again right before the first write and re-plans
+  from that data. If the head moved since the assessment, it aborts with
+  `head_sha_changed`; a closed pull request aborts with
+  `pull_request_closed`. Both write nothing.
+- **One sticky comment.** It is found by the hidden marker
+  `<!-- pr-review-bot -->` and the bot author; a human comment quoting the
+  marker is never edited. An unchanged body is not rewritten.
+- **Reviewer.** `fabiandistler` is requested as reviewer. When the maintainer
+  authored the pull request, GitHub refuses a self-review request, so
+  `publish` assigns them and adds `needs-review`.
+- **Concurrency.** One group per pull request; a new push cancels the run for
+  the old head. Each label event has its own group, so it never cancels a
+  review run.
 
-The risk rules are `PATH_RULES` in `scripts/pr_risk.py`, the prompt is
+Risk rules are `PATH_RULES` in `scripts/pr_risk.py`; the prompt is
 `scripts/pr_review_prompt.md`.
+
+## Auto-merge
+
+`publish` enables auto-merge only when every gate holds on the re-fetched
+data:
+
+- the repository variable `PR_AUTO_MERGE` is exactly `true`;
+- the effective risk is `low` and the review is complete (`ok`, not partial)
+  with verdict `pass`;
+- the pull request comes from this repository, is not a draft, targets the
+  default branch and GitHub reports it mergeable;
+- the head SHA is unchanged since the assessment;
+- no human review requests changes, and `do-not-merge` is absent.
+
+The required checks are not a gate in the script (decision A). The default
+ruleset requires `checks`, `mermaid` and `secrets`; native auto-merge waits
+for them and merges only when they pass. Pending checks never disable the
+bot's auto-merge; a failing check simply blocks the merge.
+
+The write is GitHub's GraphQL `enablePullRequestAutoMerge` with merge method
+`MERGE` (a merge commit) and `expectedHeadOid` pinned to the assessed head.
+Branch deletion comes from the repository setting `delete_branch_on_merge`.
+
+**Ownership.** The bot adds `auto-merge:bot` when it enables auto-merge. An
+active auto-merge without that label belongs to a human: the bot never takes
+it over and never disables it. The one exception is `do-not-merge`
+(decision B), which disables any auto-merge, whoever enabled it.
+
+**Revocation.** On a push, `hold` disables the bot's auto-merge at once, before
+the new head is reviewed (GitHub keeps auto-merge on when someone with write
+access pushes). `publish` then decides afresh for the new head. A worse
+verdict or any failed gate disables the bot's auto-merge and removes
+`auto-merge:bot`. While GitHub still computes mergeability, the bot neither
+enables nor disables.
+
+**Already mergeable (decision D).** GitHub refuses to arm auto-merge on a pull
+request whose checks are already done. `publish` treats the refusal as "not
+enabled": the run stays green, `needs-review` is added and the sticky comment
+says auto-merge could not be armed. The maintainer merges by hand. The bot
+never merges directly.
+
+**Bot merges start no workflows.** A merge done by auto-merge that
+`GITHUB_TOKEN` enabled triggers no `push` workflow on `main` (`ci.yml`,
+`maintenance-gate.yml`, `pages.yml`). Pages is built from `skills.json` and
+`site/`, which are never low risk, so the site is unaffected. CI on `main`
+runs again with the next human push.
 
 ## Setup
 
 All settings live under the repository's **Settings** tab.
 
-1. **Model key (required for reviews).** *Secrets and variables → Actions →
-   Secrets → New repository secret*, name `OPENCODE_API_KEY`, value an
-   OpenCode Zen API key. Only the review job reads it. Without it every
-   reviewed PR gets `review:unavailable` and `needs-review`; labels and the
-   comment still work.
-2. **Model (optional).** *Secrets and variables → Actions → Variables → New
-   repository variable*, name `PR_REVIEW_MODEL`. Unset means
+1. **Model key.** *Secrets and variables → Actions → Secrets*: add
+   `OPENCODE_API_KEY`, an OpenCode Zen API key. Only `review` reads it.
+   Without it every review is `review:unavailable` with `needs-review`.
+2. **Model (optional).** *Variables*: `PR_REVIEW_MODEL`. Unset means
    `deepseek-v4.1-flash-free` (`DEFAULT_MODEL` in `scripts/pr_review.py`).
-   The base URL is fixed to `https://opencode.ai/zen/v1`; the workflow does
-   not pass `OPENCODE_BASE_URL`.
-3. **No auto-merge variable.** Do not create `PR_AUTO_MERGE`. The workflow
-   does not pass it to any job, so it has no effect; auto-merge is not
-   available yet (#635, #636).
-4. **Labels: nothing to create.** Publish creates the ten labels it knows
-   (`LABELS` in `scripts/pr_apply.py`) on first use and tolerates existing
-   ones: `risk:low`, `risk:medium`, `risk:high`, `review:pass`,
-   `review:concerns`, `review:block`, `review:unavailable`, `needs-review`,
-   `do-not-merge`, `auto-merge:bot`. Labels you created earlier keep their
-   colour and description.
-5. **Actions policy.** *Actions → General*: Actions must be enabled and the
-   allowed-actions policy must permit `actions/checkout`,
-   `actions/setup-python`, `actions/upload-artifact` and
-   `actions/download-artifact` (all pinned to commit SHAs). The *Workflow
-   permissions* default does not matter: the workflow sets `permissions: {}`
-   and each job declares its own scopes.
-6. **Maintainer login.** Reviews are requested from `fabiandistler`
-   (`BOT_LOGIN` in `scripts/pr_publish.py` and `scripts/pr_apply.py`). When
-   the maintainer authored the PR, publish assigns them instead, because
-   GitHub refuses a review request to the author.
+   The base URL is fixed to `https://opencode.ai/zen/v1`.
+3. **Auto-merge switch.** *Variables*: `PR_AUTO_MERGE`. Leave it unset until
+   step 5 of the [rollout](#rollout). Any value but `true` keeps auto-merge
+   off.
+4. **Labels.** Nothing to create: `publish` creates its ten labels on first
+   use and leaves existing ones as they are.
+5. **Repository settings.** *General → Pull Requests*: **Allow auto-merge**
+   on, **Automatically delete head branches** on (`delete_branch_on_merge`).
+   On 2026-11-07 both were on. Check with
+   `gh api repos/fabiandistler/agents --jq '{allow_auto_merge, delete_branch_on_merge}'`.
+6. **Ruleset (one-time, manual).** *Rules → Rulesets → `default` → Require
+   status checks to pass*: require `checks`, `mermaid` and `secrets` from
+   GitHub Actions. On 2026-11-07 the ruleset required only `checks`; add the
+   other two. Without them, auto-merge would merge as soon as `checks` passes.
+   Inspect with `gh api repos/fabiandistler/agents/rulesets`.
+7. **Actions policy.** *Actions → General*: Actions enabled, and the
+   allowed-actions policy permits `actions/checkout`, `actions/setup-python`,
+   `actions/upload-artifact` and `actions/download-artifact` (all pinned to
+   commit SHAs).
 
-Nothing runs before the workflow is on the default branch: a manual dispatch
-needs the workflow file there, and `pull_request_target` reads it from there.
+Nothing runs before the workflow is on the default branch: a dispatch needs
+the file there, and `pull_request_target` reads it from there.
+
+## Rollout
+
+1. Merge the scripts, tests, docs and workflow with `PR_AUTO_MERGE` unset.
+   From then on every pull request event writes labels and the comment.
+2. Run the [Actions dry run](#dry-run) on an open docs-only pull request
+   (paths under `docs/` outside `docs/agents/` and `docs/adr/`).
+3. Observe for a week: labels, verdicts and the comment on real pull
+   requests. Check that no `auto-merge:bot` label appears.
+4. Make the [ruleset change](#setup) (step 6 of the setup).
+5. Set `PR_AUTO_MERGE` to `true`, then record the acceptance runs in the
+   [acceptance record](pr-review-acceptance.md).
 
 ## Dry run
 
-**Before merge, locally (read-only).** Runs the same scripts against a real
-pull request without writing. Needs `gh auth status` to succeed.
+**Locally, read-only.** Runs the same scripts against a real pull request.
+Needs `gh auth status` to succeed. Run it from the repository root:
 
 ```bash
-scripts="$PWD/scripts"; pr=637; out=/tmp/pr-review-$pr
+scripts="$PWD/scripts"; pr=NNN; out=/tmp/pr-review-$pr
 mkdir -p "$out" && cd "$out"
 export GITHUB_TOKEN="$(gh auth token)"
 python3 "$scripts/pr_github.py" --repo fabiandistler/agents --pr "$pr" --output context.json
 python3 "$scripts/pr_risk.py" --context context.json --output assessment.json
 python3 "$scripts/pr_review.py" --context context.json --dry-run --output request.json  # no network
 python3 "$scripts/pr_review.py" --context context.json > review.json  # model call if OPENCODE_API_KEY is set
-python3 "$scripts/pr_publish.py" --live --repo fabiandistler/agents --pr "$pr" \
-  --assessment assessment.json --review review.json
+PR_AUTO_MERGE=true python3 "$scripts/pr_publish.py" --live --repo fabiandistler/agents \
+  --pr "$pr" --assessment assessment.json --review review.json
 ```
 
-Run it from the repository root. Pick a same-repository PR; for a fork PR
-`review.json` is `skipped`.
+The last command prints the plan: label changes, the comment body, the
+reviewer action and `decision.auto_merge` (`enabled` for an eligible docs
+pull request, else `off`, `kept`, `disabled` or `human`). Drop
+`PR_AUTO_MERGE=true` to see today's behaviour. `--write` is refused outside
+GitHub Actions (exit 5).
 
-The last command prints the plan: labels to add and remove, the comment body,
-the reviewer action, and `decision.auto_merge`, which must be `off`.
-`--write` is refused outside GitHub Actions (exit 5).
-
-**After merge, in Actions.** Dispatch with the default `dry_run: true`:
+**In Actions.** Dispatch with the default `dry_run: true`:
 
 ```bash
 gh api --method POST \
@@ -119,153 +198,83 @@ gh api --method POST \
 JSON
 ```
 
-Replace `NNN` with an open same-repository PR. Or *Actions → pr-review → Run workflow*. The dry run calls the model (one
-request) but writes nothing to GitHub. Check:
+Or *Actions → pr-review → Run workflow*. A dry run calls the model once,
+re-fetches the pull request, re-checks the head SHA and the policy on that
+fresh data and plans exactly what a write run would, then writes nothing.
+`hold` does not run on a dispatch. Check:
 
-- all three jobs are green; for a fork PR, review is skipped by design;
-- the run summary under **PR review decision** shows `auto-merge: off` and the
-  labels you expect;
-- the PR has no new labels or comments.
+- `assess`, `review` and `publish` are green;
+- the run summary under **PR review decision** shows the risk, the verdict,
+  the auto-merge state and the planned labels;
+- the pull request has no new labels or comments.
 
-To apply the same plan to that one PR, dispatch again with `"dry_run": "false"`.
+## Manual re-run
 
-## Going live
+- **Fresh review after a model or prompt change:** dispatch as above with
+  `"dry_run": "false"`. It writes exactly what a pull request event would.
+- **Same run again** (a red job after a transient failure):
+  `gh run rerun <run-id>`. A re-run uses the original run's commit. Use
+  `--failed` only for a red job: a `review:unavailable` run is green, so
+  `--failed` does not retry it.
+- **A new push** always triggers a fresh assessment and review.
 
-There is no separate switch: merging the workflow to `main` is going live.
-From then on every `opened`, `synchronize`, `reopened` and `ready_for_review`
-event writes labels and the sticky comment. Open PRs are untouched until
-their next such event.
+## Model change
 
-1. Add `OPENCODE_API_KEY` (and `PR_REVIEW_MODEL` if wanted) before merging.
-2. Merge, then run the Actions dry run above on one open same-repository PR.
-3. Watch the next real PR event. Expected for a docs-only same-repo PR:
-   `risk:low`, `review:pass` (or `concerns`), one bot comment, and a review
-   request; no auto-merge.
+The default `deepseek-v4.1-flash-free` was verified in the live OpenCode Zen
+model list on 2026-11-07. Free models are offered for a limited time; a
+retired or misspelled model fails safe as `review:unavailable` on every pull
+request.
 
-## Read a run
+1. List the models the key can use, reading the key from the environment:
 
-```bash
-gh run list --workflow pr-review.yml --limit 5
-gh run view <run-id>
-gh run view <run-id> --log-failed
-gh run download <run-id> -n pr-review
-```
+   ```bash
+   printf 'Authorization: Bearer %s\n' "$OPENCODE_API_KEY" |
+     curl -sS -H @- https://opencode.ai/zen/v1/models
+   ```
 
-Artifacts: `pr-context` (the fetched PR, including the diff), `pr-assessment`
-(path risk and reasons), `pr-review` (verdict, findings, raw model text).
-Publish exit codes: 1 a write failed, 3 a malformed artifact, 4 the live
-re-fetch failed. A provider failure is not a red run; it shows as
-`review:unavailable`. After a provider fix, dispatch a fresh dry run or rerun
-the whole run with `gh run rerun <run-id>`. Use `--failed` only for a red job;
-it does not retry an unavailable review in a successful run. A new PR push
-also triggers a fresh assessment.
+2. Set the repository variable `PR_REVIEW_MODEL` to the new ID. No code change
+   is needed; unset it to return to the default.
+3. Dispatch a dry run and check that the review is not `unavailable`.
 
-## Labels and troubleshooting
+Changing `DEFAULT_MODEL` itself is a `scripts/pr_*` change, so its pull request
+is high risk and needs a human review.
 
-Issue classification keeps its own [five triage roles](triage-labels.md).
-PR review uses these separate families:
+## Quota and cost
 
-| Label | Meaning and operator action |
-| --- | --- |
-| `risk:low` | Documentation/report path floor; the model can raise it. Merging remains manual. |
-| `risk:medium` | Skills, agent instructions, README/ADRs or a size escalation; human review needed. |
-| `risk:high` | Workflow, guard, automation, unknown path, fork or large change; human review needed. |
-| `review:pass` | The provider returned a parseable passing verdict. |
-| `review:concerns`, `review:block` | Read the findings in the sticky comment before merging. |
-| `review:unavailable` | Review did not run successfully; inspect the review artifact and configuration. |
-| `needs-review` | Maintainer attention is needed, including the self-authored assignment case. |
-| `do-not-merge` | Explicit maintainer veto; leave the PR open. |
-| `auto-merge:bot` | Reserved for #635; inactive in this implementation. |
-
-Thresholds and path rules live in `scripts/pr_risk.py`: over 300 changed lines
-or 20 files raises risk to medium; over 1000 lines or 50 files raises it to
-high. README and ADRs are policy documents, so their floor is medium. Risk
-suggestions never lower the deterministic floor. A skipped draft/fork review
-has no verdict label; a provider failure uses `review:unavailable`.
-
-| Symptom | Check and recovery |
-| --- | --- |
-| Missing labels or HTTP 403 | Check the publish job and repository Actions policy. Its existing `issues: write` and `pull-requests: write` scopes must be allowed; model access does not grant these scopes. |
-| Provider unavailable | Check that the maintainer configured the model secret, model availability and provider quota. Inspect `pr-review`; rerun only after fixing the cause. No raw credential belongs in an issue or log. |
-| `head_sha_changed` | A push invalidated the review. Wait for the run for the latest head; the old run intentionally writes nothing. |
-| `pull_request_closed` | The PR closed during the run. No action is needed unless it is intentionally reopened. |
-| Conflicting `risk:*` or `review:*` labels | A fresh successful publish replaces stale labels within each family. Check that the latest run succeeded rather than editing a label to override the policy. |
-| Duplicate sticky comments | Check whether concurrent publishers bypassed the per-PR workflow concurrency. The final snapshot reuses an existing marker comment instead of creating a second one. |
-| Publish rejects `disable_auto_merge` | GitHub reports auto-merge as active on a PR that carries `auto-merge:bot`. Disable auto-merge on the PR by hand; the writer deliberately refuses auto-merge actions until #635 is implemented. |
-
-There is no separate daily request quota: one eligible review job makes one
-provider request, with bounded input and a 60-second timeout. Superseded runs
-are cancelled. The provider account's current quota, pricing and model
-availability are operator-managed; a limit or outage yields an unavailable
-review.
-
-## Acceptance record
-
-Offline verification and live rollout are separate. Pending rows are not
-completion claims for #631, #633, #634 or #636.
-
-| Scenario | Evidence or remaining manual step |
-| --- | --- |
-| Risk, review parser, publish planning, writer and workflow contracts | Run the six `scripts/test_pr_*.py` suites for this branch; tests use fixtures and fake transports only. |
-| State changes between assessment and writing | Regression cases change the final files, labels, sticky comment or PR state; closed/stale PRs write nothing. |
-| Live provider smoke test | Pending maintainer setup of `OPENCODE_API_KEY`; run the local read-only sequence with an approved provider configuration and record the result. |
-| End-to-end Actions dry run | Pending workflow deployment to `main`; dispatch with `dry_run=true`, record the run URL and verify no PR metadata changed. |
-| Live non-docs PR | Pending approved deployment; record a run with `needs-review`, a sticky comment and a maintainer request/assignment, with auto-merge off. |
-| Docs PR waiting for required checks | Pending #635, the merge exception decision and maintainer ruleset setup; no such run has been performed. |
-
-Before closing acceptance issues, replace each completed pending row with the
-run URL, head SHA and observed result. Offline tests cannot verify live token
-permissions, provider availability, label writes or ruleset enforcement.
-
-## Auto-merge decision
-
-Auto-merge remains unavailable. Setting `PR_AUTO_MERGE=true` cannot activate it
-because the workflow does not pass that variable and the writer rejects merge
-actions. The accepted [CI exception decision](../adr/0011-pr-review-merge-exception.md)
-allows the exception, but it is not active and does not yet change the merge
-rule.
-
-A separate reviewed implementation (#635) must add
-native auto-merge behind an off-by-default variable, validate every gate, and
-update the merge rule precisely. The maintainer must then protect `main` with
-required `checks`, `mermaid` and `secrets` checks before any enablement. The
-rollout is a read-only dry run, an observation period, verified required-check
-configuration, and only then explicit maintainer enablement. The interactive
-merge guard remains unchanged throughout.
+- One review job makes at most one provider request: input capped (diff 2000
+  lines or 200 KB, request 300 KB), 60-second timeout. Label events, drafts
+  and forks make none. A newer push cancels the run for the old head.
+- The pipeline has no request budget of its own. The provider's rate limits
+  and free-tier terms apply; a limit or outage yields `review:unavailable`
+  and no auto-merge, never a pass.
+- The repository is public, so standard runners cost no Actions minutes. A
+  paid `PR_REVIEW_MODEL` is billed to the key's account.
 
 ## Disable and roll back
 
+- **Stop auto-merge:** delete `PR_AUTO_MERGE` or set it to `false`. The next
+  run per pull request disables the bot's own auto-merge. To stop one pull
+  request at once, add `do-not-merge`.
+- **Stop model calls:** delete `OPENCODE_API_KEY`. Pull requests keep their
+  risk labels and comment, with `review:unavailable`.
 - **Pause everything:**
   `gh api --method PUT repos/fabiandistler/agents/actions/workflows/pr-review.yml/disable`
-  (resume with `.../enable`), or *Actions → pr-review → … → Disable
-  workflow*. A disabled workflow cannot be dispatched either.
-- **Stop model calls only:** delete the `OPENCODE_API_KEY` secret. PRs keep
-  getting risk labels and the comment, with `review:unavailable`.
-- **Remove:** revert the merge commit in a PR. Existing labels and bot
-  comments stay; delete a label with `gh api --method DELETE
-  repos/fabiandistler/agents/labels/risk:low`, which removes it from every PR.
+  (resume with `.../enable`). A disabled workflow cannot be dispatched.
+- **Remove:** revert the merge commit in a pull request. Labels and bot
+  comments stay; `gh api --method DELETE repos/fabiandistler/agents/labels/risk:low`
+  deletes a label from every pull request.
 
 ## Known limits
 
-- **Fork PRs are never reviewed by the model,** including PRs from the
-  maintainer's own fork account. Their diff is untrusted and the review job
-  holds a secret. They get risk labels and a comment saying the review was
-  skipped.
-- **No auto-merge.** `PR_AUTO_MERGE` is not passed, and `pr_apply.py` refuses
-  `enable_auto_merge` and `disable_auto_merge` actions. A stale
-  `auto-merge:bot` label is removed on the next publish. Only when GitHub
-  also reports auto-merge as active does the planner emit
-  `disable_auto_merge`, which `pr_apply.py` rejects; see the troubleshooting
-  table. See #635 and #636.
-- **Advisory only.** The bot never approves and never merges. The merge rule
-  and the interactive merge guard (`scripts/pr_merge_guard.py`) are unchanged.
-- **Pipeline changes take effect only after merge.** A PR that edits
-  `pr-review.yml` or `scripts/pr_*` is classified `risk:high` and reviewed by
-  the version on `main`.
-- **Partial reviews.** The diff is capped at 2000 lines or 200 KB and the
-  request at 300 KB; a capped review is marked partial in the comment.
-- **Cost.** The repository is public, so the standard runners cost no
-  Actions minutes. Each review job run is one model request; a newer push
-  cancels the in-progress run for the same PR. The default model is a free
-  OpenCode Zen model; a paid `PR_REVIEW_MODEL` is billed to the key's
-  account.
+- **Interactive agents still never merge.** The merge guard
+  (`scripts/pr_merge_guard.py`, `merge-guard` plugin) is unchanged and blocks
+  agents from merging and from enabling auto-merge.
+- **No `unlabeled` trigger.** Removing `do-not-merge` re-arms nothing until
+  the next push or a dispatch with `"dry_run": "false"`.
+- **Small race.** `do-not-merge` added between the final re-fetch and the
+  enable write leaves auto-merge on until the `labeled` run of `hold`
+  disables it moments later.
+- **Fork pull requests are never reviewed by the model,** including those
+  from the maintainer's own fork.
+- **Partial reviews never auto-merge.** A capped diff marks the review
+  partial in the comment.
