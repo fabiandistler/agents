@@ -67,6 +67,20 @@ def _send(client: WriteClient, operation: Operation) -> None:
         return
     if response.status >= 400:
         raise ApplyError(f"{operation.method} {operation.path} returned {response.status}")
+    if operation.path == pr_actions.GRAPHQL_PATH:
+        _check_graphql(operation, response)
+
+
+def _check_graphql(operation: Operation, response: pr_github.Response) -> None:
+    """GraphQL reports a refused mutation with HTTP 200 and an errors list."""
+    try:
+        body = response.json()
+    except (UnicodeDecodeError, ValueError) as error:
+        raise ApplyError(f"{operation.kind}: GraphQL returned no JSON") from error
+    errors = body.get("errors") if isinstance(body, dict) else None
+    if not isinstance(body, dict) or errors:
+        messages = [str(error.get("message")) for error in errors or [] if isinstance(error, dict)]
+        raise ApplyError(f"{operation.kind}: {'; '.join(messages) or 'unexpected response'}")
 
 
 def _detail(kind: str, operations: list[Operation]) -> str:
@@ -85,6 +99,10 @@ def _detail(kind: str, operations: list[Operation]) -> str:
         return "posted a comment"
     if kind == "request_reviewer":
         return f"requested {pr_actions.BOT_LOGIN}"
+    if kind == "enable_auto_merge":
+        return "enabled auto-merge with a merge commit"
+    if kind == "disable_auto_merge":
+        return "disabled auto-merge"
     if kind == "assign":
         return f"assigned {pr_actions.BOT_LOGIN}"
     return f"{len(operations)} operation(s)"

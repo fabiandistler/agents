@@ -122,7 +122,7 @@ def test_cli_write_lists_every_result_and_exits_one_on_failure(tmp_path, monkeyp
 
 def test_cli_write_rejects_an_unsupported_action_before_a_call(tmp_path, monkeypatch):
     client = FakeClient()
-    plan = make_plan([{"kind": "enable_auto_merge", "method": "merge", "delete_branch": True}])
+    plan = make_plan([{"kind": "merge"}])
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
 

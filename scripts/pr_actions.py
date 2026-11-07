@@ -8,6 +8,7 @@ so an unexpected plan can never half-apply.
 
 from __future__ import annotations
 
+import re
 import urllib.parse
 from dataclasses import dataclass
 
@@ -33,6 +34,26 @@ LABELS = {
     "do-not-merge": ("000000", "Hard stop: never merge this pull request"),
     "auto-merge:bot": ("1d76db", "Auto-merge enabled by the review bot"),
 }
+
+# GitHub has no REST endpoint for auto-merge; both writes are GraphQL mutations.
+# The merge method is fixed to a merge commit. Branch deletion after the merge
+# comes from the repository setting `delete_branch_on_merge`: the enable
+# mutation has no field for it.
+GRAPHQL_PATH = "/graphql"
+MERGE_METHODS = {"merge": "MERGE"}
+ENABLE_AUTO_MERGE = """
+mutation($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!, $expectedHeadOid: GitObjectID!) {
+  enablePullRequestAutoMerge(input: {
+    pullRequestId: $pullRequestId, mergeMethod: $mergeMethod, expectedHeadOid: $expectedHeadOid
+  }) { clientMutationId }
+}
+""".strip()
+DISABLE_AUTO_MERGE = """
+mutation($pullRequestId: ID!) {
+  disablePullRequestAutoMerge(input: {pullRequestId: $pullRequestId}) { clientMutationId }
+}
+""".strip()
+HEAD_SHA_PATTERN = re.compile(r"[0-9a-f]{7,64}")
 
 
 class PlanError(ValueError):
@@ -192,6 +213,38 @@ def _reviewer_operations(plan: dict, action: dict) -> list[Operation]:
     ]
 
 
+def _auto_merge_operations(plan: dict, kind: str, action: dict) -> list[Operation]:
+    node_id = action.get("pull_request_id")
+    if not isinstance(node_id, str) or not node_id:
+        raise PlanError(f"{kind} needs the pull request node id")
+    if kind == "disable_auto_merge":
+        variables: dict[str, object] = {"pullRequestId": node_id}
+        query = DISABLE_AUTO_MERGE
+    else:
+        method = action.get("method")
+        if method not in MERGE_METHODS:
+            raise PlanError(f"enable_auto_merge accepts only the methods {sorted(MERGE_METHODS)}")
+        head = action.get("expected_head_oid")
+        if not isinstance(head, str) or not HEAD_SHA_PATTERN.fullmatch(head):
+            raise PlanError("enable_auto_merge needs expected_head_oid as a commit SHA")
+        if head != plan.get("head_sha"):
+            raise PlanError("enable_auto_merge must pin the head commit the plan assessed")
+        variables = {
+            "pullRequestId": node_id,
+            "mergeMethod": MERGE_METHODS[method],
+            "expectedHeadOid": head,
+        }
+        query = ENABLE_AUTO_MERGE
+    return [
+        Operation(
+            kind=kind,
+            method="POST",
+            path=GRAPHQL_PATH,
+            payload={"query": query, "variables": variables},
+        )
+    ]
+
+
 def _resolve_action(plan: dict, action: dict) -> list[Operation]:
     kind = action.get("kind")
     if kind == "set_labels":
@@ -200,6 +253,8 @@ def _resolve_action(plan: dict, action: dict) -> list[Operation]:
         return _comment_operations(plan, action)
     if kind in ("request_reviewer", "assign"):
         return _reviewer_operations(plan, action)
+    if kind in ("enable_auto_merge", "disable_auto_merge"):
+        return _auto_merge_operations(plan, kind, action)
     raise PlanError(f"unsupported action kind: {kind}")
 
 
