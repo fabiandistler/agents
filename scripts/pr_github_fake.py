@@ -23,6 +23,7 @@ COMMENTS_PATH = f"/repos/{REPO}/issues/{NUMBER}/comments"
 REVIEWS_PATH = f"{PR_PATH}/reviews"
 CHECK_RUNS_PATH = f"/repos/{REPO}/commits/abc123/check-runs"
 CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
+TREE_PATH = f"/repos/{REPO}/git/trees/base-sha"
 
 SCRIPT = Path(__file__).resolve().parent / "pr_github.py"
 DIFF_ACCEPT = "application/vnd.github.v3.diff"
@@ -58,6 +59,7 @@ class FakeClient:
         check_run_pages: tuple[list[dict], ...] = (),
         diff: str = "",
         contents: dict[str, Any] | None = None,
+        tree: object = None,
         errors: dict[str, Exception] | None = None,
     ) -> None:
         self.pr = pull_request() if pr is None else pr
@@ -67,6 +69,7 @@ class FakeClient:
         self.check_run_pages = check_run_pages or ([],)
         self.diff = diff
         self.contents = contents or {}
+        self.tree = {"sha": "base-sha", "tree": [], "truncated": False} if tree is None else tree
         self.errors = errors or {}
         self.calls: list[Call] = []
 
@@ -75,8 +78,10 @@ class FakeClient:
     ) -> pr_github.Response:
         params = dict(params or {})
         self.calls.append(Call(path, params, accept))
-        if path in self.errors:
-            raise self.errors[path]
+        # An error keyed "<path>#diff" fails only the raw diff request.
+        error_key = f"{path}#diff" if accept == DIFF_ACCEPT else path
+        if error_key in self.errors:
+            raise self.errors[error_key]
         if path == PR_PATH:
             if accept == DIFF_ACCEPT:
                 return text_response(self.diff)
@@ -89,6 +94,10 @@ class FakeClient:
             return _page(self.review_pages, params)
         if path == CHECK_RUNS_PATH:
             return _check_run_page(self.check_run_pages, params)
+        if path == TREE_PATH:
+            if params != {"recursive": "1"}:
+                raise AssertionError("the base tree must be fetched recursively")
+            return json_response(self.tree)
         if path.startswith(CONTENTS_PREFIX):
             content_path = path[len(CONTENTS_PREFIX) :]
             handler = self.contents.get(content_path)
@@ -188,6 +197,10 @@ def contents_response(text: str | bytes, *, encoding: str = "base64", type_: str
         "size": len(data),
         "content": base64.b64encode(data).decode("ascii"),
     }
+
+
+def tree_entry(path: str, type_: str = "blob") -> dict:
+    return {"path": path, "mode": "100644", "type": type_, "sha": "0" * 40}
 
 
 def fetch(client: FakeClient) -> dict:

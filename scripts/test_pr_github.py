@@ -138,6 +138,9 @@ def test_fetch_context_maps_every_contract_field():
         },
     ]
     assert context["diff"] == "diff --git a/x b/x\n"
+    assert context["diff_status"] == "complete"
+    assert context["base_paths"] == []
+    assert context["base_paths_truncated"] is False
     assert context["base_files"] == {
         "scripts/modified.py": "print('x')\n",
         "scripts/new_name.py": "old\n",
@@ -202,6 +205,27 @@ def test_raw_diff_is_fetched_with_its_own_accept_header_and_capped():
     diff_calls = [call for call in client.calls if call.accept == DIFF_ACCEPT]
     assert len(diff_calls) == 1
     assert diff_calls[0].path == PR_PATH
+
+
+def test_a_diff_the_api_refuses_is_reported_unavailable_not_raised():
+    # GitHub answers 406 (code too_large) when a diff exceeds its line or file
+    # limit; any error on the diff request is handled the same way.
+    for status in (406, 500):
+        client = FakeClient(
+            file_pages=([api_file("docs/guide.md")],),
+            errors={PR_PATH + "#diff": pr_github.FetchError(str(status), status=status)},
+        )
+
+        context = fetch(client)
+
+        assert context["diff"] == ""
+        assert context["diff_status"] == "unavailable"
+        assert [file["path"] for file in context["files"]] == ["docs/guide.md"]
+
+
+def test_a_diff_within_the_limit_is_complete_and_a_cut_one_truncated():
+    assert fetch(FakeClient(diff="diff --git a/x b/x\n"))["diff_status"] == "complete"
+    assert fetch(FakeClient(diff="a" * 500_000))["diff_status"] == "truncated"
 
 
 @pytest.mark.parametrize(

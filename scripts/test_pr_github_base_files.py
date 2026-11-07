@@ -9,12 +9,15 @@ import pr_github
 import pytest
 from pr_github_fake import (
     CONTENTS_PREFIX,
+    TREE_PATH,
     FakeClient,
     api_file,
     binary_api_file,
     contents_response,
     fetch,
     json_response,
+    pull_request,
+    tree_entry,
 )
 
 
@@ -125,3 +128,66 @@ def test_base_file_404_is_skipped_but_other_fetch_errors_propagate():
     )
     with pytest.raises(pr_github.FetchError):
         fetch(broken)
+
+
+def test_missing_base_commit_fails_safe():
+    client = FakeClient(pull_request(base={"ref": "main", "repo": {"full_name": "o/r"}}))
+
+    with pytest.raises(pr_github.FetchError):
+        fetch(client)
+
+
+def test_base_tree_paths_list_every_blob_at_the_base_commit():
+    client = FakeClient(
+        tree={
+            "sha": "base-sha",
+            "tree": [
+                tree_entry("scripts", type_="tree"),
+                tree_entry("scripts/pr_review.py"),
+                tree_entry("docs/guide.md"),
+                tree_entry("vendor/lib", type_="commit"),
+                tree_entry("README.md"),
+            ],
+            "truncated": False,
+        }
+    )
+
+    context = fetch(client)
+
+    assert context["base_paths"] == ["README.md", "docs/guide.md", "scripts/pr_review.py"]
+    assert context["base_paths_truncated"] is False
+    assert [call.params for call in client.calls if call.path == TREE_PATH] == [{"recursive": "1"}]
+
+
+def test_base_tree_paths_keep_the_truncated_flag_github_reports():
+    client = FakeClient(tree={"sha": "base-sha", "tree": [tree_entry("a.md")], "truncated": True})
+
+    context = fetch(client)
+
+    assert context["base_paths"] == ["a.md"]
+    assert context["base_paths_truncated"] is True
+
+
+def test_base_tree_paths_are_capped_and_marked_truncated():
+    limit = pr_github.BASE_PATH_LIMIT
+    entries = [tree_entry(f"docs/page-{index:05d}.md") for index in range(limit + 5)]
+
+    context = fetch(FakeClient(tree={"sha": "base-sha", "tree": entries, "truncated": False}))
+
+    assert len(context["base_paths"]) == limit
+    assert context["base_paths"][-1] == f"docs/page-{limit - 1:05d}.md"
+    assert context["base_paths_truncated"] is True
+
+
+@pytest.mark.parametrize(
+    "tree",
+    [
+        [],
+        {"sha": "base-sha", "truncated": False},
+        {"sha": "base-sha", "tree": [{"type": "blob"}], "truncated": False},
+        {"sha": "base-sha", "tree": [], "truncated": "no"},
+    ],
+)
+def test_malformed_base_tree_fails_safe(tree):
+    with pytest.raises(pr_github.FetchError):
+        fetch(FakeClient(tree=tree))

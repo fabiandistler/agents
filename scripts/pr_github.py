@@ -35,6 +35,7 @@ PER_PAGE = 100
 DIFF_LIMIT = 400 * 1024
 BASE_FILE_LIMIT = 20
 BASE_BYTES_LIMIT = 200 * 1024
+BASE_PATH_LIMIT = 5000
 STATUS_ALIASES = {"copied": "added", "changed": "modified", "unchanged": "modified"}
 
 REPO_PATTERN = re.compile(r"^[^/\s]+/[^/\s]+$")
@@ -328,6 +329,43 @@ def _base_files(
     return base_files
 
 
+def _diff(client: ReadClient, pr_path: str) -> tuple[str, str]:
+    """Return the capped diff and its status: complete, truncated or unavailable.
+
+    GitHub refuses a too-large diff (HTTP 406, ``too_large``); any failed diff
+    request yields ``unavailable``, which the risk policy classifies as high.
+    """
+    try:
+        response = client.get(pr_path, accept=DIFF_ACCEPT)
+    except FetchError:
+        return "", "unavailable"
+    if len(response.body) > DIFF_LIMIT:
+        return response.body[:DIFF_LIMIT].decode("utf-8", errors="replace"), "truncated"
+    return response.body.decode("utf-8", errors="replace"), "complete"
+
+
+def _base_paths(client: ReadClient, repo: str, base_sha: str) -> tuple[list[str], bool]:
+    """Return the base tree's sorted file paths and whether the list is incomplete."""
+    path = f"/repos/{repo}/git/trees/{urllib.parse.quote(base_sha, safe='')}"
+    payload = _get_json(client, path, params={"recursive": "1"})
+    entries = payload.get("tree") if isinstance(payload, dict) else None
+    truncated = payload.get("truncated") if isinstance(payload, dict) else None
+    if not isinstance(entries, list) or not isinstance(truncated, bool):
+        raise FetchError(f"GitHub API returned an unexpected payload for {path}")
+    paths: list[str] = []
+    for entry in entries:
+        entry_path = entry.get("path") if isinstance(entry, dict) else None
+        entry_type = entry.get("type") if isinstance(entry, dict) else None
+        if not isinstance(entry_path, str) or not entry_path or not isinstance(entry_type, str):
+            raise FetchError(f"GitHub API returned a malformed tree entry for {path}")
+        if entry_type == "blob":
+            paths.append(entry_path)
+    paths.sort()
+    if len(paths) > BASE_PATH_LIMIT:
+        return paths[:BASE_PATH_LIMIT], True
+    return paths, truncated
+
+
 def fetch_context(
     repo: str,
     number: int,
@@ -370,12 +408,13 @@ def fetch_context(
         )
         checks = _check_map(check_runs)
 
-    diff_response = client.get(pr_path, accept=DIFF_ACCEPT)
-    diff = diff_response.body[:DIFF_LIMIT].decode("utf-8", errors="replace")
+    diff, diff_status = _diff(client, pr_path)
 
-    base_sha_value = base.get("sha")
-    base_sha = base_sha_value if isinstance(base_sha_value, str) else ""
-    base_files = _base_files(client, repo, files, base_sha) if base_sha else {}
+    base_sha = base.get("sha")
+    if not isinstance(base_sha, str) or not base_sha:
+        raise FetchError(f"GitHub API returned no base commit for {pr_path}")
+    base_files = _base_files(client, repo, files, base_sha)
+    base_paths, base_paths_truncated = _base_paths(client, repo, base_sha)
 
     head_repo_value = head.get("repo")
     head_repo = head_repo_value if isinstance(head_repo_value, dict) else {}
@@ -415,7 +454,10 @@ def fetch_context(
         "labels": labels,
         "files": files,
         "diff": diff,
+        "diff_status": diff_status,
         "base_files": base_files,
+        "base_paths": base_paths,
+        "base_paths_truncated": base_paths_truncated,
         "comments": comments,
         "checks": checks,
         "reviews": reviews,

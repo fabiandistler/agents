@@ -199,6 +199,15 @@ def classify_pull_request(context: dict) -> dict:
             reasons.append(f"binary: {path}")
             risk = HIGH
 
+    # The diff is what the review reads; without it the change is unreviewable.
+    diff_status = context.get("diff_status")
+    if diff_status == "unavailable":
+        reasons.append("unreadable-diff: GitHub returned no diff")
+        risk = HIGH
+    elif diff_status not in ("complete", "truncated"):
+        reasons.append("unreadable-diff: diff_status is not recognised")
+        risk = HIGH
+
     fork = bool(context.get("fork"))
     draft = bool(context.get("draft"))
     if fork:
