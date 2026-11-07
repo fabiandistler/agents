@@ -261,6 +261,44 @@ def test_auto_merge_is_not_enabled_twice():
     assert actions_of(plan, "set_labels") == []
 
 
+# --- Decision D: GitHub refused to arm auto-merge -----------------------------
+
+
+def refused_plan(**context_overrides: Any) -> dict:
+    return pr_plan.plan_publish(
+        make_context(**context_overrides),
+        make_assessment(),
+        make_review(),
+        auto_merge=True,
+        auto_merge_refused=True,
+    )
+
+
+def test_a_refused_auto_merge_is_not_enabled_again_and_asks_for_a_human():
+    plan = refused_plan(labels=["risk:low", "review:pass", "auto-merge:bot"])
+
+    assert plan["decision"]["auto_merge"] == "refused"
+    assert actions_of(plan, "enable_auto_merge") == []
+    assert label_action(plan) == {
+        "kind": "set_labels",
+        "add": ["needs-review"],
+        "remove": ["auto-merge:bot"],
+    }
+
+
+def test_the_comment_says_a_refused_auto_merge_could_not_be_armed():
+    body = actions_of(refused_plan(), "upsert_comment")[0]["body"]
+
+    assert "Auto-merge could not be armed" in body
+
+
+def test_a_refusal_changes_nothing_when_the_gates_no_longer_hold():
+    plan = refused_plan(mergeable=False)
+
+    assert plan["decision"]["auto_merge"] == "off"
+    assert "needs-review" not in label_action(plan)["add"]
+
+
 def test_a_context_without_a_node_id_is_bad_input():
     context = make_context()
     del context["node_id"]

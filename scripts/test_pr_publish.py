@@ -224,6 +224,58 @@ def test_live_plan_enables_auto_merge_on_the_fetched_node_id(monkeypatch):
     ]
 
 
+# The enable mutation pins a commit SHA of at least seven hex digits.
+SHA = "abc1234"
+CLEAN_REFUSAL = {
+    "type": "UNPROCESSABLE",
+    "message": "Pull request Pull request is in clean status",
+}
+
+
+def test_a_clean_status_refusal_leaves_the_pull_request_to_a_human(monkeypatch):
+    monkeypatch.setenv("PR_AUTO_MERGE", "true")
+    fake = FakeGitHub([SHA, SHA, SHA])
+    fake.graphql_errors = [CLEAN_REFUSAL]
+
+    payload = pr_publish.publish_live(
+        REPO,
+        NUMBER,
+        make_assessment(head_sha=SHA),
+        make_review(head_sha=SHA),
+        write=True,
+        client=fake,
+    )
+
+    assert payload["ok"] is True, "decision D: the run stays green"
+    assert payload["follow_up"]["plan"]["decision"]["auto_merge"] == "refused"
+    assert "needs-review" in fake.labels
+    assert "auto-merge:bot" not in fake.labels
+    [comment] = fake.comments
+    assert "Auto-merge could not be armed" in comment["body"]
+    graphql = [call for call in write_calls(fake) if call["path"] == "/graphql"]
+    assert len(graphql) == 1, "the refused enable is never retried"
+
+
+def test_any_other_graphql_refusal_still_fails_the_run(monkeypatch):
+    monkeypatch.setenv("PR_AUTO_MERGE", "true")
+    fake = FakeGitHub([SHA, SHA])
+    fake.graphql_errors = [
+        {"message": "Pull request Auto merge is not allowed for this repository"}
+    ]
+
+    payload = pr_publish.publish_live(
+        REPO,
+        NUMBER,
+        make_assessment(head_sha=SHA),
+        make_review(head_sha=SHA),
+        write=True,
+        client=fake,
+    )
+
+    assert payload["ok"] is False
+    assert "follow_up" not in payload
+
+
 @pytest.mark.parametrize(("mergeable", "expected"), [(None, "kept"), (False, "disabled")])
 def test_live_mergeability_still_being_computed_never_disables(monkeypatch, mergeable, expected):
     monkeypatch.setenv("PR_AUTO_MERGE", "true")

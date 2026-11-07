@@ -46,9 +46,13 @@ def publish_live(
     """Fetch, plan and optionally apply one pull request.
 
     Without ``write`` the return value is the plan. With ``write`` it is the
-    plan when the plan aborts, otherwise the results wrapper. ``client`` is a
-    ``GitHubClient`` or a fake implementing ``get/post/patch/delete``; both
-    fetches and the writes use it, so tests never touch the network.
+    plan when the plan aborts, otherwise the results wrapper. When GitHub
+    refuses to arm auto-merge because the pull request is already mergeable,
+    the wrapper gains ``follow_up``: a replan from a third fetch that drops the
+    bot's label, asks for a human and says so in the comment (decision D).
+    ``client`` is a ``GitHubClient`` or a fake implementing
+    ``get/post/patch/delete``; the fetches and the writes use it, so tests
+    never touch the network.
     """
     assessment = pr_plan.validate_assessment(assessment)
     review = pr_plan.validate_review(review)
@@ -67,7 +71,26 @@ def publish_live(
     )
     if plan["status"] == "aborted":
         return plan
-    return _apply(plan, token, client)
+    applied = _apply(plan, token, client)
+    if not any(result.get("armed") is False for result in applied["results"]):
+        return applied
+
+    after = _fetch_context(repo, number, token, client)
+    follow_up = pr_plan.plan_publish(
+        after,
+        assessment,
+        review,
+        auto_merge=os.environ.get(AUTO_MERGE_ENV),
+        auto_merge_refused=True,
+    )
+    if follow_up["status"] == "aborted":
+        return {**applied, "follow_up": {"plan": follow_up, "results": []}}
+    results = pr_apply.apply_plan(follow_up, _writer(token, client))
+    return {
+        **applied,
+        "follow_up": {"plan": follow_up, "results": results},
+        "ok": applied["ok"] and all(result["ok"] for result in results),
+    }
 
 
 def hold_live(repo: str, number: int, write: bool = False, client=None):
@@ -90,9 +113,12 @@ def _token(write: bool, client) -> str | None:
     return token
 
 
+def _writer(token: str | None, client):
+    return client if client is not None else pr_github_client.GitHubClient(token)
+
+
 def _apply(plan: dict, token: str | None, client) -> dict:
-    writer = client if client is not None else pr_github_client.GitHubClient(token)
-    results = pr_apply.apply_plan(plan, writer)
+    results = pr_apply.apply_plan(plan, _writer(token, client))
     return {
         "schema_version": pr_plan.SCHEMA_VERSION,
         "plan": plan,

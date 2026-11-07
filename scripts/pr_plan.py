@@ -119,11 +119,13 @@ def _verdict_label(review: dict) -> str | None:
     return None
 
 
-def _needs_review(context: dict, risk: str, review: dict) -> bool:
+def _needs_review(context: dict, risk: str, review: dict, auto_merge_state: str) -> bool:
     # A self-authored pull request cannot request the maintainer as a reviewer;
-    # the assignment plus this label carry the signal instead.
+    # the assignment plus this label carry the signal instead. A refused
+    # auto-merge leaves the merge to the maintainer, so it asks for him too.
     return (
-        risk in (pr_risk.MEDIUM, pr_risk.HIGH)
+        auto_merge_state == "refused"
+        or risk in (pr_risk.MEDIUM, pr_risk.HIGH)
         or review["status"] == "unavailable"
         or review.get("verdict") in ("concerns", "block")
         or context.get("author") == BOT_LOGIN
@@ -134,7 +136,7 @@ def _plan_labels(
     context: dict,
     risk: str,
     review: dict,
-    bot_auto_merge: bool,
+    auto_merge_state: str,
 ) -> tuple[list[str], list[str]]:
     existing = pr_auto_merge.context_labels(context)
     add: list[str] = []
@@ -159,13 +161,14 @@ def _plan_labels(
             if label.startswith(VERDICT_PREFIX) and label != desired_verdict
         )
 
-    if _needs_review(context, risk, review):
+    if _needs_review(context, risk, review, auto_merge_state):
         if NEEDS_REVIEW not in existing:
             add.append(NEEDS_REVIEW)
     elif NEEDS_REVIEW in existing:
         remove.append(NEEDS_REVIEW)
 
     bot_label = pr_auto_merge.AUTO_MERGE_LABEL
+    bot_auto_merge = auto_merge_state in pr_auto_merge.BOT_STATES
     if bot_auto_merge and bot_label not in existing:
         add.append(bot_label)
     if not bot_auto_merge and bot_label in existing:
@@ -231,11 +234,14 @@ def plan_publish(
     assessment: dict,
     review: dict,
     auto_merge: bool | str | None = False,
+    auto_merge_refused: bool = False,
 ) -> dict:
     """Return the planned actions for one pull request; never writes.
 
     ``auto_merge`` is the repository variable: only ``True`` or the string
     ``"true"`` enables auto-merge planning; ``None`` (unset) keeps it off.
+    ``auto_merge_refused`` replans after GitHub refused to arm auto-merge on an
+    already mergeable pull request (decision D).
     """
     context = _validate_context(context)
     assessment = validate_assessment(assessment)
@@ -255,14 +261,14 @@ def plan_publish(
 
     risk, policy = _effective_risk(context, review)
     auto_merge_state, auto_merge_action = pr_auto_merge.plan_auto_merge(
-        context, risk, review, auto_merge
+        context, risk, review, auto_merge, auto_merge_refused
     )
-    add, remove = _plan_labels(context, risk, review, auto_merge_state in pr_auto_merge.BOT_STATES)
+    add, remove = _plan_labels(context, risk, review, auto_merge_state)
 
     actions: list[dict] = []
     if add or remove:
         actions.append({"kind": "set_labels", "add": add, "remove": remove})
-    comment = pr_comment.comment_action(context, risk, policy, review)
+    comment = pr_comment.comment_action(context, risk, policy, review, auto_merge_state)
     if comment is not None:
         actions.append(comment)
     actions.append(_reviewer_action(context))

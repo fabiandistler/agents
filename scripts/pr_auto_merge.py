@@ -101,14 +101,18 @@ def _action(context: dict, state: str) -> dict | None:
 
 
 def plan_auto_merge(
-    context: dict, risk: str, review: dict, variable: object
+    context: dict, risk: str, review: dict, variable: object, refused: bool
 ) -> tuple[str, dict | None]:
     """Return the auto-merge state and the action it needs, if any.
 
     ``kept`` and ``human`` need no write: the bot's auto-merge stays as it is,
-    and a human's is left alone.
+    and a human's is left alone. ``refused`` means GitHub just refused to arm
+    auto-merge because the pull request is already mergeable; the state that
+    would enable it again becomes ``refused`` and waits for a human merge.
     """
     state = _state(context, _gates(context, risk, review, variable_enabled(variable)))
+    if refused and state == "enabled":
+        return "refused", None
     return state, _action(context, state)
 
 

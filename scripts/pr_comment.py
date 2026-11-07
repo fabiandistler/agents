@@ -50,7 +50,9 @@ def _status_consequence(context: dict, status: str) -> str:
     return "Auto-merge stays off until a review succeeds."
 
 
-def _render_comment(context: dict, risk: str, policy: dict, review: dict) -> str:
+def _render_comment(
+    context: dict, risk: str, policy: dict, review: dict, auto_merge_state: str
+) -> str:
     status = review["status"]
     lines = [COMMENT_MARKER]
     if status == "ok":
@@ -79,6 +81,15 @@ def _render_comment(context: dict, risk: str, policy: dict, review: dict) -> str
             (
                 "> **Partial review.** The input was truncated, so parts of the diff were not "
                 "reviewed. Auto-merge stays off."
+            ),
+        ]
+
+    if auto_merge_state == "refused":
+        lines += [
+            "",
+            (
+                "> **Auto-merge could not be armed.** GitHub reports the pull request as "
+                "already mergeable, so it waits for a human merge."
             ),
         ]
 
@@ -115,9 +126,11 @@ def _sticky_comment(context: dict) -> dict | None:
     return None
 
 
-def comment_action(context: dict, risk: str, policy: dict, review: dict) -> dict | None:
+def comment_action(
+    context: dict, risk: str, policy: dict, review: dict, auto_merge_state: str
+) -> dict | None:
     """Return the upsert action for the sticky comment, or None when it is current."""
-    body = _render_comment(context, risk, policy, review)
+    body = _render_comment(context, risk, policy, review, auto_merge_state)
     existing = _sticky_comment(context)
     if existing is not None and existing.get("body") == body:
         return None

@@ -75,6 +75,56 @@ def test_a_graphql_error_fails_the_action_with_its_message():
     assert message in result["detail"]
 
 
+# How GitHub refuses to arm auto-merge on a pull request it could merge right
+# now (mergeStateStatus CLEAN): one error, "Pull request" written twice, type
+# UNPROCESSABLE (gh CLI output and public reports; GitHub documents no code).
+CLEAN_REFUSAL = {
+    "type": "UNPROCESSABLE",
+    "path": ["enablePullRequestAutoMerge"],
+    "message": "Pull request Pull request is in clean status",
+}
+
+
+def test_a_successful_enable_reports_auto_merge_as_armed():
+    result = only_result(pr_apply.apply_plan(plan_with(ENABLE), FakeClient()))
+
+    assert result["armed"] is True
+
+
+@pytest.mark.parametrize(
+    "error",
+    [CLEAN_REFUSAL, {"message": CLEAN_REFUSAL["message"]}],
+    ids=["with type", "message only"],
+)
+def test_a_clean_status_refusal_succeeds_without_arming(error):
+    client = FakeClient(lambda *_: graphql_response({"data": None, "errors": [error]}))
+
+    result = only_result(pr_apply.apply_plan(plan_with(ENABLE), client))
+
+    assert result["ok"] is True, "decision D: an already mergeable pull request is no failure"
+    assert result["armed"] is False
+    assert "already mergeable" in result["detail"]
+
+
+@pytest.mark.parametrize(
+    ("action", "errors"),
+    [
+        (ENABLE, [CLEAN_REFUSAL, {"message": "Something else went wrong"}]),
+        (ENABLE, [{**CLEAN_REFUSAL, "type": "FORBIDDEN"}]),
+        (ENABLE, [{**CLEAN_REFUSAL, "message": "Pull request is in clean status, and more"}]),
+        (DISABLE, [CLEAN_REFUSAL]),
+    ],
+    ids=["a second error", "another type", "another message", "on disable"],
+)
+def test_anything_but_the_exact_clean_refusal_still_fails(action, errors):
+    client = FakeClient(lambda *_: graphql_response({"data": None, "errors": errors}))
+
+    result = only_result(pr_apply.apply_plan(plan_with(action), client))
+
+    assert result["ok"] is False
+    assert "armed" not in result
+
+
 def test_an_unreadable_graphql_response_fails_the_action():
     client = FakeClient(lambda *_: pr_github_client.Response(status=200, body=b"<html>"))
 

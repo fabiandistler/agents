@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.parse
 from pathlib import Path
 
 import pr_github_client
@@ -171,8 +172,16 @@ def pull_request(head_sha: str, labels: list[str]) -> dict:
 ACTIVE_AUTO_MERGE = {"merge_method": "merge", "enabled_by": {"login": "github-actions[bot]"}}
 
 
+ISSUE_LABELS_PATH = f"/repos/{REPO}/issues/{NUMBER}/labels"
+COMMENT_PREFIX = f"/repos/{REPO}/issues/comments/"
+
+
 class FakeGitHub:
-    """Serves ``fetch_context`` from canned payloads and records every write."""
+    """Serves ``fetch_context`` from canned payloads and records every write.
+
+    Label and comment writes change what later fetches return, so a replan
+    after a write sees the pull request as GitHub would.
+    """
 
     def __init__(self, head_shas: list[str], labels: list[str] | None = None) -> None:
         self.head_shas = list(head_shas)
@@ -182,6 +191,9 @@ class FakeGitHub:
         self.fail_paths: set[str] = set()
         # Fields to override in every pull request payload, e.g. mergeable.
         self.pull_overrides: dict = {}
+        self.comments: list[dict] = []
+        # The `errors` list every GraphQL mutation answers with; empty succeeds.
+        self.graphql_errors: list[dict] = []
 
     def get(self, path: str, params: dict | None = None, accept: str | None = None):
         self.calls.append({"method": "GET", "path": path, "payload": None})
@@ -204,7 +216,12 @@ class FakeGitHub:
                 ]
             )
         if path == COMMENTS_PATH:
-            return json_response([])
+            return json_response(
+                [
+                    {"id": comment["id"], "body": comment["body"], "user": {"login": BOT_AUTHOR}}
+                    for comment in self.comments
+                ]
+            )
         if path == REVIEWS_PATH:
             return json_response([])
         if path.endswith("/check-runs"):
@@ -219,7 +236,24 @@ class FakeGitHub:
         self.calls.append({"method": method, "path": path, "payload": payload})
         if path in self.fail_paths:
             raise pr_github_client.FetchError("server error", status=500)
+        self._track(method, path, payload or {})
+        if path == "/graphql" and self.graphql_errors:
+            return json_response({"data": None, "errors": self.graphql_errors})
         return pr_github_client.Response(status=200, body=b"{}")
+
+    def _track(self, method: str, path: str, payload: dict) -> None:
+        if method == "POST" and path == ISSUE_LABELS_PATH:
+            self.labels += [label for label in payload["labels"] if label not in self.labels]
+        elif method == "DELETE" and path.startswith(f"{ISSUE_LABELS_PATH}/"):
+            name = urllib.parse.unquote(path.rsplit("/", 1)[-1])
+            self.labels = [label for label in self.labels if label != name]
+        elif method == "POST" and path == COMMENTS_PATH:
+            self.comments.append({"id": 900 + len(self.comments), "body": payload["body"]})
+        elif method == "PATCH" and path.startswith(COMMENT_PREFIX):
+            comment_id = int(path.rsplit("/", 1)[-1])
+            for comment in self.comments:
+                if comment["id"] == comment_id:
+                    comment["body"] = payload["body"]
 
     def post(self, path: str, payload: dict | None = None):
         return self._write("POST", path, payload)

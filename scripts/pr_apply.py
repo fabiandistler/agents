@@ -30,6 +30,17 @@ class ApplyError(RuntimeError):
     """A resolved operation returned an error status."""
 
 
+class AutoMergeRefused(ApplyError):
+    """GitHub would not arm auto-merge: the pull request can be merged right now."""
+
+
+# GitHub's refusal to arm auto-merge on a pull request whose merge state is
+# CLEAN ("Pull request" twice, verbatim). It documents no error code; public
+# reports show this message with type UNPROCESSABLE. Matched exactly, so any
+# other refusal still fails the action.
+CLEAN_STATUS_REFUSAL = "Pull request Pull request is in clean status"
+
+
 class WriteClient(Protocol):
     """The write surface ``apply_plan`` needs; ``GitHubClient`` and fakes implement it."""
 
@@ -84,9 +95,21 @@ def _check_graphql(operation: Operation, response: pr_github_client.Response) ->
     except (UnicodeDecodeError, ValueError) as error:
         raise ApplyError(f"{operation.kind}: GraphQL returned no JSON") from error
     errors = body.get("errors") if isinstance(body, dict) else None
+    if operation.kind == "enable_auto_merge" and _is_clean_refusal(errors):
+        raise AutoMergeRefused(operation.kind)
     if not isinstance(body, dict) or errors:
         messages = [str(error.get("message")) for error in errors or [] if isinstance(error, dict)]
         raise ApplyError(f"{operation.kind}: {'; '.join(messages) or 'unexpected response'}")
+
+
+def _is_clean_refusal(errors: object) -> bool:
+    if not isinstance(errors, list) or len(errors) != 1 or not isinstance(errors[0], dict):
+        return False
+    error = errors[0]
+    return error.get("message") == CLEAN_STATUS_REFUSAL and error.get("type") in (
+        None,
+        "UNPROCESSABLE",
+    )
 
 
 def _detail(kind: str, operations: list[Operation]) -> str:
@@ -121,9 +144,16 @@ def _apply_action(client: WriteClient, kind: str, operations: list[Operation]) -
     except pr_github_client.FetchError as error:
         detail = f"{error} (HTTP {error.status})" if error.status is not None else str(error)
         return {"kind": kind, "ok": False, "detail": detail}
+    except AutoMergeRefused:
+        # Decision D: no failure. The pull request waits for a human merge instead.
+        detail = "not armed: GitHub reports the pull request as already mergeable"
+        return {"kind": kind, "ok": True, "armed": False, "detail": detail}
     except ApplyError as error:
         return {"kind": kind, "ok": False, "detail": str(error)}
-    return {"kind": kind, "ok": True, "detail": _detail(kind, operations)}
+    result = {"kind": kind, "ok": True, "detail": _detail(kind, operations)}
+    if kind == "enable_auto_merge":
+        result["armed"] = True
+    return result
 
 
 def apply_plan(plan: dict, client: WriteClient) -> list[dict]:
