@@ -68,6 +68,7 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
         "labels": [],
         "files": [file_entry("docs/guide.md")] if files is None else files,
         "diff": "",
+        "diff_status": "complete",
         "base_files": {},
         "comments": [],
         "checks": {"checks": "success", "mermaid": "success", "secrets": "success"},
@@ -208,6 +209,8 @@ class FakeGitHub:
             return json_response({"check_runs": []})
         if path.startswith(CONTENTS_PREFIX):
             raise pr_github.FetchError("not found", status=404)
+        if "/git/trees/" in path:
+            return json_response({"tree": [], "truncated": False})
         raise AssertionError(f"unexpected GET {path}")
 
     def _write(self, method: str, path: str, payload: dict | None):

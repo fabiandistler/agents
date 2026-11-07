@@ -109,7 +109,15 @@ def test_a_stale_assessment_aborts_before_the_second_fetch():
         (PR_PATH, {"labels": [{"name": "risk:high"}]}, "low", None),
         (
             FILES_PATH,
-            [{"filename": ".github/workflows/check.yml", "status": "modified", "patch": "@@"}],
+            [
+                {
+                    "filename": ".github/workflows/check.yml",
+                    "status": "modified",
+                    "additions": 1,
+                    "deletions": 0,
+                    "patch": "@@",
+                }
+            ],
             "high",
             None,
         ),
