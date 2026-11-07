@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from pr_workflow_testkit import (
     ASSESSMENT_ARTIFACT,
+    AUTO_MERGE_SCOPES,
     CONTEXT_ARTIFACT,
     MODEL_KEY,
     REVIEW_ARTIFACT,
@@ -15,11 +16,13 @@ from pr_workflow_testkit import (
     downloaded_names,
     job_env,
     job_named,
+    jobs_holding,
     load_workflow_text,
     needs_of,
     normalize,
     parse_workflow,
     run_containing,
+    step_using,
 )
 
 
@@ -33,9 +36,10 @@ def workflow(workflow_text: str) -> dict[Any, Any]:
     return parse_workflow(workflow_text)
 
 
-def test_publish_needs_both_earlier_jobs(workflow: dict[Any, Any]) -> None:
-    assert needs_of(job_named(workflow, "publish")) == {"assess", "review"}, (
-        "publish must need the assessment and the review"
+def test_publish_needs_the_earlier_jobs_and_the_hold(workflow: dict[Any, Any]) -> None:
+    assert needs_of(job_named(workflow, "publish")) == {"assess", "review", "hold"}, (
+        "publish must need the assessment and the review, and run after the hold so "
+        "its auto-merge decision is the last write"
     )
 
 
@@ -49,14 +53,18 @@ def test_publish_runs_even_when_the_review_was_skipped(workflow: dict[Any, Any])
 
 def test_publish_has_the_scopes_the_write_path_needs(workflow: dict[Any, Any]) -> None:
     permissions = job_named(workflow, "publish").get("permissions")
-    assert permissions == {
-        "contents": "read",
-        "pull-requests": "write",
-        "issues": "write",
-    }, (
-        "publish checks out the base (contents: read) and writes labels, comments and "
-        f"reviewer requests; found {permissions}"
+    assert permissions == AUTO_MERGE_SCOPES, (
+        "publish writes labels, comments, reviewer requests and auto-merge "
+        f"(contents: write); found {permissions}"
     )
+
+
+def test_write_jobs_do_not_persist_the_token_in_the_checkout(workflow: dict[Any, Any]) -> None:
+    for name in ("publish", "hold"):
+        checkout = step_using(job_named(workflow, name), "actions/checkout@")
+        assert (checkout.get("with") or {}).get("persist-credentials") is False, (
+            f"{name} holds contents: write; its checkout must not keep the token in .git"
+        )
 
 
 def test_publish_holds_no_model_key(workflow: dict[Any, Any]) -> None:
@@ -128,9 +136,12 @@ def test_publish_write_flag_follows_the_dry_run_input(workflow: dict[Any, Any]) 
     )
 
 
-def test_publish_does_not_read_the_auto_merge_variable_yet(workflow_text: str) -> None:
-    assert "PR_AUTO_MERGE" not in workflow_text, (
-        "auto-merge is wired in its own ticket; the workflow must not read the variable yet"
+def test_only_publish_reads_the_auto_merge_variable(workflow: dict[Any, Any]) -> None:
+    assert job_env(workflow, "publish").get("PR_AUTO_MERGE") == "${{ vars.PR_AUTO_MERGE }}", (
+        "publish takes the auto-merge switch from the repository variable"
+    )
+    assert jobs_holding(workflow, "PR_AUTO_MERGE") == {"publish"}, (
+        "only publish may enable auto-merge; the hold only disables"
     )
 
 

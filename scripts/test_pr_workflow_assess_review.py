@@ -202,3 +202,11 @@ def test_review_runs_the_review_cli(workflow: dict[Any, Any]) -> None:
 def test_review_uploads_the_review(workflow: dict[Any, Any]) -> None:
     paths = uploaded_paths(job_named(workflow, "review"))
     assert "review.json" in paths, f"review must upload review.json; it uploads {sorted(paths)}"
+
+
+def test_a_label_event_starts_no_assessment_and_no_review(workflow: dict[Any, Any]) -> None:
+    # Review and publish need the assessment, so skipping it skips the model call.
+    condition = normalize(job_named(workflow, "assess").get("if"))
+    assert condition == "github.event.action != 'labeled'", (
+        f"a label event must not re-run the review; found {condition!r}"
+    )

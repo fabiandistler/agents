@@ -15,7 +15,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "pr-review.yml"
 
 REVIEW_EVENTS = ["opened", "synchronize", "reopened", "ready_for_review"]
-JOB_NAMES = {"assess", "review", "publish"}
+# Adding a label starts a run too, but only the hold acts on it (do-not-merge).
+LABEL_EVENT = "labeled"
+JOB_NAMES = {"hold", "assess", "review", "publish"}
+
+# The hold runs on a push and when do-not-merge is added, never on a manual run.
+HOLD_CONDITION = (
+    "github.event.action == 'synchronize' || "
+    "(github.event.action == 'labeled' && github.event.label.name == 'do-not-merge')"
+)
+# Enabling and disabling auto-merge needs contents and pull-requests write;
+# label changes go through the issues API.
+AUTO_MERGE_SCOPES = {"contents": "write", "pull-requests": "write", "issues": "write"}
 PIPELINE_CLIS = {"pr_github.py", "pr_risk.py", "pr_review.py", "pr_publish.py"}
 MODEL_KEY = "OPENCODE_API_KEY"
 

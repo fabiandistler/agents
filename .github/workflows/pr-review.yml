@@ -6,11 +6,16 @@
 # contents arrive through the REST API. Every job holds only the credential its
 # stage needs, and publish consumes the earlier stages as artifacts. Publish
 # writes on every pull request event; a manual run defaults to a dry run.
+#
+# A fourth, model-free job, hold, disables the bot's auto-merge on every push
+# before the new head is reviewed (GitHub keeps auto-merge on when someone with
+# write access pushes), and any auto-merge when do-not-merge is added. A label
+# event runs only the hold: it never re-runs the review.
 name: pr-review
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   workflow_dispatch:
     inputs:
       pr:
@@ -28,13 +33,51 @@ on:
 # No scope by default; each job below opts in to exactly what it needs.
 permissions: {}
 
-# A new push supersedes the run still reviewing the previous head.
+# A new push supersedes the run still reviewing the previous head. A label
+# event gets a group per label, so it never cancels a review run and a later
+# label never cancels a do-not-merge hold.
 concurrency:
-  group: pr-review-${{ github.event.pull_request.number || inputs.pr }}
+  group: >-
+    pr-review-${{ github.event.pull_request.number || inputs.pr }}${{
+    github.event.action == 'labeled' && format('-label-{0}', github.event.label.name) || '' }}
   cancel-in-progress: true
 
 jobs:
+  hold:
+    # Model-free and review-free: runs at once on a push, in parallel with the
+    # assessment, and on do-not-merge. Never on a manual run, so its write needs
+    # no dry-run guard. It only disables; publish alone may enable.
+    if: >-
+      github.event.action == 'synchronize' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'do-not-merge')
+    runs-on: ubuntu-latest
+    # Disabling auto-merge needs contents and pull-requests write; removing the
+    # auto-merge:bot label goes through the issues API.
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Hold the auto-merge until the new head is reviewed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          python3 scripts/pr_publish.py --hold --live --repo "${{ github.repository }}" \
+            --pr "$PR" --write
+
   assess:
+    # A label event only needs the hold; skipping the assessment also skips the
+    # review and publish, so it never calls the model.
+    if: github.event.action != 'labeled'
     runs-on: ubuntu-latest
     # Read-only: the policy needs the pull request, its comments, its check
     # runs and the base file contents. Nothing here may write.
@@ -135,19 +178,25 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [assess, review]
+    # After the hold, so the auto-merge decision for the reviewed head is the
+    # last write. A failed or skipped hold does not stop it: publish decides
+    # from a fresh fetch.
+    needs: [assess, review, hold]
     # A skipped review (draft, fork) still publishes the assessment, and a
     # failed review still publishes `review:unavailable`. Only a failed
     # assessment leaves nothing to publish.
     if: >-
       always() && needs.assess.result == 'success'
     runs-on: ubuntu-latest
+    # contents: write is for enabling auto-merge; the checkout does not keep it.
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -185,6 +234,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number || inputs.pr }}
           WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
+          # Auto-merge is planned only when this repository variable is exactly `true`.
+          PR_AUTO_MERGE: ${{ vars.PR_AUTO_MERGE }}
         run: |
           set -euo pipefail
           # A failed action still prints the results JSON, so the exit status is

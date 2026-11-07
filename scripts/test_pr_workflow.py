@@ -17,7 +17,9 @@ from typing import Any
 
 import pytest
 from pr_workflow_testkit import (
+    HOLD_CONDITION,
     JOB_NAMES,
+    LABEL_EVENT,
     PIPELINE_CLIS,
     REPO_ROOT,
     REVIEW_EVENTS,
@@ -50,8 +52,9 @@ def test_pull_request_target_carries_the_review_events(workflow: dict[Any, Any])
     target = triggers_of(workflow).get("pull_request_target")
     assert isinstance(target, dict), "the workflow must trigger on pull_request_target"
     declared = target.get("types")
-    assert sorted(declared or []) == sorted(REVIEW_EVENTS), (
-        f"pull_request_target must list exactly {REVIEW_EVENTS}; found {declared}"
+    expected = [*REVIEW_EVENTS, LABEL_EVENT]
+    assert sorted(declared or []) == sorted(expected), (
+        f"pull_request_target must list exactly {expected}; found {declared}"
     )
 
 
@@ -88,7 +91,7 @@ def test_default_permissions_are_empty(workflow: dict[Any, Any]) -> None:
     )
 
 
-def test_the_pipeline_has_exactly_three_jobs(workflow: dict[Any, Any]) -> None:
+def test_the_pipeline_has_exactly_its_four_jobs(workflow: dict[Any, Any]) -> None:
     assert set(jobs_of(workflow)) == JOB_NAMES, (
         f"the pipeline is {sorted(JOB_NAMES)}; found {sorted(jobs_of(workflow))}"
     )
@@ -103,13 +106,17 @@ GUARDED_WRITE = re.compile(
 def test_the_write_flag_appears_once_in_the_guarded_publish_branch(
     workflow: dict[Any, Any], workflow_text: str
 ) -> None:
-    assert workflow_text.count("--write") == 1, (
-        "the write flag belongs to exactly one invocation: the guarded publish step"
+    assert workflow_text.count("--write") == 2, (
+        "the write flag belongs to exactly two invocations: the guarded publish step "
+        "and the hold, which never runs on a manual run"
     )
     for name, job in jobs_of(workflow).items():
         for step in steps_of(job):
             if "--write" in str(step.get("run", "")):
-                assert name == "publish", f"job {name!r} must not write"
+                assert name in {"publish", "hold"}, f"job {name!r} must not write"
+    assert normalize(job_named(workflow, "hold").get("if")) == HOLD_CONDITION, (
+        "the hold writes unguarded, so it must never run on workflow_dispatch"
+    )
 
     command = run_containing(job_named(workflow, "publish"), "scripts/pr_publish.py")
     match = GUARDED_WRITE.search(command)
@@ -137,6 +144,14 @@ def test_concurrency_is_keyed_by_pull_request(workflow: dict[Any, Any]) -> None:
     assert "github.event.pull_request.number" in group, "the group must key on the pull request"
     assert "inputs.pr" in group, "a manual run must key on its input as well"
     assert concurrency.get("cancel-in-progress") is True, "a superseded run must be cancelled"
+
+
+def test_a_label_event_never_cancels_a_review_run(workflow: dict[Any, Any]) -> None:
+    # A label run must not cancel the run reviewing the head, and a later label
+    # must not cancel a do-not-merge hold: label runs get a group per label.
+    group = normalize(workflow["concurrency"]["group"])
+    suffix = "github.event.action == 'labeled' && format('-label-{0}', github.event.label.name)"
+    assert suffix in group, f"label events need their own group per label; found {group!r}"
 
 
 def test_every_run_step_calls_a_cli_that_exists(workflow: dict[Any, Any]) -> None:
