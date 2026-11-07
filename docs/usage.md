@@ -46,11 +46,24 @@ files; the installer and this repo's cloud mirror add a Claude hook that
 supplies the Python baseline before `uv init`. Content outside the managed
 markers is never touched.
 
-**Only the human merges.** A pre-tool hook blocks the agent from merging pull
-requests or enabling auto-merge: the `merge-guard` plugin in Claude Code,
-`./install.sh --merge-guard` for Codex CLI and opencode. This repo's
+**Only the human merges.** No interactive agent merges a pull request or
+enables auto-merge. A pre-tool hook blocks both: the `merge-guard` plugin in
+Claude Code, `./install.sh --merge-guard` for Codex CLI and opencode. This repo's
 `.claude/settings.json` carries the same hook for cloud sessions. Details and limits:
 [docs/install-optional-components.md](install-optional-components.md#pr-merge-guard---merge-guard).
+
+One exception, in this repository only ([ADR-0011](adr/0011-pr-review-merge-exception.md)):
+the model-free `publish` job of `.github/workflows/pr-review.yml` may enable
+GitHub's native auto-merge on a docs-only pull request. Docs-only means
+`risk:low`: only `docs/**` outside `docs/agents/` and `docs/adr/`,
+`GLOSSARY.md`, `MAINTENANCE.md` or `maintenance/reports/**`, with no deletion,
+no rename and within the size limits; `README.md` and ADRs are excluded. It
+also needs a complete `review:pass`, a same-repository non-draft pull request
+to `main`, no `do-not-merge`, and the repository variable `PR_AUTO_MERGE` set
+to `true`. GitHub then merges only after the required checks `checks`,
+`mermaid` and `secrets` pass. The bot never merges directly, and the merge
+guard still stops any agent session from doing what that job does. Operation:
+[docs/agents/pr-review-runbook.md](agents/pr-review-runbook.md).
 The `secret-guard` plugin (`--secret-guard`) likewise blocks reading credential
 files and dumping the environment:
 [docs/install-optional-components.md](install-optional-components.md#secret-read-guard---secret-guard).
