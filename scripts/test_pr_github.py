@@ -338,6 +338,22 @@ def test_check_run_without_a_conclusion_maps_to_its_status():
             ],
             False,
         ),
+        # On GitHub a later comment does not clear a change request; only an
+        # approval or a dismissal does.
+        (
+            [
+                {"user": {"login": "a"}, "state": "CHANGES_REQUESTED"},
+                {"user": {"login": "a"}, "state": "COMMENTED"},
+            ],
+            True,
+        ),
+        (
+            [
+                {"user": {"login": "a"}, "state": "APPROVED"},
+                {"user": {"login": "a"}, "state": "COMMENTED"},
+            ],
+            False,
+        ),
     ],
 )
 def test_reviews_use_the_latest_submitted_state_per_user(reviews, changes_requested):

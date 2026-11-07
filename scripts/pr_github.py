@@ -148,18 +148,18 @@ def _check_map(runs: list[dict]) -> dict[str, str]:
     return checks
 
 
+# The review states that set or clear a reviewer's change request. A COMMENTED
+# review leaves it in place, and a PENDING one is not submitted yet.
+DECIDING_REVIEW_STATES = frozenset({"APPROVED", "CHANGES_REQUESTED", "DISMISSED"})
+
+
 def _review_state(reviews: list[dict]) -> dict[str, bool]:
     latest: dict[str, str] = {}
     for review in reviews:
         state = review.get("state")
         user = review.get("user")
         login = user.get("login") if isinstance(user, dict) else None
-        if (
-            not isinstance(state, str)
-            or state == "PENDING"
-            or not isinstance(login, str)
-            or not login
-        ):
+        if state not in DECIDING_REVIEW_STATES or not isinstance(login, str) or not login:
             continue
         latest[login] = state
     return {"changes_requested": any(state == "CHANGES_REQUESTED" for state in latest.values())}
