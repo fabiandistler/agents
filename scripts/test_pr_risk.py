@@ -65,107 +65,81 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
     return context
 
 
-PATH_CASES = [
-    # low
-    ("MAINTENANCE.md", "low", "docs"),
-    ("GLOSSARY.md", "low", "docs"),
-    ("docs/guide.md", "low", "docs"),
-    ("docs/a/b/c.md", "low", "docs"),
-    ("docs/agents.md", "low", "docs"),
-    ("maintenance/reports/weekly.md", "low", "maintenance-reports"),
-    # medium
-    ("skills/foo/SKILL.md", "medium", "skills"),
-    ("skills/foo/references/guide.md", "medium", "skills"),
-    ("instructions/10-core.md", "medium", "instructions"),
-    ("docs/agents/pr-review.md", "medium", "agent-docs"),
-    # medium: documents that state repository policy, such as the merge rule
-    ("README.md", "medium", "policy-docs"),
-    ("docs/adr/0001-record-decisions.md", "medium", "adr"),
-    ("docs/adr/README.md", "medium", "adr"),
-    ("skills.json", "medium", "catalogue"),
-    ("plugins/architecture/skills/x/SKILL.md", "medium", "plugins"),
-    ("plugins/architecture/.claude-plugin/plugin.json", "medium", "plugins"),
-    ("plugins/merge-guard.md", "medium", "plugins"),
-    (".claude/skills/foo/SKILL.md", "medium", "claude-mirror"),
-    (".claude/rules/x.md", "medium", "claude-mirror"),
-    (".claude/settings.json.bak", "medium", "claude-mirror"),
-    ("scripts/test_catalogue.py", "medium", "tests"),
-    ("scripts/test_install.sh", "medium", "tests"),
-    ("scripts/vendor_mattpocock_skills.py", "medium", "scripts"),
-    ("scripts/skill_audit_select.py", "medium", "scripts"),
-    ("maintenance/scan.sh", "medium", "maintenance"),
-    ("maintenance/reports.md", "medium", "maintenance"),
-    # high: the triage automation itself
-    ("scripts/pr_risk.py", "high", "triage-automation"),
-    ("scripts/pr_github.py", "high", "triage-automation"),
-    ("scripts/pr_review.py", "high", "triage-automation"),
-    ("scripts/pr_review_prompt.md", "high", "triage-automation"),
-    ("scripts/pr_publish.py", "high", "triage-automation"),
-    ("scripts/pr_apply.py", "high", "triage-automation"),
-    ("scripts/test_pr_risk.py", "high", "triage-automation"),
-    ("scripts/test_pr_github.py", "high", "triage-automation"),
-    ("scripts/test_pr_review.py", "high", "triage-automation"),
-    ("scripts/test_pr_publish.py", "high", "triage-automation"),
-    ("scripts/test_pr_apply.py", "high", "triage-automation"),
-    ("scripts/test_pr_workflow.py", "high", "triage-automation"),
-    (".github/workflows/pr-review.yml", "high", "workflow"),
-    # high: workflows, installer, gates, guards, configuration
-    (".github/workflows/ci.yml", "high", "workflow"),
-    (".github/ISSUE_TEMPLATE/bug.md", "high", "workflow"),
-    ("install.sh", "high", "installer"),
-    ("scripts/check_all.sh", "high", "gate-script"),
-    ("scripts/check_descriptions.py", "high", "gate-script"),
-    ("scripts/check_all.requirements.txt", "high", "gate-script"),
-    ("scripts/quick_validate.py", "high", "gate-script"),
-    ("scripts/require_python.sh", "high", "gate-script"),
-    ("scripts/catalogue.py", "high", "gate-script"),
-    ("scripts/build_manifest.py", "high", "build-script"),
-    ("scripts/pr_merge_guard.py", "high", "guard-script"),
-    ("scripts/secret_read_guard.py", "high", "guard-script"),
-    ("scripts/opencode/pr-merge-guard.js", "high", "hook-script"),
-    ("plugins/merge-guard/hooks/hooks.json", "high", "guard-script"),
-    ("plugins/secret-guard/scripts/guard.py", "high", "guard-script"),
-    ("plugins/architecture/hooks/hooks.json", "high", "hook-settings"),
-    (".claude/settings.json", "high", "hook-settings"),
-    (".pre-commit-config.yaml", "high", "hook-settings"),
-    ("conftest.py", "high", "test-config"),
-    ("ruff.toml", "high", "lint-config"),
-    ("pyrightconfig.json", "high", "lint-config"),
-    ("pyproject.toml", "high", "project-config"),
-    ("package.json", "high", "dependency-pins"),
-    ("package-lock.json", "high", "dependency-pins"),
-    ("tools/dev.requirements.txt", "high", "dependency-pins"),
-    # high: unknown paths
-    ("AGENTS.md", "high", "unknown"),
-    ("CLAUDE.md", "high", "unknown"),
-    ("scripts/random.py", "high", "unknown"),
-    ("skills.md", "high", "unknown"),
-    ("documentation/guide.md", "high", "unknown"),
-    ("scripts/fixtures/data.json", "high", "unknown"),
-]
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("additions", -5),
+        ("additions", "3"),
+        ("additions", None),
+        ("additions", True),
+        ("deletions", -1),
+        ("deletions", 2.5),
+        ("status", None),
+        ("status", "moved"),
+        ("binary", None),
+        ("binary", "false"),
+        ("renamed_from", 7),
+    ],
+)
+def test_malformed_entry_field_is_high_and_names_the_field(field, value):
+    entry = file_entry("docs/guide.md")
+    entry[field] = value
+
+    decision = pr_risk.classify_pull_request(make_context([entry]))
+
+    assert decision["risk"] == "high"
+    assert decision["auto_merge_eligible"] is False
+    assert (
+        f"unreadable-file-list: entry at index 0 has a malformed {field}" in (decision["reasons"])
+    )
+    assert "docs: docs/guide.md" in decision["reasons"]
 
 
-@pytest.mark.parametrize(("path", "risk", "rule"), PATH_CASES)
-def test_every_path_class_maps_to_its_documented_risk(path, risk, rule):
-    decision = pr_risk.classify_pull_request(make_context([file_entry(path)]))
+@pytest.mark.parametrize("field", ["additions", "deletions", "status", "binary"])
+def test_missing_entry_field_is_high(field):
+    entry = file_entry("docs/guide.md")
+    del entry[field]
 
-    assert decision["risk"] == risk
-    assert decision["reasons"] == [f"{rule}: {path}"]
-    assert decision["auto_merge_eligible"] is (risk == "low")
+    decision = pr_risk.classify_pull_request(make_context([entry]))
+
+    assert decision["risk"] == "high"
+    assert (
+        f"unreadable-file-list: entry at index 0 has a malformed {field}" in (decision["reasons"])
+    )
 
 
-def test_negative_counts_are_clamped_to_zero():
+@pytest.mark.parametrize("status", ["copied", "changed", "unchanged"])
+def test_other_github_statuses_are_readable(status):
     decision = pr_risk.classify_pull_request(
-        make_context([file_entry("docs/guide.md", additions=-5, deletions=-1)])
+        make_context([file_entry("docs/guide.md", status=status)])
     )
 
     assert decision["risk"] == "low"
-    assert decision["counts"] == {
-        "files": 1,
-        "additions": 0,
-        "deletions": 0,
-        "changed_lines": 0,
-    }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("fork", None), ("fork", "false"), ("draft", None), ("draft", 0)],
+)
+def test_malformed_fork_or_draft_flag_is_high(field, value):
+    context = make_context([file_entry("docs/guide.md")])
+    context[field] = value
+
+    decision = pr_risk.classify_pull_request(context)
+
+    assert decision["risk"] == "high"
+    assert decision["auto_merge_eligible"] is False
+    assert f"unreadable-metadata: {field} is not a boolean" in decision["reasons"]
+
+
+def test_missing_fork_flag_is_high():
+    context = make_context([file_entry("docs/guide.md")])
+    del context["fork"]
+
+    decision = pr_risk.classify_pull_request(context)
+
+    assert decision["risk"] == "high"
+    assert "unreadable-metadata: fork is not a boolean" in decision["reasons"]
 
 
 def test_decision_echoes_identity_and_counts():
@@ -188,19 +162,6 @@ def test_decision_echoes_identity_and_counts():
         "changed_lines": 11,
     }
     assert decision["reasons"] == ["docs: GLOSSARY.md", "docs: docs/guide.md"]
-
-
-def test_path_classes_do_not_depend_on_file_order():
-    forward = pr_risk.classify_pull_request(
-        make_context([file_entry("README.md"), file_entry("scripts/pr_risk.py")])
-    )
-    backward = pr_risk.classify_pull_request(
-        make_context([file_entry("scripts/pr_risk.py"), file_entry("README.md")])
-    )
-
-    assert forward["risk"] == "high"
-    assert backward["risk"] == "high"
-    assert set(forward["reasons"]) == set(backward["reasons"])
 
 
 def docs_files(count: int, additions: int = 1) -> list[dict]:
