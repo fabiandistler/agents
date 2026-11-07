@@ -40,7 +40,7 @@ def test_finding_without_a_parseable_line_gets_null() -> None:
         "VERDICT: concerns\n"
         "SUMMARY: Something to say.\n"
         "FINDINGS:\n"
-        "- docs/review.md [idea] Not a known severity | fix: Pick one\n"
+        "- docs/review.md [info] No line number | fix: Pick one\n"
         "END\n"
     )
     artifact = pr_review_response.parse_response(response, CONTEXT)
@@ -57,6 +57,7 @@ LOW_QUALITY_RESPONSES = [
     "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nEND\n",
     "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n\nEND\n",
     "Not a review at all.",
+    "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [minor] ok | fix: none\nEND\n",
 ]
 
 

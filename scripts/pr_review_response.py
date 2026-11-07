@@ -2,7 +2,7 @@
 
 The parser accepts only the documented header block (see
 ``pr_review_prompt.md``). A response without the header, with an unknown
-risk or verdict, or without findings becomes `verdict: concerns`
+risk, verdict or severity, or without findings becomes `verdict: concerns`
 and `risk: high` with the raw text retained. The artifact shape is shared
 with ``pr_review.py``, which builds the skipped and unavailable artifacts.
 """
@@ -62,8 +62,6 @@ def _parse_finding(body: str) -> dict | None:
     path = match.group("path").strip().strip(_TRIM_CHARS)
     line = int(match.group("line")) if match.group("line") else None
     severity = match.group("severity").lower()
-    if severity not in SEVERITIES:
-        severity = "info"
     message = match.group("message").strip()
     parts = _FIX_RE.split(message, maxsplit=1)
     return {
@@ -143,7 +141,15 @@ def parse_response(text: str, context: dict, partial: bool = False) -> dict:
         stop = end.start() if end is not None else len(normalized)
         findings = _parse_findings(normalized[findings_match.end() : stop])
 
-    if risk not in RISKS or verdict not in VERDICTS or not summary or not findings:
+    # An unknown severity is not guessed: the whole response counts as unparseable.
+    severities_known = all(finding["severity"] in SEVERITIES for finding in findings)
+    if (
+        risk not in RISKS
+        or verdict not in VERDICTS
+        or not summary
+        or not findings
+        or not severities_known
+    ):
         return build_artifact(
             context,
             "ok",
