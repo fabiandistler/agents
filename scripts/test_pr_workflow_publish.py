@@ -148,9 +148,12 @@ def test_only_publish_reads_the_auto_merge_variable(workflow: dict[Any, Any]) ->
 def test_publish_summarizes_the_decision_and_labels(workflow: dict[Any, Any]) -> None:
     command = run_containing(job_named(workflow, "publish"), "scripts/pr_publish.py")
 
-    assert "GITHUB_STEP_SUMMARY" in command, "the plan must be readable on the run summary"
-    assert "decision" in command, "the summary renders the decision object"
-    assert "labels" in command, "the summary lists the applied labels"
+    # The publisher renders the decision, the confidence and the applied labels
+    # itself (pr_summary.py), in the write and in the dry-run branch.
+    assert command.count('--summary "$GITHUB_STEP_SUMMARY"') == 2, (
+        "both publisher calls must append their summary to the run page"
+    )
+    assert "python3 -" not in command, "no inline summary script: it would go untested"
 
 
 def test_publish_renders_the_summary_before_a_failed_status_propagates(
@@ -170,9 +173,6 @@ def test_publish_renders_the_summary_before_a_failed_status_propagates(
 
     assert command.index("cat plan.json") > status.start(), (
         "the plan must be printed even when the publisher fails"
-    )
-    assert command.index("GITHUB_STEP_SUMMARY") > status.start(), (
-        "the summary must render even when the publisher fails"
     )
     assert command.rstrip().endswith('exit "$status"'), (
         "the captured status must be the step's exit code, set after the summary"

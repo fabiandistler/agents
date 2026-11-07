@@ -18,6 +18,7 @@ import pr_apply
 import pr_github
 import pr_github_client
 import pr_plan
+import pr_summary
 
 AUTO_MERGE_ENV = "PR_AUTO_MERGE"
 
@@ -27,6 +28,7 @@ EXIT_USAGE = 2
 EXIT_BAD_INPUT = 3
 EXIT_LIVE_FAILED = 4
 EXIT_OUTSIDE_ACTIONS = 5
+EXIT_SUMMARY_FAILED = 6
 
 
 def _fetch_context(repo: str, number: int, token: str | None, client=None) -> dict:
@@ -142,8 +144,8 @@ for one pull request. Prints JSON on stdout; --write applies the plan.
   --repo O/R --pr N   repository as OWNER/REPO and pull request number (with --live)
   --hold              without a review: only disable the bot's auto-merge (any under do-not-merge)
   --write             apply the plan; needs --live and GITHUB_ACTIONS=true
+  --summary FILE      either form: also append a Markdown summary to FILE (not --hold)
   -h, --help          show this message
-
 env: PR_AUTO_MERGE=true enables auto-merge planning; any other value keeps it off.
 
 examples:
@@ -151,11 +153,11 @@ examples:
   python3 scripts/pr_publish.py --live --repo fabiandistler/agents --pr 42 \\
       --assessment a.json --review r.json --write
 
-exit: 0 plan or write result | 1 a write action failed | 2 usage |
-      3 bad input/artifact | 4 live fetch failed | 5 --write outside GitHub Actions
+exit: 0 plan or write result | 1 a write action failed | 2 usage | 3 bad input/artifact |
+      4 live fetch failed | 5 --write outside GitHub Actions | 6 --summary not writable
 """
 
-VALUE_FLAGS = ("--context", "--pr", "--repo", "--assessment", "--review")
+VALUE_FLAGS = ("--context", "--pr", "--repo", "--assessment", "--review", "--summary")
 
 
 class UsageError(Exception):
@@ -170,6 +172,7 @@ def _parse_arguments(argv: list[str]) -> dict:
         "repo": None,
         "assessment": None,
         "review": None,
+        "summary": None,
         "write": False,
         "hold": False,
     }
@@ -206,8 +209,10 @@ def _parse_arguments(argv: list[str]) -> dict:
         options[name[2:]] = value
 
     if options["hold"] is True:
-        if any(options[name] is not None for name in ("context", "assessment", "review")):
-            raise UsageError("--hold takes no --context, --assessment or --review")
+        if any(
+            options[name] is not None for name in ("context", "assessment", "review", "summary")
+        ):
+            raise UsageError("--hold takes no --context, --assessment, --review or --summary")
         if options["live"] is not True:
             raise UsageError("--hold requires --live")
     else:
@@ -306,6 +311,9 @@ def main(argv: list[str] | None = None, client=None) -> int:
                 )
             except pr_github_client.FetchError as error:
                 print(f"pr_publish.py: live fetch failed: {error}", file=sys.stderr)
+                _append_summary(
+                    options["summary"], f"### PR review decision\n\n- live fetch failed: {error}\n"
+                )
                 return EXIT_LIVE_FAILED
         else:
             context = _read_json(str(options["context"]), "--context")
@@ -319,7 +327,11 @@ def main(argv: list[str] | None = None, client=None) -> int:
         print(f"pr_publish.py: {error}", file=sys.stderr)
         return EXIT_BAD_INPUT
 
-    return _emit(payload, options["write"] is True)
+    status = _emit(payload, options["write"] is True)
+    summary = pr_summary.render_summary(payload, review)
+    if not _append_summary(options["summary"], summary) and status == EXIT_OK:
+        return EXIT_SUMMARY_FAILED
+    return status
 
 
 def _emit(payload: dict, write: bool) -> int:
@@ -327,6 +339,19 @@ def _emit(payload: dict, write: bool) -> int:
     if write and payload.get("ok") is False:
         return EXIT_ACTION_FAILED
     return EXIT_OK
+
+
+def _append_summary(path: object, text: str) -> bool:
+    """Append ``text`` to the --summary file; False when it cannot be written."""
+    if not isinstance(path, str):
+        return True
+    try:
+        with Path(path).open("a", encoding="utf-8") as handle:
+            handle.write(text)
+    except OSError as error:
+        print(f"pr_publish.py: cannot write --summary: {error}", file=sys.stderr)
+        return False
+    return True
 
 
 if __name__ == "__main__":

@@ -344,9 +344,17 @@ def test_cli_hold_write_outside_github_actions_exits_five(monkeypatch):
         ["--hold", "--context", "c.json"],
         [*hold_args(), "--assessment", "a.json"],
         [*hold_args(), "--review", "r.json"],
+        [*hold_args(), "--summary", "s.md"],
         ["--hold=yes", "--live", "--repo", REPO, "--pr", "1"],
     ],
-    ids=["without --live", "with --context", "with --assessment", "with --review", "a value"],
+    ids=[
+        "without --live",
+        "with --context",
+        "with --assessment",
+        "with --review",
+        "with --summary",
+        "a value",
+    ],
 )
 def test_cli_hold_usage_errors_exit_two(arguments):
     run = run_cli(*arguments)

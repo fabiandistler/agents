@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import Protocol
 
@@ -137,10 +138,38 @@ def _detail(kind: str, operations: list[Operation]) -> str:
     return f"{len(operations)} operation(s)"
 
 
+def _written_labels(sent: list[Operation]) -> dict[str, list[str]]:
+    """The labels the sent operations put on or took off the pull request."""
+    added: list[str] = []
+    removed: list[str] = []
+    for operation in sent:
+        if operation.method == "DELETE":
+            removed.append(urllib.parse.unquote(operation.path.rsplit("/", 1)[-1]))
+        elif operation.tolerate is None and operation.payload is not None:
+            labels = operation.payload["labels"]
+            if not isinstance(labels, list):  # pragma: no cover - the resolver builds a list
+                raise ApplyError("set_labels sent a label payload that is not a list")
+            added.extend(str(label) for label in labels)
+    return {"added": added, "removed": removed}
+
+
 def _apply_action(client: WriteClient, kind: str, operations: list[Operation]) -> dict:
+    sent: list[Operation] = []
+    result = _send_all(client, kind, operations, sent)
+    if kind == "set_labels":
+        # The labels actually written, for the step summary; a failure stops
+        # the action, so they can be fewer than the plan asked for.
+        result.update(_written_labels(sent))
+    return result
+
+
+def _send_all(
+    client: WriteClient, kind: str, operations: list[Operation], sent: list[Operation]
+) -> dict:
     try:
         for operation in operations:
             _send(client, operation)
+            sent.append(operation)
     except pr_github_client.FetchError as error:
         detail = f"{error} (HTTP {error.status})" if error.status is not None else str(error)
         return {"kind": kind, "ok": False, "detail": detail}

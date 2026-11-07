@@ -55,6 +55,40 @@ def test_set_labels_creates_each_label_then_adds_and_removes():
     assert created[2]["payload"] == {"labels": ["risk:low", "review:pass"]}
 
 
+def test_the_result_names_the_labels_it_added_and_removed():
+    plan = make_plan(
+        [{"kind": "set_labels", "add": ["risk:low", "review:pass"], "remove": ["risk:high"]}]
+    )
+
+    result = only_result(pr_apply.apply_plan(plan, FakeClient()))
+
+    assert result["added"] == ["risk:low", "review:pass"]
+    assert result["removed"] == ["risk:high"]
+
+
+def test_a_failed_label_write_reports_only_the_labels_written_before_it():
+    def handler(method, path, payload):
+        if method == "DELETE" and path.endswith("review%3Ablock"):
+            raise pr_github_client.FetchError("server error", status=500)
+        return pr_github_client.Response(status=200)
+
+    plan = make_plan(
+        [
+            {
+                "kind": "set_labels",
+                "add": ["risk:low"],
+                "remove": ["risk:high", "review:block", "needs-review"],
+            }
+        ]
+    )
+
+    result = only_result(pr_apply.apply_plan(plan, FakeClient(handler)))
+
+    assert result["ok"] is False
+    assert result["added"] == ["risk:low"]
+    assert result["removed"] == ["risk:high"]
+
+
 def test_every_label_in_the_vocabulary_has_a_creation_entry():
     labels = [
         "risk:low",
@@ -137,6 +171,7 @@ def test_a_failed_label_creation_stops_the_label_action():
     assert result["ok"] is False
     assert "500" in result["detail"]
     assert paths(client) == [("POST", LABELS_PATH)]
+    assert (result["added"], result["removed"]) == ([], [])
 
 
 def test_a_missing_stale_label_is_not_an_error():
