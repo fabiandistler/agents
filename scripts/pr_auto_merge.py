@@ -110,3 +110,19 @@ def plan_auto_merge(
     """
     state = _state(context, _gates(context, risk, review, variable_enabled(variable)))
     return state, _action(context, state)
+
+
+def plan_hold(context: dict) -> tuple[str, dict | None]:
+    """Return the hold's auto-merge state (disabled, human or off) and its action.
+
+    The hold runs without a review: on a push, so a new head cannot merge
+    before its review is published, and when ``do-not-merge`` is added. It
+    disables the bot's auto-merge, or any auto-merge under ``do-not-merge``,
+    and never enables one.
+    """
+    labels = context_labels(context)
+    if context.get("auto_merge_active") is not True:
+        return "off", None
+    if DO_NOT_MERGE in labels or AUTO_MERGE_LABEL in labels:
+        return "disabled", _action(context, "disabled")
+    return "human", None

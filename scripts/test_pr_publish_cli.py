@@ -8,7 +8,10 @@ import pr_github
 import pr_publish
 import pytest
 from pr_publish_testkit import (
+    ACTIVE_AUTO_MERGE,
     COMMENTS_PATH,
+    NUMBER,
+    REPO,
     FakeGitHub,
     live_args,
     make_assessment,
@@ -281,3 +284,78 @@ def test_cli_write_prints_an_aborted_plan_when_the_head_changed(monkeypatch, tmp
     assert payload["actions"] == []
     assert "results" not in payload
     assert write_calls(fake) == []
+
+
+# --- CLI hold ----------------------------------------------------------------
+
+
+def hold_args() -> list[str]:
+    return ["--hold", "--live", "--repo", REPO, "--pr", str(NUMBER)]
+
+
+def held_pull_request() -> FakeGitHub:
+    fake = FakeGitHub(["abc123"], labels=["risk:low", "review:pass", "auto-merge:bot"])
+    fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
+    return fake
+
+
+def test_cli_hold_prints_the_hold_plan_without_writing(capsys):
+    fake = held_pull_request()
+
+    code = pr_publish.main(hold_args(), client=fake)
+
+    assert code == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["decision"]["auto_merge"] == "disabled"
+    assert [action["kind"] for action in plan["actions"]] == ["set_labels", "disable_auto_merge"]
+    assert write_calls(fake) == []
+
+
+def test_cli_hold_write_disables_the_bots_auto_merge_and_its_label(monkeypatch, capsys):
+    fake = held_pull_request()
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    code = pr_publish.main([*hold_args(), "--write"], client=fake)
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert [result["kind"] for result in payload["results"]] == [
+        "set_labels",
+        "disable_auto_merge",
+    ]
+    assert [(call["method"], call["path"]) for call in write_calls(fake)] == [
+        ("DELETE", f"/repos/{REPO}/issues/{NUMBER}/labels/auto-merge%3Abot"),
+        ("POST", "/graphql"),
+    ]
+
+
+def test_cli_hold_write_outside_github_actions_exits_five(monkeypatch):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+    assert pr_publish.main([*hold_args(), "--write"], client=held_pull_request()) == 5
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--hold", "--repo", REPO, "--pr", "1"],
+        ["--hold", "--context", "c.json"],
+        [*hold_args(), "--assessment", "a.json"],
+        [*hold_args(), "--review", "r.json"],
+        ["--hold=yes", "--live", "--repo", REPO, "--pr", "1"],
+    ],
+    ids=["without --live", "with --context", "with --assessment", "with --review", "a value"],
+)
+def test_cli_hold_usage_errors_exit_two(arguments):
+    run = run_cli(*arguments)
+
+    assert run.returncode == 2
+    assert run.stdout == ""
+
+
+def test_cli_help_documents_the_hold():
+    run = run_cli("--help")
+
+    assert "--hold" in run.stdout

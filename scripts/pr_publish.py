@@ -51,9 +51,7 @@ def publish_live(
     """
     assessment = pr_plan.validate_assessment(assessment)
     review = pr_plan.validate_review(review)
-    token = os.environ.get("GITHUB_TOKEN") or None
-    if write and client is None and token is None:
-        raise pr_github.MissingTokenError("GITHUB_TOKEN is not set")
+    token = _token(write, client)
 
     context = _fetch_context(repo, number, token, client)
     plan = pr_plan.plan_publish(
@@ -68,7 +66,30 @@ def publish_live(
     )
     if plan["status"] == "aborted":
         return plan
+    return _apply(plan, token, client)
 
+
+def hold_live(repo: str, number: int, write: bool = False, client=None):
+    """Fetch, plan and optionally apply the auto-merge hold of one pull request.
+
+    The hold needs no review: the workflow runs it on every push and when
+    ``do-not-merge`` is added. Return values follow ``publish_live``.
+    """
+    token = _token(write, client)
+    plan = pr_plan.plan_hold(_fetch_context(repo, number, token, client))
+    if not write or plan["status"] == "aborted":
+        return plan
+    return _apply(plan, token, client)
+
+
+def _token(write: bool, client) -> str | None:
+    token = os.environ.get("GITHUB_TOKEN") or None
+    if write and client is None and token is None:
+        raise pr_github.MissingTokenError("GITHUB_TOKEN is not set")
+    return token
+
+
+def _apply(plan: dict, token: str | None, client) -> dict:
     writer = client if client is not None else pr_github.GitHubClient(token)
     results = pr_apply.apply_plan(plan, writer)
     return {
@@ -82,7 +103,7 @@ def publish_live(
 # --- CLI ---------------------------------------------------------------------
 
 USAGE = """usage: pr_publish.py --context FILE --assessment FILE --review FILE
-       pr_publish.py --live --repo OWNER/REPO --pr N --assessment FILE --review FILE [--write]
+       pr_publish.py --live --repo O/R --pr N (--assessment FILE --review FILE | --hold) [--write]
 
 Plan the labels, the sticky comment, the reviewer and the auto-merge decision
 for one pull request. Prints JSON on stdout; --write applies the plan.
@@ -91,8 +112,8 @@ for one pull request. Prints JSON on stdout; --write applies the plan.
   --assessment FILE   risk decision JSON from pr_risk.py
   --review FILE       review artifact JSON from pr_review.py
   --live              re-fetch the context from GitHub; needs GITHUB_TOKEN
-  --repo O/R          repository as OWNER/REPO (with --live)
-  --pr N              pull request number (with --live)
+  --repo O/R --pr N   repository as OWNER/REPO and pull request number (with --live)
+  --hold              without a review: only disable the bot's auto-merge (any under do-not-merge)
   --write             apply the plan; needs --live and GITHUB_ACTIONS=true
   -h, --help          show this message
 
@@ -123,6 +144,7 @@ def _parse_arguments(argv: list[str]) -> dict:
         "assessment": None,
         "review": None,
         "write": False,
+        "hold": False,
     }
     index = 0
     while index < len(argv):
@@ -136,10 +158,10 @@ def _parse_arguments(argv: list[str]) -> dict:
             options["live"] = True
             index += 1
             continue
-        if name == "--write":
+        if name in ("--write", "--hold"):
             if separator:
-                raise UsageError("--write takes no value")
-            options["write"] = True
+                raise UsageError(f"{name} takes no value")
+            options[name[2:]] = True
             index += 1
             continue
         if name not in VALUE_FLAGS:
@@ -156,9 +178,15 @@ def _parse_arguments(argv: list[str]) -> dict:
             raise UsageError(f"{name} needs a value")
         options[name[2:]] = value
 
-    for required in ("assessment", "review"):
-        if options[required] is None:
-            raise UsageError(f"--{required} is required")
+    if options["hold"] is True:
+        if any(options[name] is not None for name in ("context", "assessment", "review")):
+            raise UsageError("--hold takes no --context, --assessment or --review")
+        if options["live"] is not True:
+            raise UsageError("--hold requires --live")
+    else:
+        for required in ("assessment", "review"):
+            if options[required] is None:
+                raise UsageError(f"--{required} is required")
 
     has_context = isinstance(options["context"], str)
     has_live = options["live"] is True
@@ -220,6 +248,22 @@ def main(argv: list[str] | None = None, client=None) -> int:
         )
         return EXIT_OUTSIDE_ACTIONS
 
+    if options["hold"] is True:
+        try:
+            payload = hold_live(
+                str(options["repo"]),
+                int(options["pr"]),
+                write=options["write"] is True,
+                client=client,
+            )
+        except pr_github.FetchError as error:
+            print(f"pr_publish.py: live fetch failed: {error}", file=sys.stderr)
+            return EXIT_LIVE_FAILED
+        except pr_plan.ArtifactError as error:
+            print(f"pr_publish.py: {error}", file=sys.stderr)
+            return EXIT_BAD_INPUT
+        return _emit(payload, options["write"] is True)
+
     try:
         assessment = _read_json(str(options["assessment"]), "--assessment")
         review = _read_json(str(options["review"]), "--review")
@@ -248,8 +292,12 @@ def main(argv: list[str] | None = None, client=None) -> int:
         print(f"pr_publish.py: {error}", file=sys.stderr)
         return EXIT_BAD_INPUT
 
+    return _emit(payload, options["write"] is True)
+
+
+def _emit(payload: dict, write: bool) -> int:
     sys.stdout.write(json.dumps(payload, indent=2) + "\n")
-    if options["write"] is True and payload.get("ok") is False:
+    if write and payload.get("ok") is False:
         return EXIT_ACTION_FAILED
     return EXIT_OK
 

@@ -275,3 +275,21 @@ def plan_publish(
         actions,
         _decision(risk, review, auto_merge_state),
     )
+
+
+def plan_hold(context: dict) -> dict:
+    """Return the review-free hold plan for one pull request; never writes."""
+    context = _validate_context(context)
+    decision = {"risk": None, "review_status": None, "verdict": None, "auto_merge": "off"}
+    if context.get("state") == "closed":
+        return _plan(context, "aborted", "pull_request_closed", [], decision)
+
+    state, action = pr_auto_merge.plan_hold(context)
+    actions: list[dict] = []
+    if pr_auto_merge.AUTO_MERGE_LABEL in pr_auto_merge.context_labels(context):
+        actions.append(
+            {"kind": "set_labels", "add": [], "remove": [pr_auto_merge.AUTO_MERGE_LABEL]}
+        )
+    if action is not None:
+        actions.append(action)
+    return _plan(context, "planned", None, actions, {**decision, "auto_merge": state})

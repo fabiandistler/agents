@@ -164,6 +164,10 @@ def pull_request(head_sha: str, labels: list[str]) -> dict:
     }
 
 
+# The `auto_merge` object of a pull request payload while auto-merge is on.
+ACTIVE_AUTO_MERGE = {"merge_method": "merge", "enabled_by": {"login": "github-actions[bot]"}}
+
+
 class FakeGitHub:
     """Serves ``fetch_context`` from canned payloads and records every write."""
 

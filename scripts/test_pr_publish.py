@@ -9,6 +9,7 @@ import pr_plan
 import pr_publish
 import pytest
 from pr_publish_testkit import (
+    ACTIVE_AUTO_MERGE,
     COMMENTS_PATH,
     FILES_PATH,
     MARKER,
@@ -181,7 +182,6 @@ def test_a_failed_write_is_reported_in_the_results():
 # --- Auto-merge on the live path ----------------------------------------------
 
 BOT_LABELS = ["risk:low", "review:pass", "auto-merge:bot"]
-ACTIVE_AUTO_MERGE = {"merge_method": "merge", "enabled_by": {"login": "github-actions[bot]"}}
 
 
 def test_live_plan_enables_auto_merge_on_the_fetched_node_id(monkeypatch):
