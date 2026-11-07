@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import urllib.parse
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pr_github_client
@@ -187,52 +188,43 @@ def _comment_operations(plan: dict, action: dict) -> list[Operation]:
     ]
 
 
-def _reviewer_operations(plan: dict, action: dict) -> list[Operation]:
-    kind = action.get("kind")
+def _maintainer(action: dict) -> str:
     login = action.get("login")
     if login != BOT_LOGIN:
-        raise PlanError(f"{kind} refuses any login other than {BOT_LOGIN}")
-    if kind == "request_reviewer":
-        return [
-            Operation(
-                kind="request_reviewer",
-                method="POST",
-                path=f"/repos/{plan['repo']}/pulls/{plan['number']}/requested_reviewers",
-                payload={"reviewers": [BOT_LOGIN]},
-            )
-        ]
+        raise PlanError(f"{action['kind']} refuses any login other than {BOT_LOGIN}")
+    return BOT_LOGIN
+
+
+def _request_reviewer_operations(plan: dict, action: dict) -> list[Operation]:
+    return [
+        Operation(
+            kind="request_reviewer",
+            method="POST",
+            path=f"/repos/{plan['repo']}/pulls/{plan['number']}/requested_reviewers",
+            payload={"reviewers": [_maintainer(action)]},
+        )
+    ]
+
+
+def _assign_operations(plan: dict, action: dict) -> list[Operation]:
     return [
         Operation(
             kind="assign",
             method="POST",
             path=f"/repos/{plan['repo']}/issues/{plan['number']}/assignees",
-            payload={"assignees": [BOT_LOGIN]},
+            payload={"assignees": [_maintainer(action)]},
         )
     ]
 
 
-def _auto_merge_operations(plan: dict, kind: str, action: dict) -> list[Operation]:
+def _node_id(action: dict) -> str:
     node_id = action.get("pull_request_id")
     if not isinstance(node_id, str) or not node_id:
-        raise PlanError(f"{kind} needs the pull request node id")
-    if kind == "disable_auto_merge":
-        variables: dict[str, object] = {"pullRequestId": node_id}
-        query = DISABLE_AUTO_MERGE
-    else:
-        method = action.get("method")
-        if method not in MERGE_METHODS:
-            raise PlanError(f"enable_auto_merge accepts only the methods {sorted(MERGE_METHODS)}")
-        head = action.get("expected_head_oid")
-        if not isinstance(head, str) or not HEAD_SHA_PATTERN.fullmatch(head):
-            raise PlanError("enable_auto_merge needs expected_head_oid as a commit SHA")
-        if head != plan.get("head_sha"):
-            raise PlanError("enable_auto_merge must pin the head commit the plan assessed")
-        variables = {
-            "pullRequestId": node_id,
-            "mergeMethod": MERGE_METHODS[method],
-            "expectedHeadOid": head,
-        }
-        query = ENABLE_AUTO_MERGE
+        raise PlanError(f"{action['kind']} needs the pull request node id")
+    return node_id
+
+
+def _graphql_operation(kind: str, query: str, variables: dict[str, object]) -> list[Operation]:
     return [
         Operation(
             kind=kind,
@@ -243,17 +235,47 @@ def _auto_merge_operations(plan: dict, kind: str, action: dict) -> list[Operatio
     ]
 
 
+def _enable_auto_merge_operations(plan: dict, action: dict) -> list[Operation]:
+    node_id = _node_id(action)
+    method = action.get("method")
+    if method not in MERGE_METHODS:
+        raise PlanError(f"enable_auto_merge accepts only the methods {sorted(MERGE_METHODS)}")
+    head = action.get("expected_head_oid")
+    if not isinstance(head, str) or not HEAD_SHA_PATTERN.fullmatch(head):
+        raise PlanError("enable_auto_merge needs expected_head_oid as a commit SHA")
+    if head != plan.get("head_sha"):
+        raise PlanError("enable_auto_merge must pin the head commit the plan assessed")
+    variables: dict[str, object] = {
+        "pullRequestId": node_id,
+        "mergeMethod": MERGE_METHODS[method],
+        "expectedHeadOid": head,
+    }
+    return _graphql_operation("enable_auto_merge", ENABLE_AUTO_MERGE, variables)
+
+
+def _disable_auto_merge_operations(plan: dict, action: dict) -> list[Operation]:
+    variables: dict[str, object] = {"pullRequestId": _node_id(action)}
+    return _graphql_operation("disable_auto_merge", DISABLE_AUTO_MERGE, variables)
+
+
+# Every action kind a plan may carry, with the operations it resolves to. A
+# kind missing here is refused before the first call.
+RESOLVERS: dict[str, Callable[[dict, dict], list[Operation]]] = {
+    "set_labels": _label_operations,
+    "upsert_comment": _comment_operations,
+    "request_reviewer": _request_reviewer_operations,
+    "assign": _assign_operations,
+    "enable_auto_merge": _enable_auto_merge_operations,
+    "disable_auto_merge": _disable_auto_merge_operations,
+}
+
+
 def _resolve_action(plan: dict, action: dict) -> list[Operation]:
     kind = action.get("kind")
-    if kind == "set_labels":
-        return _label_operations(plan, action)
-    if kind == "upsert_comment":
-        return _comment_operations(plan, action)
-    if kind in ("request_reviewer", "assign"):
-        return _reviewer_operations(plan, action)
-    if kind in ("enable_auto_merge", "disable_auto_merge"):
-        return _auto_merge_operations(plan, kind, action)
-    raise PlanError(f"unsupported action kind: {kind}")
+    resolver = RESOLVERS.get(kind) if isinstance(kind, str) else None
+    if resolver is None:
+        raise PlanError(f"unsupported action kind: {kind}")
+    return resolver(plan, action)
 
 
 def resolve_plan(plan: object) -> list[tuple[dict, list[Operation]]]:

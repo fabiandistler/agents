@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import sys
 import urllib.parse
+from collections.abc import Callable
 from typing import Protocol
 
 import pr_actions
@@ -106,29 +107,31 @@ def _is_clean_refusal(errors: object) -> bool:
     )
 
 
-def _detail(kind: str, operations: list[Operation]) -> str:
-    if kind == "set_labels":
-        created = sum(1 for operation in operations if operation.tolerate == "already_exists")
-        added = sum(
-            1
-            for operation in operations
-            if operation.method == "POST" and operation.tolerate is None
-        )
-        removed = sum(1 for operation in operations if operation.method == "DELETE")
-        return f"created {created}, added {added}, removed {removed}"
-    if kind == "upsert_comment":
-        if operations and operations[0].method == "PATCH":
-            return f"updated comment {operations[0].path.rsplit('/', 1)[-1]}"
-        return "posted a comment"
-    if kind == "request_reviewer":
-        return f"requested {pr_actions.BOT_LOGIN}"
-    if kind == "enable_auto_merge":
-        return "enabled auto-merge with a merge commit"
-    if kind == "disable_auto_merge":
-        return "disabled auto-merge"
-    if kind == "assign":
-        return f"assigned {pr_actions.BOT_LOGIN}"
-    return f"{len(operations)} operation(s)"
+def _label_detail(operations: list[Operation]) -> str:
+    created = sum(1 for operation in operations if operation.tolerate == "already_exists")
+    added = sum(
+        1 for operation in operations if operation.method == "POST" and operation.tolerate is None
+    )
+    removed = sum(1 for operation in operations if operation.method == "DELETE")
+    return f"created {created}, added {added}, removed {removed}"
+
+
+def _comment_detail(operations: list[Operation]) -> str:
+    if operations[0].method == "PATCH":
+        return f"updated comment {operations[0].path.rsplit('/', 1)[-1]}"
+    return "posted a comment"
+
+
+# One line per applied action kind for the results JSON and the step summary;
+# the keys match pr_actions.RESOLVERS.
+DETAILS: dict[str, Callable[[list[Operation]], str]] = {
+    "set_labels": _label_detail,
+    "upsert_comment": _comment_detail,
+    "request_reviewer": lambda _operations: f"requested {pr_actions.BOT_LOGIN}",
+    "assign": lambda _operations: f"assigned {pr_actions.BOT_LOGIN}",
+    "enable_auto_merge": lambda _operations: "enabled auto-merge with a merge commit",
+    "disable_auto_merge": lambda _operations: "disabled auto-merge",
+}
 
 
 def _written_labels(sent: list[Operation]) -> dict[str, list[str]]:
@@ -172,7 +175,7 @@ def _send_all(
         return {"kind": kind, "ok": True, "armed": False, "detail": detail}
     except ApplyError as error:
         return {"kind": kind, "ok": False, "detail": str(error)}
-    result = {"kind": kind, "ok": True, "detail": _detail(kind, operations)}
+    result = {"kind": kind, "ok": True, "detail": DETAILS[kind](operations)}
     if kind == "enable_auto_merge":
         result["armed"] = True
     return result
