@@ -11,7 +11,7 @@ import pr_plan
 import pytest
 from pr_publish_testkit import (
     ACTION_KINDS,
-    BOT,
+    MAINTAINER,
     MARKER,
     actions_of,
     comment_action,
@@ -116,7 +116,9 @@ def test_docs_pull_request_plans_labels_comment_and_reviewer():
     ]
     assert label_action(plan)["add"] == ["risk:low", "review:pass"]
     assert label_action(plan)["remove"] == []
-    assert actions_of(plan, "request_reviewer") == [{"kind": "request_reviewer", "login": BOT}]
+    assert actions_of(plan, "request_reviewer") == [
+        {"kind": "request_reviewer", "login": MAINTAINER}
+    ]
     assert comment_action(plan)["comment_id"] is None
     assert comment_action(plan)["marker"] == MARKER
 
@@ -281,22 +283,22 @@ def test_skipped_review_plans_no_verdict_label():
 
 
 def test_self_authored_pull_request_is_assigned_and_needs_review():
-    context = make_context(author=BOT, files=[file_entry("skills/x/SKILL.md")])
+    context = make_context(author=MAINTAINER, files=[file_entry("skills/x/SKILL.md")])
     review = make_review(risk="medium", verdict="concerns")
 
     plan = pr_plan.plan_publish(context, make_assessment(), review)
 
     assert actions_of(plan, "request_reviewer") == []
-    assert actions_of(plan, "assign") == [{"kind": "assign", "login": BOT}]
+    assert actions_of(plan, "assign") == [{"kind": "assign", "login": MAINTAINER}]
     assert "needs-review" in label_action(plan)["add"]
 
 
 def test_self_authored_low_risk_pull_request_still_carries_needs_review():
-    context = make_context(author=BOT)
+    context = make_context(author=MAINTAINER)
 
     plan = pr_plan.plan_publish(context, make_assessment(), make_review())
 
-    assert actions_of(plan, "assign") == [{"kind": "assign", "login": BOT}]
+    assert actions_of(plan, "assign") == [{"kind": "assign", "login": MAINTAINER}]
     assert "needs-review" in label_action(plan)["add"]
 
 
@@ -306,10 +308,12 @@ def test_foreign_pull_request_requests_the_maintainer_as_reviewer():
     plan = pr_plan.plan_publish(context, make_assessment(), make_review())
 
     assert actions_of(plan, "assign") == []
-    assert actions_of(plan, "request_reviewer") == [{"kind": "request_reviewer", "login": BOT}]
+    assert actions_of(plan, "request_reviewer") == [
+        {"kind": "request_reviewer", "login": MAINTAINER}
+    ]
 
 
-@pytest.mark.parametrize("author", ["octocat", BOT])
+@pytest.mark.parametrize("author", ["octocat", MAINTAINER])
 def test_a_draft_is_labeled_but_neither_requests_nor_assigns(author):
     # A draft is not ready for review; ready_for_review runs publish again
     # without the draft flag, and that run asks for the reviewer.

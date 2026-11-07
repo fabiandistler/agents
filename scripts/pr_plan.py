@@ -15,7 +15,7 @@ import pr_auto_merge
 import pr_comment
 import pr_github_client
 import pr_risk
-from pr_actions import BOT_LOGIN
+from pr_actions import MAINTAINER_LOGIN
 from pr_labels import AUTO_MERGE_BOT, NEEDS_REVIEW, RISK_PREFIX, VERDICT_PREFIX
 from pr_review_response import REVIEW_STATUSES, VERDICTS
 
@@ -122,7 +122,7 @@ def _needs_review(context: dict, risk: str, review: dict, auto_merge_state: str)
         or risk in (pr_risk.MEDIUM, pr_risk.HIGH)
         or review["status"] == "unavailable"
         or review.get("verdict") in ("concerns", "block")
-        or context.get("author") == BOT_LOGIN
+        or context.get("author") == MAINTAINER_LOGIN
     )
 
 
@@ -175,9 +175,9 @@ def _reviewer_action(context: dict) -> dict | None:
     # A draft is not ready for review; the ready_for_review run asks instead.
     if context.get("draft") is True:
         return None
-    if context.get("author") == BOT_LOGIN:
-        return {"kind": "assign", "login": BOT_LOGIN}
-    return {"kind": "request_reviewer", "login": BOT_LOGIN}
+    if context.get("author") == MAINTAINER_LOGIN:
+        return {"kind": "assign", "login": MAINTAINER_LOGIN}
+    return {"kind": "request_reviewer", "login": MAINTAINER_LOGIN}
 
 
 # --- Plan --------------------------------------------------------------------

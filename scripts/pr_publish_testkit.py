@@ -22,7 +22,7 @@ SCRIPT = Path(__file__).resolve().parent / "pr_publish.py"
 MARKER = pr_comment.COMMENT_MARKER
 # The login GITHUB_TOKEN writes as; only its comments can be the sticky comment.
 BOT_AUTHOR = pr_comment.COMMENT_AUTHOR
-BOT = pr_actions.BOT_LOGIN
+MAINTAINER = pr_actions.MAINTAINER_LOGIN
 
 # The kinds the writer resolves; a plan must name no other.
 ACTION_KINDS = set(pr_actions.RESOLVERS)

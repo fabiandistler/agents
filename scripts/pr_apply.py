@@ -127,8 +127,8 @@ def _comment_detail(operations: list[Operation]) -> str:
 DETAILS: dict[str, Callable[[list[Operation]], str]] = {
     "set_labels": _label_detail,
     "upsert_comment": _comment_detail,
-    "request_reviewer": lambda _operations: f"requested {pr_actions.BOT_LOGIN}",
-    "assign": lambda _operations: f"assigned {pr_actions.BOT_LOGIN}",
+    "request_reviewer": lambda _operations: f"requested {pr_actions.MAINTAINER_LOGIN}",
+    "assign": lambda _operations: f"assigned {pr_actions.MAINTAINER_LOGIN}",
     "enable_auto_merge": lambda _operations: "enabled auto-merge with a merge commit",
     "disable_auto_merge": lambda _operations: "disabled auto-merge",
 }

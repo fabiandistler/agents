@@ -22,7 +22,7 @@ ISSUE_LABELS_PATH = f"/repos/{REPO}/issues/{NUMBER}/labels"
 ISSUE_COMMENTS_PATH = f"/repos/{REPO}/issues/{NUMBER}/comments"
 REVIEWERS_PATH = f"/repos/{REPO}/pulls/{NUMBER}/requested_reviewers"
 ASSIGNEES_PATH = f"/repos/{REPO}/issues/{NUMBER}/assignees"
-BOT = pr_actions.BOT_LOGIN
+MAINTAINER = pr_actions.MAINTAINER_LOGIN
 
 SCRIPT = Path(__file__).resolve().parent / "pr_apply.py"
 

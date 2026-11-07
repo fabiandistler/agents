@@ -8,9 +8,9 @@ import pr_apply
 import pr_github_client
 import pytest
 from pr_apply_testkit import (
-    BOT,
     ISSUE_COMMENTS_PATH,
     LABELS_PATH,
+    MAINTAINER,
     NUMBER,
     REPO,
     FakeClient,
@@ -27,7 +27,7 @@ def test_cli_dry_run_prints_the_resolved_operations_without_a_call(tmp_path):
         [
             {"kind": "set_labels", "add": ["risk:low"], "remove": ["risk:high"]},
             {"kind": "upsert_comment", "comment_id": None, "marker": "m", "body": "hello"},
-            {"kind": "request_reviewer", "login": BOT},
+            {"kind": "request_reviewer", "login": MAINTAINER},
         ]
     )
 
@@ -105,7 +105,7 @@ def test_cli_write_lists_every_result_and_exits_one_on_failure(tmp_path, monkeyp
     plan = make_plan(
         [
             {"kind": "set_labels", "add": ["risk:low"], "remove": []},
-            {"kind": "request_reviewer", "login": BOT},
+            {"kind": "request_reviewer", "login": MAINTAINER},
         ]
     )
     monkeypatch.setenv("GITHUB_ACTIONS", "true")

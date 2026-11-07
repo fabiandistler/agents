@@ -19,7 +19,7 @@ from pr_labels import LABELS
 SCHEMA_VERSION = 1
 
 # The only login a plan may request as reviewer or assign.
-BOT_LOGIN = "fabiandistler"
+MAINTAINER_LOGIN = "fabiandistler"
 
 # GitHub has no REST endpoint for auto-merge; both writes are GraphQL mutations.
 # The merge method is fixed to a merge commit. Branch deletion after the merge
@@ -177,9 +177,9 @@ def _comment_operations(plan: dict, action: dict) -> list[Operation]:
 
 def _maintainer(action: dict) -> str:
     login = action.get("login")
-    if login != BOT_LOGIN:
-        raise PlanError(f"{action['kind']} refuses any login other than {BOT_LOGIN}")
-    return BOT_LOGIN
+    if login != MAINTAINER_LOGIN:
+        raise PlanError(f"{action['kind']} refuses any login other than {MAINTAINER_LOGIN}")
+    return MAINTAINER_LOGIN
 
 
 def _request_reviewer_operations(plan: dict, action: dict) -> list[Operation]:

@@ -13,10 +13,10 @@ import pr_github_client
 import pytest
 from pr_apply_testkit import (
     ASSIGNEES_PATH,
-    BOT,
     ISSUE_COMMENTS_PATH,
     ISSUE_LABELS_PATH,
     LABELS_PATH,
+    MAINTAINER,
     NUMBER,
     REPO,
     REVIEWERS_PATH,
@@ -311,24 +311,24 @@ def test_an_invalid_comment_body_is_rejected_before_any_call(body):
 
 def test_the_maintainer_is_requested_as_reviewer():
     client = FakeClient()
-    plan = make_plan([{"kind": "request_reviewer", "login": BOT}])
+    plan = make_plan([{"kind": "request_reviewer", "login": MAINTAINER}])
 
     result = only_result(pr_apply.apply_plan(plan, client))
 
     assert result["ok"] is True
     assert paths(client) == [("POST", REVIEWERS_PATH)]
-    assert client.calls[0]["payload"] == {"reviewers": [BOT]}
+    assert client.calls[0]["payload"] == {"reviewers": [MAINTAINER]}
 
 
 def test_the_maintainer_is_assigned_when_he_authored_the_pull_request():
     client = FakeClient()
-    plan = make_plan([{"kind": "assign", "login": BOT}])
+    plan = make_plan([{"kind": "assign", "login": MAINTAINER}])
 
     result = only_result(pr_apply.apply_plan(plan, client))
 
     assert result["ok"] is True
     assert paths(client) == [("POST", ASSIGNEES_PATH)]
-    assert client.calls[0]["payload"] == {"assignees": [BOT]}
+    assert client.calls[0]["payload"] == {"assignees": [MAINTAINER]}
 
 
 @pytest.mark.parametrize("kind", ["request_reviewer", "assign"])
@@ -395,7 +395,7 @@ def test_every_action_yields_one_result_and_a_failure_does_not_stop_the_next():
         [
             {"kind": "set_labels", "add": ["risk:low"], "remove": []},
             {"kind": "upsert_comment", "comment_id": None, "marker": "m", "body": "hello"},
-            {"kind": "request_reviewer", "login": BOT},
+            {"kind": "request_reviewer", "login": MAINTAINER},
         ]
     )
 
