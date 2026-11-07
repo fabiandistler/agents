@@ -372,3 +372,29 @@ def test_a_malformed_changed_file_fails_the_fetch(field, value):
 
     with pytest.raises(pr_github_client.FetchError, match=field):
         fetch(FakeClient(file_pages=([entry],)))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("node_id", OMITTED),
+        ("node_id", ""),
+        ("node_id", 7),
+        ("labels", OMITTED),
+        ("labels", None),
+        ("labels", "do-not-merge"),
+        ("labels", [{"name": "do-not-merge"}, {"color": "000000"}]),
+        ("labels", ["do-not-merge"]),
+    ],
+)
+def test_a_malformed_pull_request_field_fails_the_fetch(field, value):
+    # An empty node id cannot disable auto-merge, and a dropped label could
+    # hide do-not-merge; both must stop the run instead.
+    payload = pull_request()
+    if value is OMITTED:
+        del payload[field]
+    else:
+        payload[field] = value
+
+    with pytest.raises(pr_github_client.FetchError, match=field):
+        fetch(FakeClient(payload))

@@ -282,3 +282,14 @@ def test_a_context_without_a_node_id_is_bad_input():
 
     with pytest.raises(pr_plan.ArtifactError, match="node_id"):
         pr_plan.plan_publish(context, make_assessment(), make_review())
+
+
+@pytest.mark.parametrize("labels", [None, "do-not-merge", ["do-not-merge", 7]])
+def test_a_context_with_unreadable_labels_is_bad_input(labels):
+    # Ignoring an unreadable label list could hide do-not-merge.
+    context = make_context(labels=labels, auto_merge_active=True)
+
+    with pytest.raises(pr_plan.ArtifactError, match="labels"):
+        pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
+    with pytest.raises(pr_plan.ArtifactError, match="labels"):
+        pr_plan.plan_hold(context)

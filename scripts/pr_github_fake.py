@@ -135,6 +135,7 @@ def pull_request(**overrides: object) -> dict:
             "sha": "base-sha",
             "repo": {"full_name": REPO, "default_branch": "main"},
         },
+        "node_id": "PR_kwDOtest42",
         "draft": False,
         "mergeable": True,
         "labels": [{"name": "do-not-merge"}],

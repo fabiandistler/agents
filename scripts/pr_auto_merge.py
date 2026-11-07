@@ -23,13 +23,8 @@ GATES_FAIL = "fail"
 # The auto-merge states a plan reports; the bot's label belongs to the first two.
 BOT_STATES = ("enabled", "kept")
 
-
-def context_labels(context: dict) -> list[str]:
-    """The label names on the pull request; anything else in the field is ignored."""
-    labels = context.get("labels")
-    if not isinstance(labels, list):
-        return []
-    return [label for label in labels if isinstance(label, str)]
+# Every function below takes a context that ``pr_plan`` validated: its labels
+# are a list of strings.
 
 
 def variable_enabled(value: object) -> bool:
@@ -59,7 +54,7 @@ def _gates(context: dict, risk: str, review: dict, enabled: bool) -> str:
         return GATES_FAIL
     if context["reviews"]["changes_requested"]:
         return GATES_FAIL
-    if DO_NOT_MERGE in context_labels(context):
+    if DO_NOT_MERGE in context["labels"]:
         return GATES_FAIL
     mergeable = context.get("mergeable")
     if mergeable is None:
@@ -74,7 +69,7 @@ def _state(context: dict, gates: str) -> str:
     auto-merge without it is a human's and is never taken over or disabled,
     except that ``do-not-merge`` disables any auto-merge.
     """
-    labels = context_labels(context)
+    labels = context["labels"]
     active = context.get("auto_merge_active") is True
     if active and DO_NOT_MERGE in labels:
         return "disabled"
@@ -124,7 +119,7 @@ def plan_hold(context: dict) -> tuple[str, dict | None]:
     disables the bot's auto-merge, or any auto-merge under ``do-not-merge``,
     and never enables one.
     """
-    labels = context_labels(context)
+    labels = context["labels"]
     if context.get("auto_merge_active") is not True:
         return "off", None
     if DO_NOT_MERGE in labels or AUTO_MERGE_LABEL in labels:

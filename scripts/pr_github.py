@@ -142,6 +142,20 @@ def _review_state(reviews: list[dict]) -> dict[str, bool]:
     return {"changes_requested": any(state == "CHANGES_REQUESTED" for state in latest.values())}
 
 
+def _labels(pull: dict, pr_path: str) -> list[str]:
+    """The label names; an unreadable list fails, since it could hide do-not-merge."""
+    raw = pull.get("labels")
+    if not isinstance(raw, list):
+        raise FetchError(f"GitHub API returned no 'labels' list for {pr_path}")
+    names: list[str] = []
+    for label in raw:
+        name = label.get("name") if isinstance(label, dict) else None
+        if not isinstance(name, str) or not name:
+            raise FetchError(f"GitHub API returned a malformed entry in 'labels' for {pr_path}")
+        names.append(name)
+    return names
+
+
 def _base_files(
     client: ReadClient,
     repo: str,
@@ -282,12 +296,11 @@ def fetch_context(
 
     base_repo_value = base.get("repo")
     base_repo = base_repo_value if isinstance(base_repo_value, dict) else {}
-    labels: list[str] = []
-    for label in pull.get("labels") or []:
-        if isinstance(label, dict) and isinstance(label.get("name"), str):
-            labels.append(label["name"])
-        elif isinstance(label, str):
-            labels.append(label)
+    labels = _labels(pull, pr_path)
+    # The GraphQL id the auto-merge mutations take; without it no disable works.
+    node_id = pull.get("node_id")
+    if not isinstance(node_id, str) or not node_id:
+        raise FetchError(f"GitHub API returned no 'node_id' for {pr_path}")
 
     user_value = pull.get("user")
     user = user_value if isinstance(user_value, dict) else {}
@@ -308,8 +321,7 @@ def fetch_context(
         "default_branch": default_branch if isinstance(default_branch, str) else "",
         "draft": bool(pull.get("draft")),
         "fork": fork,
-        # The GraphQL id the auto-merge mutations take.
-        "node_id": pull.get("node_id") if isinstance(pull.get("node_id"), str) else "",
+        "node_id": node_id,
         # null while GitHub is still computing it; the planner treats that as unknown.
         "mergeable": pull.get("mergeable") if isinstance(pull.get("mergeable"), bool) else None,
         "auto_merge_active": pull.get("auto_merge") is not None,

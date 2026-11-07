@@ -60,6 +60,10 @@ def _validate_context(context: object) -> dict:
     reviews = context.get("reviews")
     if not isinstance(reviews, dict) or not isinstance(reviews.get("changes_requested"), bool):
         raise ArtifactError("context field 'reviews' must carry a boolean changes_requested")
+    # An unreadable label list could hide do-not-merge, so it is never skipped.
+    labels = context.get("labels")
+    if not isinstance(labels, list) or not all(isinstance(label, str) for label in labels):
+        raise ArtifactError("context field 'labels' must be a list of strings")
     return context
 
 
@@ -138,7 +142,7 @@ def _plan_labels(
     review: dict,
     auto_merge_state: str,
 ) -> tuple[list[str], list[str]]:
-    existing = pr_auto_merge.context_labels(context)
+    existing = context["labels"]
     add: list[str] = []
     remove: list[str] = []
 
@@ -297,7 +301,7 @@ def plan_hold(context: dict) -> dict:
 
     state, action = pr_auto_merge.plan_hold(context)
     actions: list[dict] = []
-    if pr_auto_merge.AUTO_MERGE_LABEL in pr_auto_merge.context_labels(context):
+    if pr_auto_merge.AUTO_MERGE_LABEL in context["labels"]:
         actions.append(
             {"kind": "set_labels", "add": [], "remove": [pr_auto_merge.AUTO_MERGE_LABEL]}
         )
