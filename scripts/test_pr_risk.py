@@ -77,6 +77,11 @@ PATH_CASES = [
     ("skills/foo/references/guide.md", "medium", "skills"),
     ("instructions/10-core.md", "medium", "instructions"),
     ("docs/agents/pr-review.md", "medium", "agent-docs"),
+    # medium: agent instruction files, wherever they sit
+    ("AGENTS.md", "medium", "agent-docs"),
+    ("CLAUDE.md", "medium", "agent-docs"),
+    ("docs/guides/AGENTS.md", "medium", "agent-docs"),
+    ("maintenance/reports/CLAUDE.md", "medium", "agent-docs"),
     # medium: documents that state repository policy, such as the merge rule
     ("README.md", "medium", "policy-docs"),
     ("docs/adr/0001-record-decisions.md", "medium", "adr"),
@@ -135,9 +140,8 @@ PATH_CASES = [
     ("package-lock.json", "high", "dependency-pins"),
     ("tools/dev.requirements.txt", "high", "dependency-pins"),
     # high: unknown paths
-    ("AGENTS.md", "high", "unknown"),
-    ("CLAUDE.md", "high", "unknown"),
     ("scripts/random.py", "high", "unknown"),
+    ("AGENTS.markdown", "high", "unknown"),
     ("skills.md", "high", "unknown"),
     ("documentation/guide.md", "high", "unknown"),
     ("scripts/fixtures/data.json", "high", "unknown"),

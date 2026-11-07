@@ -64,6 +64,8 @@ PATH_RULES = (
     (re.compile(r"^skills/"), MEDIUM, "skills"),
     (re.compile(r"^instructions/"), MEDIUM, "instructions"),
     (re.compile(r"^docs/agents/"), MEDIUM, "agent-docs"),
+    # Agents load AGENTS.md and CLAUDE.md as instructions wherever they sit.
+    (re.compile(r"(?:^|/)(?:AGENTS|CLAUDE)\.md$"), MEDIUM, "agent-docs"),
     # README.md and the ADRs state repository policy, such as the merge rule.
     (re.compile(r"^README\.md$"), MEDIUM, "policy-docs"),
     (re.compile(r"^docs/adr/"), MEDIUM, "adr"),
