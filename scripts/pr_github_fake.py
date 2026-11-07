@@ -22,7 +22,6 @@ PR_PATH = f"/repos/{REPO}/pulls/{NUMBER}"
 FILES_PATH = f"{PR_PATH}/files"
 COMMENTS_PATH = f"/repos/{REPO}/issues/{NUMBER}/comments"
 REVIEWS_PATH = f"{PR_PATH}/reviews"
-CHECK_RUNS_PATH = f"/repos/{REPO}/commits/abc123/check-runs"
 CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
 TREE_PATH = f"/repos/{REPO}/git/trees/base-sha"
 
@@ -57,7 +56,6 @@ class FakeClient:
         file_pages: tuple[list[dict], ...] = (),
         comment_pages: tuple[list[dict], ...] = (),
         review_pages: tuple[list[dict], ...] = (),
-        check_run_pages: tuple[list[dict], ...] = (),
         diff: str = "",
         contents: dict[str, Any] | None = None,
         tree: object = None,
@@ -67,7 +65,6 @@ class FakeClient:
         self.file_pages = file_pages or ([],)
         self.comment_pages = comment_pages or ([],)
         self.review_pages = review_pages or ([],)
-        self.check_run_pages = check_run_pages or ([],)
         self.diff = diff
         self.contents = contents or {}
         self.tree = {"sha": "base-sha", "tree": [], "truncated": False} if tree is None else tree
@@ -93,8 +90,6 @@ class FakeClient:
             return _page(self.comment_pages, params)
         if path == REVIEWS_PATH:
             return _page(self.review_pages, params)
-        if path == CHECK_RUNS_PATH:
-            return _check_run_page(self.check_run_pages, params)
         if path == TREE_PATH:
             if params != {"recursive": "1"}:
                 raise AssertionError("the base tree must be fetched recursively")
@@ -122,17 +117,6 @@ def _page(pages: tuple[list[dict], ...], params: dict) -> pr_github_client.Respo
     if page > len(pages):
         raise AssertionError(f"page {page} requested but only {len(pages)} exist")
     return json_response(pages[page - 1])
-
-
-def _check_run_page(pages: tuple[list[dict], ...], params: dict) -> pr_github_client.Response:
-    if params.get("per_page") != 100:
-        raise AssertionError("pagination must request per_page=100")
-    page = int(params.get("page", 1))
-    if page > len(pages):
-        raise AssertionError(f"page {page} requested but only {len(pages)} exist")
-    return json_response(
-        {"total_count": sum(len(items) for items in pages), "check_runs": pages[page - 1]}
-    )
 
 
 def pull_request(**overrides: object) -> dict:

@@ -10,7 +10,6 @@ from typing import cast
 import pr_github_client
 import pytest
 from pr_github_fake import (
-    CHECK_RUNS_PATH,
     COMMENTS_PATH,
     DIFF_ACCEPT,
     FILES_PATH,
@@ -63,12 +62,6 @@ def test_fetch_context_maps_every_contract_field():
                     "state": "CHANGES_REQUESTED",
                     "submitted_at": "2026-01-01T00:00:00Z",
                 },
-            ],
-        ),
-        check_run_pages=(
-            [
-                {"name": "checks", "conclusion": "success", "status": "completed"},
-                {"name": "mermaid", "conclusion": None, "status": "in_progress"},
             ],
         ),
         diff="diff --git a/x b/x\n",
@@ -150,8 +143,10 @@ def test_fetch_context_maps_every_contract_field():
         {"id": 1, "body": "first", "author": "someone"},
         {"id": 2, "body": "", "author": ""},
     ]
-    assert context["checks"] == {"checks": "success", "mermaid": "in_progress"}
     assert context["reviews"] == {"changes_requested": True}
+    # Check results are no gate (decision A): they are neither fetched nor carried.
+    assert "checks" not in context
+    assert not [call.path for call in client.calls if "check-runs" in call.path]
 
 
 def test_non_object_item_in_a_paginated_list_fails_safe():
@@ -162,7 +157,7 @@ def test_non_object_item_in_a_paginated_list_fails_safe():
         fetch(client)
 
 
-def test_files_comments_reviews_and_check_runs_are_paginated():
+def test_files_comments_and_reviews_are_paginated():
     first_files = [
         api_file(f"docs/page-{index}.md", status="added", patch="@@ -0,0 +1 @@\n")
         for index in range(100)
@@ -180,10 +175,6 @@ def test_files_comments_reviews_and_check_runs_are_paginated():
             [{"user": {"login": f"u{index}"}, "state": "COMMENTED"} for index in range(100)],
             [{"user": {"login": "late"}, "state": "CHANGES_REQUESTED"}],
         ),
-        check_run_pages=(
-            [{"name": f"check-{index}", "conclusion": "success"} for index in range(100)],
-            [{"name": "last", "conclusion": "success"}],
-        ),
     )
 
     context = fetch(client)
@@ -191,10 +182,8 @@ def test_files_comments_reviews_and_check_runs_are_paginated():
     assert len(context["files"]) == 101
     assert len(context["comments"]) == 101
     assert context["reviews"] == {"changes_requested": True}
-    assert len(context["checks"]) == 101
-    assert context["checks"]["last"] == "success"
 
-    for prefix in (FILES_PATH, COMMENTS_PATH, REVIEWS_PATH, CHECK_RUNS_PATH):
+    for prefix in (FILES_PATH, COMMENTS_PATH, REVIEWS_PATH):
         pages = [call.params["page"] for call in client.calls if call.path == prefix]
         assert pages == [1, 2], prefix
         assert all(call.params["per_page"] == 100 for call in client.calls if call.path == prefix)
@@ -285,22 +274,6 @@ def test_enabled_auto_merge_is_reported_as_active():
     client = FakeClient(pull_request(auto_merge={"merge_method": "merge"}))
 
     assert fetch(client)["auto_merge_active"] is True
-
-
-def test_check_run_without_a_conclusion_maps_to_its_status():
-    client = FakeClient(
-        check_run_pages=(
-            [
-                {"name": "queued", "conclusion": None, "status": "queued"},
-                {"name": "done", "conclusion": "success", "status": "completed"},
-                {"conclusion": "success", "status": "completed"},
-            ],
-        ),
-    )
-
-    context = fetch(client)
-
-    assert context["checks"] == {"queued": "queued", "done": "success"}
 
 
 @pytest.mark.parametrize(

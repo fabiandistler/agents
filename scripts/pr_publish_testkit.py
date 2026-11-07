@@ -74,7 +74,6 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
         "diff_status": "complete",
         "base_files": {},
         "comments": [],
-        "checks": {"checks": "success", "mermaid": "success", "secrets": "success"},
         "reviews": {"changes_requested": False},
     }
     context.update(overrides)
@@ -224,8 +223,6 @@ class FakeGitHub:
             )
         if path == REVIEWS_PATH:
             return json_response([])
-        if path.endswith("/check-runs"):
-            return json_response({"check_runs": []})
         if path.startswith(CONTENTS_PREFIX):
             raise pr_github_client.FetchError("not found", status=404)
         if "/git/trees/" in path:

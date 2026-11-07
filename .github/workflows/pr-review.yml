@@ -79,13 +79,13 @@ jobs:
     # review and publish, so it never calls the model.
     if: github.event.action != 'labeled'
     runs-on: ubuntu-latest
-    # Read-only: the policy needs the pull request, its comments, its check
-    # runs and the base file contents. Nothing here may write.
+    # Read-only: the policy needs the pull request, its comments and the base
+    # file contents. Check results are no gate (the ruleset waits for them), so
+    # there is no checks scope. Nothing here may write.
     permissions:
       contents: read
       pull-requests: read
       issues: read
-      checks: read
     outputs:
       same_repo: ${{ steps.origin.outputs.same_repo }}
     steps:

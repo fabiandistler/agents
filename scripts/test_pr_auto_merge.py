@@ -116,29 +116,6 @@ def test_low_risk_pass_enables_native_auto_merge():
     assert plan["decision"]["auto_merge"] == "enabled"
 
 
-@pytest.mark.parametrize(
-    "checks",
-    [
-        {"checks": "pending", "mermaid": "pending", "secrets": "pending"},
-        {"checks": "failure", "mermaid": "success", "secrets": "success"},
-        {},
-    ],
-    ids=["pending", "failing", "not reported yet"],
-)
-def test_check_results_never_gate_auto_merge(checks):
-    # The required checks in the default ruleset do the waiting (decision A).
-    enabled = pr_plan.plan_publish(
-        make_context(checks=checks), make_assessment(), make_review(), auto_merge=True
-    )
-    kept = pr_plan.plan_publish(
-        bot_auto_merge_context(checks=checks), make_assessment(), make_review(), auto_merge=True
-    )
-
-    assert len(actions_of(enabled, "enable_auto_merge")) == 1
-    assert auto_merge_actions(kept) == []
-    assert kept["decision"]["auto_merge"] == "kept"
-
-
 def test_auto_merge_variable_must_be_exactly_true():
     for value in ("TRUE", "True", "1", "yes", "", None):
         plan = pr_plan.plan_publish(

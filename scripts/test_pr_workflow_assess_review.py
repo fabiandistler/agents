@@ -48,13 +48,11 @@ def test_assess_and_review_hold_no_write_scope(workflow: dict[Any, Any]) -> None
 
 def test_assess_holds_the_read_scopes_it_needs(workflow: dict[Any, Any]) -> None:
     permissions = job_named(workflow, "assess").get("permissions") or {}
-    required = {"contents": "read", "pull-requests": "read", "issues": "read", "checks": "read"}
-    missing = sorted(
-        f"{scope}: {level}" for scope, level in required.items() if permissions.get(scope) != level
-    )
-    assert not missing, (
-        "assess reads the pull request, its comments, its check runs and the base files; "
-        f"missing {missing} (found {permissions})"
+    required = {"contents": "read", "pull-requests": "read", "issues": "read"}
+    # Exactly these: check results are no gate (decision A), so no checks scope.
+    assert permissions == required, (
+        "assess reads the pull request, its comments and the base files; "
+        f"it needs exactly {required} (found {permissions})"
     )
 
 

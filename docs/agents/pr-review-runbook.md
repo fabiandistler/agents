@@ -39,7 +39,7 @@ with a pull request number and `dry_run` (default `true`).
 | Job | Permissions and secrets | Does |
 | --- | --- | --- |
 | `hold` | write: contents, pull-requests, issues; no model key | On a push, disables the bot's auto-merge; when `do-not-merge` is added, disables any auto-merge. Never enables. |
-| `assess` | read: contents, pull-requests, issues, checks | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies it. |
+| `assess` | read: contents, pull-requests, issues | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies it. |
 | `review` | `contents: read`; `OPENCODE_API_KEY` | `pr_review.py` sanitizes and caps the input, calls the model, parses the verdict. |
 | `publish` | write: contents, pull-requests, issues; no model key | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes. |
 

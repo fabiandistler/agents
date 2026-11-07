@@ -58,7 +58,6 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
         "diff_status": "complete",
         "base_files": {},
         "comments": [],
-        "checks": {},
         "reviews": {"changes_requested": False},
     }
     context.update(overrides)

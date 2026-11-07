@@ -73,17 +73,11 @@ def _get_json(client: ReadClient, path: str, params: dict[str, object] | None = 
         raise FetchError(f"GitHub API returned invalid JSON for {path}") from error
 
 
-def _paginate(client: ReadClient, path: str, key: str | None = None) -> list[dict]:
+def _paginate(client: ReadClient, path: str) -> list[dict]:
     items: list[dict] = []
     page = 1
     while True:
-        payload = _get_json(client, path, params={"per_page": PER_PAGE, "page": page})
-        if key is not None:
-            if not isinstance(payload, dict):
-                raise FetchError(f"GitHub API returned an unexpected payload for {path}")
-            page_items = payload.get(key)
-        else:
-            page_items = payload
+        page_items = _get_json(client, path, params={"per_page": PER_PAGE, "page": page})
         if not isinstance(page_items, list):
             raise FetchError(f"GitHub API returned an unexpected payload for {path}")
         for item in page_items:
@@ -129,23 +123,6 @@ def _comment(entry: dict) -> dict:
         "body": body if isinstance(body, str) else "",
         "author": login if isinstance(login, str) else "",
     }
-
-
-def _check_map(runs: list[dict]) -> dict[str, str]:
-    checks: dict[str, str] = {}
-    for run in runs:
-        name = run.get("name")
-        if not isinstance(name, str) or not name:
-            continue
-        conclusion = run.get("conclusion")
-        status = run.get("status")
-        if isinstance(conclusion, str):
-            checks[name] = conclusion
-        elif isinstance(status, str):
-            checks[name] = status
-        else:
-            checks[name] = "unknown"
-    return checks
 
 
 # The review states that set or clear a reviewer's change request. A COMMENTED
@@ -289,14 +266,6 @@ def fetch_context(
     base = base_value if isinstance(base_value, dict) else {}
     head_sha_value = head.get("sha")
     head_sha = head_sha_value if isinstance(head_sha_value, str) else ""
-    checks: dict[str, str] = {}
-    if head_sha:
-        check_runs = _paginate(
-            client,
-            f"/repos/{repo}/commits/{head_sha}/check-runs",
-            key="check_runs",
-        )
-        checks = _check_map(check_runs)
 
     diff, diff_status = _diff(client, pr_path)
 
@@ -352,7 +321,6 @@ def fetch_context(
         "base_paths": base_paths,
         "base_paths_truncated": base_paths_truncated,
         "comments": comments,
-        "checks": checks,
         "reviews": reviews,
     }
 

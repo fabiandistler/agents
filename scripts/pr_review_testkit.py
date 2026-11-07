@@ -61,7 +61,6 @@ def base_context(**overrides: object) -> dict:
         "base_paths": ["README.md", "docs/review.md", "scripts/tool.py"],
         "base_paths_truncated": False,
         "comments": [],
-        "checks": {},
         "reviews": {"changes_requested": False},
     }
     context.update(overrides)
