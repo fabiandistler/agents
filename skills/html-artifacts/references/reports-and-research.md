@@ -1,6 +1,6 @@
 # Reports, Research & Explainers
 
-Recurring documents — status updates, post-mortems, deep dives — benefit most from a bit of structure and color. People read them when they're scannable; they ignore them when they're walls of text.
+Recurring documents — status updates, post-mortems, deep dives — benefit most from a bit of structure and color. People read them when they're scannable; they ignore them when they're walls of text. Read this when the page explains how or why something works, or what happened, in prose sections.
 
 ## Contents
 

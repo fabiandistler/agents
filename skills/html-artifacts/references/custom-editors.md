@@ -1,6 +1,6 @@
 # Custom Editors
 
-The most distinctive use of the format. The user has a one-off task — triage 30 tickets, tune a regex, reorder steps in a flow, curate a dataset, pick exact easing values — and a text-box prompt is the wrong shape for it. Build a throwaway editor: a single HTML file, purpose-built for the one task, that always ends with an export button.
+The most distinctive use of the format. The user has a one-off task — triage 30 tickets, tune a regex, reorder steps in a flow, curate a dataset, pick exact easing values — and a text-box prompt is the wrong shape for it. Build a throwaway editor: a single HTML file, purpose-built for the one task, that always ends with an export button. Read this when the reader manipulates the page and exports the result, even when it lays items out side by side.
 
 ## Contents
 

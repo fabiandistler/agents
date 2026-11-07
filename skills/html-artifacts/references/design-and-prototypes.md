@@ -1,6 +1,6 @@
 # Design & Prototypes
 
-HTML *is* the medium design ships in (eventually, even when the surface is React or Swift). That makes it the natural format for talking *about* design. It's also the only honest way to prototype motion and interaction.
+HTML *is* the medium design ships in (eventually, even when the surface is React or Swift). That makes it the natural format for talking *about* design. It's also the only honest way to prototype motion and interaction. Read this when the page is one design to look at or click through.
 
 ## Living design system
 

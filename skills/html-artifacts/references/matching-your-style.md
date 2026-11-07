@@ -1,6 +1,6 @@
 # Matching the User's Style
 
-Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact skill can do is producing generic-looking output: gradient cards, emoji headers, four shades of indigo, the default Tailwind aesthetic. Avoid that. Read this reference whenever the artifact will be shared, presented, or kept around for any length of time.
+Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact skill can do is producing generic-looking output: gradient cards, emoji headers, four shades of indigo, the default Tailwind aesthetic. Avoid that. Read this reference for every artifact, alongside its category reference: it holds the default look when no style exists and the steps for adopting one that does.
 
 ## Contents
 
