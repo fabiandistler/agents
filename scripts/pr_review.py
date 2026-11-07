@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the read-only PR review request and parse the model response.
+"""Build the read-only PR review request and run the review.
 
 The request builder receives only the context JSON that `pr_github.py` emits:
 pull request metadata, the diff, and the base content of a bounded set of
@@ -9,10 +9,9 @@ and long base64 blobs from the untrusted text, then caps the diff, the base
 content and the total payload. A capped request is marked `partial`, which the
 publisher uses to keep auto-merge off.
 
-The parser accepts only the documented header block. A response without the
-header, with an unknown verdict, or without findings becomes
-`verdict: concerns` and `risk: high` with the raw text retained. Provider
-errors, timeouts and a missing key become `status: unavailable`, never a pass.
+The model response is parsed by `pr_review_response.py`, which fails safe to
+`verdict: concerns` and `risk: high`. Provider errors, timeouts and a missing
+key become `status: unavailable`, never a pass.
 
 The transport is injectable so tests use canned responses. The module is
 standard library only.
@@ -30,7 +29,8 @@ import urllib.request
 from pathlib import Path
 from typing import NoReturn
 
-SCHEMA_VERSION = 1
+from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
+
 DEFAULT_MODEL = "deepseek-v4.1-flash-free"
 DEFAULT_BASE_URL = "https://opencode.ai/zen/v1"
 KEY_ENV = "OPENCODE_API_KEY"
@@ -49,10 +49,6 @@ MAX_BODY_BYTES = 50_000
 EXIT_OK = 0
 EXIT_USAGE = 2
 EXIT_BAD_INPUT = 3
-
-RISKS = ("low", "medium", "high")
-VERDICTS = ("pass", "concerns", "block")
-SEVERITIES = ("info", "warning", "blocker")
 
 MISSING_KEY_SUMMARY = "Review unavailable: the provider is not configured."
 PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
@@ -83,29 +79,10 @@ _HIDDEN_ATTR = re.compile(
 )
 _HIDDEN_OPEN = re.compile(r"<(?P<tag>[A-Za-z][A-Za-z0-9]*)\b(?P<attrs>[^>]*)>", re.IGNORECASE)
 _BASE64 = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{200,}={0,2}(?![A-Za-z0-9+/=])")
-_TRIM_CHARS = "*_`\"'.,;:"
-
-_LEAD = r"[ \t*_#>\-]*"
-_VALUE_START = r"[ \t*_`\"']*"
-_RISK_RE = re.compile(rf"(?im)^{_LEAD}RISK[ \t]*:{_VALUE_START}([A-Za-z]+)")
-_VERDICT_RE = re.compile(rf"(?im)^{_LEAD}VERDICT[ \t]*:{_VALUE_START}([A-Za-z]+)")
-_SUMMARY_RE = re.compile(rf"(?im)^{_LEAD}SUMMARY[ \t]*:[ \t]*(.*)$")
-_FINDINGS_RE = re.compile(rf"(?im)^{_LEAD}FINDINGS[ \t]*:[ \t]*$")
-_END_RE = re.compile(r"(?im)^[ \t]*END[ \t]*$")
-_BULLET_RE = re.compile(r"^[ \t]*[-*][ \t]+(?P<body>.+)$")
-_FINDING_RE = re.compile(
-    r"^(?P<path>.*?)[ \t]*(?::(?P<line>\d+))?[ \t]*"
-    r"\[(?P<severity>[A-Za-z]+)\][ \t]*(?P<message>.*)$"
-)
-_FIX_RE = re.compile(r"\s*\|\s*fix\s*:\s*", re.IGNORECASE)
 
 
 class ProviderError(Exception):
     """Internal: the provider call failed; `review` turns it into unavailable."""
-
-
-class ContextError(ValueError):
-    """The context JSON is missing required fields or has the wrong shape."""
 
 
 class UsageError(argparse.ArgumentParser):
@@ -312,141 +289,11 @@ def build_request(context: dict) -> tuple[dict, bool]:
     return request, partial
 
 
-# --- Response parsing --------------------------------------------------------
-
-
-def _header_value(pattern: re.Pattern[str], text: str) -> str | None:
-    match = pattern.search(text)
-    if match is None:
-        return None
-    return match.group(1).strip().strip(_TRIM_CHARS).lower()
-
-
-def _parse_finding(body: str) -> dict | None:
-    match = _FINDING_RE.match(body.strip())
-    if match is None:
-        return None
-    path = match.group("path").strip().strip(_TRIM_CHARS)
-    line = int(match.group("line")) if match.group("line") else None
-    severity = match.group("severity").lower()
-    if severity not in SEVERITIES:
-        severity = "info"
-    message = match.group("message").strip()
-    parts = _FIX_RE.split(message, maxsplit=1)
-    return {
-        "path": path,
-        "line": line,
-        "severity": severity,
-        "message": parts[0].strip(),
-        "suggestion": parts[1].strip() if len(parts) == 2 else "",
-    }
-
-
-def _parse_findings(block: str) -> list[dict]:
-    findings: list[dict] = []
-    for line in block.splitlines():
-        if not line.strip():
-            continue
-        bullet = _BULLET_RE.match(line)
-        if bullet:
-            finding = _parse_finding(bullet.group("body"))
-            if finding is not None:
-                findings.append(finding)
-                continue
-        if findings:
-            findings[-1]["message"] = f"{findings[-1]['message']} {line.strip()}".strip()
-    return findings
-
-
-def _artifact(
-    context: dict,
-    status: str,
-    *,
-    risk: str | None = None,
-    verdict: str | None = None,
-    summary: str = "",
-    findings: list[dict] | None = None,
-    partial: bool = False,
-    raw: str | None = None,
-) -> dict:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "number": context.get("number"),
-        "head_sha": context.get("head_sha"),
-        "status": status,
-        "risk": risk,
-        "verdict": verdict,
-        "summary": summary,
-        "findings": findings if findings is not None else [],
-        "partial": partial,
-        "raw": raw,
-    }
-
-
-def parse_response(text: str, context: dict, partial: bool = False) -> dict:
-    """Turn a model response into the review artifact, failing safe."""
-    _validate_identity(context)
-    if not isinstance(text, str):
-        raise TypeError("response text is not a string")
-    # Parse normalized line endings; the raw artifact keeps what the provider sent.
-    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    risk = _header_value(_RISK_RE, normalized)
-    verdict = _header_value(_VERDICT_RE, normalized)
-    summary_match = _SUMMARY_RE.search(normalized)
-    findings_match = _FINDINGS_RE.search(normalized)
-
-    summary = ""
-    if summary_match is not None:
-        stop = len(normalized)
-        if findings_match is not None and findings_match.start() >= summary_match.end():
-            stop = findings_match.start()
-        summary = " ".join(
-            (summary_match.group(1) + " " + normalized[summary_match.end() : stop]).split()
-        )
-
-    findings: list[dict] = []
-    if findings_match is not None:
-        end = _END_RE.search(normalized, findings_match.end())
-        stop = end.start() if end is not None else len(normalized)
-        findings = _parse_findings(normalized[findings_match.end() : stop])
-
-    if risk not in RISKS or verdict not in VERDICTS or not summary or not findings:
-        return _artifact(
-            context,
-            "ok",
-            risk="high",
-            verdict="concerns",
-            summary="",
-            findings=[],
-            partial=partial,
-            raw=text,
-        )
-    return _artifact(
-        context,
-        "ok",
-        risk=risk,
-        verdict=verdict,
-        summary=summary,
-        findings=findings,
-        partial=partial,
-    )
-
-
 # --- Review entry points -----------------------------------------------------
 
 
-def _validate_identity(context: object) -> None:
-    if not isinstance(context, dict):
-        raise ContextError("context is not a JSON object")
-    if context.get("schema_version", SCHEMA_VERSION) != SCHEMA_VERSION:
-        raise ContextError("unsupported context schema_version")
-    for field in ("number", "head_sha"):
-        if field not in context:
-            raise ContextError(f"context is missing the field {field!r}")
-
-
 def _validate_context(context: dict) -> None:
-    _validate_identity(context)
+    validate_identity(context)
     if not isinstance(context.get("diff"), str):
         raise ContextError("context field 'diff' is not a string")
     if not isinstance(context.get("files", []), list):
@@ -469,11 +316,11 @@ def _skipped_artifact(context: dict, reason: str) -> dict:
         if reason == "draft"
         else "Review skipped: the pull request comes from a fork."
     )
-    return _artifact(context, "skipped", summary=summary)
+    return build_artifact(context, "skipped", summary=summary)
 
 
 def _unavailable_artifact(context: dict, summary: str, partial: bool) -> dict:
-    return _artifact(context, "unavailable", risk="high", summary=summary, partial=partial)
+    return build_artifact(context, "unavailable", risk="high", summary=summary, partial=partial)
 
 
 def review(context: dict, transport=None, key: str | None = None) -> dict:
