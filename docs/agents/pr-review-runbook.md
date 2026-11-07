@@ -67,7 +67,8 @@ with a pull request number and `dry_run` (default `true`).
   marker is never edited. An unchanged body is not rewritten.
 - **Reviewer.** `fabiandistler` is requested as reviewer. When the maintainer
   authored the pull request, GitHub refuses a self-review request, so
-  `publish` assigns them and adds `needs-review`.
+  `publish` assigns them and adds `needs-review`. A draft gets neither the
+  request nor the assignment; the `ready_for_review` run asks for them.
 - **Concurrency.** One group per pull request; a new push cancels the run for
   the old head. Each label event has its own group, so it never cancels a
   review run.

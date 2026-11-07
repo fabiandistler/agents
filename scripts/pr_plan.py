@@ -177,7 +177,10 @@ def _plan_labels(
     return add, remove
 
 
-def _reviewer_action(context: dict) -> dict:
+def _reviewer_action(context: dict) -> dict | None:
+    # A draft is not ready for review; the ready_for_review run asks instead.
+    if context.get("draft") is True:
+        return None
     if context.get("author") == BOT_LOGIN:
         return {"kind": "assign", "login": BOT_LOGIN}
     return {"kind": "request_reviewer", "login": BOT_LOGIN}
@@ -271,7 +274,9 @@ def plan_publish(
     comment = pr_comment.comment_action(context, risk, policy, review, auto_merge_state)
     if comment is not None:
         actions.append(comment)
-    actions.append(_reviewer_action(context))
+    reviewer = _reviewer_action(context)
+    if reviewer is not None:
+        actions.append(reviewer)
     if auto_merge_action is not None:
         actions.append(auto_merge_action)
     return _plan(

@@ -8,6 +8,7 @@ performs a network call.
 from __future__ import annotations
 
 import pr_plan
+import pytest
 from pr_publish_testkit import (
     ACTION_KINDS,
     BOT,
@@ -306,3 +307,20 @@ def test_foreign_pull_request_requests_the_maintainer_as_reviewer():
 
     assert actions_of(plan, "assign") == []
     assert actions_of(plan, "request_reviewer") == [{"kind": "request_reviewer", "login": BOT}]
+
+
+@pytest.mark.parametrize("author", ["octocat", BOT])
+def test_a_draft_is_labeled_but_neither_requests_nor_assigns(author):
+    # A draft is not ready for review; ready_for_review runs publish again
+    # without the draft flag, and that run asks for the reviewer.
+    context = make_context(author=author, draft=True)
+    review = make_review(status="skipped", risk=None, verdict=None, findings=[])
+
+    plan = pr_plan.plan_publish(context, make_assessment(), review)
+
+    assert actions_of(plan, "request_reviewer") == []
+    assert actions_of(plan, "assign") == []
+    assert "risk:low" in label_action(plan)["add"]
+
+    ready = pr_plan.plan_publish(make_context(author=author), make_assessment(), make_review())
+    assert actions_of(ready, "request_reviewer") + actions_of(ready, "assign") != []
