@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-import pr_github
+import pr_github_client
 import pr_publish
 import pytest
 from pr_publish_testkit import (
@@ -141,7 +141,7 @@ def test_cli_malformed_artifact_exits_three(tmp_path):
 
 def test_cli_live_fetch_failure_exits_four(monkeypatch, tmp_path):
     def fail(repo, number, token=None):
-        raise pr_github.FetchError("boom")
+        raise pr_github_client.FetchError("boom")
 
     monkeypatch.setattr(pr_publish.pr_github, "fetch_context", fail)
 

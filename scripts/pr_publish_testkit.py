@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pr_github
+import pr_github_client
 
 SCRIPT = Path(__file__).resolve().parent / "pr_publish.py"
 MARKER = "<!-- pr-review-bot -->"
@@ -142,8 +142,8 @@ REVIEWS_PATH = f"{PR_PATH}/reviews"
 CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
 
 
-def json_response(payload: object) -> pr_github.Response:
-    return pr_github.Response(status=200, body=json.dumps(payload).encode("utf-8"))
+def json_response(payload: object) -> pr_github_client.Response:
+    return pr_github_client.Response(status=200, body=json.dumps(payload).encode("utf-8"))
 
 
 def pull_request(head_sha: str, labels: list[str]) -> dict:
@@ -188,7 +188,7 @@ class FakeGitHub:
             payload = pull_request(self.head_shas.pop(0), self.labels)
             return json_response({**payload, **self.pull_overrides})
         if path == PR_PATH:
-            return pr_github.Response(status=200, body=b"diff --git a/x b/x\n")
+            return pr_github_client.Response(status=200, body=b"diff --git a/x b/x\n")
         if path == FILES_PATH:
             return json_response(
                 [
@@ -208,7 +208,7 @@ class FakeGitHub:
         if path.endswith("/check-runs"):
             return json_response({"check_runs": []})
         if path.startswith(CONTENTS_PREFIX):
-            raise pr_github.FetchError("not found", status=404)
+            raise pr_github_client.FetchError("not found", status=404)
         if "/git/trees/" in path:
             return json_response({"tree": [], "truncated": False})
         raise AssertionError(f"unexpected GET {path}")
@@ -216,8 +216,8 @@ class FakeGitHub:
     def _write(self, method: str, path: str, payload: dict | None):
         self.calls.append({"method": method, "path": path, "payload": payload})
         if path in self.fail_paths:
-            raise pr_github.FetchError("server error", status=500)
-        return pr_github.Response(status=200, body=b"{}")
+            raise pr_github_client.FetchError("server error", status=500)
+        return pr_github_client.Response(status=200, body=b"{}")
 
     def post(self, path: str, payload: dict | None = None):
         return self._write("POST", path, payload)

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import cast
 
-import pr_github
+import pr_github_client
 import pytest
 from pr_github_fake import (
     CHECK_RUNS_PATH,
@@ -155,7 +155,7 @@ def test_non_object_item_in_a_paginated_list_fails_safe():
     malformed_page = cast(list[dict], [api_file("docs/guide.md"), "junk"])
     client = FakeClient(file_pages=(malformed_page,))
 
-    with pytest.raises(pr_github.FetchError):
+    with pytest.raises(pr_github_client.FetchError):
         fetch(client)
 
 
@@ -214,7 +214,7 @@ def test_a_diff_the_api_refuses_is_reported_unavailable_not_raised():
     for status in (406, 500):
         client = FakeClient(
             file_pages=([api_file("docs/guide.md")],),
-            errors={PR_PATH + "#diff": pr_github.FetchError(str(status), status=status)},
+            errors={PR_PATH + "#diff": pr_github_client.FetchError(str(status), status=status)},
         )
 
         context = fetch(client)
@@ -378,5 +378,5 @@ def test_a_malformed_changed_file_fails_the_fetch(field, value):
     else:
         entry[field] = value
 
-    with pytest.raises(pr_github.FetchError, match=field):
+    with pytest.raises(pr_github_client.FetchError, match=field):
         fetch(FakeClient(file_pages=([entry],)))

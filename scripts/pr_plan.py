@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pr_auto_merge
 import pr_comment
-import pr_github
+import pr_github_client
 import pr_risk
 
 SCHEMA_VERSION = 1
@@ -46,7 +46,7 @@ def _require_mapping(value: object, name: str) -> dict:
 def _validate_context(context: object) -> dict:
     context = _require_mapping(context, "context")
     repo = context.get("repo")
-    if not isinstance(repo, str) or not pr_github.REPO_PATTERN.fullmatch(repo):
+    if not isinstance(repo, str) or not pr_github_client.REPO_PATTERN.fullmatch(repo):
         raise ArtifactError("context is missing repo as OWNER/REPO")
     number = context.get("number")
     if isinstance(number, bool) or not isinstance(number, int):

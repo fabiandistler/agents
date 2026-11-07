@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 
 import pr_apply
-import pr_github
+import pr_github_client
 import pytest
 from pr_apply_testkit import FakeClient, make_plan, only_result
 
@@ -29,8 +29,8 @@ def plan_with(action: dict) -> dict:
     return make_plan([action], head_sha=HEAD_SHA)
 
 
-def graphql_response(payload: dict) -> pr_github.Response:
-    return pr_github.Response(status=200, body=json.dumps(payload).encode("utf-8"))
+def graphql_response(payload: dict) -> pr_github_client.Response:
+    return pr_github_client.Response(status=200, body=json.dumps(payload).encode("utf-8"))
 
 
 def test_enable_sends_the_merge_commit_mutation_pinned_to_the_reviewed_head():
@@ -76,7 +76,7 @@ def test_a_graphql_error_fails_the_action_with_its_message():
 
 
 def test_an_unreadable_graphql_response_fails_the_action():
-    client = FakeClient(lambda *_: pr_github.Response(status=200, body=b"<html>"))
+    client = FakeClient(lambda *_: pr_github_client.Response(status=200, body=b"<html>"))
 
     result = only_result(pr_apply.apply_plan(plan_with(DISABLE), client))
 
@@ -84,7 +84,7 @@ def test_an_unreadable_graphql_response_fails_the_action():
 
 
 def test_an_http_error_fails_the_action():
-    client = FakeClient(lambda *_: pr_github.FetchError("bad gateway", status=502))
+    client = FakeClient(lambda *_: pr_github_client.FetchError("bad gateway", status=502))
 
     result = only_result(pr_apply.apply_plan(plan_with(ENABLE), client))
 

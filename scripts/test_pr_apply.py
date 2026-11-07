@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 import pr_apply
-import pr_github
+import pr_github_client
 import pytest
 from pr_apply_testkit import (
     ASSIGNEES_PATH,
@@ -84,8 +84,8 @@ def test_every_label_in_the_vocabulary_has_a_creation_entry():
 def test_an_existing_label_is_not_an_error():
     def handler(method, path, payload):
         if method == "POST" and path == LABELS_PATH:
-            raise pr_github.FetchError("label already exists", status=422)
-        return pr_github.Response(status=201)
+            raise pr_github_client.FetchError("label already exists", status=422)
+        return pr_github_client.Response(status=201)
 
     client = FakeClient(handler)
 
@@ -102,8 +102,10 @@ def test_an_existing_label_is_not_an_error():
 def test_an_existing_label_returned_as_422_is_not_an_error():
     def handler(method, path, payload):
         if method == "POST" and path == LABELS_PATH:
-            return pr_github.Response(status=422, body=b'{"errors":[{"code":"already_exists"}]}')
-        return pr_github.Response(status=200)
+            return pr_github_client.Response(
+                status=422, body=b'{"errors":[{"code":"already_exists"}]}'
+            )
+        return pr_github_client.Response(status=200)
 
     client = FakeClient(handler)
 
@@ -120,8 +122,8 @@ def test_an_existing_label_returned_as_422_is_not_an_error():
 def test_a_failed_label_creation_stops_the_label_action():
     def handler(method, path, payload):
         if method == "POST" and path == LABELS_PATH:
-            raise pr_github.FetchError("server error", status=500)
-        return pr_github.Response(status=200)
+            raise pr_github_client.FetchError("server error", status=500)
+        return pr_github_client.Response(status=200)
 
     client = FakeClient(handler)
 
@@ -140,8 +142,8 @@ def test_a_failed_label_creation_stops_the_label_action():
 def test_a_missing_stale_label_is_not_an_error():
     def handler(method, path, payload):
         if method == "DELETE":
-            raise pr_github.FetchError("label not found", status=404)
-        return pr_github.Response(status=200)
+            raise pr_github_client.FetchError("label not found", status=404)
+        return pr_github_client.Response(status=200)
 
     client = FakeClient(handler)
 
@@ -158,8 +160,8 @@ def test_a_missing_stale_label_is_not_an_error():
 def test_a_missing_stale_label_returned_as_404_is_not_an_error():
     def handler(method, path, payload):
         if method == "DELETE":
-            return pr_github.Response(status=404)
-        return pr_github.Response(status=200)
+            return pr_github_client.Response(status=404)
+        return pr_github_client.Response(status=200)
 
     client = FakeClient(handler)
 
@@ -175,8 +177,8 @@ def test_a_missing_stale_label_returned_as_404_is_not_an_error():
 def test_a_failed_label_removal_fails_the_action():
     def handler(method, path, payload):
         if method == "DELETE":
-            raise pr_github.FetchError("server error", status=500)
-        return pr_github.Response(status=200)
+            raise pr_github_client.FetchError("server error", status=500)
+        return pr_github_client.Response(status=200)
 
     client = FakeClient(handler)
 
@@ -350,8 +352,8 @@ def test_an_aborted_plan_applies_nothing():
 def test_every_action_yields_one_result_and_a_failure_does_not_stop_the_next():
     def handler(method, path, payload):
         if method == "POST" and path == LABELS_PATH:
-            raise pr_github.FetchError("server error", status=500)
-        return pr_github.Response(status=200)
+            raise pr_github_client.FetchError("server error", status=500)
+        return pr_github_client.Response(status=200)
 
     client = FakeClient(handler)
     plan = make_plan(

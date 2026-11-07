@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pr_apply
 import pr_github
+import pr_github_client
 import pr_plan
 
 AUTO_MERGE_ENV = "PR_AUTO_MERGE"
@@ -85,12 +86,12 @@ def hold_live(repo: str, number: int, write: bool = False, client=None):
 def _token(write: bool, client) -> str | None:
     token = os.environ.get("GITHUB_TOKEN") or None
     if write and client is None and token is None:
-        raise pr_github.MissingTokenError("GITHUB_TOKEN is not set")
+        raise pr_github_client.MissingTokenError("GITHUB_TOKEN is not set")
     return token
 
 
 def _apply(plan: dict, token: str | None, client) -> dict:
-    writer = client if client is not None else pr_github.GitHubClient(token)
+    writer = client if client is not None else pr_github_client.GitHubClient(token)
     results = pr_apply.apply_plan(plan, writer)
     return {
         "schema_version": pr_plan.SCHEMA_VERSION,
@@ -210,7 +211,7 @@ def _parse_arguments(argv: list[str]) -> dict:
     if number <= 0:
         raise UsageError("--pr must be a positive integer")
     options["pr"] = number
-    if not pr_github.REPO_PATTERN.fullmatch(str(options["repo"])):
+    if not pr_github_client.REPO_PATTERN.fullmatch(str(options["repo"])):
         raise UsageError("--repo must be OWNER/REPO")
     return options
 
@@ -256,7 +257,7 @@ def main(argv: list[str] | None = None, client=None) -> int:
                 write=options["write"] is True,
                 client=client,
             )
-        except pr_github.FetchError as error:
+        except pr_github_client.FetchError as error:
             print(f"pr_publish.py: live fetch failed: {error}", file=sys.stderr)
             return EXIT_LIVE_FAILED
         except pr_plan.ArtifactError as error:
@@ -277,7 +278,7 @@ def main(argv: list[str] | None = None, client=None) -> int:
                     write=options["write"] is True,
                     client=client,
                 )
-            except pr_github.FetchError as error:
+            except pr_github_client.FetchError as error:
                 print(f"pr_publish.py: live fetch failed: {error}", file=sys.stderr)
                 return EXIT_LIVE_FAILED
         else:

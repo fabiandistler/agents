@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Protocol
 
 import pr_actions
-import pr_github
+import pr_github_client
 from pr_actions import Operation, PlanError
 
 EXIT_OK = 0
@@ -33,11 +33,17 @@ class ApplyError(RuntimeError):
 class WriteClient(Protocol):
     """The write surface ``apply_plan`` needs; ``GitHubClient`` and fakes implement it."""
 
-    def post(self, path: str, payload: dict[str, object] | None = None) -> pr_github.Response: ...
+    def post(
+        self, path: str, payload: dict[str, object] | None = None
+    ) -> pr_github_client.Response: ...
 
-    def patch(self, path: str, payload: dict[str, object] | None = None) -> pr_github.Response: ...
+    def patch(
+        self, path: str, payload: dict[str, object] | None = None
+    ) -> pr_github_client.Response: ...
 
-    def delete(self, path: str, payload: dict[str, object] | None = None) -> pr_github.Response: ...
+    def delete(
+        self, path: str, payload: dict[str, object] | None = None
+    ) -> pr_github_client.Response: ...
 
 
 # --- Execution ---------------------------------------------------------------
@@ -59,7 +65,7 @@ def _send(client: WriteClient, operation: Operation) -> None:
             response = client.delete(operation.path, operation.payload)
         else:  # pragma: no cover - the resolver only emits the three methods above
             raise ApplyError(f"unsupported method: {operation.method}")
-    except pr_github.FetchError as error:
+    except pr_github_client.FetchError as error:
         if _tolerated(operation, error.status):
             return
         raise
@@ -71,7 +77,7 @@ def _send(client: WriteClient, operation: Operation) -> None:
         _check_graphql(operation, response)
 
 
-def _check_graphql(operation: Operation, response: pr_github.Response) -> None:
+def _check_graphql(operation: Operation, response: pr_github_client.Response) -> None:
     """GraphQL reports a refused mutation with HTTP 200 and an errors list."""
     try:
         body = response.json()
@@ -112,7 +118,7 @@ def _apply_action(client: WriteClient, kind: str, operations: list[Operation]) -
     try:
         for operation in operations:
             _send(client, operation)
-    except pr_github.FetchError as error:
+    except pr_github_client.FetchError as error:
         detail = f"{error} (HTTP {error.status})" if error.status is not None else str(error)
         return {"kind": kind, "ok": False, "detail": detail}
     except ApplyError as error:
@@ -231,7 +237,7 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
         if not write:
             operations = resolve_operations(plan)
         else:
-            results = apply_plan(plan, client or pr_github.GitHubClient(token))
+            results = apply_plan(plan, client or pr_github_client.GitHubClient(token))
     except PlanError as error:
         print(f"pr_apply.py: {error}", file=sys.stderr)
         return EXIT_BAD_PLAN

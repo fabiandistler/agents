@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pr_github
+import pr_github_client
 
 REPO = "fabiandistler/agents"
 NUMBER = 42
@@ -38,12 +39,12 @@ class Call:
     accept: str | None
 
 
-def json_response(payload: object, status: int = 200) -> pr_github.Response:
-    return pr_github.Response(status=status, body=json.dumps(payload).encode("utf-8"))
+def json_response(payload: object, status: int = 200) -> pr_github_client.Response:
+    return pr_github_client.Response(status=status, body=json.dumps(payload).encode("utf-8"))
 
 
-def text_response(text: str, status: int = 200) -> pr_github.Response:
-    return pr_github.Response(status=status, body=text.encode("utf-8"))
+def text_response(text: str, status: int = 200) -> pr_github_client.Response:
+    return pr_github_client.Response(status=status, body=text.encode("utf-8"))
 
 
 class FakeClient:
@@ -75,7 +76,7 @@ class FakeClient:
 
     def get(
         self, path: str, params: dict | None = None, accept: str | None = None
-    ) -> pr_github.Response:
+    ) -> pr_github_client.Response:
         params = dict(params or {})
         self.calls.append(Call(path, params, accept))
         # An error keyed "<path>#diff" fails only the raw diff request.
@@ -102,15 +103,19 @@ class FakeClient:
             content_path = path[len(CONTENTS_PREFIX) :]
             handler = self.contents.get(content_path)
             if handler is None:
-                raise pr_github.FetchError(f"GitHub API returned 404 for {path}", status=404)
-            return handler if isinstance(handler, pr_github.Response) else json_response(handler)
+                raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
+            return (
+                handler
+                if isinstance(handler, pr_github_client.Response)
+                else json_response(handler)
+            )
         raise AssertionError(f"unexpected GET {path}")
 
     def contents_calls(self) -> list[Call]:
         return [call for call in self.calls if call.path.startswith(CONTENTS_PREFIX)]
 
 
-def _page(pages: tuple[list[dict], ...], params: dict) -> pr_github.Response:
+def _page(pages: tuple[list[dict], ...], params: dict) -> pr_github_client.Response:
     if params.get("per_page") != 100:
         raise AssertionError("pagination must request per_page=100")
     page = int(params.get("page", 1))
@@ -119,7 +124,7 @@ def _page(pages: tuple[list[dict], ...], params: dict) -> pr_github.Response:
     return json_response(pages[page - 1])
 
 
-def _check_run_page(pages: tuple[list[dict], ...], params: dict) -> pr_github.Response:
+def _check_run_page(pages: tuple[list[dict], ...], params: dict) -> pr_github_client.Response:
     if params.get("per_page") != 100:
         raise AssertionError("pagination must request per_page=100")
     page = int(params.get("page", 1))

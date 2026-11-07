@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pr_github
+import pr_github_client
 
 REPO = "fabiandistler/agents"
 NUMBER = 42
@@ -33,22 +33,22 @@ class FakeClient:
         self.calls: list[dict] = []
         self.handler = handler
 
-    def _call(self, method: str, path: str, payload: dict | None) -> pr_github.Response:
+    def _call(self, method: str, path: str, payload: dict | None) -> pr_github_client.Response:
         self.calls.append({"method": method, "path": path, "payload": payload})
         if self.handler is not None:
             outcome = self.handler(method, path, payload)
             if isinstance(outcome, BaseException):
                 raise outcome
             return outcome
-        return pr_github.Response(status=200, body=b"{}")
+        return pr_github_client.Response(status=200, body=b"{}")
 
-    def post(self, path: str, payload: dict | None = None) -> pr_github.Response:
+    def post(self, path: str, payload: dict | None = None) -> pr_github_client.Response:
         return self._call("POST", path, payload)
 
-    def patch(self, path: str, payload: dict | None = None) -> pr_github.Response:
+    def patch(self, path: str, payload: dict | None = None) -> pr_github_client.Response:
         return self._call("PATCH", path, payload)
 
-    def delete(self, path: str, payload: dict | None = None) -> pr_github.Response:
+    def delete(self, path: str, payload: dict | None = None) -> pr_github_client.Response:
         return self._call("DELETE", path, payload)
 
 

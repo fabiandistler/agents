@@ -10,6 +10,7 @@ import urllib.error
 from email.message import Message
 
 import pr_github
+import pr_github_client
 import pytest
 from pr_github_fake import NUMBER, REPO, SCRIPT
 
@@ -17,10 +18,10 @@ from pr_github_fake import NUMBER, REPO, SCRIPT
 def test_missing_token_without_an_injected_client_raises_before_any_request(monkeypatch):
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
-    with pytest.raises(pr_github.MissingTokenError):
+    with pytest.raises(pr_github_client.MissingTokenError):
         pr_github.fetch_context(REPO, NUMBER)
 
-    with pytest.raises(pr_github.MissingTokenError):
+    with pytest.raises(pr_github_client.MissingTokenError):
         pr_github.fetch_context(REPO, NUMBER, token="")
 
 
@@ -48,7 +49,7 @@ def test_github_client_sends_auth_and_parses_json():
         captured["timeout"] = timeout
         return FakeHTTPResponse(b'{"ok": true}')
 
-    client = pr_github.GitHubClient("s3cret-token", opener=opener)
+    client = pr_github_client.GitHubClient("s3cret-token", opener=opener)
 
     response = client.get("/repos/o/r", params={"page": 2})
 
@@ -75,7 +76,7 @@ def test_client_write_helpers_send_the_named_method(method, payload):
         captured["request"] = request
         return FakeHTTPResponse(b"{}")
 
-    client = pr_github.GitHubClient("token", opener=opener)
+    client = pr_github_client.GitHubClient("token", opener=opener)
 
     getattr(client, method)("/repos/o/r/thing", payload)
 
@@ -94,7 +95,7 @@ def test_graphql_posts_the_query_and_returns_the_response_body():
         captured["request"] = request
         return FakeHTTPResponse(b'{"data": {"viewer": {"login": "me"}}}')
 
-    client = pr_github.GitHubClient("token", opener=opener)
+    client = pr_github_client.GitHubClient("token", opener=opener)
 
     result = client.graphql("query { viewer { login } }", {"n": 1})
 
@@ -117,9 +118,9 @@ def test_http_error_becomes_fetch_error_without_leaking_the_token():
             io.BytesIO(b'{"message": "nope"}'),
         )
 
-    client = pr_github.GitHubClient("s3cret-token", opener=opener)
+    client = pr_github_client.GitHubClient("s3cret-token", opener=opener)
 
-    with pytest.raises(pr_github.FetchError) as info:
+    with pytest.raises(pr_github_client.FetchError) as info:
         client.get("/repos/o/r")
 
     assert info.value.status == 403
@@ -131,9 +132,9 @@ def test_network_error_becomes_fetch_error():
     def opener(request, timeout=None):
         raise urllib.error.URLError("connection refused")
 
-    client = pr_github.GitHubClient("token", opener=opener)
+    client = pr_github_client.GitHubClient("token", opener=opener)
 
-    with pytest.raises(pr_github.FetchError) as info:
+    with pytest.raises(pr_github_client.FetchError) as info:
         client.get("/repos/o/r")
 
     assert "connection refused" in str(info.value)
@@ -171,7 +172,7 @@ def test_cli_maps_missing_token_to_exit_five(monkeypatch):
 
 def test_cli_maps_fetch_failure_to_exit_four(monkeypatch):
     def fail(repo, number, token=None):
-        raise pr_github.FetchError("boom")
+        raise pr_github_client.FetchError("boom")
 
     monkeypatch.setattr(pr_github, "fetch_context", fail)
 

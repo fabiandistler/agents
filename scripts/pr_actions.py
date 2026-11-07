@@ -12,7 +12,7 @@ import re
 import urllib.parse
 from dataclasses import dataclass
 
-import pr_github
+import pr_github_client
 
 SCHEMA_VERSION = 1
 
@@ -88,7 +88,7 @@ def _validate_plan(plan: object) -> dict:
     if plan.get("schema_version", SCHEMA_VERSION) != SCHEMA_VERSION:
         raise PlanError("plan has an unsupported schema_version")
     repo = plan.get("repo")
-    if not isinstance(repo, str) or not pr_github.REPO_PATTERN.fullmatch(repo):
+    if not isinstance(repo, str) or not pr_github_client.REPO_PATTERN.fullmatch(repo):
         raise PlanError("plan repo must be OWNER/REPO")
     number = plan.get("number")
     if isinstance(number, bool) or not isinstance(number, int) or number <= 0:

@@ -6,6 +6,7 @@ Every test injects ``pr_github_fake.FakeClient``; none performs a network call.
 from __future__ import annotations
 
 import pr_github
+import pr_github_client
 import pytest
 from pr_github_fake import (
     CONTENTS_PREFIX,
@@ -118,22 +119,26 @@ def test_unusable_base_content_is_skipped(payload):
 def test_base_file_404_is_skipped_but_other_fetch_errors_propagate():
     missing = FakeClient(
         file_pages=([api_file("scripts/missing.py")],),
-        errors={f"{CONTENTS_PREFIX}scripts/missing.py": pr_github.FetchError("404", status=404)},
+        errors={
+            f"{CONTENTS_PREFIX}scripts/missing.py": pr_github_client.FetchError("404", status=404)
+        },
     )
     assert fetch(missing)["base_files"] == {}
 
     broken = FakeClient(
         file_pages=([api_file("scripts/broken.py")],),
-        errors={f"{CONTENTS_PREFIX}scripts/broken.py": pr_github.FetchError("500", status=500)},
+        errors={
+            f"{CONTENTS_PREFIX}scripts/broken.py": pr_github_client.FetchError("500", status=500)
+        },
     )
-    with pytest.raises(pr_github.FetchError):
+    with pytest.raises(pr_github_client.FetchError):
         fetch(broken)
 
 
 def test_missing_base_commit_fails_safe():
     client = FakeClient(pull_request(base={"ref": "main", "repo": {"full_name": "o/r"}}))
 
-    with pytest.raises(pr_github.FetchError):
+    with pytest.raises(pr_github_client.FetchError):
         fetch(client)
 
 
@@ -189,5 +194,5 @@ def test_base_tree_paths_are_capped_and_marked_truncated():
     ],
 )
 def test_malformed_base_tree_fails_safe(tree):
-    with pytest.raises(pr_github.FetchError):
+    with pytest.raises(pr_github_client.FetchError):
         fetch(FakeClient(tree=tree))

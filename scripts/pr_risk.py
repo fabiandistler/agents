@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import pr_github
+import pr_github_client
 
 SCHEMA_VERSION = 1
 
@@ -293,7 +294,7 @@ def classify_pull_request(context: dict) -> dict:
     }
 
 
-REPO_PATTERN = pr_github.REPO_PATTERN
+REPO_PATTERN = pr_github_client.REPO_PATTERN
 
 USAGE = """usage: pr_risk.py --context FILE [--output FILE]
        pr_risk.py --live --pr N --repo OWNER/REPO [--output FILE]
@@ -424,10 +425,10 @@ def main(argv: list[str] | None = None) -> int:
                 int(options["pr"]),
                 token=os.environ.get("GITHUB_TOKEN") or None,
             )
-        except pr_github.MissingTokenError as error:
+        except pr_github_client.MissingTokenError as error:
             print(f"pr_risk.py: {error}", file=sys.stderr)
             return 5
-        except pr_github.FetchError as error:
+        except pr_github_client.FetchError as error:
             print(f"pr_risk.py: live fetch failed: {error}", file=sys.stderr)
             return 4
     else:

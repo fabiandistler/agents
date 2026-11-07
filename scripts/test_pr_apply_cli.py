@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import pr_apply
-import pr_github
+import pr_github_client
 import pytest
 from pr_apply_testkit import (
     BOT,
@@ -98,8 +98,8 @@ def test_cli_write_applies_the_plan_and_exits_zero(tmp_path, monkeypatch):
 def test_cli_write_lists_every_result_and_exits_one_on_failure(tmp_path, monkeypatch, capsys):
     def handler(method, path, payload):
         if method == "POST" and path == LABELS_PATH:
-            raise pr_github.FetchError("server error", status=500)
-        return pr_github.Response(status=200)
+            raise pr_github_client.FetchError("server error", status=500)
+        return pr_github_client.Response(status=200)
 
     client = FakeClient(handler)
     plan = make_plan(

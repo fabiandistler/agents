@@ -526,7 +526,7 @@ def test_cli_live_without_a_token_exits_five(monkeypatch):
 
 def test_cli_live_fetch_failure_exits_four(monkeypatch):
     def fail(repo, number, token=None):
-        raise pr_risk.pr_github.FetchError("boom")
+        raise pr_risk.pr_github_client.FetchError("boom")
 
     monkeypatch.setattr(pr_risk.pr_github, "fetch_context", fail)
 
