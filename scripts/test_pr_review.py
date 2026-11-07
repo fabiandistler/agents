@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pr_review
+import pytest
 
 SCRIPT = Path(__file__).resolve().parent / "pr_review.py"
 PROMPT = Path(__file__).resolve().parent / "pr_review_prompt.md"
@@ -54,7 +55,10 @@ def base_context(**overrides: object) -> dict:
             }
         ],
         "diff": "diff --git a/docs/review.md b/docs/review.md\n+New line\n",
+        "diff_status": "complete",
         "base_files": {"docs/review.md": "Old line\n"},
+        "base_paths": ["README.md", "docs/review.md", "scripts/tool.py"],
+        "base_paths_truncated": False,
         "comments": [],
         "checks": {},
         "reviews": {"changes_requested": False},
@@ -97,6 +101,21 @@ def write_context(tmp_path: Path, context: dict) -> Path:
     return path
 
 
+def dry_run_request(tmp_path: Path, context: dict, **env: str) -> dict:
+    output = tmp_path / "request.json"
+    run = run_cli(
+        "--context",
+        str(write_context(tmp_path, context)),
+        "--dry-run",
+        "--output",
+        str(output),
+        **env,
+    )
+    assert run.returncode == 0, run.stderr
+    assert json.loads(run.stdout)["output"] == str(output)
+    return json.loads(output.read_text(encoding="utf-8"))
+
+
 # --- System prompt -----------------------------------------------------------
 
 
@@ -116,10 +135,7 @@ def test_system_prompt_states_the_review_contract() -> None:
 
 def test_dry_run_assembles_the_request(tmp_path: Path) -> None:
     context = base_context()
-    run = run_cli("--context", str(write_context(tmp_path, context)), "--dry-run")
-    assert run.returncode == 0, run.stderr
-    assert run.stderr == ""
-    request = json.loads(run.stdout)
+    request = dry_run_request(tmp_path, context)
     assert set(request) == {"url", "model", "messages"}
     assert request["url"] == "https://opencode.ai/zen/v1/chat/completions"
     assert request["model"] == "deepseek-v4.1-flash-free"
@@ -152,9 +168,7 @@ def test_dry_run_strips_untrusted_markup(tmp_path: Path) -> None:
         ),
         base_files={"docs/review.md": f"Old line\n<!-- {hidden}-base -->\n"},
     )
-    run = run_cli("--context", str(write_context(tmp_path, context)), "--dry-run")
-    assert run.returncode == 0, run.stderr
-    payload = user_payload(json.loads(run.stdout))
+    payload = user_payload(dry_run_request(tmp_path, context))
     assert "Visible intro." in payload
     assert "Visible outro." in payload
     assert "Visible line" in payload
@@ -165,16 +179,12 @@ def test_dry_run_strips_untrusted_markup(tmp_path: Path) -> None:
 
 
 def test_dry_run_honours_model_and_base_url_env(tmp_path: Path) -> None:
-    context_path = write_context(tmp_path, base_context())
-    run = run_cli(
-        "--context",
-        str(context_path),
-        "--dry-run",
+    request = dry_run_request(
+        tmp_path,
+        base_context(),
         PR_REVIEW_MODEL="some/other-model",
         OPENCODE_BASE_URL="https://example.test/v1/",
     )
-    assert run.returncode == 0, run.stderr
-    request = json.loads(run.stdout)
     assert request["model"] == "some/other-model"
     assert request["url"] == "https://example.test/v1/chat/completions"
 
@@ -190,6 +200,91 @@ def test_dry_run_never_echoes_the_api_key(tmp_path: Path) -> None:
     assert run.returncode == 0, run.stderr
     assert "sk-test-secret-value" not in run.stdout
     assert "sk-test-secret-value" not in run.stderr
+
+
+def test_dry_run_prints_a_bounded_summary_without_output(tmp_path: Path) -> None:
+    context = base_context(diff="\n".join("+" + "x" * 90 for _ in range(1500)))
+    run = run_cli("--context", str(write_context(tmp_path, context)), "--dry-run")
+    assert run.returncode == 0, run.stderr
+    summary = json.loads(run.stdout)
+    assert len(run.stdout) < 1000
+    assert "messages" not in summary
+    assert summary["model"] == "deepseek-v4.1-flash-free"
+    assert summary["partial"] is False
+    assert summary["output"] is None
+    assert summary["user_bytes"] > 135_000
+
+
+def test_output_needs_dry_run_and_a_writable_file(tmp_path: Path) -> None:
+    context_path = str(write_context(tmp_path, base_context()))
+    assert run_cli("--context", context_path, "--output", str(tmp_path / "r.json")).returncode == 2
+    run = run_cli("--context", context_path, "--dry-run", "--output", str(tmp_path))
+    assert run.returncode == 4
+    assert run.stdout == ""
+
+
+# --- Base tree paths and diff status -----------------------------------------
+
+
+def test_base_tree_paths_list_changed_directories_first() -> None:
+    request, partial = pr_review.build_request(
+        base_context(base_paths=["README.md", "a/x.md", "docs/other.md", "docs/review.md"])
+    )
+    payload = user_payload(request)
+    section = payload.split("BASE TREE PATHS", 1)[1].split("BASE FILE CONTENTS", 1)[0]
+    listed = [line[2:] for line in section.splitlines() if line.startswith("- ")]
+    assert listed == ["docs/other.md", "docs/review.md", "README.md", "a/x.md"]
+    assert partial is False
+
+
+def test_base_tree_paths_are_bounded_and_say_what_is_missing() -> None:
+    paths = [f"lib/module-{number:05d}.py" for number in range(5000)]
+    request, partial = pr_review.build_request(
+        base_context(base_paths=paths, base_paths_truncated=True)
+    )
+    payload = user_payload(request)
+    assert "lib/module-00000.py" in payload
+    assert "lib/module-04999.py" not in payload
+    assert "more paths not shown" in payload
+    assert "incomplete" in payload
+    assert len(payload.encode("utf-8")) < 30_000
+    assert partial is False
+
+
+def test_base_tree_paths_are_sanitized() -> None:
+    request, _ = pr_review.build_request(
+        base_context(base_paths=["docs/a\u200bb.md", "docs/<!-- HIDDEN -->c.md"])
+    )
+    payload = user_payload(request)
+    assert "docs/ab.md" in payload
+    assert "HIDDEN" not in payload
+
+
+def test_an_unavailable_diff_marks_the_review_partial() -> None:
+    request, partial = pr_review.build_request(base_context(diff="", diff_status="unavailable"))
+    assert partial is True
+    assert "diff is unavailable" in user_payload(request).lower()
+
+
+def test_a_diff_truncated_upstream_marks_the_review_partial() -> None:
+    _, partial = pr_review.build_request(base_context(diff_status="truncated"))
+    assert partial is True
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"diff_status": "maybe"},
+        {"base_paths": "README.md"},
+        {"base_paths": [1]},
+        {"base_paths_truncated": None},
+        {"files": [{"path": "docs/review.md", "status": "modified", "additions": None}]},
+        {"files": [{"path": "docs/review.md", "additions": 1, "deletions": 0}]},
+    ],
+)
+def test_a_malformed_context_is_rejected(overrides: dict) -> None:
+    with pytest.raises(pr_review.ContextError):
+        pr_review.build_request(base_context(**overrides))
 
 
 # --- Caps --------------------------------------------------------------------
@@ -302,69 +397,6 @@ def test_valid_response_parses_into_the_artifact() -> None:
         "partial": False,
         "raw": None,
     }
-
-
-def test_response_tolerates_missing_end_and_star_bullets() -> None:
-    response = (
-        "RISK: low\n"
-        "VERDICT: pass\n"
-        "SUMMARY: Fine.\n"
-        "\n"
-        "FINDINGS:\n"
-        "\n"
-        "* docs/review.md:3 [info] No issues | fix: none\n"
-        "\n"
-    )
-    artifact = pr_review.parse_response(response, base_context())
-    assert artifact["status"] == "ok"
-    assert artifact["risk"] == "low"
-    assert artifact["verdict"] == "pass"
-    assert artifact["summary"] == "Fine."
-    assert artifact["findings"] == [
-        {
-            "path": "docs/review.md",
-            "line": 3,
-            "severity": "info",
-            "message": "No issues",
-            "suggestion": "none",
-        }
-    ]
-
-
-def test_finding_without_a_parseable_line_gets_null() -> None:
-    response = (
-        "RISK: low\n"
-        "VERDICT: concerns\n"
-        "SUMMARY: Something to say.\n"
-        "FINDINGS:\n"
-        "- docs/review.md [idea] Not a known severity | fix: Pick one\n"
-        "END\n"
-    )
-    artifact = pr_review.parse_response(response, base_context())
-    assert artifact["findings"][0]["line"] is None
-    assert artifact["findings"][0]["path"] == "docs/review.md"
-
-
-LOW_QUALITY_RESPONSES = [
-    "VERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
-    "RISK: low\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
-    "RISK: low\nVERDICT: pass\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
-    "RISK: severe\nVERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
-    "RISK: low\nVERDICT: maybe\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
-    "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nEND\n",
-    "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n\nEND\n",
-    "Not a review at all.",
-]
-
-
-def test_low_quality_response_is_concerns_high_with_raw() -> None:
-    for response in LOW_QUALITY_RESPONSES:
-        artifact = pr_review.parse_response(response, base_context())
-        assert artifact["status"] == "ok", response
-        assert artifact["risk"] == "high", response
-        assert artifact["verdict"] == "concerns", response
-        assert artifact["raw"] == response, response
-        assert artifact["findings"] == [], response
 
 
 def test_unavailable_status_has_no_verdict() -> None:

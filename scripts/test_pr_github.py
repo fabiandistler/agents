@@ -1,201 +1,31 @@
-"""Tests for the GitHub REST fetcher (scripts/pr_github.py).
+"""Tests for the context mapping of the GitHub REST fetcher (scripts/pr_github.py).
 
-Every test injects a fake client; none performs a network call. The fake
-speaks the same ``get`` contract as ``GitHubClient`` and returns ``Response``
-objects so pagination, diff fetching and base-file budgeting are exercised.
+Every test injects ``pr_github_fake.FakeClient``; none performs a network call.
 """
 
 from __future__ import annotations
 
-import base64
-import io
-import json
-import subprocess
-import sys
-import urllib.error
-from dataclasses import dataclass
-from email.message import Message
-from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import pr_github
 import pytest
-
-REPO = "fabiandistler/agents"
-NUMBER = 42
-PR_PATH = f"/repos/{REPO}/pulls/{NUMBER}"
-FILES_PATH = f"{PR_PATH}/files"
-COMMENTS_PATH = f"/repos/{REPO}/issues/{NUMBER}/comments"
-REVIEWS_PATH = f"{PR_PATH}/reviews"
-CHECK_RUNS_PATH = f"/repos/{REPO}/commits/abc123/check-runs"
-CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
-
-SCRIPT = Path(__file__).resolve().parent / "pr_github.py"
-DIFF_ACCEPT = "application/vnd.github.v3.diff"
-
-_MISSING = object()
-
-
-@dataclass
-class Call:
-    path: str
-    params: dict
-    accept: str | None
-
-
-def json_response(payload: object, status: int = 200) -> pr_github.Response:
-    return pr_github.Response(status=status, body=json.dumps(payload).encode("utf-8"))
-
-
-def text_response(text: str, status: int = 200) -> pr_github.Response:
-    return pr_github.Response(status=status, body=text.encode("utf-8"))
-
-
-class FakeClient:
-    """A routed fake for the read-only client surface."""
-
-    def __init__(
-        self,
-        pr: dict | None = None,
-        *,
-        file_pages: tuple[list[dict], ...] = (),
-        comment_pages: tuple[list[dict], ...] = (),
-        review_pages: tuple[list[dict], ...] = (),
-        check_run_pages: tuple[list[dict], ...] = (),
-        diff: str = "",
-        contents: dict[str, Any] | None = None,
-        errors: dict[str, Exception] | None = None,
-    ) -> None:
-        self.pr = pull_request() if pr is None else pr
-        self.file_pages = file_pages or ([],)
-        self.comment_pages = comment_pages or ([],)
-        self.review_pages = review_pages or ([],)
-        self.check_run_pages = check_run_pages or ([],)
-        self.diff = diff
-        self.contents = contents or {}
-        self.errors = errors or {}
-        self.calls: list[Call] = []
-
-    def get(
-        self, path: str, params: dict | None = None, accept: str | None = None
-    ) -> pr_github.Response:
-        params = dict(params or {})
-        self.calls.append(Call(path, params, accept))
-        if path in self.errors:
-            raise self.errors[path]
-        if path == PR_PATH:
-            if accept == DIFF_ACCEPT:
-                return text_response(self.diff)
-            return json_response(self.pr)
-        if path == FILES_PATH:
-            return _page(self.file_pages, params)
-        if path == COMMENTS_PATH:
-            return _page(self.comment_pages, params)
-        if path == REVIEWS_PATH:
-            return _page(self.review_pages, params)
-        if path == CHECK_RUNS_PATH:
-            return _check_run_page(self.check_run_pages, params)
-        if path.startswith(CONTENTS_PREFIX):
-            content_path = path[len(CONTENTS_PREFIX) :]
-            handler = self.contents.get(content_path)
-            if handler is None:
-                raise pr_github.FetchError(f"GitHub API returned 404 for {path}", status=404)
-            return handler if isinstance(handler, pr_github.Response) else json_response(handler)
-        raise AssertionError(f"unexpected GET {path}")
-
-    def contents_calls(self) -> list[Call]:
-        return [call for call in self.calls if call.path.startswith(CONTENTS_PREFIX)]
-
-
-def _page(pages: tuple[list[dict], ...], params: dict) -> pr_github.Response:
-    assert params.get("per_page") == 100
-    page = int(params.get("page", 1))
-    if page > len(pages):
-        raise AssertionError(f"page {page} requested but only {len(pages)} exist")
-    return json_response(pages[page - 1])
-
-
-def _check_run_page(pages: tuple[list[dict], ...], params: dict) -> pr_github.Response:
-    assert params.get("per_page") == 100
-    page = int(params.get("page", 1))
-    if page > len(pages):
-        raise AssertionError(f"page {page} requested but only {len(pages)} exist")
-    return json_response(
-        {"total_count": sum(len(items) for items in pages), "check_runs": pages[page - 1]}
-    )
-
-
-def pull_request(**overrides: object) -> dict:
-    payload = {
-        "number": NUMBER,
-        "title": "Fix docs",
-        "body": "Body",
-        "user": {"login": "fabiandistler"},
-        "head": {
-            "sha": "abc123",
-            "ref": "fix/x",
-            "repo": {"full_name": REPO},
-        },
-        "base": {
-            "ref": "main",
-            "sha": "base-sha",
-            "repo": {"full_name": REPO, "default_branch": "main"},
-        },
-        "draft": False,
-        "mergeable": True,
-        "labels": [{"name": "do-not-merge"}],
-    }
-    payload.update(overrides)
-    return payload
-
-
-def api_file(
-    path: str,
-    *,
-    status: str = "modified",
-    additions: int = 1,
-    deletions: int = 0,
-    patch: object = _MISSING,
-    previous: str | None = None,
-) -> dict:
-    entry = {
-        "filename": path,
-        "status": status,
-        "additions": additions,
-        "deletions": deletions,
-    }
-    if patch is not _MISSING:
-        entry["patch"] = patch
-    else:
-        entry["patch"] = "@@ -1 +1 @@\n"
-    if previous is not None:
-        entry["previous_filename"] = previous
-    return entry
-
-
-def binary_api_file(path: str, *, additions: int = 1, deletions: int = 0) -> dict:
-    entry = {
-        "filename": path,
-        "status": "modified",
-        "additions": additions,
-        "deletions": deletions,
-    }
-    # No patch key: GitHub omits it for binary content.
-    return entry
-
-
-def contents_response(text: str | bytes, *, encoding: str = "base64", type_: str = "file") -> dict:
-    data = text.encode("utf-8") if isinstance(text, str) else text
-    return {
-        "type": type_,
-        "encoding": encoding,
-        "size": len(data),
-        "content": base64.b64encode(data).decode("ascii"),
-    }
-
-
-def fetch(client: FakeClient) -> dict:
-    return pr_github.fetch_context(REPO, NUMBER, client=client)
+from pr_github_fake import (
+    CHECK_RUNS_PATH,
+    COMMENTS_PATH,
+    DIFF_ACCEPT,
+    FILES_PATH,
+    NUMBER,
+    OMITTED,
+    PR_PATH,
+    REPO,
+    REVIEWS_PATH,
+    FakeClient,
+    api_file,
+    binary_api_file,
+    contents_response,
+    fetch,
+    pull_request,
+)
 
 
 def test_fetch_context_maps_every_contract_field():
@@ -309,6 +139,9 @@ def test_fetch_context_maps_every_contract_field():
         },
     ]
     assert context["diff"] == "diff --git a/x b/x\n"
+    assert context["diff_status"] == "complete"
+    assert context["base_paths"] == []
+    assert context["base_paths_truncated"] is False
     assert context["base_files"] == {
         "scripts/modified.py": "print('x')\n",
         "scripts/new_name.py": "old\n",
@@ -375,113 +208,25 @@ def test_raw_diff_is_fetched_with_its_own_accept_header_and_capped():
     assert diff_calls[0].path == PR_PATH
 
 
-def test_base_files_are_capped_at_twenty_files():
-    files = [api_file(f"scripts/file-{index}.py") for index in range(25)]
-    contents = {f"scripts/file-{index}.py": contents_response("x") for index in range(25)}
-    client = FakeClient(file_pages=(files,), contents=contents)
+def test_a_diff_the_api_refuses_is_reported_unavailable_not_raised():
+    # GitHub answers 406 (code too_large) when a diff exceeds its line or file
+    # limit; any error on the diff request is handled the same way.
+    for status in (406, 500):
+        client = FakeClient(
+            file_pages=([api_file("docs/guide.md")],),
+            errors={PR_PATH + "#diff": pr_github.FetchError(str(status), status=status)},
+        )
 
-    context = fetch(client)
+        context = fetch(client)
 
-    assert len(context["base_files"]) == 20
-    assert list(context["base_files"]) == [f"scripts/file-{index}.py" for index in range(20)]
-    assert len(client.contents_calls()) == 20
-
-
-def test_base_files_stop_at_the_byte_budget():
-    limit = 200 * 1024
-    client = FakeClient(
-        file_pages=(
-            [
-                api_file("scripts/big.py"),
-                api_file("scripts/one-byte.py"),
-            ],
-        ),
-        contents={
-            "scripts/big.py": contents_response("a" * limit),
-            "scripts/one-byte.py": contents_response("b"),
-        },
-    )
-
-    context = fetch(client)
-
-    assert context["base_files"] == {"scripts/big.py": "a" * limit}
-    assert len(client.contents_calls()) == 2
+        assert context["diff"] == ""
+        assert context["diff_status"] == "unavailable"
+        assert [file["path"] for file in context["files"]] == ["docs/guide.md"]
 
 
-def test_a_single_file_over_the_byte_budget_is_skipped():
-    client = FakeClient(
-        file_pages=([api_file("scripts/huge.py")],),
-        contents={"scripts/huge.py": contents_response("a" * (200 * 1024 + 1))},
-    )
-
-    assert fetch(client)["base_files"] == {}
-
-
-def test_removed_binary_and_added_files_are_not_fetched():
-    client = FakeClient(
-        file_pages=(
-            [
-                api_file("docs/removed.md", status="removed", deletions=3),
-                binary_api_file("docs/logo.png", additions=2),
-                api_file("docs/added.md", status="added", patch="@@ -0,0 +1 @@\n"),
-                api_file("docs/kept.md"),
-            ],
-        ),
-        contents={"docs/kept.md": contents_response("kept")},
-    )
-
-    context = fetch(client)
-
-    assert context["base_files"] == {"docs/kept.md": "kept"}
-    assert [call.path for call in client.contents_calls()] == [f"{CONTENTS_PREFIX}docs/kept.md"]
-
-
-def test_renamed_files_read_the_previous_path_at_the_base_commit():
-    client = FakeClient(
-        file_pages=([api_file("scripts/new.py", status="renamed", previous="scripts/old.py")],),
-        contents={"scripts/old.py": contents_response("old")},
-    )
-
-    context = fetch(client)
-
-    assert context["base_files"] == {"scripts/new.py": "old"}
-    (call,) = client.contents_calls()
-    assert call.path == f"{CONTENTS_PREFIX}scripts/old.py"
-    assert call.params == {"ref": "base-sha"}
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        contents_response("x", encoding="none"),
-        contents_response(b"\xff\xfe", type_="file"),
-        json_response({"type": "submodule", "encoding": "base64", "size": 1, "content": "eA=="}),
-        json_response({"type": "file", "encoding": "base64", "size": 300_000, "content": "eA=="}),
-        json_response({"type": "file", "encoding": "base64", "size": 1}),
-    ],
-)
-def test_unusable_base_content_is_skipped(payload):
-    client = FakeClient(
-        file_pages=([api_file("scripts/odd.py")],),
-        contents={"scripts/odd.py": payload},
-    )
-
-    assert fetch(client)["base_files"] == {}
-
-
-def test_base_file_404_is_skipped_but_other_fetch_errors_propagate():
-    missing = FakeClient(
-        file_pages=([api_file("scripts/missing.py")],),
-        errors={f"{CONTENTS_PREFIX}scripts/missing.py": pr_github.FetchError("404", status=404)},
-    )
-    assert fetch(missing)["base_files"] == {}
-
-    broken = FakeClient(
-        file_pages=([api_file("scripts/broken.py")],),
-        errors={f"{CONTENTS_PREFIX}scripts/broken.py": pr_github.FetchError("500", status=500)},
-    )
-    with pytest.raises(pr_github.FetchError):
-        fetch(broken)
+def test_a_diff_within_the_limit_is_complete_and_a_cut_one_truncated():
+    assert fetch(FakeClient(diff="diff --git a/x b/x\n"))["diff_status"] == "complete"
+    assert fetch(FakeClient(diff="a" * 500_000))["diff_status"] == "truncated"
 
 
 @pytest.mark.parametrize(
@@ -612,206 +357,26 @@ def test_fork_is_detected_from_the_head_repository(head_repo, fork):
     assert fetch(client)["fork"] is fork
 
 
-def test_missing_token_without_an_injected_client_raises_before_any_request(monkeypatch):
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-
-    with pytest.raises(pr_github.MissingTokenError):
-        pr_github.fetch_context(REPO, NUMBER)
-
-    with pytest.raises(pr_github.MissingTokenError):
-        pr_github.fetch_context(REPO, NUMBER, token="")
-
-
-class FakeHTTPResponse:
-    def __init__(self, body: bytes, status: int = 200, headers: dict | None = None) -> None:
-        self._body = body
-        self.status = status
-        self.headers = headers or {}
-
-    def read(self) -> bytes:
-        return self._body
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc_info: object) -> None:
-        return None
-
-
-def test_github_client_sends_auth_and_parses_json():
-    captured = {}
-
-    def opener(request, timeout=None):
-        captured["request"] = request
-        captured["timeout"] = timeout
-        return FakeHTTPResponse(b'{"ok": true}')
-
-    client = pr_github.GitHubClient("s3cret-token", opener=opener)
-
-    response = client.get("/repos/o/r", params={"page": 2})
-
-    assert response.json() == {"ok": True}
-    request = captured["request"]
-    assert request.full_url == "https://api.github.com/repos/o/r?page=2"
-    assert request.get_header("Authorization") == "Bearer s3cret-token"
-    assert request.get_header("Accept") == "application/vnd.github+json"
-    assert captured["timeout"] == 30
-
-
 @pytest.mark.parametrize(
-    ("method", "payload"),
+    ("field", "value"),
     [
-        ("post", {"a": 1}),
-        ("patch", {"a": 1}),
-        ("delete", None),
+        ("additions", None),
+        ("additions", "3"),
+        ("additions", -1),
+        ("deletions", True),
+        ("deletions", 1.5),
+        ("status", None),
+        ("status", ""),
+        ("status", OMITTED),
     ],
 )
-def test_client_write_helpers_send_the_named_method(method, payload):
-    captured = {}
-
-    def opener(request, timeout=None):
-        captured["request"] = request
-        return FakeHTTPResponse(b"{}")
-
-    client = pr_github.GitHubClient("token", opener=opener)
-
-    getattr(client, method)("/repos/o/r/thing", payload)
-
-    request = captured["request"]
-    assert request.get_method() == method.upper()
-    if payload is None:
-        assert request.data is None
+def test_a_malformed_changed_file_fails_the_fetch(field, value):
+    # A count read as 0 or a status read as "modified" could lower the risk floor.
+    entry = api_file("docs/guide.md")
+    if value is OMITTED:
+        del entry[field]
     else:
-        assert json.loads(request.data) == payload
+        entry[field] = value
 
-
-def test_graphql_posts_the_query_and_returns_the_response_body():
-    captured = {}
-
-    def opener(request, timeout=None):
-        captured["request"] = request
-        return FakeHTTPResponse(b'{"data": {"viewer": {"login": "me"}}}')
-
-    client = pr_github.GitHubClient("token", opener=opener)
-
-    result = client.graphql("query { viewer { login } }", {"n": 1})
-
-    assert result == {"data": {"viewer": {"login": "me"}}}
-    request = captured["request"]
-    assert request.full_url == "https://api.github.com/graphql"
-    assert json.loads(request.data) == {
-        "query": "query { viewer { login } }",
-        "variables": {"n": 1},
-    }
-
-
-def test_http_error_becomes_fetch_error_without_leaking_the_token():
-    def opener(request, timeout=None):
-        raise urllib.error.HTTPError(
-            request.full_url,
-            403,
-            "Forbidden",
-            Message(),
-            io.BytesIO(b'{"message": "nope"}'),
-        )
-
-    client = pr_github.GitHubClient("s3cret-token", opener=opener)
-
-    with pytest.raises(pr_github.FetchError) as info:
-        client.get("/repos/o/r")
-
-    assert info.value.status == 403
-    assert "403" in str(info.value)
-    assert "s3cret-token" not in str(info.value)
-
-
-def test_network_error_becomes_fetch_error():
-    def opener(request, timeout=None):
-        raise urllib.error.URLError("connection refused")
-
-    client = pr_github.GitHubClient("token", opener=opener)
-
-    with pytest.raises(pr_github.FetchError) as info:
-        client.get("/repos/o/r")
-
-    assert "connection refused" in str(info.value)
-
-
-def test_cli_writes_the_context_and_exits_zero(tmp_path, monkeypatch, capsys):
-    context = {"schema_version": 1, "number": NUMBER, "files": []}
-    monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
-    output = tmp_path / "context.json"
-
-    code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(output)])
-
-    assert code == 0
-    assert json.loads(output.read_text(encoding="utf-8")) == context
-    assert capsys.readouterr().out == ""
-
-
-def test_cli_prints_the_context_to_stdout(monkeypatch, capsys):
-    context = {"schema_version": 1, "number": NUMBER, "files": []}
-    monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
-
-    code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO])
-
-    assert code == 0
-    assert json.loads(capsys.readouterr().out) == context
-
-
-def test_cli_maps_missing_token_to_exit_five(monkeypatch):
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-
-    code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO])
-
-    assert code == 5
-
-
-def test_cli_maps_fetch_failure_to_exit_four(monkeypatch):
-    def fail(repo, number, token=None):
-        raise pr_github.FetchError("boom")
-
-    monkeypatch.setattr(pr_github, "fetch_context", fail)
-
-    assert pr_github.main(["--pr", str(NUMBER), "--repo", REPO]) == 4
-
-
-@pytest.mark.parametrize(
-    "argv",
-    [
-        [],
-        ["--pr", str(NUMBER)],
-        ["--repo", REPO],
-        ["--pr", "zero", "--repo", REPO],
-        ["--pr", "0", "--repo", REPO],
-        ["--pr", str(NUMBER), "--repo", "no-slash"],
-        ["--pr", str(NUMBER), "--repo", REPO, "--unknown"],
-    ],
-)
-def test_cli_usage_errors_exit_two(argv):
-    assert pr_github.main(argv) == 2
-
-
-def test_cli_output_write_failure_exits_three(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        pr_github,
-        "fetch_context",
-        lambda repo, number, token=None: {"schema_version": 1, "files": []},
-    )
-
-    assert pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(tmp_path)]) == 3
-
-
-def test_cli_help_is_short_and_documents_exit_codes():
-    result = subprocess.run(  # noqa: S603 -- fixed interpreter and script path, no shell
-        [sys.executable, str(SCRIPT), "--help"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert result.returncode == 0
-    assert len(result.stdout.splitlines()) < 25
-    assert "usage:" in result.stdout
-    assert "exit:" in result.stdout
-    assert result.stderr == ""
+    with pytest.raises(pr_github.FetchError, match=field):
+        fetch(FakeClient(file_pages=([entry],)))

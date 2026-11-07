@@ -55,6 +55,7 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
         "labels": [],
         "files": [file_entry("docs/guide.md")] if files is None else files,
         "diff": "",
+        "diff_status": "complete",
         "base_files": {},
         "comments": [],
         "checks": {},
@@ -363,6 +364,16 @@ def test_one_unreadable_entry_does_not_discard_readable_ones():
     assert decision["risk"] == "high"
     assert "docs: docs/guide.md" in decision["reasons"]
     assert decision["counts"]["files"] == 1
+
+
+@pytest.mark.parametrize(
+    ("status", "risk"), [("truncated", "low"), ("unavailable", "high"), (None, "high")]
+)
+def test_an_unreadable_diff_is_high(status, risk):
+    decision = pr_risk.classify_pull_request(make_context(diff_status=status))
+
+    assert decision["risk"] == risk
+    assert ("unreadable-diff" in str(decision["reasons"])) is (risk == "high")
 
 
 def test_fork_is_high_and_never_auto_merge_eligible():
