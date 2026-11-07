@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import urllib.error
 import urllib.request
@@ -30,6 +29,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
+from pr_review_sanitize import sanitize_text
 
 DEFAULT_MODEL = "deepseek-v4.1-flash-free"
 DEFAULT_BASE_URL = "https://opencode.ai/zen/v1"
@@ -66,20 +66,6 @@ Examples:
   python3 scripts/pr_review.py --response reply.txt --context context.json
 """
 
-_ZERO_WIDTH = str.maketrans("", "", "\u200b\u200c\u200d\u2060\ufeff")
-_HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
-_HTML_COMMENT_UNCLOSED = re.compile(r"<!--.*\Z", re.DOTALL)
-_HIDDEN_ELEMENT = re.compile(
-    r"<(?P<tag>[A-Za-z][A-Za-z0-9]*)\b(?P<attrs>[^>]*)>(?P<body>.*?)</(?P=tag)\s*>",
-    re.IGNORECASE | re.DOTALL,
-)
-_HIDDEN_ATTR = re.compile(
-    r"display\s*:\s*none|visibility\s*:\s*hidden|(?<=\s)hidden(?=\s|=|>|/|$)",
-    re.IGNORECASE,
-)
-_HIDDEN_OPEN = re.compile(r"<(?P<tag>[A-Za-z][A-Za-z0-9]*)\b(?P<attrs>[^>]*)>", re.IGNORECASE)
-_BASE64 = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{200,}={0,2}(?![A-Za-z0-9+/=])")
-
 
 class ProviderError(Exception):
     """Internal: the provider call failed; `review` turns it into unavailable."""
@@ -90,39 +76,6 @@ class UsageError(argparse.ArgumentParser):
         self.print_usage(sys.stderr)
         sys.stderr.write(f"{Path(self.prog).stem}: {message}\n")
         sys.exit(EXIT_USAGE)
-
-
-# --- Sanitizing --------------------------------------------------------------
-
-
-def _remove_hidden_elements(text: str) -> str:
-    """Remove elements whose opening tag marks them as hidden."""
-
-    def replacement(match: re.Match[str]) -> str:
-        return "" if _HIDDEN_ATTR.search(match.group("attrs")) else match.group(0)
-
-    previous = None
-    while previous != text:
-        previous = text
-        text = _HIDDEN_ELEMENT.sub(replacement, text)
-    # A tag the author never closed hides everything the renderer puts inside
-    # it, so drop the remainder. Missing the text is safer than trusting it.
-    for match in _HIDDEN_OPEN.finditer(text):
-        if not _HIDDEN_ATTR.search(match.group("attrs")):
-            continue
-        closing = re.search(rf"</{match.group('tag')}\s*>", text[match.end() :], re.IGNORECASE)
-        if closing is None:
-            return text[: match.start()]
-    return text
-
-
-def sanitize_text(text: str) -> str:
-    """Strip markup an author can use to hide text from a human reader."""
-    text = text.translate(_ZERO_WIDTH)
-    text = _HTML_COMMENT.sub("", text)
-    text = _HTML_COMMENT_UNCLOSED.sub("", text)
-    text = _remove_hidden_elements(text)
-    return _BASE64.sub("", text)
 
 
 def _as_text(value: object) -> str:
