@@ -77,12 +77,16 @@ def test_assess_fetches_the_context_with_a_token(workflow: dict[Any, Any]) -> No
     assert "--pr" in command, "the context fetch needs the pull request number"
     assert "--repo" in command, "the context fetch needs the repository"
     assert "--output context.json" in command, "the context must be written to context.json"
-    assert "inputs.pr" in command, "a manual run passes the pull request number as an input"
+    assert '--pr "$PR"' in command, "the pull request number comes from env"
     assert "github.repository" in command, "the repository comes from the event, not from a ref"
 
     step = step_running(job, "scripts/pr_github.py")
-    assert (step.get("env") or {}).get("GITHUB_TOKEN") == "${{ secrets.GITHUB_TOKEN }}", (
+    env = step.get("env") or {}
+    assert env.get("GITHUB_TOKEN") == "${{ secrets.GITHUB_TOKEN }}", (
         "the context fetch reads the pull request through the workflow token"
+    )
+    assert env.get("PR") == "${{ github.event.pull_request.number || inputs.pr }}", (
+        "a manual run passes the pull request number as an input"
     )
 
 

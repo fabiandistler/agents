@@ -98,9 +98,12 @@ jobs:
       - name: Fetch the pull request context
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Event and dispatch values reach the script through env, never as
+          # shell source.
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
         run: |
           python3 scripts/pr_github.py \
-            --pr "${{ github.event.pull_request.number || inputs.pr }}" \
+            --pr "$PR" \
             --repo "${{ github.repository }}" \
             --output context.json
 

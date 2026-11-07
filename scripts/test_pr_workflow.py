@@ -287,3 +287,35 @@ def test_the_head_checkout_check_catches_a_head_checkout(
     checkout.setdefault("with", {})[key] = value
 
     assert f"job 'publish' checks out with {key}:" in head_checkouts(tampered, workflow_text)
+
+
+# Event and dispatch data are attacker-influenced; inside run: they would be
+# pasted into the shell source. They reach a script only through env.
+UNTRUSTED_EXPRESSION = re.compile(r"\$\{\{(?P<body>.*?)\}\}", re.DOTALL)
+
+
+def untrusted_interpolations(workflow: dict[Any, Any]) -> list[str]:
+    found: list[str] = []
+    for name, job in jobs_of(workflow).items():
+        for command in runs_of(job):
+            for match in UNTRUSTED_EXPRESSION.finditer(command):
+                body = match.group("body")
+                if "inputs." in body or "github.event." in body:
+                    found.append(f"job {name!r} interpolates {match.group(0)!r}")
+    return found
+
+
+def test_no_run_script_interpolates_event_or_input_data(workflow: dict[Any, Any]) -> None:
+    assert untrusted_interpolations(workflow) == [], (
+        "pass event and dispatch values to run scripts through env, never as ${{ }} source"
+    )
+
+
+def test_the_interpolation_check_catches_an_input_in_a_run_script(
+    workflow: dict[Any, Any],
+) -> None:
+    tampered = copy.deepcopy(workflow)
+    step = steps_of(job_named(tampered, "assess"))[-1]
+    step["run"] = 'echo "${{ inputs.pr }}"'
+
+    assert untrusted_interpolations(tampered) == ["job 'assess' interpolates '${{ inputs.pr }}'"]
