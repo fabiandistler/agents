@@ -30,7 +30,7 @@ It decides how a deliverable is rendered. What goes *in* the deliverable is ofte
 - Weekly/monthly leadership status, launch announcements, risk escalations → `stakeholder-update`.
 - Standup prep or a status update assembled from recent repo activity → suggest the user run `repo-status`, then render its Yesterday / Today / Blockers output as HTML.
 - The internal structure of a technical explanation (problem before solution) → `problem-first-explanation`.
-- Review findings on a diff or PR, and a PR description → whichever review or PR-writing skill is installed (in this repo's cloud sessions: `code-review` and `pr`) supplies the substance; render it with `references/code-review-and-pr.md`. The PR body posted on the forge stays markdown; the HTML page is the shareable companion for reviewers.
+- Review findings on a diff or PR, and a PR description → whichever review or PR-writing skill is installed (for example `code-review` or `pr`) supplies the substance; render it with `references/code-review-and-pr.md`. The PR body posted on the forge stays markdown; the HTML page is the shareable companion for reviewers.
 
 ## When to stay in markdown
 
@@ -66,14 +66,14 @@ Before drafting, read `references/matching-your-style.md` for every artifact, al
 | Two or more candidates side by side, or a plan for the one chosen | compare approaches, flows, or UI directions; brainstorm; implementation plan | `references/exploration-and-planning.md` |
 | Code at file and line level that the reader reviews, changes, or navigates | annotated diff, code review, PR writeup, module map of a package | `references/code-review-and-pr.md` |
 | One design to look at or click through | mockup, component sheet, design tokens, animation or interaction prototype | `references/design-and-prototypes.md` |
-| What connects to what in a system, drawn as boxes and arrows | how services fit together, request flow, deploy pipeline, figures for an article | `references/diagrams-and-illustrations.md` |
+| How the parts of a system connect, drawn as boxes and arrows | how services fit together, request flow, deploy pipeline, figures for an article | `references/diagrams-and-illustrations.md` |
 | How or why something works, or what happened, in prose sections | concept or feature explainer, onboarding material, status report, incident timeline, post-mortem | `references/reports-and-research.md` |
 | Slides presented in sequence | deck, arrow-key presentation, talk | `references/decks.md` |
 | Controls that change state and export it back as text | triage or reorder board, flag toggles, prompt tuner, dataset curator | `references/custom-editors.md` |
 
 When two rows still seem to fit, these tie-breaks decide:
 
-- **Code, system, or concept.** Code the reader reviews, changes, or walks file by file → `code-review-and-pr`. What connects to what (services, pipelines, request paths) → `diagrams-and-illustrations`. How or why something works, for a learner → `reports-and-research`. A figure inside an explainer does not move it to diagrams.
+- **Code, system, or concept.** Code the reader reviews, changes, or walks file by file → `code-review-and-pr`. How the parts of a system connect (services, pipelines, request paths) → `diagrams-and-illustrations`. How or why something works, for a learner → `reports-and-research`; an explainer that contains a figure stays there.
 - **Several candidates or one.** Two or more candidates to choose between → `exploration-and-planning`, even when each candidate is a mockup or a flow. One design to build out → `design-and-prototypes`.
 - **State the reader changes.** If the reader manipulates the page and exports the result → `custom-editors`, even when it lays items out side by side.
 

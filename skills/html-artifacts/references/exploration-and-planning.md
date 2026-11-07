@@ -1,6 +1,6 @@
 # Exploration & Planning
 
-For when the user is trying to *decide* something and needs to weigh options, or has decided and needs a plan dense enough to hand off. Read this when the page holds two or more candidates to choose between, even when each one is a mockup or a flow, or the plan for the one chosen. One design to build out belongs in `design-and-prototypes.md`.
+For when the user is trying to *decide* something and needs to weigh options, or has decided and needs a plan dense enough to hand off. Read this when the page holds two or more candidates to choose between, even when each one is a mockup or a flow, or the plan for the one chosen.
 
 ## Side-by-side option comparison
 
