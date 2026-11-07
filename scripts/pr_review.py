@@ -25,6 +25,7 @@ import posixpath
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 import pr_cli
@@ -327,33 +328,39 @@ def _unavailable_artifact(context: dict, summary: str, partial: bool) -> dict:
     return build_artifact(context, "unavailable", risk="high", summary=summary, partial=partial)
 
 
-def review(context: dict, transport=None, key: str | None = None) -> dict:
-    """Review one context; `transport(request) -> str` is injectable for tests."""
+def _review_with(context: dict, respond: Callable[[dict, bool], dict]) -> dict:
+    """Skip a draft or fork; otherwise build the request and let ``respond`` answer it."""
     _validate_context(context)
     reason = _skipped_reason(context)
     if reason is not None:
         return _skipped_artifact(context, reason)
     request, partial = build_request(context)
-    api_key = key if key is not None else os.environ.get(KEY_ENV)
-    if not api_key:
-        return _unavailable_artifact(context, MISSING_KEY_SUMMARY, partial)
-    try:
-        text = _post(request, api_key) if transport is None else transport(request)
-    except (ProviderError, TimeoutError, urllib.error.URLError):
-        return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
-    if not isinstance(text, str) or not text.strip():
-        return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
-    return parse_response(text, context, partial=partial)
+    return respond(request, partial)
+
+
+def review(context: dict, transport=None, key: str | None = None) -> dict:
+    """Review one context; `transport(request) -> str` is injectable for tests."""
+
+    def respond(request: dict, partial: bool) -> dict:
+        api_key = key if key is not None else os.environ.get(KEY_ENV)
+        if not api_key:
+            return _unavailable_artifact(context, MISSING_KEY_SUMMARY, partial)
+        try:
+            text = _post(request, api_key) if transport is None else transport(request)
+        except (ProviderError, TimeoutError, urllib.error.URLError):
+            return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
+        if not isinstance(text, str) or not text.strip():
+            return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
+        return parse_response(text, context, partial=partial)
+
+    return _review_with(context, respond)
 
 
 def _review_canned(context: dict, text: str) -> dict:
     """Parse a canned response without a key or a provider call."""
-    _validate_context(context)
-    reason = _skipped_reason(context)
-    if reason is not None:
-        return _skipped_artifact(context, reason)
-    _, partial = build_request(context)
-    return parse_response(text, context, partial=partial)
+    return _review_with(
+        context, lambda _request, partial: parse_response(text, context, partial=partial)
+    )
 
 
 def _post(request: dict, api_key: str) -> str:
