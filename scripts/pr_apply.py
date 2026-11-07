@@ -9,11 +9,9 @@ Resolution rejects an unexpected plan before the first call.
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 import urllib.parse
-from pathlib import Path
 from typing import Protocol
 
 import pr_actions
@@ -211,68 +209,15 @@ examples:
 """
 
 
-class UsageError(Exception):
-    """The command line was not usable."""
-
-
-def _parse_arguments(argv: list[str]) -> dict:
-    options: dict[str, object] = {"plan": None, "write": False}
-    index = 0
-    while index < len(argv):
-        argument = argv[index]
-        if argument in ("-h", "--help"):
-            return {"help": True}
-        name, separator, inline = argument.partition("=")
-        if name == "--write":
-            if separator:
-                raise UsageError("--write takes no value")
-            options["write"] = True
-            index += 1
-            continue
-        if name != "--plan":
-            raise UsageError(f"unknown argument: {argument}")
-        if separator:
-            value = inline
-            index += 1
-        else:
-            if index + 1 >= len(argv):
-                raise UsageError("--plan needs a value")
-            value = argv[index + 1]
-            index += 2
-        if not value:
-            raise UsageError("--plan needs a value")
-        options["plan"] = value
-
-    if options["plan"] is None:
-        raise UsageError("--plan is required")
-    return options
-
-
-def _read_plan(path: str) -> dict:
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as error:
-        raise PlanError(f"cannot read --plan: {error}") from error
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError as error:
-        raise PlanError(f"--plan is not valid JSON: {error}") from error
-    return payload
-
-
-def _emit(payload: dict) -> None:
-    sys.stdout.write(json.dumps(payload, indent=2) + "\n")
-
-
 def main(argv: list[str] | None = None, client: WriteClient | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
-        options = _parse_arguments(arguments)
-    except UsageError as error:
-        print(f"pr_apply.py: {error}", file=sys.stderr)
-        print(USAGE, end="", file=sys.stderr)
-        return pr_cli.EXIT_USAGE
-    if options.get("help"):
+        options = pr_cli.parse_flags(arguments, ("--plan",), ("--write",))
+        if options is not None and options["plan"] is None:
+            raise pr_cli.UsageError("--plan is required")
+    except pr_cli.UsageError as error:
+        return pr_cli.usage_failure("pr_apply.py", USAGE, error)
+    if options is None:
         print(USAGE, end="")
         return pr_cli.EXIT_OK
 
@@ -286,17 +231,17 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
         return pr_cli.EXIT_MISSING_TOKEN
 
     try:
-        plan = _read_plan(str(options["plan"]))
+        plan = pr_cli.read_json_object(str(options["plan"]), "--plan")
         if not write:
             operations = resolve_operations(plan)
         else:
             results = apply_plan(plan, client or pr_github_client.GitHubClient(token))
-    except PlanError as error:
+    except (pr_cli.InputError, PlanError) as error:
         print(f"pr_apply.py: {error}", file=sys.stderr)
         return pr_cli.EXIT_BAD_INPUT
 
     if not write:
-        _emit(
+        pr_cli.print_json(
             {
                 "schema_version": pr_actions.SCHEMA_VERSION,
                 "repo": plan.get("repo"),
@@ -309,7 +254,7 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
         return pr_cli.EXIT_OK
 
     ok = all(result["ok"] for result in results)
-    _emit(
+    pr_cli.print_json(
         {
             "schema_version": pr_actions.SCHEMA_VERSION,
             "repo": plan.get("repo"),

@@ -104,15 +104,11 @@ def validate_review(review: object) -> dict:
 # --- Decisions ---------------------------------------------------------------
 
 
-def _raise_risk(current: str, candidate: str) -> str:
-    return candidate if pr_risk.RISK_ORDER[candidate] > pr_risk.RISK_ORDER[current] else current
-
-
 def _effective_risk(context: dict, review: dict) -> tuple[str, dict]:
     policy = pr_risk.classify_pull_request(context)
     if review["status"] != "ok":
         return policy["risk"], policy
-    return _raise_risk(policy["risk"], review["risk"]), policy
+    return pr_risk.raise_risk(policy["risk"], review["risk"]), policy
 
 
 def _verdict_label(review: dict) -> str | None:

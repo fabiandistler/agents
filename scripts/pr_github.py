@@ -14,12 +14,10 @@ from __future__ import annotations
 
 import base64
 import binascii
-import json
 import os
 import sys
 import urllib.parse
-from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
 
 import pr_cli
 from pr_github_client import (
@@ -58,9 +56,14 @@ examples:
 """
 
 
+def is_line_count(value: object) -> TypeGuard[int]:
+    """Whether ``value`` is a usable additions or deletions count of a changed file."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 def _line_count(entry: dict, field: str) -> int:
     value = entry.get(field)
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+    if not is_line_count(value):
         raise FetchError(f"GitHub API returned a changed file with a malformed {field!r} count")
     return value
 
@@ -337,46 +340,6 @@ def fetch_context(
     }
 
 
-class UsageError(Exception):
-    """The command line was not usable."""
-
-
-def _parse_arguments(argv: list[str]) -> dict:
-    options: dict[str, object] = {"pr": None, "repo": None, "output": None}
-    index = 0
-    while index < len(argv):
-        argument = argv[index]
-        if argument in ("-h", "--help"):
-            return {"help": True}
-        name, separator, inline = argument.partition("=")
-        if name not in {"--pr", "--repo", "--output"}:
-            raise UsageError(f"unknown argument: {argument}")
-        if separator:
-            value = inline
-            index += 1
-        else:
-            if index + 1 >= len(argv):
-                raise UsageError(f"{name} needs a value")
-            value = argv[index + 1]
-            index += 2
-        if not value:
-            raise UsageError(f"{name} needs a value")
-        options[name[2:]] = value
-
-    if options["pr"] is None or options["repo"] is None:
-        raise UsageError("--pr and --repo are required")
-    try:
-        number = int(str(options["pr"]))
-    except ValueError as error:
-        raise UsageError("--pr must be a positive integer") from error
-    if number <= 0:
-        raise UsageError("--pr must be a positive integer")
-    options["pr"] = number
-    if not REPO_PATTERN.fullmatch(str(options["repo"])):
-        raise UsageError("--repo must be OWNER/REPO")
-    return options
-
-
 def _summary(context: dict, output: str | None) -> dict:
     """The bounded stdout view of a context: identity, flags and sizes, no diff."""
     return {
@@ -395,26 +358,15 @@ def _summary(context: dict, output: str | None) -> dict:
     }
 
 
-def _emit(context: dict, output: str | None) -> int:
-    if output is not None:
-        try:
-            Path(output).write_text(json.dumps(context, indent=2) + "\n", encoding="utf-8")
-        except OSError as error:
-            print(f"pr_github.py: cannot write --output: {error}", file=sys.stderr)
-            return pr_cli.EXIT_OUTPUT_FAILED
-    sys.stdout.write(json.dumps(_summary(context, output), indent=2) + "\n")
-    return pr_cli.EXIT_OK
-
-
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
-        options = _parse_arguments(arguments)
-    except UsageError as error:
-        print(f"pr_github.py: {error}", file=sys.stderr)
-        print(USAGE, end="", file=sys.stderr)
-        return pr_cli.EXIT_USAGE
-    if options.get("help"):
+        options = pr_cli.parse_flags(arguments, ("--pr", "--repo", "--output"))
+        if options is not None:
+            pr_cli.require_pull_request(options)
+    except pr_cli.UsageError as error:
+        return pr_cli.usage_failure("pr_github.py", USAGE, error)
+    if options is None:
         print(USAGE, end="")
         return pr_cli.EXIT_OK
 
@@ -427,7 +379,13 @@ def main(argv: list[str] | None = None) -> int:
     except FetchError as error:
         print(f"pr_github.py: fetch failed: {error}", file=sys.stderr)
         return pr_cli.EXIT_FETCH_FAILED
-    return _emit(context, options["output"] if isinstance(options["output"], str) else None)
+    output = options["output"] if isinstance(options["output"], str) else None
+    if output is not None and not pr_cli.write_json_file(
+        "pr_github.py", "--output", output, context
+    ):
+        return pr_cli.EXIT_OUTPUT_FAILED
+    pr_cli.print_json(_summary(context, output))
+    return pr_cli.EXIT_OK
 
 
 if __name__ == "__main__":

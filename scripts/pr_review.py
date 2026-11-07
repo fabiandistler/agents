@@ -19,7 +19,6 @@ standard library only.
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import posixpath
@@ -27,9 +26,9 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import NoReturn
 
 import pr_cli
+from pr_github import is_line_count
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
 from pr_review_sanitize import sanitize_text
 
@@ -62,28 +61,31 @@ SANITIZED_NOTE = (
 MISSING_KEY_SUMMARY = "Review unavailable: the provider is not configured."
 PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
 
-HELP_EPILOG = f"""\
-Environment:
-  OPENCODE_API_KEY   required for a live provider call
-  PR_REVIEW_MODEL    model override (default deepseek-v4.1-flash-free)
-  OPENCODE_BASE_URL  base URL (default https://opencode.ai/zen/v1)
-Examples:
+USAGE = f"""\
+usage: pr_review.py --context FILE [--dry-run [--output FILE] | --response FILE]
+
+Build the pull request review request and parse the model response. Prints
+the review artifact JSON; a missing key or provider failure is an unavailable
+artifact with exit 0, never a pass.
+
+  --context FILE    context JSON produced by pr_github.py
+  --dry-run         print a request summary; no network call
+  --output FILE     with --dry-run, write the full request JSON to FILE
+  --response FILE   parse this canned response instead of calling the provider
+  -h, --help        show this message
+env: OPENCODE_API_KEY (needed for a live call), PR_REVIEW_MODEL (default
+  deepseek-v4.1-flash-free), OPENCODE_BASE_URL (default https://opencode.ai/zen/v1)
+
+examples:
   python3 scripts/pr_review.py --context context.json --dry-run --output request.json
   python3 scripts/pr_review.py --response reply.txt --context context.json
-A missing key or provider failure is an unavailable artifact with exit 0, never a pass.
+
 {pr_cli.exit_help(0, 2, 3, 6)}
 """
 
 
 class ProviderError(Exception):
     """Internal: the provider call failed; `review` turns it into unavailable."""
-
-
-class UsageError(argparse.ArgumentParser):
-    def error(self, message: str) -> NoReturn:
-        self.print_usage(sys.stderr)
-        sys.stderr.write(f"{Path(self.prog).stem}: {message}\n")
-        sys.exit(pr_cli.EXIT_USAGE)
 
 
 def _as_text(value: object) -> str:
@@ -276,10 +278,6 @@ def build_request(context: dict) -> tuple[dict, bool]:
 # --- Review entry points -----------------------------------------------------
 
 
-def _is_count(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
-
-
 def _validate_context(context: dict) -> None:
     """Reject a context that does not match what ``pr_github.py`` emits."""
     validate_identity(context)
@@ -295,8 +293,8 @@ def _validate_context(context: dict) -> None:
             isinstance(item, dict)
             and isinstance(item.get("path"), str)
             and isinstance(item.get("status"), str)
-            and _is_count(item.get("additions"))
-            and _is_count(item.get("deletions"))
+            and is_line_count(item.get("additions"))
+            and is_line_count(item.get("deletions"))
         ):
             raise ContextError("context field 'files' has an entry without path, status or counts")
     if not isinstance(context.get("base_files"), dict):
@@ -393,22 +391,14 @@ def _post(request: dict, api_key: str) -> str:
 # --- CLI ---------------------------------------------------------------------
 
 
-def _emit(payload: dict) -> None:
-    sys.stdout.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
-
-
 def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
     """Print a bounded summary; the full request (up to ~300 KB) goes to `output`."""
-    if output is not None:
-        try:
-            Path(output).write_text(
-                json.dumps(request, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-            )
-        except OSError:
-            sys.stderr.write("pr_review: --output file is not writable\n")
-            return pr_cli.EXIT_OUTPUT_FAILED
+    if output is not None and not pr_cli.write_json_file(
+        "pr_review.py", "--output", output, request
+    ):
+        return pr_cli.EXIT_OUTPUT_FAILED
     system, user = (message["content"].encode("utf-8") for message in request["messages"])
-    _emit(
+    pr_cli.print_json(
         {
             "url": request["url"],
             "model": request["model"],
@@ -421,84 +411,51 @@ def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
     return pr_cli.EXIT_OK
 
 
-def _read_json_file(path: str) -> dict:
-    raw = Path(path).read_text(encoding="utf-8")
-    parsed = json.loads(raw)
-    if not isinstance(parsed, dict):
-        raise ContextError("context is not a JSON object")
-    return parsed
+def _parse_arguments(argv: list[str]) -> dict | None:
+    options = pr_cli.parse_flags(argv, ("--context", "--response", "--output"), ("--dry-run",))
+    if options is None:
+        return None
+    if options["context"] is None:
+        raise pr_cli.UsageError("--context is required")
+    if options["dry_run"] is True and options["response"] is not None:
+        raise pr_cli.UsageError("--dry-run and --response are mutually exclusive")
+    if options["output"] is not None and options["dry_run"] is not True:
+        raise pr_cli.UsageError("--output needs --dry-run")
+    return options
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = UsageError(
-        prog="pr_review.py",
-        description="Build the pull request review request and parse the model response.",
-        epilog=HELP_EPILOG,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "--context", required=True, metavar="FILE", help="context JSON produced by pr_github.py"
-    )
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="print a request summary; no network call",
-    )
-    mode.add_argument(
-        "--response",
-        metavar="FILE",
-        help="parse this canned response instead of calling the provider",
-    )
-    parser.add_argument(
-        "--output", metavar="FILE", help="with --dry-run, write the full request JSON to FILE"
-    )
-    args = parser.parse_args(argv)
-    if args.output is not None and not args.dry_run:
-        parser.error("--output needs --dry-run")
-
-    try:
-        context = _read_json_file(args.context)
-    except OSError:
-        sys.stderr.write("pr_review: context file is not readable\n")
-        return pr_cli.EXIT_BAD_INPUT
-    except ContextError as err:
-        sys.stderr.write(f"pr_review: {err}\n")
-        return pr_cli.EXIT_BAD_INPUT
-    except (UnicodeDecodeError, ValueError):
-        sys.stderr.write("pr_review: context file is not valid JSON\n")
-        return pr_cli.EXIT_BAD_INPUT
-
-    if args.dry_run:
-        try:
-            request, partial = build_request(context)
-        except ContextError as err:
-            sys.stderr.write(f"pr_review: {err}\n")
-            return pr_cli.EXIT_BAD_INPUT
-        return _emit_dry_run(request, partial, args.output)
-
-    if args.response is not None:
-        try:
-            text = Path(args.response).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            sys.stderr.write("pr_review: response file is not readable\n")
-            return pr_cli.EXIT_BAD_INPUT
-        try:
-            artifact = _review_canned(context, text)
-        except ContextError as err:
-            sys.stderr.write(f"pr_review: {err}\n")
-            return pr_cli.EXIT_BAD_INPUT
-        _emit(artifact)
+def _run(options: dict, context: dict) -> int:
+    if options["dry_run"] is True:
+        request, partial = build_request(context)
+        return _emit_dry_run(request, partial, options["output"])
+    if options["response"] is None:
+        pr_cli.print_json(review(context))
         return pr_cli.EXIT_OK
-
     try:
-        artifact = review(context)
-    except ContextError as err:
-        sys.stderr.write(f"pr_review: {err}\n")
+        text = Path(options["response"]).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        print("pr_review.py: --response file is not readable", file=sys.stderr)
         return pr_cli.EXIT_BAD_INPUT
-    _emit(artifact)
+    pr_cli.print_json(_review_canned(context, text))
     return pr_cli.EXIT_OK
 
 
+def main(argv: list[str] | None = None) -> int:
+    arguments = sys.argv[1:] if argv is None else list(argv)
+    try:
+        options = _parse_arguments(arguments)
+    except pr_cli.UsageError as error:
+        return pr_cli.usage_failure("pr_review.py", USAGE, error)
+    if options is None:
+        print(USAGE, end="")
+        return pr_cli.EXIT_OK
+    try:
+        context = pr_cli.read_json_object(str(options["context"]), "--context")
+        return _run(options, context)
+    except (pr_cli.InputError, ContextError) as error:
+        print(f"pr_review.py: {error}", file=sys.stderr)
+        return pr_cli.EXIT_BAD_INPUT
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

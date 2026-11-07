@@ -170,5 +170,5 @@ def test_cli_help_is_short_and_names_exit_codes() -> None:
     run = run_cli("--help")
     assert run.returncode == 0
     assert "exit:" in run.stdout
-    assert "Examples:" in run.stdout
+    assert "examples:" in run.stdout
     assert len(run.stdout.splitlines()) <= 25

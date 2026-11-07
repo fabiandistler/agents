@@ -9,11 +9,9 @@ later review may raise the risk, never lower it.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import sys
-from pathlib import Path
 
 import pr_cli
 import pr_github
@@ -137,16 +135,13 @@ FILE_STATUSES = frozenset(
 )
 
 
-def _count(value: object) -> int | None:
-    """Return a line count, or None when the value is not a non-negative integer."""
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        return None
-    return value
-
-
 def _malformed_fields(entry: dict) -> list[str]:
     """Name the fields of one file entry the policy cannot rely on."""
-    malformed = [field for field in ("additions", "deletions") if _count(entry.get(field)) is None]
+    malformed = [
+        field
+        for field in ("additions", "deletions")
+        if not pr_github.is_line_count(entry.get(field))
+    ]
     if entry.get("status") not in FILE_STATUSES:
         malformed.append("status")
     if not isinstance(entry.get("binary"), bool):
@@ -157,8 +152,15 @@ def _malformed_fields(entry: dict) -> list[str]:
     return malformed
 
 
-def _raise_risk(current: str, candidate: str) -> str:
+def raise_risk(current: str, candidate: str) -> str:
+    """The higher of two risks; a risk is only ever raised, never lowered."""
     return candidate if RISK_ORDER[candidate] > RISK_ORDER[current] else current
+
+
+def _line_count(entry: dict, field: str) -> int:
+    """The count, or 0 for a malformed one, which already made the result high."""
+    value = entry.get(field)
+    return value if pr_github.is_line_count(value) else 0
 
 
 def _is_critical_deletion(path: str) -> bool:
@@ -208,9 +210,8 @@ def classify_pull_request(context: dict) -> dict:
                 )
             entries.append(entry)
 
-    # A malformed count already made the result high; it adds nothing here.
-    additions = sum(_count(entry.get("additions")) or 0 for entry in entries)
-    deletions = sum(_count(entry.get("deletions")) or 0 for entry in entries)
+    additions = sum(_line_count(entry, "additions") for entry in entries)
+    deletions = sum(_line_count(entry, "deletions") for entry in entries)
     changed_lines = additions + deletions
 
     risk = HIGH if reasons_unreadable else LOW
@@ -221,21 +222,21 @@ def classify_pull_request(context: dict) -> dict:
     for entry in entries:
         path_risk, label = _classify_path(entry["path"])
         reasons.append(f"{label}: {entry['path']}")
-        risk = _raise_risk(risk, path_risk)
+        risk = raise_risk(risk, path_risk)
 
     if changed_lines > 1000:
         reasons.append(f"size: {changed_lines} changed lines > 1000")
         risk = HIGH
     elif changed_lines > 300:
         reasons.append(f"size: {changed_lines} changed lines > 300")
-        risk = _raise_risk(risk, MEDIUM)
+        risk = raise_risk(risk, MEDIUM)
 
     if len(entries) > 50:
         reasons.append(f"count: {len(entries)} files > 50")
         risk = HIGH
     elif len(entries) > 20:
         reasons.append(f"count: {len(entries)} files > 20")
-        risk = _raise_risk(risk, MEDIUM)
+        risk = raise_risk(risk, MEDIUM)
 
     for entry in entries:
         path = entry["path"]
@@ -246,14 +247,14 @@ def classify_pull_request(context: dict) -> dict:
                 risk = HIGH
             else:
                 reasons.append(f"deletion: {path}")
-                risk = _raise_risk(risk, MEDIUM)
+                risk = raise_risk(risk, MEDIUM)
         if status == "renamed" or entry.get("renamed_from"):
             renamed_from = entry.get("renamed_from")
             if renamed_from:
                 reasons.append(f"rename: {renamed_from} -> {path}")
             else:
                 reasons.append(f"rename: {path}")
-            risk = _raise_risk(risk, MEDIUM)
+            risk = raise_risk(risk, MEDIUM)
         if entry.get("binary") is True:
             reasons.append(f"binary: {path}")
             risk = HIGH
@@ -316,103 +317,30 @@ examples:
 """
 
 
-class UsageError(Exception):
-    """The command line was not usable."""
-
-
-def _parse_arguments(argv: list[str]) -> dict:
-    options: dict[str, object] = {
-        "context": None,
-        "live": False,
-        "pr": None,
-        "repo": None,
-        "output": None,
-    }
-    index = 0
-    while index < len(argv):
-        argument = argv[index]
-        if argument in ("-h", "--help"):
-            return {"help": True}
-        name, separator, inline = argument.partition("=")
-        if name == "--live":
-            if separator:
-                raise UsageError("--live takes no value")
-            options["live"] = True
-            index += 1
-            continue
-        if name not in {"--context", "--pr", "--repo", "--output"}:
-            raise UsageError(f"unknown argument: {argument}")
-        if separator:
-            value = inline
-            index += 1
-        else:
-            if index + 1 >= len(argv):
-                raise UsageError(f"{name} needs a value")
-            value = argv[index + 1]
-            index += 2
-        if not value:
-            raise UsageError(f"{name} needs a value")
-        options[name[2:]] = value
-
+def _parse_arguments(argv: list[str]) -> dict | None:
+    options = pr_cli.parse_flags(argv, ("--context", "--pr", "--repo", "--output"), ("--live",))
+    if options is None:
+        return None
     has_context = isinstance(options["context"], str)
     has_live = options["live"] is True
     if has_context and has_live:
-        raise UsageError("--context and --live are mutually exclusive")
+        raise pr_cli.UsageError("--context and --live are mutually exclusive")
     if not has_context and not has_live:
-        raise UsageError("one of --context or --live is required")
+        raise pr_cli.UsageError("one of --context or --live is required")
     if has_live:
-        if options["pr"] is None or options["repo"] is None:
-            raise UsageError("--live requires --pr and --repo")
-        try:
-            number = int(str(options["pr"]))
-        except ValueError as error:
-            raise UsageError("--pr must be a positive integer") from error
-        if number <= 0:
-            raise UsageError("--pr must be a positive integer")
-        options["pr"] = number
-        if not pr_github_client.REPO_PATTERN.fullmatch(str(options["repo"])):
-            raise UsageError("--repo must be OWNER/REPO")
+        pr_cli.require_pull_request(options)
     elif options["pr"] is not None or options["repo"] is not None:
-        raise UsageError("--pr and --repo are only valid with --live")
+        raise pr_cli.UsageError("--pr and --repo are only valid with --live")
     return options
-
-
-def _read_context(path: str) -> dict:
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as error:
-        raise ValueError(f"cannot read --context: {error}") from error
-    try:
-        context = json.loads(text)
-    except json.JSONDecodeError as error:
-        raise ValueError(f"--context is not valid JSON: {error}") from error
-    if not isinstance(context, dict):
-        raise TypeError("--context must contain a JSON object")
-    return context
-
-
-def _emit(decision: dict, output: str | None) -> int:
-    text = json.dumps(decision, indent=2) + "\n"
-    if output is None:
-        sys.stdout.write(text)
-        return pr_cli.EXIT_OK
-    try:
-        Path(output).write_text(text, encoding="utf-8")
-    except OSError as error:
-        print(f"pr_risk.py: cannot write --output: {error}", file=sys.stderr)
-        return pr_cli.EXIT_OUTPUT_FAILED
-    return pr_cli.EXIT_OK
 
 
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
         options = _parse_arguments(arguments)
-    except UsageError as error:
-        print(f"pr_risk.py: {error}", file=sys.stderr)
-        print(USAGE, end="", file=sys.stderr)
-        return pr_cli.EXIT_USAGE
-    if options.get("help"):
+    except pr_cli.UsageError as error:
+        return pr_cli.usage_failure("pr_risk.py", USAGE, error)
+    if options is None:
         print(USAGE, end="")
         return pr_cli.EXIT_OK
 
@@ -431,17 +359,18 @@ def main(argv: list[str] | None = None) -> int:
             return pr_cli.EXIT_FETCH_FAILED
     else:
         try:
-            context = _read_context(str(options["context"]))
-        except (ValueError, TypeError) as error:
+            context = pr_cli.read_json_object(str(options["context"]), "--context")
+        except pr_cli.InputError as error:
             print(f"pr_risk.py: {error}", file=sys.stderr)
             return pr_cli.EXIT_BAD_INPUT
 
-    try:
-        decision = classify_pull_request(context)
-    except TypeError as error:
-        print(f"pr_risk.py: malformed context: {error}", file=sys.stderr)
-        return pr_cli.EXIT_BAD_INPUT
-    return _emit(decision, options["output"] if isinstance(options["output"], str) else None)
+    decision = classify_pull_request(context)
+    output = options["output"]
+    if not isinstance(output, str):
+        pr_cli.print_json(decision)
+    elif not pr_cli.write_json_file("pr_risk.py", "--output", output, decision):
+        return pr_cli.EXIT_OUTPUT_FAILED
+    return pr_cli.EXIT_OK
 
 
 if __name__ == "__main__":

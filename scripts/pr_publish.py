@@ -9,7 +9,6 @@ through ``pr_apply.py``. Without ``--write`` nothing is written.
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
@@ -145,116 +144,46 @@ examples:
 VALUE_FLAGS = ("--context", "--pr", "--repo", "--assessment", "--review", "--summary")
 
 
-class UsageError(Exception):
-    """The command line was not usable."""
-
-
-def _parse_arguments(argv: list[str]) -> dict:
-    options: dict[str, object] = {
-        "context": None,
-        "live": False,
-        "pr": None,
-        "repo": None,
-        "assessment": None,
-        "review": None,
-        "summary": None,
-        "write": False,
-        "hold": False,
-    }
-    index = 0
-    while index < len(argv):
-        argument = argv[index]
-        if argument in ("-h", "--help"):
-            return {"help": True}
-        name, separator, inline = argument.partition("=")
-        if name == "--live":
-            if separator:
-                raise UsageError("--live takes no value")
-            options["live"] = True
-            index += 1
-            continue
-        if name in ("--write", "--hold"):
-            if separator:
-                raise UsageError(f"{name} takes no value")
-            options[name[2:]] = True
-            index += 1
-            continue
-        if name not in VALUE_FLAGS:
-            raise UsageError(f"unknown argument: {argument}")
-        if separator:
-            value = inline
-            index += 1
-        else:
-            if index + 1 >= len(argv):
-                raise UsageError(f"{name} needs a value")
-            value = argv[index + 1]
-            index += 2
-        if not value:
-            raise UsageError(f"{name} needs a value")
-        options[name[2:]] = value
-
+def _parse_arguments(argv: list[str]) -> dict | None:
+    options = pr_cli.parse_flags(argv, VALUE_FLAGS, ("--live", "--write", "--hold"))
+    if options is None:
+        return None
     if options["hold"] is True:
         if any(
             options[name] is not None for name in ("context", "assessment", "review", "summary")
         ):
-            raise UsageError("--hold takes no --context, --assessment, --review or --summary")
+            raise pr_cli.UsageError(
+                "--hold takes no --context, --assessment, --review or --summary"
+            )
         if options["live"] is not True:
-            raise UsageError("--hold requires --live")
+            raise pr_cli.UsageError("--hold requires --live")
     else:
         for required in ("assessment", "review"):
             if options[required] is None:
-                raise UsageError(f"--{required} is required")
+                raise pr_cli.UsageError(f"--{required} is required")
 
     has_context = isinstance(options["context"], str)
     has_live = options["live"] is True
     if has_context and has_live:
-        raise UsageError("--context and --live are mutually exclusive")
+        raise pr_cli.UsageError("--context and --live are mutually exclusive")
     if not has_context and not has_live:
-        raise UsageError("one of --context or --live is required")
+        raise pr_cli.UsageError("one of --context or --live is required")
     if options["write"] is True and not has_live:
-        raise UsageError("--write requires --live")
-    if not has_live:
-        if options["pr"] is not None or options["repo"] is not None:
-            raise UsageError("--pr and --repo are only valid with --live")
-        return options
-
-    if options["pr"] is None or options["repo"] is None:
-        raise UsageError("--live requires --pr and --repo")
-    try:
-        number = int(str(options["pr"]))
-    except ValueError as error:
-        raise UsageError("--pr must be a positive integer") from error
-    if number <= 0:
-        raise UsageError("--pr must be a positive integer")
-    options["pr"] = number
-    if not pr_github_client.REPO_PATTERN.fullmatch(str(options["repo"])):
-        raise UsageError("--repo must be OWNER/REPO")
+        raise pr_cli.UsageError("--write requires --live")
+    if has_live:
+        pr_cli.require_pull_request(options)
+    elif options["pr"] is not None or options["repo"] is not None:
+        raise pr_cli.UsageError("--pr and --repo are only valid with --live")
     return options
-
-
-def _read_json(path: str, flag: str) -> dict:
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as error:
-        raise pr_plan.ArtifactError(f"cannot read {flag}: {error}") from error
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError as error:
-        raise pr_plan.ArtifactError(f"{flag} is not valid JSON: {error}") from error
-    if not isinstance(payload, dict):
-        raise pr_plan.ArtifactError(f"{flag} must contain a JSON object")
-    return payload
 
 
 def main(argv: list[str] | None = None, client=None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
         options = _parse_arguments(arguments)
-    except UsageError as error:
-        print(f"pr_publish.py: {error}", file=sys.stderr)
-        print(USAGE, end="", file=sys.stderr)
-        return pr_cli.EXIT_USAGE
-    if options.get("help"):
+    except pr_cli.UsageError as error:
+        return pr_cli.usage_failure("pr_publish.py", USAGE, error)
+    if options is None:
         print(USAGE, end="")
         return pr_cli.EXIT_OK
 
@@ -285,8 +214,8 @@ def main(argv: list[str] | None = None, client=None) -> int:
         return _emit(payload, options["write"] is True)
 
     try:
-        assessment = _read_json(str(options["assessment"]), "--assessment")
-        review = _read_json(str(options["review"]), "--review")
+        assessment = pr_cli.read_json_object(str(options["assessment"]), "--assessment")
+        review = pr_cli.read_json_object(str(options["review"]), "--review")
         if options["live"] is True:
             try:
                 payload = publish_live(
@@ -307,14 +236,14 @@ def main(argv: list[str] | None = None, client=None) -> int:
                 )
                 return pr_cli.EXIT_FETCH_FAILED
         else:
-            context = _read_json(str(options["context"]), "--context")
+            context = pr_cli.read_json_object(str(options["context"]), "--context")
             payload = pr_plan.plan_publish(
                 context,
                 assessment,
                 review,
                 auto_merge=os.environ.get(AUTO_MERGE_ENV),
             )
-    except (pr_plan.ArtifactError, pr_apply.PlanError) as error:
+    except (pr_cli.InputError, pr_plan.ArtifactError, pr_apply.PlanError) as error:
         print(f"pr_publish.py: {error}", file=sys.stderr)
         return pr_cli.EXIT_BAD_INPUT
 
@@ -326,7 +255,7 @@ def main(argv: list[str] | None = None, client=None) -> int:
 
 
 def _emit(payload: dict, write: bool) -> int:
-    sys.stdout.write(json.dumps(payload, indent=2) + "\n")
+    pr_cli.print_json(payload)
     if write and payload.get("ok") is False:
         return pr_cli.EXIT_ACTION_FAILED
     return pr_cli.EXIT_OK
