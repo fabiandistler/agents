@@ -103,6 +103,13 @@ sub-skill. Command skills run only when invoked, such as
 covers routers, the list of command skills, the shared instructions, the merge
 and secret guards, and reading `skills.json` without installing.
 
+**Only the human merges.** Agents never merge pull requests or enable
+auto-merge; the merge guard blocks it. The one exception is this repository's
+CI bot, which may enable native auto-merge on a gated docs-only pull request
+that then waits for the required checks
+([ADR-0011](docs/adr/0011-pr-review-merge-exception.md),
+[rule details](docs/usage.md)).
+
 ## Skill catalogue
 
 Categories marked with a router register only that router; every sub-skill is

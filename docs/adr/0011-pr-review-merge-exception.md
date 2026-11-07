@@ -3,60 +3,94 @@
 ## Status
 
 Accepted (2026-10-28) by the maintainer on #621, for the gated cases below
-only. Not yet active: the merge capability ships with #635 and the merge-rule
-text with #636. The interactive merge guard remains unchanged.
+only. Amended 2026-11-07 with decisions A–D. Implemented in #635 and in force
+from merge, but inert until the maintainer sets `PR_AUTO_MERGE=true` at the
+end of the [rollout](../agents/pr-review-runbook.md#rollout). The interactive
+merge guard is unchanged.
 
 ## Context
 
-The PR review feature (#621, #630–634) separates a read-only model review from
-a deterministic publisher. Its current writer can label, comment and request
-a maintainer review, but cannot approve or enable auto-merge. The repository
-currently reserves merging for humans. Automating even low-risk merges would
-change that governance boundary, so a ready issue or a passing model verdict
-cannot grant the exception.
+The repository reserves merging for humans: coding agents act under the
+maintainer's GitHub account, and agents merging their own pull requests led to
+red-CI merges and reverts (#557). The merge guard enforces that rule on every
+interactive agent.
+
+The PR review pipeline (#621) splits a read-only model review from a
+model-free publisher. Routine documentation pull requests still wait for the
+maintainer even when they are low risk and the review passed. Automating those
+merges crosses the governance boundary, so it needs an explicit decision; a
+passing model verdict alone cannot grant it.
 
 ## Decision
 
-Ship the advisory review pipeline first, then add the docs-only CI exception
-as a separately reviewed change (#635). The exception authorizes one
-model-free CI publisher to enable GitHub native auto-merge, never direct
-merging and never bot approval. Interactive agents keep the existing merge
-prohibition.
+One narrow exception to "only the human merges": the model-free `publish` job
+of `.github/workflows/pr-review.yml` may enable GitHub's native auto-merge
+(merge commit, head pinned with `expectedHeadOid`) on a docs-only pull
+request. It never merges directly, never approves and never requests changes.
+No interactive agent gains any merge right; the merge guard
+(`scripts/pr_merge_guard.py`, `merge-guard` plugin) stays as it is.
 
-The exception requires all of these gates together:
+The model job holds the model key and no write scope; the publishing job holds
+the write scope and no model key. The model's output is a recommendation that
+can only raise the risk.
 
-- An explicit, off-by-default `PR_AUTO_MERGE=true` operator setting.
-- Low deterministic risk and a complete passing model review; the model may
-  only raise the risk floor. Policy documents, skills, workflow changes and
-  automation changes stay outside low risk.
-- A same-repository, non-draft, open and mergeable PR to the default branch.
-- Fresh head SHA, file policy, labels and review state immediately before
-  writing, with no human change request or `do-not-merge` veto.
-- Required `checks`, `mermaid` and `secrets` enforced by the default branch's
-  ruleset, verified by a docs PR waiting for those checks.
-- Bot-owned enable/disable state so a later risk change revokes only the
-  bot's auto-merge, preserving human-controlled auto-merge.
+All gates must hold on data re-fetched right before the write:
 
-The runbook's [acceptance record](../agents/pr-review-runbook.md#acceptance-record)
-tracks the required manual evidence. The existing code, workflow permissions,
-repository ruleset, variables, secrets and interactive guard are unchanged by
-this decision. The merge implementation and the operator rollout are reviewed
-separately.
+- `PR_AUTO_MERGE` is exactly `true` (off by default).
+- Deterministic risk is low: only `docs/**` outside `docs/agents/` and
+  `docs/adr/`, `GLOSSARY.md`, `MAINTENANCE.md` or `maintenance/reports/**`,
+  within the size limits and with no deletion or rename. `README.md` and the
+  ADRs state policy, including this rule, so they are medium.
+- The review is complete (not partial) with verdict `pass`.
+- Same repository, not a draft, targets the default branch, mergeable.
+- Head SHA unchanged since the assessment; no human change request; no
+  `do-not-merge`.
+
+Decisions taken on 2026-11-07:
+
+- **A. The ruleset waits for checks.** The publisher does not require green
+  checks at enable time. The default ruleset requires `checks`, `mermaid` and
+  `secrets`, and native auto-merge waits for them. Pending checks never
+  disable the bot's auto-merge; failing checks block the merge. Adding the
+  required checks is a one-time manual step of the rollout.
+- **B. `do-not-merge` disables any auto-merge.** It is a hard veto, applied at
+  once through a `labeled` trigger, even to an auto-merge a human enabled.
+  This is the only case in which the bot touches a human-enabled auto-merge.
+- **C. One integration branch.** The pipeline, auto-merge and docs land
+  together in one pull request that supersedes #637.
+- **D. Already-mergeable pull requests stay with the human.** When GitHub
+  refuses to arm auto-merge because the checks are already done, the
+  publisher records "not enabled", adds `needs-review` and says so in its
+  comment. It never falls back to a direct merge.
+
+The bot marks its own auto-merge with `auto-merge:bot`. It disables only that
+one when a later push, a worse verdict or a failed gate revokes eligibility,
+and a model-free `hold` job disables it on every push before the new head is
+reviewed.
 
 ## Considered options
 
-- **Advisory review with human merges only.** Provides labels and findings
-  with a small write surface, but routine documentation still waits on a human.
-- **Narrow native auto-merge exception (chosen).** Reduces that queue;
-  requires tested revocation and enforced checks.
-- **LLM-held write or merge credential.** Rejected: untrusted review input must
-  not control repository writes.
-- **Direct bot merge or general auto-merge.** Rejected: it would bypass native
-  check waiting or expand beyond the intended documentation-only scope.
+- **Advisory review, human merges only.** Smallest write surface, but routine
+  documentation keeps queueing behind risky changes.
+- **Narrow native auto-merge (chosen).** Removes that queue for the safest
+  class; GitHub's ruleset remains the last word on checks.
+- **Model-held write or merge credential.** Rejected: untrusted pull request
+  text would steer a credential that can write to the repository.
+- **Direct bot merge.** Rejected: it bypasses GitHub's native wait for the
+  required checks and turns a bot bug into an immediate merge.
+- **Gate on green checks at enable time.** Rejected (decision A): it
+  duplicates the ruleset, races with running checks and would disable
+  auto-merge while checks are merely pending.
+- **Auto-merge for medium risk or for `README.md` and ADRs.** Rejected: those
+  files hold policy, and a pull request could loosen the rules that judge it.
 
 ## Consequences
 
-The review feature can be evaluated before any merge authority is live. #635
-and the merge-rule portion of #636 remain open until the maintainer reviews
-the exact rule change and its implementation, configures the required checks
-and records live acceptance.
+- A merge through auto-merge armed with `GITHUB_TOKEN` starts no `push`
+  workflow on `main`. Pages is unaffected (its inputs are never low risk); CI
+  on `main` runs with the next human push.
+- Removing `do-not-merge` re-arms nothing until the next push or a manual
+  dispatch.
+- The [acceptance record](../agents/pr-review-acceptance.md) holds the live
+  evidence: a dry run before the variable is set, then a docs pull request
+  that waited for the checks and a non-docs pull request without auto-merge.

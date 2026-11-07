@@ -195,4 +195,6 @@ tests with the change they cover.
 
 The PR body names its issue with `Closes #n`. When there is no issue, write
 `No issue: <reason>`; the `issue-links` check looks for that phrase outside
-code spans. Open the PR ready for review: only the human merges.
+code spans. Open the PR ready for review: only the human merges. The one exception is the
+CI bot's auto-merge of gated docs-only PRs
+([ADR-0011](adr/0011-pr-review-merge-exception.md)); an agent never merges.
