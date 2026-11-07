@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import re
 
+from pr_review_response import SEVERITIES
+
 COMMENT_MARKER = "<!-- pr-review-bot -->"
 # The login the workflow's GITHUB_TOKEN writes as. A comment by anyone else is
 # never the sticky comment, even when it quotes the marker.
 COMMENT_AUTHOR = "github-actions[bot]"
-SEVERITIES = ("info", "warning", "blocker")
 
 
 def _single_line(value: object) -> str:

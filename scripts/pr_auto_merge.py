@@ -8,9 +8,8 @@ repository variable, for a low-risk pull request whose review passed. The
 from __future__ import annotations
 
 import pr_risk
+from pr_labels import AUTO_MERGE_BOT, DO_NOT_MERGE
 
-DO_NOT_MERGE = "do-not-merge"
-AUTO_MERGE_LABEL = "auto-merge:bot"
 # Branch deletion after the merge comes from the repository setting
 # `delete_branch_on_merge`: the enablePullRequestAutoMerge mutation has no
 # field for it.
@@ -73,7 +72,7 @@ def _state(context: dict, gates: str) -> str:
     active = context.get("auto_merge_active") is True
     if active and DO_NOT_MERGE in labels:
         return "disabled"
-    if active and AUTO_MERGE_LABEL not in labels:
+    if active and AUTO_MERGE_BOT not in labels:
         return "human"
     if gates == GATES_HOLD:
         return "kept" if active else "enabled"
@@ -122,6 +121,6 @@ def plan_hold(context: dict) -> tuple[str, dict | None]:
     labels = context["labels"]
     if context.get("auto_merge_active") is not True:
         return "off", None
-    if DO_NOT_MERGE in labels or AUTO_MERGE_LABEL in labels:
+    if DO_NOT_MERGE in labels or AUTO_MERGE_BOT in labels:
         return "disabled", _action(context, "disabled")
     return "human", None

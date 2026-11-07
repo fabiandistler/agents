@@ -14,25 +14,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import pr_github_client
+from pr_labels import LABELS
 
 SCHEMA_VERSION = 1
 
+# The only login a plan may request as reviewer or assign.
 BOT_LOGIN = "fabiandistler"
-
-# The ten labels the pipeline uses. Creating them is idempotent, so a fresh
-# repository needs no manual setup before the first publish run.
-LABELS = {
-    "risk:low": ("0e8a16", "Low risk: documentation or reports, auto-merge eligible"),
-    "risk:medium": ("fbca04", "Medium risk: needs a human review"),
-    "risk:high": ("b60205", "High risk: never auto-merged"),
-    "review:pass": ("0e8a16", "Review verdict: pass"),
-    "review:concerns": ("fbca04", "Review verdict: concerns"),
-    "review:block": ("b60205", "Review verdict: block"),
-    "review:unavailable": ("6a737d", "The review could not be produced"),
-    "needs-review": ("d93f0b", "A human should review this pull request"),
-    "do-not-merge": ("000000", "Hard stop: never merge this pull request"),
-    "auto-merge:bot": ("1d76db", "Auto-merge enabled by the review bot"),
-}
 
 # GitHub has no REST endpoint for auto-merge; both writes are GraphQL mutations.
 # The merge method is fixed to a merge commit. Branch deletion after the merge

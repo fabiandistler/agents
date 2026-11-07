@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import re
 
+from pr_risk import RISK_ORDER
+
 SCHEMA_VERSION = 1
 
-RISKS = ("low", "medium", "high")
+# The artifact statuses and the verdicts and severities a model may answer with.
+REVIEW_STATUSES = ("ok", "unavailable", "skipped")
 VERDICTS = ("pass", "concerns", "block")
 SEVERITIES = ("info", "warning", "blocker")
 
@@ -144,7 +147,7 @@ def parse_response(text: str, context: dict, partial: bool = False) -> dict:
     # An unknown severity is not guessed: the whole response counts as unparseable.
     severities_known = all(finding["severity"] in SEVERITIES for finding in findings)
     if (
-        risk not in RISKS
+        risk not in RISK_ORDER
         or verdict not in VERDICTS
         or not summary
         or not findings

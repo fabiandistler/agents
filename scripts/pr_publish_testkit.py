@@ -14,22 +14,18 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+import pr_actions
+import pr_comment
 import pr_github_client
 
 SCRIPT = Path(__file__).resolve().parent / "pr_publish.py"
-MARKER = "<!-- pr-review-bot -->"
+MARKER = pr_comment.COMMENT_MARKER
 # The login GITHUB_TOKEN writes as; only its comments can be the sticky comment.
-BOT_AUTHOR = "github-actions[bot]"
-BOT = "fabiandistler"
+BOT_AUTHOR = pr_comment.COMMENT_AUTHOR
+BOT = pr_actions.BOT_LOGIN
 
-ACTION_KINDS = {
-    "set_labels",
-    "upsert_comment",
-    "request_reviewer",
-    "assign",
-    "enable_auto_merge",
-    "disable_auto_merge",
-}
+# The kinds the writer resolves; a plan must name no other.
+ACTION_KINDS = set(pr_actions.RESOLVERS)
 
 
 def file_entry(

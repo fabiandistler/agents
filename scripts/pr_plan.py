@@ -15,17 +15,11 @@ import pr_auto_merge
 import pr_comment
 import pr_github_client
 import pr_risk
+from pr_actions import BOT_LOGIN
+from pr_labels import AUTO_MERGE_BOT, NEEDS_REVIEW, RISK_PREFIX, VERDICT_PREFIX
+from pr_review_response import REVIEW_STATUSES, VERDICTS
 
 SCHEMA_VERSION = 1
-
-BOT_LOGIN = "fabiandistler"
-
-RISK_PREFIX = "risk:"
-VERDICT_PREFIX = "review:"
-NEEDS_REVIEW = "needs-review"
-
-REVIEW_STATUSES = ("ok", "unavailable", "skipped")
-VERDICTS = ("pass", "concerns", "block")
 
 
 class ArtifactError(ValueError):
@@ -167,7 +161,7 @@ def _plan_labels(
     elif NEEDS_REVIEW in existing:
         remove.append(NEEDS_REVIEW)
 
-    bot_label = pr_auto_merge.AUTO_MERGE_LABEL
+    bot_label = AUTO_MERGE_BOT
     bot_auto_merge = auto_merge_state in pr_auto_merge.BOT_STATES
     if bot_auto_merge and bot_label not in existing:
         add.append(bot_label)
@@ -297,10 +291,8 @@ def plan_hold(context: dict) -> dict:
 
     state, action = pr_auto_merge.plan_hold(context)
     actions: list[dict] = []
-    if pr_auto_merge.AUTO_MERGE_LABEL in context["labels"]:
-        actions.append(
-            {"kind": "set_labels", "add": [], "remove": [pr_auto_merge.AUTO_MERGE_LABEL]}
-        )
+    if AUTO_MERGE_BOT in context["labels"]:
+        actions.append({"kind": "set_labels", "add": [], "remove": [AUTO_MERGE_BOT]})
     if action is not None:
         actions.append(action)
     return _plan(context, "planned", None, actions, {**decision, "auto_merge": state})

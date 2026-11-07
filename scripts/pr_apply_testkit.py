@@ -12,6 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pr_actions
 import pr_github_client
 
 REPO = "fabiandistler/agents"
@@ -21,7 +22,7 @@ ISSUE_LABELS_PATH = f"/repos/{REPO}/issues/{NUMBER}/labels"
 ISSUE_COMMENTS_PATH = f"/repos/{REPO}/issues/{NUMBER}/comments"
 REVIEWERS_PATH = f"/repos/{REPO}/pulls/{NUMBER}/requested_reviewers"
 ASSIGNEES_PATH = f"/repos/{REPO}/issues/{NUMBER}/assignees"
-BOT = "fabiandistler"
+BOT = pr_actions.BOT_LOGIN
 
 SCRIPT = Path(__file__).resolve().parent / "pr_apply.py"
 
