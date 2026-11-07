@@ -1,6 +1,6 @@
 # Diagrams & Illustrations
 
-Inline SVG gives the agent a real pen. The output is vector art the user can tweak by hand and copy out. Don't fall back to ASCII or "imagine a flowchart that…" prose — render it.
+Inline SVG gives the agent a real pen. The output is vector art the user can tweak by hand and copy out. Don't fall back to ASCII or "imagine a flowchart that…" prose — render it. Read this when the page is built around what connects to what: services, pipelines, request paths. Code the reader reviews or walks file by file belongs in `code-review-and-pr.md`; an explainer that merely contains a figure stays in `reports-and-research.md`.
 
 ## Figure sheet for a post or doc
 

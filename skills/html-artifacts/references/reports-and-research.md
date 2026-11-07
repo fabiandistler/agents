@@ -1,6 +1,6 @@
 # Reports, Research & Explainers
 
-Recurring documents — status updates, post-mortems, deep dives — benefit most from a bit of structure and color. People read them when they're scannable; they ignore them when they're walls of text.
+Recurring documents — status updates, post-mortems, deep dives — benefit most from a bit of structure and color. People read them when they're scannable; they ignore them when they're walls of text. Read this when the page explains how or why something works, or what happened, in prose sections. A page that is mainly a boxes-and-arrows view of a system belongs in `diagrams-and-illustrations.md`; code under review in `code-review-and-pr.md`.
 
 ## Contents
 

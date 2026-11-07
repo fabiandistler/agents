@@ -30,6 +30,7 @@ It decides how a deliverable is rendered. What goes *in* the deliverable is ofte
 - Weekly/monthly leadership status, launch announcements, risk escalations → `stakeholder-update`.
 - Standup prep or a status update assembled from recent repo activity → suggest the user run `repo-status`, then render its Yesterday / Today / Blockers output as HTML.
 - The internal structure of a technical explanation (problem before solution) → `problem-first-explanation`.
+- Review findings on a diff or PR, and a PR description → whichever review or PR-writing skill is installed (in this repo's cloud sessions: `code-review` and `pr`) supplies the substance; render it with `references/code-review-and-pr.md`. The PR body posted on the forge stays markdown; the HTML page is the shareable companion for reviewers.
 
 ## When to stay in markdown
 
@@ -58,20 +59,25 @@ Every artifact this skill produces must satisfy all of these:
 
 ## Category index
 
-Pick the matching reference file below before drafting. Each one has the per-category pattern (what the layout should look like, what's load-bearing, what mistakes to avoid) plus a sketch of a concrete example.
+Before drafting, read `references/matching-your-style.md` for every artifact, alongside its category reference: it holds the default look when no style exists and the steps for adopting one that does. Then pick exactly one row below. Choose by what the page is built around, not by the verbs in the request; "explain" or "compare" alone fits several rows.
 
-| If the request is about… | Read… |
-|---|---|
-| Brainstorming options, side-by-side comparisons, implementation plans, exploring directions before committing | `references/exploration-and-planning.md` |
-| Annotated diffs, PR writeups, code review, module maps, "explain this code" | `references/code-review-and-pr.md` |
-| Design systems, component sheets, mockups, prototyping animations or interactions | `references/design-and-prototypes.md` |
-| Inline SVG figures, flowcharts, architecture diagrams, technical illustrations | `references/diagrams-and-illustrations.md` |
-| Status reports, incident timelines, post-mortems, concept explainers, feature deep-dives, learning material | `references/reports-and-research.md` |
-| Slide decks, arrow-key presentations | `references/decks.md` |
-| One-off custom editors: triage boards, flag toggles, prompt tuners, dataset curators | `references/custom-editors.md` |
-| Matching the user's existing visual style or design system | `references/matching-your-style.md` |
+| The page is built around… | Typical requests | Read… |
+|---|---|---|
+| Two or more candidates side by side, or a plan for the one chosen | compare approaches, flows, or UI directions; brainstorm; implementation plan | `references/exploration-and-planning.md` |
+| Code at file and line level that the reader reviews, changes, or navigates | annotated diff, code review, PR writeup, module map of a package | `references/code-review-and-pr.md` |
+| One design to look at or click through | mockup, component sheet, design tokens, animation or interaction prototype | `references/design-and-prototypes.md` |
+| What connects to what in a system, drawn as boxes and arrows | how services fit together, request flow, deploy pipeline, figures for an article | `references/diagrams-and-illustrations.md` |
+| How or why something works, or what happened, in prose sections | concept or feature explainer, onboarding material, status report, incident timeline, post-mortem | `references/reports-and-research.md` |
+| Slides presented in sequence | deck, arrow-key presentation, talk | `references/decks.md` |
+| Controls that change state and export it back as text | triage or reorder board, flag toggles, prompt tuner, dataset curator | `references/custom-editors.md` |
 
-If the request spans multiple categories (e.g., "implementation plan with mockups and a flowchart"), read all the relevant references. They're short.
+When two rows still seem to fit, these tie-breaks decide:
+
+- **Code, system, or concept.** Code the reader reviews, changes, or walks file by file → `code-review-and-pr`. What connects to what (services, pipelines, request paths) → `diagrams-and-illustrations`. How or why something works, for a learner → `reports-and-research`. A figure inside an explainer does not move it to diagrams.
+- **Several candidates or one.** Two or more candidates to choose between → `exploration-and-planning`, even when each candidate is a mockup or a flow. One design to build out → `design-and-prototypes`.
+- **State the reader changes.** If the reader manipulates the page and exports the result → `custom-editors`, even when it lays items out side by side.
+
+If the request asks for several deliverables (e.g., "implementation plan with mockups and a flowchart"), read the reference for each. They're short.
 
 ## Output mechanics
 
@@ -95,7 +101,7 @@ HTML artifacts cost roughly 2–4× the tokens of a markdown equivalent and take
 
 ## A note on taste
 
-Bad-looking HTML is worse than good markdown. If the artifact would render as a wall of generic Tailwind cards with emoji headers, slow down. Read `references/matching-your-style.md` first. If the user has a design-system skill or design system file in the repo, lean on it. If not, default to a calm typographic layout — system serif body, restrained palette, real structure — rather than a busy "dashboard" look.
+Bad-looking HTML is worse than good markdown. If the artifact would render as a wall of generic Tailwind cards with emoji headers, slow down. That is why `references/matching-your-style.md` is read for every artifact, alongside its category reference (see the Category index). If the user has a design-system skill or design system file in the repo, lean on it. If not, default to a calm typographic layout — system serif body, restrained palette, real structure — rather than a busy "dashboard" look.
 
 ## Credits
 
