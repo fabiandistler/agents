@@ -211,21 +211,21 @@ def test_cli_write_requires_live(tmp_path):
     assert code == 2
 
 
-def test_cli_write_outside_github_actions_exits_five(monkeypatch, tmp_path):
+def test_cli_write_outside_github_actions_exits_seven(monkeypatch, tmp_path):
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
     code = pr_publish.main([*live_args(tmp_path), "--write"])
 
-    assert code == 5
+    assert code == 7
 
 
-def test_cli_write_inside_actions_without_a_token_exits_four(monkeypatch, tmp_path):
+def test_cli_write_inside_actions_without_a_token_exits_five(monkeypatch, tmp_path):
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
     code = pr_publish.main([*live_args(tmp_path), "--write"])
 
-    assert code == 4
+    assert code == 5
 
 
 def test_cli_write_applies_the_plan_and_prints_the_results(monkeypatch, tmp_path, capsys):
@@ -331,10 +331,17 @@ def test_cli_hold_write_disables_the_bots_auto_merge_and_its_label(monkeypatch, 
     ]
 
 
-def test_cli_hold_write_outside_github_actions_exits_five(monkeypatch):
+def test_cli_hold_write_outside_github_actions_exits_seven(monkeypatch):
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
-    assert pr_publish.main([*hold_args(), "--write"], client=held_pull_request()) == 5
+    assert pr_publish.main([*hold_args(), "--write"], client=held_pull_request()) == 7
+
+
+def test_cli_hold_write_inside_actions_without_a_token_exits_five(monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    assert pr_publish.main([*hold_args(), "--write"]) == 5
 
 
 @pytest.mark.parametrize(

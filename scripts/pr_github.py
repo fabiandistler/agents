@@ -21,6 +21,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
+import pr_cli
 from pr_github_client import (
     REPO_PATTERN,
     FetchError,
@@ -38,7 +39,7 @@ BASE_BYTES_LIMIT = 200 * 1024
 BASE_PATH_LIMIT = 5000
 STATUS_ALIASES = {"copied": "added", "changed": "modified", "unchanged": "modified"}
 
-USAGE = """usage: pr_github.py --pr N --repo OWNER/REPO [--output FILE]
+USAGE = f"""usage: pr_github.py --pr N --repo OWNER/REPO [--output FILE]
 
 Fetch a pull request through the GitHub REST API and write the context JSON
 consumed by the risk policy and review pipeline. Reads GITHUB_TOKEN. Stdout
@@ -53,8 +54,7 @@ examples:
   python3 scripts/pr_github.py --pr 42 --repo fabiandistler/agents --output context.json
   GITHUB_TOKEN=... python3 scripts/pr_github.py --pr 42 --repo o/r
 
-exit: 0 context written | 2 usage | 3 output write failed |
-      4 fetch failed | 5 missing GITHUB_TOKEN
+{pr_cli.exit_help(0, 2, 4, 5, 6)}
 """
 
 
@@ -401,9 +401,9 @@ def _emit(context: dict, output: str | None) -> int:
             Path(output).write_text(json.dumps(context, indent=2) + "\n", encoding="utf-8")
         except OSError as error:
             print(f"pr_github.py: cannot write --output: {error}", file=sys.stderr)
-            return 3
+            return pr_cli.EXIT_OUTPUT_FAILED
     sys.stdout.write(json.dumps(_summary(context, output), indent=2) + "\n")
-    return 0
+    return pr_cli.EXIT_OK
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -413,20 +413,20 @@ def main(argv: list[str] | None = None) -> int:
     except UsageError as error:
         print(f"pr_github.py: {error}", file=sys.stderr)
         print(USAGE, end="", file=sys.stderr)
-        return 2
+        return pr_cli.EXIT_USAGE
     if options.get("help"):
         print(USAGE, end="")
-        return 0
+        return pr_cli.EXIT_OK
 
     token = os.environ.get("GITHUB_TOKEN") or None
     try:
         context = fetch_context(str(options["repo"]), int(str(options["pr"])), token=token)
     except MissingTokenError as error:
         print(f"pr_github.py: {error}", file=sys.stderr)
-        return 5
+        return pr_cli.EXIT_MISSING_TOKEN
     except FetchError as error:
         print(f"pr_github.py: fetch failed: {error}", file=sys.stderr)
-        return 4
+        return pr_cli.EXIT_FETCH_FAILED
     return _emit(context, options["output"] if isinstance(options["output"], str) else None)
 
 

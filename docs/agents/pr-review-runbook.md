@@ -187,7 +187,7 @@ The last command prints the plan: label changes, the comment body, the
 reviewer action and `decision.auto_merge` (`enabled` for an eligible docs
 pull request, else `off`, `kept`, `disabled` or `human`). Drop
 `PR_AUTO_MERGE=true` to see today's behaviour. `--write` is refused outside
-GitHub Actions (exit 5).
+GitHub Actions (exit 7).
 
 **In Actions.** Dispatch with the default `dry_run: true`:
 

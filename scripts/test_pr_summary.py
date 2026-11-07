@@ -116,7 +116,7 @@ def test_the_cli_reports_an_unwritable_summary_with_its_own_exit_code(tmp_path):
 
     result = run_cli(*arguments)
 
-    assert result.returncode == pr_publish.EXIT_SUMMARY_FAILED
+    assert result.returncode == 6
     assert '"status": "planned"' in result.stdout, "the plan is still printed"
 
 
@@ -129,5 +129,5 @@ def test_a_failed_live_fetch_still_leaves_a_summary(monkeypatch, tmp_path):
 
     status = pr_publish.main([*live_args(tmp_path), "--summary", str(summary_file)])
 
-    assert status == pr_publish.EXIT_LIVE_FAILED
+    assert status == 4
     assert "- live fetch failed: GitHub API returned 502" in summary_file.read_text("utf-8")

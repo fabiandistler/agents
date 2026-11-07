@@ -17,14 +17,9 @@ from pathlib import Path
 from typing import Protocol
 
 import pr_actions
+import pr_cli
 import pr_github_client
 from pr_actions import Operation, PlanError
-
-EXIT_OK = 0
-EXIT_ACTION_FAILED = 1
-EXIT_USAGE = 2
-EXIT_BAD_PLAN = 3
-EXIT_OUTSIDE_ACTIONS = 5
 
 
 class ApplyError(RuntimeError):
@@ -199,7 +194,7 @@ def resolve_operations(plan: object) -> list[Operation]:
 
 # --- CLI ---------------------------------------------------------------------
 
-USAGE = """usage: pr_apply.py --plan FILE [--write]
+USAGE = f"""usage: pr_apply.py --plan FILE [--write]
 
 Apply a pr_publish plan through the GitHub REST API. Without --write it prints
 the resolved HTTP operations and makes no network call.
@@ -212,8 +207,7 @@ examples:
   python3 scripts/pr_apply.py --plan plan.json
   GITHUB_TOKEN=... python3 scripts/pr_apply.py --plan plan.json --write
 
-exit: 0 all actions applied | 1 an action failed | 2 usage |
-      3 bad plan or unsupported action | 5 --write outside GitHub Actions
+{pr_cli.exit_help(0, 1, 2, 3, 5, 7)}
 """
 
 
@@ -277,19 +271,19 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
     except UsageError as error:
         print(f"pr_apply.py: {error}", file=sys.stderr)
         print(USAGE, end="", file=sys.stderr)
-        return EXIT_USAGE
+        return pr_cli.EXIT_USAGE
     if options.get("help"):
         print(USAGE, end="")
-        return EXIT_OK
+        return pr_cli.EXIT_OK
 
     write = options["write"] is True
     token = os.environ.get("GITHUB_TOKEN") or None
-    if write and (os.environ.get("GITHUB_ACTIONS") != "true" or token is None):
-        print(
-            "pr_apply.py: --write is only available inside GitHub Actions with GITHUB_TOKEN",
-            file=sys.stderr,
-        )
-        return EXIT_OUTSIDE_ACTIONS
+    if write and os.environ.get("GITHUB_ACTIONS") != "true":
+        print("pr_apply.py: --write is only available inside GitHub Actions", file=sys.stderr)
+        return pr_cli.EXIT_OUTSIDE_ACTIONS
+    if write and token is None:
+        print("pr_apply.py: --write needs GITHUB_TOKEN", file=sys.stderr)
+        return pr_cli.EXIT_MISSING_TOKEN
 
     try:
         plan = _read_plan(str(options["plan"]))
@@ -299,7 +293,7 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
             results = apply_plan(plan, client or pr_github_client.GitHubClient(token))
     except PlanError as error:
         print(f"pr_apply.py: {error}", file=sys.stderr)
-        return EXIT_BAD_PLAN
+        return pr_cli.EXIT_BAD_INPUT
 
     if not write:
         _emit(
@@ -312,7 +306,7 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
                 "operations": [operation.as_json() for operation in operations],
             }
         )
-        return EXIT_OK
+        return pr_cli.EXIT_OK
 
     ok = all(result["ok"] for result in results)
     _emit(
@@ -325,7 +319,7 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
             "ok": ok,
         }
     )
-    return EXIT_OK if ok else EXIT_ACTION_FAILED
+    return pr_cli.EXIT_OK if ok else pr_cli.EXIT_ACTION_FAILED
 
 
 if __name__ == "__main__":

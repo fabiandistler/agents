@@ -66,10 +66,10 @@ def test_cli_dry_run_of_an_aborted_plan_prints_no_operations(tmp_path):
     assert payload["operations"] == []
 
 
-def test_cli_write_outside_github_actions_exits_five(tmp_path):
+def test_cli_write_outside_github_actions_exits_seven(tmp_path):
     run = run_cli("--plan", str(write_plan(tmp_path, make_plan())), "--write")
 
-    assert run.returncode == 5
+    assert run.returncode == 7
     assert run.stdout == ""
     assert "GitHub Actions" in run.stderr
 

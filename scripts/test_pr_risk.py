@@ -532,10 +532,11 @@ def test_cli_live_fetch_failure_exits_four(monkeypatch):
     assert pr_risk.main(["--live", "--pr", "42", "--repo", "fabiandistler/agents"]) == 4
 
 
-def test_cli_output_write_failure_exits_three(tmp_path):
+def test_cli_output_write_failure_exits_six(tmp_path):
+    # A write failure is its own class, apart from a malformed input (3).
     path = write_context(tmp_path, make_context([]))
 
-    assert pr_risk.main(["--context", str(path), "--output", str(tmp_path)]) == 3
+    assert pr_risk.main(["--context", str(path), "--output", str(tmp_path)]) == 6
 
 
 def test_cli_help_is_short_and_documents_exit_codes():

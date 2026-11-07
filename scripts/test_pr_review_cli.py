@@ -103,7 +103,7 @@ def test_output_needs_dry_run_and_a_writable_file(tmp_path: Path) -> None:
     context_path = str(write_context(tmp_path, base_context()))
     assert run_cli("--context", context_path, "--output", str(tmp_path / "r.json")).returncode == 2
     run = run_cli("--context", context_path, "--dry-run", "--output", str(tmp_path))
-    assert run.returncode == 4
+    assert run.returncode == 6
     assert run.stdout == ""
 
 
@@ -169,6 +169,6 @@ def test_cli_rejects_dry_run_with_response(tmp_path: Path) -> None:
 def test_cli_help_is_short_and_names_exit_codes() -> None:
     run = run_cli("--help")
     assert run.returncode == 0
-    assert "Exit:" in run.stdout
+    assert "exit:" in run.stdout
     assert "Examples:" in run.stdout
     assert len(run.stdout.splitlines()) <= 25

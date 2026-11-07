@@ -15,20 +15,13 @@ import sys
 from pathlib import Path
 
 import pr_apply
+import pr_cli
 import pr_github
 import pr_github_client
 import pr_plan
 import pr_summary
 
 AUTO_MERGE_ENV = "PR_AUTO_MERGE"
-
-EXIT_OK = 0
-EXIT_ACTION_FAILED = 1
-EXIT_USAGE = 2
-EXIT_BAD_INPUT = 3
-EXIT_LIVE_FAILED = 4
-EXIT_OUTSIDE_ACTIONS = 5
-EXIT_SUMMARY_FAILED = 6
 
 
 def _fetch_context(repo: str, number: int, token: str | None, client=None) -> dict:
@@ -131,7 +124,7 @@ def _apply(plan: dict, token: str | None, client) -> dict:
 
 # --- CLI ---------------------------------------------------------------------
 
-USAGE = """usage: pr_publish.py --context FILE --assessment FILE --review FILE
+USAGE = f"""usage: pr_publish.py --context FILE --assessment FILE --review FILE
        pr_publish.py --live --repo O/R --pr N (--assessment FILE --review FILE | --hold) [--write]
 
 Plan the labels, the sticky comment, the reviewer and the auto-merge decision
@@ -147,14 +140,12 @@ for one pull request. Prints JSON on stdout; --write applies the plan.
   --summary FILE      either form: also append a Markdown summary to FILE (not --hold)
   -h, --help          show this message
 env: PR_AUTO_MERGE=true enables auto-merge planning; any other value keeps it off.
-
 examples:
   python3 scripts/pr_publish.py --context c.json --assessment a.json --review r.json
   python3 scripts/pr_publish.py --live --repo fabiandistler/agents --pr 42 \\
       --assessment a.json --review r.json --write
 
-exit: 0 plan or write result | 1 a write action failed | 2 usage | 3 bad input/artifact |
-      4 live fetch failed | 5 --write outside GitHub Actions | 6 --summary not writable
+{pr_cli.exit_help(0, 1, 2, 3, 4, 5, 6, 7)}
 """
 
 VALUE_FLAGS = ("--context", "--pr", "--repo", "--assessment", "--review", "--summary")
@@ -268,17 +259,17 @@ def main(argv: list[str] | None = None, client=None) -> int:
     except UsageError as error:
         print(f"pr_publish.py: {error}", file=sys.stderr)
         print(USAGE, end="", file=sys.stderr)
-        return EXIT_USAGE
+        return pr_cli.EXIT_USAGE
     if options.get("help"):
         print(USAGE, end="")
-        return EXIT_OK
+        return pr_cli.EXIT_OK
 
     if options["write"] is True and os.environ.get("GITHUB_ACTIONS") != "true":
         print(
             "pr_publish.py: --write is only available inside GitHub Actions",
             file=sys.stderr,
         )
-        return EXIT_OUTSIDE_ACTIONS
+        return pr_cli.EXIT_OUTSIDE_ACTIONS
 
     if options["hold"] is True:
         try:
@@ -288,12 +279,15 @@ def main(argv: list[str] | None = None, client=None) -> int:
                 write=options["write"] is True,
                 client=client,
             )
+        except pr_github_client.MissingTokenError as error:
+            print(f"pr_publish.py: {error}", file=sys.stderr)
+            return pr_cli.EXIT_MISSING_TOKEN
         except pr_github_client.FetchError as error:
             print(f"pr_publish.py: live fetch failed: {error}", file=sys.stderr)
-            return EXIT_LIVE_FAILED
+            return pr_cli.EXIT_FETCH_FAILED
         except pr_plan.ArtifactError as error:
             print(f"pr_publish.py: {error}", file=sys.stderr)
-            return EXIT_BAD_INPUT
+            return pr_cli.EXIT_BAD_INPUT
         return _emit(payload, options["write"] is True)
 
     try:
@@ -309,12 +303,15 @@ def main(argv: list[str] | None = None, client=None) -> int:
                     write=options["write"] is True,
                     client=client,
                 )
+            except pr_github_client.MissingTokenError as error:
+                print(f"pr_publish.py: {error}", file=sys.stderr)
+                return pr_cli.EXIT_MISSING_TOKEN
             except pr_github_client.FetchError as error:
                 print(f"pr_publish.py: live fetch failed: {error}", file=sys.stderr)
                 _append_summary(
                     options["summary"], f"### PR review decision\n\n- live fetch failed: {error}\n"
                 )
-                return EXIT_LIVE_FAILED
+                return pr_cli.EXIT_FETCH_FAILED
         else:
             context = _read_json(str(options["context"]), "--context")
             payload = pr_plan.plan_publish(
@@ -325,20 +322,20 @@ def main(argv: list[str] | None = None, client=None) -> int:
             )
     except (pr_plan.ArtifactError, pr_apply.PlanError) as error:
         print(f"pr_publish.py: {error}", file=sys.stderr)
-        return EXIT_BAD_INPUT
+        return pr_cli.EXIT_BAD_INPUT
 
     status = _emit(payload, options["write"] is True)
     summary = pr_summary.render_summary(payload, review)
-    if not _append_summary(options["summary"], summary) and status == EXIT_OK:
-        return EXIT_SUMMARY_FAILED
+    if not _append_summary(options["summary"], summary) and status == pr_cli.EXIT_OK:
+        return pr_cli.EXIT_OUTPUT_FAILED
     return status
 
 
 def _emit(payload: dict, write: bool) -> int:
     sys.stdout.write(json.dumps(payload, indent=2) + "\n")
     if write and payload.get("ok") is False:
-        return EXIT_ACTION_FAILED
-    return EXIT_OK
+        return pr_cli.EXIT_ACTION_FAILED
+    return pr_cli.EXIT_OK
 
 
 def _append_summary(path: object, text: str) -> bool:

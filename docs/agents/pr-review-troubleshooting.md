@@ -20,16 +20,23 @@ model text). The `publish` step summary, **PR review decision**, shows the
 risk, review status, verdict, auto-merge state and the labels the run added
 and removed; the full plan JSON follows it.
 
-Exit codes of the scripts the jobs run:
+Every `scripts/pr_*.py` command line shares one exit-code table
+(`scripts/pr_cli.py`); a code means the same failure in every script:
 
-| Script | Exit codes |
-| --- | --- |
-| `pr_github.py` (assess) | 2 usage, 3 output write failed, 4 fetch failed, 5 missing `GITHUB_TOKEN` |
-| `pr_risk.py` (assess) | 2 usage, 3 malformed input or output write failed, 4 live fetch failed, 5 missing token |
-| `pr_review.py` (review) | 2 usage, 3 bad context or response file, 4 `--output` not writable; a provider failure exits 0 with `unavailable` |
-| `pr_publish.py` (hold, publish) | 1 a write action failed, 2 usage, 3 malformed artifact or plan, 4 live re-fetch failed, 5 `--write` outside GitHub Actions |
+| Code | Failure | Returned by |
+| --- | --- | --- |
+| 1 | a write action failed | `pr_publish.py`, `pr_apply.py` |
+| 2 | usage | all |
+| 3 | bad input file (context, assessment, review, response or plan) | `pr_risk.py`, `pr_review.py`, `pr_publish.py`, `pr_apply.py` |
+| 4 | GitHub fetch failed | `pr_github.py`, `pr_risk.py`, `pr_publish.py` |
+| 5 | missing `GITHUB_TOKEN` | `pr_github.py`, `pr_risk.py`, `pr_publish.py`, `pr_apply.py` |
+| 6 | output file (`--output`, `--summary`) not writable | `pr_github.py`, `pr_risk.py`, `pr_review.py`, `pr_publish.py` |
+| 7 | `--write` outside GitHub Actions | `pr_publish.py`, `pr_apply.py` |
 
-A provider failure is never a red run: it shows as `review:unavailable`.
+The jobs run `pr_github.py` and `pr_risk.py` (assess), `pr_review.py`
+(review) and `pr_publish.py` (hold, publish). A provider failure is never a
+red run: `pr_review.py` exits 0 and the pull request shows
+`review:unavailable`.
 
 ## Symptoms
 

@@ -15,6 +15,7 @@ import re
 import sys
 from pathlib import Path
 
+import pr_cli
 import pr_github
 import pr_github_client
 
@@ -296,7 +297,7 @@ def classify_pull_request(context: dict) -> dict:
 
 REPO_PATTERN = pr_github_client.REPO_PATTERN
 
-USAGE = """usage: pr_risk.py --context FILE [--output FILE]
+USAGE = f"""usage: pr_risk.py --context FILE [--output FILE]
        pr_risk.py --live --pr N --repo OWNER/REPO [--output FILE]
 
 Classify a pull request as low, medium or high risk from its changed paths
@@ -313,8 +314,7 @@ examples:
   python3 scripts/pr_risk.py --context context.json
   python3 scripts/pr_risk.py --live --pr 42 --repo fabiandistler/agents
 
-exit: 0 decision produced | 2 usage | 3 input malformed or output write failed |
-      4 live fetch failed | 5 missing token
+{pr_cli.exit_help(0, 2, 3, 4, 5, 6)}
 """
 
 
@@ -397,13 +397,13 @@ def _emit(decision: dict, output: str | None) -> int:
     text = json.dumps(decision, indent=2) + "\n"
     if output is None:
         sys.stdout.write(text)
-        return 0
+        return pr_cli.EXIT_OK
     try:
         Path(output).write_text(text, encoding="utf-8")
     except OSError as error:
         print(f"pr_risk.py: cannot write --output: {error}", file=sys.stderr)
-        return 3
-    return 0
+        return pr_cli.EXIT_OUTPUT_FAILED
+    return pr_cli.EXIT_OK
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -413,10 +413,10 @@ def main(argv: list[str] | None = None) -> int:
     except UsageError as error:
         print(f"pr_risk.py: {error}", file=sys.stderr)
         print(USAGE, end="", file=sys.stderr)
-        return 2
+        return pr_cli.EXIT_USAGE
     if options.get("help"):
         print(USAGE, end="")
-        return 0
+        return pr_cli.EXIT_OK
 
     if options["live"] is True:
         try:
@@ -427,22 +427,22 @@ def main(argv: list[str] | None = None) -> int:
             )
         except pr_github_client.MissingTokenError as error:
             print(f"pr_risk.py: {error}", file=sys.stderr)
-            return 5
+            return pr_cli.EXIT_MISSING_TOKEN
         except pr_github_client.FetchError as error:
             print(f"pr_risk.py: live fetch failed: {error}", file=sys.stderr)
-            return 4
+            return pr_cli.EXIT_FETCH_FAILED
     else:
         try:
             context = _read_context(str(options["context"]))
         except (ValueError, TypeError) as error:
             print(f"pr_risk.py: {error}", file=sys.stderr)
-            return 3
+            return pr_cli.EXIT_BAD_INPUT
 
     try:
         decision = classify_pull_request(context)
     except TypeError as error:
         print(f"pr_risk.py: malformed context: {error}", file=sys.stderr)
-        return 3
+        return pr_cli.EXIT_BAD_INPUT
     return _emit(decision, options["output"] if isinstance(options["output"], str) else None)
 
 

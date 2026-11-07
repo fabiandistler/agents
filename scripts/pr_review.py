@@ -29,6 +29,7 @@ import urllib.request
 from pathlib import Path
 from typing import NoReturn
 
+import pr_cli
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
 from pr_review_sanitize import sanitize_text
 
@@ -49,11 +50,6 @@ MAX_BODY_BYTES = 50_000
 MAX_TREE_BYTES = 20_000
 DIFF_STATUSES = ("complete", "truncated", "unavailable")
 
-EXIT_OK = 0
-EXIT_USAGE = 2
-EXIT_BAD_INPUT = 3
-EXIT_WRITE_FAILED = 4
-
 TRUNCATION_NOTE = (
     "TRUNCATION: The input was truncated to fit the review limits.\n"
     "Missing parts cannot be reviewed; do not assume the shown code is complete."
@@ -66,17 +62,16 @@ SANITIZED_NOTE = (
 MISSING_KEY_SUMMARY = "Review unavailable: the provider is not configured."
 PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
 
-HELP_EPILOG = """\
+HELP_EPILOG = f"""\
 Environment:
   OPENCODE_API_KEY   required for a live provider call
   PR_REVIEW_MODEL    model override (default deepseek-v4.1-flash-free)
   OPENCODE_BASE_URL  base URL (default https://opencode.ai/zen/v1)
-Exit: 0 artifact produced (including an unavailable review), 2 usage,
-  3 bad context or response file, 4 --output not writable. A missing key or
-  provider failure is an unavailable artifact with exit 0, never a pass.
 Examples:
   python3 scripts/pr_review.py --context context.json --dry-run --output request.json
   python3 scripts/pr_review.py --response reply.txt --context context.json
+A missing key or provider failure is an unavailable artifact with exit 0, never a pass.
+{pr_cli.exit_help(0, 2, 3, 6)}
 """
 
 
@@ -88,7 +83,7 @@ class UsageError(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         self.print_usage(sys.stderr)
         sys.stderr.write(f"{Path(self.prog).stem}: {message}\n")
-        sys.exit(EXIT_USAGE)
+        sys.exit(pr_cli.EXIT_USAGE)
 
 
 def _as_text(value: object) -> str:
@@ -411,7 +406,7 @@ def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
             )
         except OSError:
             sys.stderr.write("pr_review: --output file is not writable\n")
-            return EXIT_WRITE_FAILED
+            return pr_cli.EXIT_OUTPUT_FAILED
     system, user = (message["content"].encode("utf-8") for message in request["messages"])
     _emit(
         {
@@ -423,7 +418,7 @@ def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
             "output": output,
         }
     )
-    return EXIT_OK
+    return pr_cli.EXIT_OK
 
 
 def _read_json_file(path: str) -> dict:
@@ -466,20 +461,20 @@ def main(argv: list[str] | None = None) -> int:
         context = _read_json_file(args.context)
     except OSError:
         sys.stderr.write("pr_review: context file is not readable\n")
-        return EXIT_BAD_INPUT
+        return pr_cli.EXIT_BAD_INPUT
     except ContextError as err:
         sys.stderr.write(f"pr_review: {err}\n")
-        return EXIT_BAD_INPUT
+        return pr_cli.EXIT_BAD_INPUT
     except (UnicodeDecodeError, ValueError):
         sys.stderr.write("pr_review: context file is not valid JSON\n")
-        return EXIT_BAD_INPUT
+        return pr_cli.EXIT_BAD_INPUT
 
     if args.dry_run:
         try:
             request, partial = build_request(context)
         except ContextError as err:
             sys.stderr.write(f"pr_review: {err}\n")
-            return EXIT_BAD_INPUT
+            return pr_cli.EXIT_BAD_INPUT
         return _emit_dry_run(request, partial, args.output)
 
     if args.response is not None:
@@ -487,22 +482,22 @@ def main(argv: list[str] | None = None) -> int:
             text = Path(args.response).read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             sys.stderr.write("pr_review: response file is not readable\n")
-            return EXIT_BAD_INPUT
+            return pr_cli.EXIT_BAD_INPUT
         try:
             artifact = _review_canned(context, text)
         except ContextError as err:
             sys.stderr.write(f"pr_review: {err}\n")
-            return EXIT_BAD_INPUT
+            return pr_cli.EXIT_BAD_INPUT
         _emit(artifact)
-        return EXIT_OK
+        return pr_cli.EXIT_OK
 
     try:
         artifact = review(context)
     except ContextError as err:
         sys.stderr.write(f"pr_review: {err}\n")
-        return EXIT_BAD_INPUT
+        return pr_cli.EXIT_BAD_INPUT
     _emit(artifact)
-    return EXIT_OK
+    return pr_cli.EXIT_OK
 
 
 if __name__ == "__main__":

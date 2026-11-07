@@ -210,14 +210,14 @@ def test_cli_usage_errors_exit_two(argv):
     assert pr_github.main(argv) == 2
 
 
-def test_cli_output_write_failure_exits_three(tmp_path, monkeypatch):
+def test_cli_output_write_failure_exits_six(tmp_path, monkeypatch):
     monkeypatch.setattr(
         pr_github,
         "fetch_context",
         lambda repo, number, token=None: {"schema_version": 1, "files": []},
     )
 
-    assert pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(tmp_path)]) == 3
+    assert pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(tmp_path)]) == 6
 
 
 def test_cli_help_is_short_and_documents_exit_codes():
