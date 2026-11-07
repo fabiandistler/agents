@@ -40,40 +40,68 @@ PATH_RULES = (
     (re.compile(r"^scripts/quick_validate\.py$"), HIGH, "gate-script"),
     (re.compile(r"^scripts/require_python\.sh$"), HIGH, "gate-script"),
     (re.compile(r"^scripts/catalogue\.py$"), HIGH, "gate-script"),
+    # Gate helpers: imported by a check script, or run as a check_all.sh check.
+    (
+        re.compile(
+            r"^scripts/(?:skill_frontmatter|instruction_fragments|vendoring"
+            r"|vendor_repo_maintenance)\.py$"
+        ),
+        HIGH,
+        "gate-script",
+    ),
     (re.compile(r"^scripts/build_[^/]*\.py$"), HIGH, "build-script"),
     (re.compile(r"^scripts/opencode/"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/hooks/"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/python_init_context\.py$"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/install/"), HIGH, "installer"),
+    (re.compile(r"^scripts/plugin_agents\.py$"), HIGH, "installer"),
     (re.compile(r"^plugins/[^/]+/hooks/"), HIGH, "hook-settings"),
     # Configuration and dependency pins.
     (re.compile(r"^\.claude/settings\.json$"), HIGH, "hook-settings"),
     (re.compile(r"^\.pre-commit-config\.yaml$"), HIGH, "hook-settings"),
     (re.compile(r"^conftest\.py$"), HIGH, "test-config"),
-    (re.compile(r"^(?:ruff\.toml|pyrightconfig\.json)$"), HIGH, "lint-config"),
-    (re.compile(r"^pyproject\.toml$"), HIGH, "project-config"),
+    (
+        re.compile(r"^(?:ruff\.toml|pyrightconfig\.json|ty\.toml|\.shellcheckrc)$"),
+        HIGH,
+        "lint-config",
+    ),
+    (re.compile(r"^(?:pyproject\.toml|\.gitattributes|\.gitignore)$"), HIGH, "project-config"),
     (
         re.compile(r"(?:^|/)[^/]*\.requirements\.txt$|^(?:package|package-lock)\.json$"),
         HIGH,
         "dependency-pins",
     ),
+    # Pinned Bats submodules and the lock of the vendored maintenance scanner.
+    (re.compile(r"^(?:\.gitmodules$|test/bats/|vendor/)"), HIGH, "dependency-pins"),
     # Medium: skills, instructions, agent docs, mirror, tests and support code.
     (
         re.compile(r"^plugins/(?![^/]+/hooks/)(?!(?:merge-guard|secret-guard)/)"),
         MEDIUM,
         "plugins",
     ),
+    (re.compile(r"^\.claude-plugin/"), MEDIUM, "plugins"),
     (re.compile(r"^\.claude/"), MEDIUM, "claude-mirror"),
     (re.compile(r"^skills/"), MEDIUM, "skills"),
     (re.compile(r"^instructions/"), MEDIUM, "instructions"),
     (re.compile(r"^docs/agents/"), MEDIUM, "agent-docs"),
     # Agents load AGENTS.md and CLAUDE.md as instructions wherever they sit.
     (re.compile(r"(?:^|/)(?:AGENTS|CLAUDE)\.md$"), MEDIUM, "agent-docs"),
+    # Declined ideas that the triage agent checks new requests against.
+    (re.compile(r"^\.out-of-scope/"), MEDIUM, "agent-docs"),
     # README.md and the ADRs state repository policy, such as the merge rule.
     (re.compile(r"^README\.md$"), MEDIUM, "policy-docs"),
     (re.compile(r"^docs/adr/"), MEDIUM, "adr"),
     (re.compile(r"^skills\.json$"), MEDIUM, "catalogue"),
     (re.compile(r"^scripts/test_[^/]*\.py$"), MEDIUM, "tests"),
     (re.compile(r"^scripts/test_install\.sh$"), MEDIUM, "tests"),
+    (re.compile(r"^scripts/fixtures/"), MEDIUM, "tests"),
+    (re.compile(r"^test/(?!bats/)"), MEDIUM, "tests"),
+    # Non-gate scripts. The maintenance scanner is vendored; its lock is a pin.
     (
-        re.compile(r"^scripts/(?:vendor_mattpocock_skills\.py|skill_audit_select\.py)$"),
+        re.compile(
+            r"^scripts/(?:vendor_mattpocock_skills\.py|skill_audit_select\.py"
+            r"|maintenance-scan\.sh|maintenance-new-deps\.py|maintenance-r-advisories\.py)$"
+        ),
         MEDIUM,
         "scripts",
     ),
