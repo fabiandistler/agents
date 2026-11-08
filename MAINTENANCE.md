@@ -121,8 +121,9 @@ Open question per job (details in the external `repo-maintenance` skill's `refer
 from [fabiandistler/repo-maintenance](https://github.com/fabiandistler/repo-maintenance)
 (`plugins/repo-maintenance/assets/`), and so are the invisible-character check
 `scripts/maintenance-instruction-unicode.py` (same directory; `scripts/check_all.sh` runs it
-as `instruction-unicode`, and its tests stay upstream) and the `check-file-tokens` prek hook
-(`scripts/hooks/check-file-tokens.sh`, from the prek-hooks skill's references).
+as `instruction-unicode`, and its tests stay upstream in `tests/test_instruction_unicode.py`)
+and the `check-file-tokens` prek hook (`scripts/hooks/check-file-tokens.sh`, from the
+prek-hooks skill's references).
 `vendor/repo-maintenance/lock.json` pins the upstream commit and each file's sha256 and
 git mode. To update, run
 
@@ -130,16 +131,16 @@ git mode. To update, run
 python3 scripts/vendor_repo_maintenance.py --ref <commit>
 ```
 
-and commit the five files and `vendor/repo-maintenance/LICENSE` together with the lock.
+and commit the vendored files and `vendor/repo-maintenance/LICENSE` together with the lock.
 Scanner and hook fixes go upstream, then a re-vendor brings them here: the `vendor-lock` check in
 `scripts/check_all.sh` fails on any local edit or mode change. `--check` compares the files
 against the lock offline. It does not compare the lock against upstream, so after a merge
 conflict in `lock.json`, re-vendor instead of hand-merging.
 
-These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the three
+These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the vendored
 Python files (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner and
 the token hook (`.pre-commit-config.yaml`). `trailing-whitespace` and `end-of-file-fixer`
-still run on all five, as they do upstream.
+still run on all of them, as they do upstream.
 
 The scanner keys off `DESCRIPTION` (R) and `pyproject.toml` / `requirements.txt` (Python)
 **at the repository root**, and this repo has none of them, at the root or below it. What

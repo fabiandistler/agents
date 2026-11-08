@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor the repo-maintenance scanner, its two helpers, a gate check and a prek hook into `scripts/`.
+"""Vendor repo-maintenance's scanner, helpers, unicode check and a prek hook into `scripts/`.
 
 Run from repo root:
     python3 scripts/vendor_repo_maintenance.py              # update to upstream main
@@ -15,8 +15,9 @@ copy of it drifted from upstream, so every scanner fix had to be ported by hand
 own directory, so the three stay siblings and keep upstream's file mode. The
 invisible-character check `maintenance-instruction-unicode.py` comes from the same
 assets directory; `scripts/check_all.sh` runs it as the `instruction-unicode`
-check, and its tests stay upstream. The `check-file-tokens` prek hook comes from
-the same commit, from the prek-hooks skill's references, into `scripts/hooks/`. The pinned commit, a sha256 and git
+check, and its tests stay upstream (`tests/test_instruction_unicode.py`). The
+`check-file-tokens` prek hook comes from the same commit, from the prek-hooks
+skill's references, into `scripts/hooks/`. The pinned commit, a sha256 and git
 file mode per file, and upstream's license live in `vendor/repo-maintenance/`. A
 re-run at the same ref changes nothing.
 
@@ -87,8 +88,8 @@ exit: 0 ok (--check-upstream: lock is at upstream main)
       1 git clone/checkout failed (--check-upstream: upstream unreachable or
         has no main; not checked, never current) | 2 usage error
       3 a vendored file or LICENSE is missing upstream at REF (nothing written)
-      4 --check: the lock is missing or malformed or lists other files than the
-        five, or a vendored file is missing or differs in content or mode
+      4 --check: the lock is missing or malformed or lists other files than
+        VENDORED, or a vendored file is missing or differs in content or mode
       5 --check-upstream: the lock is behind upstream main"""
 
 
