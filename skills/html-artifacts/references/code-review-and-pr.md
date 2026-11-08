@@ -1,6 +1,6 @@
 # Code Review & PR Writeups
 
-Diffs and call graphs are spatial information; markdown flattens them. Render the code as it actually wants to be read.
+Diffs and call graphs are spatial information; markdown flattens them. Render the code as it actually wants to be read. Read this when the page is built around code the reader reviews, changes, or walks file by file.
 
 ## Annotated diff (for review)
 

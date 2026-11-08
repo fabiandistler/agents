@@ -1,6 +1,6 @@
 # Decks
 
-A handful of `<section>` tags and twenty lines of JavaScript is a slide deck. Use this for short presentations the user wants to arrow-key through in a meeting — no Keynote, no export step, no PowerPoint roundtrip.
+A handful of `<section>` tags and twenty lines of JavaScript is a slide deck. Use this for short presentations the user wants to arrow-key through in a meeting — no Keynote, no export step, no PowerPoint roundtrip. Read this when the page is slides presented in sequence.
 
 ## Contents
 
