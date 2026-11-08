@@ -64,6 +64,10 @@ that already exist; `--uninstall` removes every artifact it created, not only
 links: generated agent files, managed config blocks, guard hooks and its
 saved-state entry go too, while files it does not own stay untouched.
 
+Prefer to answer questions instead of composing flags? `./install-wizard.sh`
+asks for each choice, prints the equivalent `./install.sh` command, offers a
+dry run and then runs it. It needs a terminal; agents and scripts use the flags.
+
 Symlinks pick up local edits immediately, which makes this the better setup
 while developing skills here. `--target=codex` does more than link skills —
 see [`docs/install.md`](docs/install.md).
