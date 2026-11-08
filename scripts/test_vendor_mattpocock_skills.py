@@ -72,3 +72,63 @@ def test_missing_in_progress_skill_fails_without_writing(tmp_path, monkeypatch):
     assert _run(tmp_path, monkeypatch, with_in_progress=False) == 3
     assert list(skills_dir.iterdir()) == []
     assert not (vendor_dir / "lock.json").exists()
+
+
+def _git(cwd: Path, *args: str) -> str:
+    return subprocess.run(  # noqa: S603 -- test drives a local fixture repository with argv.
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", *args],  # noqa: S607 -- Git from PATH.
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _check_upstream(monkeypatch) -> int:
+    monkeypatch.setattr(sys, "argv", ["vendor_mattpocock_skills.py", "--check-upstream"])
+    return vendor.main()
+
+
+def test_check_upstream_targets_the_newest_release_tag(tmp_path, monkeypatch, capsys):
+    assert _run(tmp_path, monkeypatch) == 0
+    upstream = Path(vendor.UPSTREAM)
+    locked = _git(upstream, "rev-parse", "HEAD")
+    _git(upstream, "tag", "v1.10.0")  # lightweight, at the locked commit
+    _git(upstream, "commit", "-q", "--allow-empty", "-m", "unreleased work on main")
+    # Each newer commit carries a tag that must not win: a lexically larger
+    # version, a pre-release, a non-release name. main itself is not the target.
+    _git(upstream, "tag", "-a", "v1.9.0", "-m", "older version, newer commit")
+    _git(upstream, "tag", "v2.0.0-rc.1")
+    _git(upstream, "tag", "not-a-release")
+    capsys.readouterr()
+    assert _check_upstream(monkeypatch) == 0
+    assert f"(v1.10.0): locked {locked}, upstream {locked}: current" in capsys.readouterr().out
+
+
+def test_check_upstream_reports_behind_with_both_commits(tmp_path, monkeypatch, capsys):
+    assert _run(tmp_path, monkeypatch) == 0
+    upstream = Path(vendor.UPSTREAM)
+    locked = _git(upstream, "rev-parse", "HEAD")
+    _git(upstream, "commit", "-q", "--allow-empty", "-m", "release work")
+    _git(upstream, "tag", "-a", "v1.4.0", "-m", "new release")
+    newer = _git(upstream, "rev-parse", "HEAD")
+    capsys.readouterr()
+    assert _check_upstream(monkeypatch) == 5
+    assert f"(v1.4.0): locked {locked}, upstream {newer}: behind" in capsys.readouterr().out
+
+
+def test_check_upstream_unreachable_is_not_current(tmp_path, monkeypatch, capsys):
+    assert _run(tmp_path, monkeypatch) == 0
+    monkeypatch.setattr(vendor, "UPSTREAM", str(tmp_path / "gone"))
+    capsys.readouterr()
+    assert _check_upstream(monkeypatch) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "not checked: git ls-remote failed:" in captured.err
+
+
+def test_check_upstream_without_release_tag_is_not_current(tmp_path, monkeypatch, capsys):
+    assert _run(tmp_path, monkeypatch) == 0
+    capsys.readouterr()
+    assert _check_upstream(monkeypatch) == 1
+    assert "not checked: upstream has no release tag" in capsys.readouterr().err
