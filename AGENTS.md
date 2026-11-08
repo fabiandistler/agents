@@ -41,7 +41,8 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   filename prefix, in three tiers: 20, 25, 45, 50, 55 and 60 are always on;
   Python and R rules are path-scoped in Claude, while Codex and opencode get
   the Python baseline by pointer and keep the R rules in their block; 70, 80
-  and 85 are on demand; 85 is also repeated in this repository's `AGENTS.md`.
+  and 85 are on demand; this repository's `AGENTS.md` points to 85 by its
+  repository path.
   `install.sh --instructions` composes the always-on
   rules and pointers into marker-delimited blocks in each agent's global
   instruction file (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`,
@@ -166,35 +167,14 @@ them.
 ## Scripts an agent runs
 
 Applies to any executable an agent invokes: `scripts/` in a skill or
-plugin, hook commands, CI helpers. The seven rules that hold outside
-this repo too — non-interactive input, `--help`, exit codes, named
-writes, secrets, installed smoke test, bounded output — are also carried
-globally by `instructions/on-demand/85-agent-scripts.md`; edit both when
-they change.
+plugin, hook commands, CI helpers. Before writing or running one, read
+the general rules in `instructions/on-demand/85-agent-scripts.md` —
+non-interactive input, `--help`, stdout/stderr and exit codes,
+idempotency, named writes, secrets, installed smoke test, bounded
+output. That file is their only home. This repository adds:
 
-- Never read from an interactive prompt. Agents run non-interactive
-  shells; a TTY prompt hangs the session until timeout. Take every input
-  as a flag, env var, or stdin. On a missing required input, exit
-  non-zero naming the flag and its allowed values.
-- `--help` is the agent's only interface documentation — one usage line,
-  the flags, two examples. It is also context cost: keep it under ~25
-  lines.
-- Data to stdout, diagnostics to stderr. Prefer JSON/TSV over
-  whitespace-aligned columns.
-- Distinct exit code per failure class, documented in `--help`, so the
-  caller can branch without parsing prose.
-- Idempotent by default: agents retry. "Create if not exists", never
-  "fail on duplicate".
-- One named verb per write, narrowest stable ID, `--dry-run` first;
-  never hide writes in `fix`/`auto`/raw.
-- Secrets from env or config, never a flag (shell history, `ps`); never
-  echo them, not in `--json` errors. CI flags a skill, instruction or
-  script example that passes a credential in argv with
-  `python3 scripts/check_secret_argv.py`.
-- Smoke-test the installed command from `/tmp`, not the source folder.
-- Bound the output. Harness output is truncated past roughly 10–30k
-  characters, silently. Default to a summary; offer `--output FILE` and
-  `--offset` for the rest.
+- CI flags a skill, instruction or script example that passes a
+  credential in argv with `python3 scripts/check_secret_argv.py`.
 - Python with third-party deps: PEP 723 inline block + `uv run
   script.py`. No sibling requirements.txt, no install step. `uv add
   --script` to edit, `uv lock --script` when the run must reproduce.
