@@ -34,6 +34,7 @@ regularly finds nothing when CI is green only burns rotation slots.
 |---|---|
 | security-footguns | `maintenance-gate` -> gitleaks; ruff `S113` via `ruff.toml` |
 | dead-code (local vars/imports) | `ci.yml` -> `scripts/check_all.sh` -> prek's `ruff-check` hook (`F401`/`F841` are in the default set) |
+| invisible characters in instruction files | `ci.yml` -> `scripts/check_all.sh` -> `instruction-unicode` (vendored `scripts/maintenance-instruction-unicode.py`) |
 
 Only the open question stays in the catalog: `dead-exports` (exports across the package boundary).
 
@@ -118,8 +119,11 @@ Open question per job (details in the external `repo-maintenance` skill's `refer
 `scripts/maintenance-scan.sh` and the two helpers it calls
 (`scripts/maintenance-r-advisories.py`, `scripts/maintenance-new-deps.py`) are vendored
 from [fabiandistler/repo-maintenance](https://github.com/fabiandistler/repo-maintenance)
-(`plugins/repo-maintenance/assets/`), and so is the `check-file-tokens` prek hook
-(`scripts/hooks/check-file-tokens.sh`, from the prek-hooks skill's references).
+(`plugins/repo-maintenance/assets/`), and so are the invisible-character check
+`scripts/maintenance-instruction-unicode.py` (same directory; `scripts/check_all.sh` runs it
+as `instruction-unicode`, and its tests stay upstream in `tests/test_instruction_unicode.py`)
+and the `check-file-tokens` prek hook (`scripts/hooks/check-file-tokens.sh`, from the
+prek-hooks skill's references).
 `vendor/repo-maintenance/lock.json` pins the upstream commit and each file's sha256 and
 git mode. To update, run
 
@@ -127,16 +131,16 @@ git mode. To update, run
 python3 scripts/vendor_repo_maintenance.py --ref <commit>
 ```
 
-and commit the four files and `vendor/repo-maintenance/LICENSE` together with the lock.
+and commit the vendored files and `vendor/repo-maintenance/LICENSE` together with the lock.
 Scanner and hook fixes go upstream, then a re-vendor brings them here: the `vendor-lock` check in
 `scripts/check_all.sh` fails on any local edit or mode change. `--check` compares the files
 against the lock offline. It does not compare the lock against upstream, so after a merge
 conflict in `lock.json`, re-vendor instead of hand-merging.
 
-These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the two
-Python helpers (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner and
+These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the vendored
+Python files (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner and
 the token hook (`.pre-commit-config.yaml`). `trailing-whitespace` and `end-of-file-fixer`
-still run on all four, as they do upstream.
+still run on all of them, as they do upstream.
 
 The scanner keys off `DESCRIPTION` (R) and `pyproject.toml` / `requirements.txt` (Python)
 **at the repository root**, and this repo has none of them, at the root or below it. What

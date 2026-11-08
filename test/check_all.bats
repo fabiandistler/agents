@@ -57,6 +57,8 @@ decoy_config() {
   assert_success
   assert_line --regexp $'^manifest\t'
   assert_line --regexp $'^bats\tbash .* bats-submodules$'
+  # The vendored invisible-character check needs only the standard library.
+  assert_line --regexp $'^instruction-unicode\t[^ ]*python[^ ]*$'
   refute_output --partial 'install-smoke'
 }
 

@@ -23,9 +23,10 @@ ASSETS = {
     "scripts/maintenance-scan.sh": b"#!/usr/bin/env bash\necho scan\n",
     "scripts/maintenance-r-advisories.py": b"#!/usr/bin/env python3\nprint('advisories')\n",
     "scripts/maintenance-new-deps.py": b"#!/usr/bin/env python3\nprint('new deps')\n",
+    "scripts/maintenance-instruction-unicode.py": b"#!/usr/bin/env python3\nprint('unicode')\n",
     "scripts/hooks/check-file-tokens.sh": b"#!/usr/bin/env bash\necho tokens\n",
 }
-# Upstream ships all four executable; this fake one is not, so the lock's
+# Upstream ships every vendored file executable; this fake one is not, so the lock's
 # "100644" mode is exercised as well as "100755".
 NOT_EXECUTABLE = "scripts/maintenance-new-deps.py"
 

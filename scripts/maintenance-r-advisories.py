@@ -296,7 +296,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = ap.parse_args(argv)
 
-    deps = new_deps.r_dep_entries(Path(args.description).read_text(encoding="utf-8"))
+    description = Path(args.description).read_text(
+        encoding="utf-8", errors=new_deps.DECODE_ERRORS
+    )
+    deps = new_deps.r_dep_entries(description)
     try:
         dump = (
             Path(args.osv_dump).read_bytes() if args.osv_dump else download_osv_dump()

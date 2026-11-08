@@ -11,6 +11,9 @@
 # Source: prompt idea by Fabian Distler, 2026-09-01, via skill `idee-zu-artefakt`.
 # Part of: plugin `repo-maintenance`, skill `maintenance-run`, catalog MAINTENANCE.md.
 #
+# bats-exempt: vendored copy, copied into target repos by maintenance-assets.py; its tests
+# are test/maintenance-scan.bats in the repo-maintenance plugin repo.
+#
 # Invocation, flags and exit codes: usage() below, or --help.
 
 set -uo pipefail
@@ -32,7 +35,8 @@ Examples:
 Exit codes:
   0  scan ran; test-flakiness without tests/ or test/ notes the skip on stderr, and
      deps-audit without DESCRIPTION, pyproject.toml or requirements.txt notes the
-     skipped package audit on stdout
+     skipped package audit on stdout; a check that failed with an error of its own
+     prints a [not checked] line on stdout, and stderr lists them
   2  usage error: no or unknown job
   3  environment: not a Git repo, or dead-exports without DESCRIPTION, pyproject.toml
      or requirements.txt
@@ -73,6 +77,24 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 cd "$ROOT" || exit 3
 
 has() { command -v "$1" >/dev/null 2>&1; }
+# has_update_automation - true if Renovate or Dependabot is configured: every
+# repository config location Renovate reads (docs.renovatebot.com,
+# configuration-options; checked 2026-11-06), the "renovate" key in
+# package.json, and both Dependabot file extensions (#102).
+has_update_automation() {
+  local f
+  for f in .github/dependabot.yml .github/dependabot.yaml \
+    renovate.json renovate.jsonc renovate.json5 \
+    .github/renovate.json .github/renovate.jsonc .github/renovate.json5 \
+    .gitlab/renovate.json .gitlab/renovate.jsonc .gitlab/renovate.json5 \
+    .renovaterc .renovaterc.json .renovaterc.jsonc .renovaterc.json5; do
+    [ -f "$f" ] && return 0
+  done
+  # Bash-only match: deps-audit's Automation check needs no tools (see bare_path in the tests).
+  local re='"renovate"[[:space:]]*:'
+  [ -f package.json ] && [[ $(<package.json) =~ $re ]]
+}
+
 is_r_pkg() { [ -f DESCRIPTION ]; }
 is_python() { [ -f pyproject.toml ] || [ -f requirements.txt ]; }
 hdr() { printf '\n===== %s =====\n' "$1"; }
@@ -84,6 +106,29 @@ BLOCKED=()
 blocked() {
   printf '[blocked] %s: %s\n' "$1" "$2"
   BLOCKED+=("$1: $2")
+}
+
+# not_checked CHECK REASON - CHECK failed with an error of its own (a bug, not the
+# environment): not blocked, but never a silent pass either (#125). Listed on stderr.
+NOT_CHECKED=()
+not_checked() {
+  printf '[not checked] %s: %s\n' "$1" "$2"
+  NOT_CHECKED+=("$1: $2")
+}
+
+# uvx_ready TOOL CHECK - true if uvx can provide TOOL. Otherwise CHECK is [blocked], with
+# uv's error above the line: the tool's own exit code cannot tell a fetch failure from a
+# finding, and a run on nothing must not read as a clean scan (#124).
+uvx_ready() {
+  local err
+  if ! has uvx; then
+    blocked "$2" "tool missing - uvx"
+    return 1
+  fi
+  err="$(uvx "$1" --version 2>&1)" && return 0
+  printf '%s\n' "$err"
+  blocked "$2" "unreachable - PyPI via uvx (uvx error above)"
+  return 1
 }
 
 case "$JOB" in
@@ -121,8 +166,11 @@ case "$JOB" in
       if has python3 && [ -f "$SCRIPT_DIR/maintenance-r-advisories.py" ] && [ -f "$SCRIPT_DIR/maintenance-new-deps.py" ]; then
         python3 "$SCRIPT_DIR/maintenance-r-advisories.py" 2>&1
         # Exit 3 (dump unreadable) is printed above as "not checked", not blocked.
-        case $? in
+        status=$?
+        case $status in
+          0 | 3) ;;
           6) blocked "OSV CRAN advisories" "unreachable - OSV CRAN dump (error above)" ;;
+          *) not_checked "OSV CRAN advisories" "maintenance-r-advisories.py exited $status (error above)" ;;
         esac
       elif has python3; then
         blocked "OSV CRAN advisories" "tool missing - maintenance-r-advisories.py or maintenance-new-deps.py next to the scanner"
@@ -176,7 +224,7 @@ case "$JOB" in
     echo "Find call sites in the repo: git grep -n <package-name>"
 
     hdr "Automation"
-    if [ -f renovate.json ] || [ -f .github/renovate.json ] || [ -f .github/dependabot.yml ]; then
+    if has_update_automation; then
       echo "Renovate/Dependabot is configured - the update work belongs there."
     else
       echo "Neither Renovate nor Dependabot is configured. Add a recommendation to the report:"
@@ -211,10 +259,11 @@ case "$JOB" in
 
     if is_python; then
       hdr "Python: vulture (min-confidence 80, CANDIDATES)"
-      if has uvx; then uvx vulture . --min-confidence 80 2>&1 || true; else blocked "vulture" "tool missing - uvx"; fi
+      # Findings never fail the scan; only a tool uvx cannot provide is blocked.
+      if uvx_ready vulture "vulture"; then uvx vulture . --min-confidence 80 2>&1 || true; fi
 
       hdr "Python: __all__ entries with no reference outside the module"
-      if has uvx; then uvx ruff check --select F822 . 2>&1 || true; else blocked "ruff F822" "tool missing - uvx"; fi
+      if uvx_ready ruff "ruff F822"; then uvx ruff check --select F822 . 2>&1 || true; fi
     fi
 
     hdr "Required evidence per removal"
@@ -262,6 +311,10 @@ NOTE
     ;;
 esac
 
+if [ "${#NOT_CHECKED[@]}" -gt 0 ]; then
+  echo "Not checked: ${#NOT_CHECKED[@]} check(s) failed with an error - not a clean result:" >&2
+  printf '  %s\n' "${NOT_CHECKED[@]}" >&2
+fi
 if [ "${#BLOCKED[@]}" -gt 0 ]; then
   echo "Blocked: ${#BLOCKED[@]} check(s) could not run in this environment (exit 6):" >&2
   printf '  %s\n' "${BLOCKED[@]}" >&2
