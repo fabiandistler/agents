@@ -176,10 +176,10 @@ still listed here.
 | `.claude-plugin/` | The plugin marketplace manifest (`marketplace.json`) |
 | `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents), plus the hook-only `merge-guard` and `secret-guard` plugins |
 | `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
-| `maintenance/` | Reports from the scheduled maintenance rotation described in [`MAINTENANCE.md`](MAINTENANCE.md) |
+| `maintenance/` | Run records (`runs/`) and reports (`reports/`) from the scheduled maintenance rotation described in [`MAINTENANCE.md`](MAINTENANCE.md) |
 | `vendor/` | Lock file and license of code vendored from other repositories: `repo-maintenance/` pins the maintenance scanner in `scripts/` (see [`MAINTENANCE.md`](MAINTENANCE.md)) |
 | `docs/` | Documentation beyond this README — start at [`docs/README.md`](docs/README.md) |
-| `.github/` | CI workflows (`ci.yml`, `pr-issue-links.yml`, `maintenance-gate.yml`, `claude.yml`) and Dependabot configuration |
+| `.github/` | CI workflows (`ci.yml`, `pr-issue-links.yml`, `maintenance-gate.yml`, `claude.yml`, `pages.yml`, `triage-label.yml`) and Dependabot configuration |
 | `.out-of-scope/` | Decision archive for mechanisms this repo deliberately does not build |
 
 ## Documentation
