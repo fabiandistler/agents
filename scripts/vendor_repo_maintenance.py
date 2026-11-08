@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor the repo-maintenance scanner, its two helpers and a prek hook into `scripts/`.
+"""Vendor the repo-maintenance scanner, its two helpers, a gate check and a prek hook into `scripts/`.
 
 Run from repo root:
     python3 scripts/vendor_repo_maintenance.py              # update to upstream main
@@ -13,8 +13,10 @@ copy of it drifted from upstream, so every scanner fix had to be ported by hand
 (#673, #675). This script copies the scanner from upstream
 `plugins/repo-maintenance/assets/` together with the two helpers it loads from its
 own directory, so the three stay siblings and keep upstream's file mode. The
-`check-file-tokens` prek hook comes from the same commit, from the prek-hooks
-skill's references, into `scripts/hooks/`. The pinned commit, a sha256 and git
+invisible-character check `maintenance-instruction-unicode.py` comes from the same
+assets directory; `scripts/check_all.sh` runs it as the `instruction-unicode`
+check, and its tests stay upstream. The `check-file-tokens` prek hook comes from
+the same commit, from the prek-hooks skill's references, into `scripts/hooks/`. The pinned commit, a sha256 and git
 file mode per file, and upstream's license live in `vendor/repo-maintenance/`. A
 re-run at the same ref changes nothing.
 
@@ -59,16 +61,21 @@ VENDORED = {
     "scripts/maintenance-scan.sh": f"{UPSTREAM_ASSETS}/maintenance-scan.sh",
     "scripts/maintenance-r-advisories.py": f"{UPSTREAM_ASSETS}/maintenance-r-advisories.py",
     "scripts/maintenance-new-deps.py": f"{UPSTREAM_ASSETS}/maintenance-new-deps.py",
+    # scripts/check_all.sh runs this copy as the instruction-unicode check.
+    "scripts/maintenance-instruction-unicode.py": (
+        f"{UPSTREAM_ASSETS}/maintenance-instruction-unicode.py"
+    ),
     # The check-file-tokens hook in .pre-commit-config.yaml runs this copy.
     "scripts/hooks/check-file-tokens.sh": f"{UPSTREAM_PREK_HOOKS}/check-file-tokens.sh",
 }
 REVENDOR = "python3 scripts/vendor_repo_maintenance.py --ref"
 
 DESCRIPTION = """\
-Copy maintenance-scan.sh and its two helpers from fabiandistler/repo-maintenance
-(plugins/repo-maintenance/assets/) into scripts/, and the check-file-tokens.sh
-prek hook (plugins/repo-maintenance/skills/prek-hooks/references/) into
-scripts/hooks/; pin the commit and each file's sha256 and git mode in
+Copy maintenance-scan.sh, its two helpers and maintenance-instruction-unicode.py
+from fabiandistler/repo-maintenance (plugins/repo-maintenance/assets/) into
+scripts/, and the check-file-tokens.sh prek hook
+(plugins/repo-maintenance/skills/prek-hooks/references/) into scripts/hooks/;
+pin the commit and each file's sha256 and git mode in
 vendor/repo-maintenance/lock.json."""
 EPILOG = """\
 examples:
@@ -81,7 +88,7 @@ exit: 0 ok (--check-upstream: lock is at upstream main)
         has no main; not checked, never current) | 2 usage error
       3 a vendored file or LICENSE is missing upstream at REF (nothing written)
       4 --check: the lock is missing or malformed or lists other files than the
-        four, or a vendored file is missing or differs in content or mode
+        five, or a vendored file is missing or differs in content or mode
       5 --check-upstream: the lock is behind upstream main"""
 
 

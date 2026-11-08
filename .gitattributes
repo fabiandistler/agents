@@ -14,6 +14,7 @@ vendor/** linguist-vendored
 scripts/maintenance-scan.sh linguist-vendored
 scripts/maintenance-r-advisories.py linguist-vendored
 scripts/maintenance-new-deps.py linguist-vendored
+scripts/maintenance-instruction-unicode.py linguist-vendored
 scripts/hooks/check-file-tokens.sh linguist-vendored
 
 # Vendored by scripts/vendor_mattpocock_skills.py
