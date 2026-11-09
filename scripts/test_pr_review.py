@@ -289,6 +289,17 @@ def test_provider_error_is_unavailable() -> None:
     assert artifact["raw"] is None
 
 
+def test_provider_failure_reason_reaches_stderr(capsys) -> None:
+    def failing(request: dict) -> str:
+        raise pr_review.ProviderError("provider returned HTTP 429")
+
+    pr_review.review(base_context(), transport=failing, key="s3cret-key")
+
+    stderr = capsys.readouterr().err
+    assert "provider returned HTTP 429" in stderr
+    assert "s3cret-key" not in stderr
+
+
 def test_timeout_is_unavailable() -> None:
     def timing_out(request: dict) -> str:
         raise TimeoutError("slow provider")
