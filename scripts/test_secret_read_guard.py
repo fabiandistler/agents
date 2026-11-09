@@ -310,7 +310,9 @@ for (const [tool, args] of [["bash", {{ command: "cat .env" }}],
   catch (e) {{ results.push(e.message.includes("ask the user") ? "block" : "error"); }}
 }}
 let hook;
-await plugin.setup({{ directory: process.cwd(), tool: {{ hook: async (name, cb) => {{ hook = cb; }} }} }});
+await plugin.setup({{
+  directory: process.cwd(), tool: {{ hook: async (name, cb) => {{ hook = cb; }} }},
+}});
 try {{ await hook({{ tool: "bash", input: {{ command: "printenv" }} }}); results.push("allow"); }}
 catch (e) {{ results.push("block"); }}
 console.log(JSON.stringify([plugin.id, results]));

@@ -20,7 +20,8 @@ printf '%s\\0' "$@" > "$STUB_LOG/$(basename "$0").argv"
 for arg in "$@"; do
   if [[ $arg == "Loop infrastructure preflight."* ]]; then
     if [[ ${STUB_PREFLIGHT_FAILURE:-} == 1 ]]; then
-      echo 'error building bubblewrap command: app-server socket directory must be a user-owned directory with mode 0700'
+      echo 'error building bubblewrap command: app-server socket directory must be' \\
+        'a user-owned directory with mode 0700'
       exit 0
     fi
     if [[ ${STUB_PREFLIGHT_FAILURE:-} == 2 ]]; then

@@ -381,7 +381,10 @@ def render(
     lines = [
         head,
         "",
-        f"{'FILE':<{width}}  {'COMMITS':>7}  {'AUTHORS':>7}  {'LINES':>6}  {'LAST':>5}  {'SCORE':>5}",
+        (
+            f"{'FILE':<{width}}  {'COMMITS':>7}  {'AUTHORS':>7}  "
+            f"{'LINES':>6}  {'LAST':>5}  {'SCORE':>5}"
+        ),
     ]
     for e in shown:
         size = "binary" if e.binary else str(e.lines)

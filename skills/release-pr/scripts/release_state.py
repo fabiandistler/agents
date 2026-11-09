@@ -467,14 +467,16 @@ def main() -> None:
         else numeric(changelog["version"]) != numeric(version)
     ):
         problems.append(
-            f"{pkg['source']} says {version} but the top {pkg['changelog']} heading says {changelog['version']}"
+            f"{pkg['source']} says {version} but the top {pkg['changelog']} "
+            f"heading says {changelog['version']}"
         )
         state = "mismatch"
     elif version and tag_exact(repo, f"{prefix}{version}"):
         state = "released"
         if not head_tags:
             problems.append(
-                f"{version} is already tagged as {prefix}{version} and HEAD is not that commit: bump before releasing"
+                f"{version} is already tagged as {prefix}{version} "
+                "and HEAD is not that commit: bump before releasing"
             )
     elif changelog["entries"] == 0:
         problems.append(f"top {pkg['changelog']} heading {changelog['version']} has no entries")

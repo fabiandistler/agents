@@ -63,7 +63,8 @@ def collect_violations() -> tuple[list[str], int]:
         checked += 1
         if not has_toc(lines):
             violations.append(
-                f"{path.relative_to(REPO_ROOT)}: {count} lines, no `## Contents` in first {HEAD_LINES} lines"
+                f"{path.relative_to(REPO_ROOT)}: {count} lines, "
+                f"no `## Contents` in first {HEAD_LINES} lines"
             )
     return violations, checked
 

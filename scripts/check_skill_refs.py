@@ -26,7 +26,8 @@ catalogue.py), so the check tracks the manifest:
 Scope: skills/*/SKILL.md and skills/*/references/**/*.md. In SKILL.md
 frontmatter only `description` and `when_to_use` count: they are the
 always-loaded trigger text, so a member or command name there has no router
-form and is always reported (the router itself may name its members). Symlinked router-member copies count once. Stdlib-only.
+form and is always reported (the router itself may name its members).
+Symlinked router-member copies count once. Stdlib-only.
 """
 
 from __future__ import annotations

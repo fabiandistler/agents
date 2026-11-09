@@ -4,7 +4,8 @@ The vendored files land at their destinations (`scripts/`, `scripts/hooks/`)
 byte-identical to upstream, the scanner keeps its executable bit, a re-run at the
 same ref changes nothing, and `--check` reports a one-byte edit, a flipped
 executable bit, a deleted file and a lock whose file list differs from the
-vendored one, by file name and without touching the network. A malformed lock exits 4 with the broken field, not a traceback.
+vendored one, by file name and without touching the network. A malformed lock
+exits 4 with the broken field, not a traceback.
 """
 
 import hashlib

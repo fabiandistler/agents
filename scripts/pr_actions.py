@@ -28,7 +28,9 @@ MAINTAINER_LOGIN = "fabiandistler"
 GRAPHQL_PATH = "/graphql"
 MERGE_METHODS = {"merge": "MERGE"}
 ENABLE_AUTO_MERGE = """
-mutation($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!, $expectedHeadOid: GitObjectID!) {
+mutation(
+  $pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!, $expectedHeadOid: GitObjectID!
+) {
   enablePullRequestAutoMerge(input: {
     pullRequestId: $pullRequestId, mergeMethod: $mergeMethod, expectedHeadOid: $expectedHeadOid
   }) { clientMutationId }

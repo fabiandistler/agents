@@ -10,9 +10,10 @@ Run from repo root:
 Cloud sessions do not install plugins, so the `mattpocock-skills` plugin is
 copied in as plain project skills. The skill list is upstream's own
 `.claude-plugin/plugin.json` (its released set; `in-progress/` and `misc/` are
-not part of it), plus the `in-progress/` skills named in INCLUDED_IN_PROGRESS. The pinned commit, the vendored names and upstream's MIT
-license live in `.claude/vendor/mattpocock-skills/`. A re-run replaces exactly
-the previously vendored directories, so a skill upstream dropped disappears.
+not part of it), plus the `in-progress/` skills named in INCLUDED_IN_PROGRESS.
+The pinned commit, the vendored names and upstream's MIT license live in
+`.claude/vendor/mattpocock-skills/`. A re-run replaces exactly the previously
+vendored directories, so a skill upstream dropped disappears.
 A newly vendored skill also needs a `.claude/skills/<name>/** linguist-vendored`
 line in `.gitattributes`; scripts/test_gitattributes.py fails until it has one.
 
@@ -54,8 +55,9 @@ VENDOR_DIR = REPO_ROOT / ".claude" / "vendor" / "mattpocock-skills"
 LOCK_PATH = VENDOR_DIR / "lock.json"
 UPSTREAM = "https://github.com/mattpocock/skills.git"
 # Never vendored: improve-codebase-architecture is forked into this catalogue as
-# `improve-codebase` (#492, ADR-0008). ask-matt was deleted by hand on 2026-10-13 (5fc4f2f); excluding it keeps a re-run
-# from bringing it back. A previously vendored copy is removed on re-run.
+# `improve-codebase` (#492, ADR-0008). ask-matt was deleted by hand on
+# 2026-10-13 (5fc4f2f); excluding it keeps a re-run from bringing it back. A
+# previously vendored copy is removed on re-run.
 EXCLUDED = frozenset({"ask-matt", "improve-codebase-architecture"})
 # Unreleased upstream skills vendored anyway: chief-of-staff runs the long-lived
 # goal sessions whose record lives in docs/wiki/.
@@ -115,7 +117,8 @@ def main() -> int:
         ]
         if collisions:
             sys.stderr.write(
-                f"not vendored, names already taken in .claude/skills: {', '.join(sorted(collisions))}\n"
+                "not vendored, names already taken in .claude/skills: "
+                f"{', '.join(sorted(collisions))}\n"
             )
             return 2
 
@@ -143,7 +146,8 @@ def main() -> int:
         }
         LOCK_PATH.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
     print(
-        f"vendored into {SKILLS_DIR.relative_to(REPO_ROOT)}; lock at {LOCK_PATH.relative_to(REPO_ROOT)}"
+        f"vendored into {SKILLS_DIR.relative_to(REPO_ROOT)}; "
+        f"lock at {LOCK_PATH.relative_to(REPO_ROOT)}"
     )
     return 0
 

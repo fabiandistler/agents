@@ -121,7 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__,
         epilog="Examples:\n  python3 scripts/check_pr_issue_links.py --repo owner/repo --pr 1\n"
         "  python3 scripts/check_pr_issue_links.py --repo owner/repo --pr 1 --output links.json\n"
-        "Exit: 0 pass | 1 policy failure | 2 usage error | 3 API/stale snapshot | 4 report write failure",
+        "Exit: 0 pass | 1 policy failure | 2 usage error | 3 API/stale snapshot\n"
+        "      4 report write failure",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--repo", required=True, type=_repo, help="base owner/repository")

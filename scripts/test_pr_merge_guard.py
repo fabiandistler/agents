@@ -44,7 +44,10 @@ BLOCKED_COMMANDS = [
     "gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {}) { x } }'",
     "gh api graphql -f query='mutation { mergePullRequest(input: {}) { x } }'",
     "gh api graphql -f query='mutation { enqueuePullRequest(input: {}) { x } }'",
-    'gh api graphql --input - <<\'EOF\'\n{"query": "mutation { mergePullRequest(input: {}) { x } }"}\nEOF',
+    (
+        "gh api graphql --input - <<'EOF'\n"
+        '{"query": "mutation { mergePullRequest(input: {}) { x } }"}\nEOF'
+    ),
     "curl -X PUT -H 'Authorization: token t' https://api.github.com/repos/o/r/pulls/7/merge",
     'curl -d \'{"query":"mutation { mergePullRequest(input:{}) {x} }"}\' https://api.github.com/graphql',
 ]
@@ -219,8 +222,12 @@ for (const [tool, args] of [["bash", {{ command: "gh pr merge 7" }}],
   catch (e) {{ results.push(e.message.includes("ask the user") ? "block" : "error"); }}
 }}
 let hook;
-await plugin.setup({{ directory: process.cwd(), tool: {{ hook: async (name, cb) => {{ hook = cb; }} }} }});
-try {{ await hook({{ tool: "bash", input: {{ command: "gh pr merge 7" }} }}); results.push("allow"); }}
+await plugin.setup({{
+  directory: process.cwd(), tool: {{ hook: async (name, cb) => {{ hook = cb; }} }},
+}});
+try {{
+  await hook({{ tool: "bash", input: {{ command: "gh pr merge 7" }} }}); results.push("allow");
+}}
 catch (e) {{ results.push("block"); }}
 console.log(JSON.stringify([plugin.id, results]));
 """

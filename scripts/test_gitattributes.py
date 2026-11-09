@@ -43,7 +43,8 @@ def _vendored_paths() -> list[str]:
     tracked = _git(REPO_ROOT, "ls-files", "--", *pathspecs).splitlines()
     for name in skills:
         assert any(path.startswith(f".claude/skills/{name}/") for path in tracked), (
-            f".claude/skills/{name}: in {MATTPOCOCK_LOCK.relative_to(REPO_ROOT)} but no file tracked"
+            f".claude/skills/{name}: in {MATTPOCOCK_LOCK.relative_to(REPO_ROOT)} "
+            "but no file tracked"
         )
     return locked + tracked
 

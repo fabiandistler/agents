@@ -168,7 +168,8 @@ def main() -> int:
         expected = {entry.name for entry in entries_for_target(members, "claude")}
         for s in sorted(expected - bundled):
             errors.append(
-                f"{plugin}: skills/{s} has category: {plugin} but no symlink in plugins/{plugin}/skills/"
+                f"{plugin}: skills/{s} has category: {plugin} "
+                f"but no symlink in plugins/{plugin}/skills/"
             )
         for s in sorted(bundled - expected):
             errors.append(
