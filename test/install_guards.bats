@@ -147,11 +147,11 @@ PY
   [[ ! -e "$XDG_STATE_HOME/fabiandistler-agents/install.json" ]] ||
     fail "a failed plugin install still saved the install state"
   no_cli_home="$(mktemp -d)"
-  run env HOME="$no_cli_home" PATH="$(path_without_claude)" "$INSTALL" --target=claude --secret-guard
+  run env HOME="$no_cli_home" PATH="$(path_without claude)" "$INSTALL" --target=claude --secret-guard
   [[ "$status" -eq 0 ]] || fail "install without the claude CLI failed: $output"
   [[ "$output" == *'claude CLI not found; install the secret read guard with: claude plugin install secret-guard@fabiandistler-agents'* ]] ||
     fail "install without the claude CLI did not name the manual command: $output"
-  run env HOME="$no_cli_home" PATH="$(path_without_claude)" "$INSTALL" --target=claude --secret-guard --uninstall
+  run env HOME="$no_cli_home" PATH="$(path_without claude)" "$INSTALL" --target=claude --secret-guard --uninstall
   [[ "$status" -eq 0 && "$output" == *'claude plugin uninstall secret-guard@fabiandistler-agents'* ]] ||
     fail "uninstall without the claude CLI did not name the manual command: $output"
 }
