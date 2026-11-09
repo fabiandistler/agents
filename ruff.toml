@@ -22,7 +22,9 @@ extend-exclude = [
 # `timeout`, and `requests`/`httpx` calls with `timeout=None`. Does not see
 # calls on Session/Client instances, and ignores aiohttp.
 # Source: Albada, Building Applications with AI Agents, ch. 4.
-extend-select = ["S"]
+# E501: line-length alone only steers the formatter, which leaves long strings
+# and comments as they are; without the rule they passed every check.
+extend-select = ["S", "E501"]
 
 [lint.per-file-ignores]
 "**/test_*.py" = ["S101"]
