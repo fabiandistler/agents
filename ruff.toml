@@ -26,3 +26,5 @@ extend-select = ["S"]
 
 [lint.per-file-ignores]
 "**/test_*.py" = ["S101"]
+# Fixtures and fakes shared by the test_pr_*.py modules.
+"scripts/pr_*_testkit.py" = ["S101"]

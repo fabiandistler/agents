@@ -28,7 +28,8 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
   and for Codex CLI disables routed members via a marker-delimited block in
   `~/.codex/config.toml` (all removed by `--uninstall`).
   `--merge-guard` adds the model-free hook `scripts/pr_merge_guard.py` that
-  stops agents from merging PRs (only the human merges); this repo's
+  stops agents from merging PRs (only the human merges; the one exception is
+  the CI bot's docs-only auto-merge under ADR-0011, never an agent); this repo's
   `.claude/settings.json` carries it via `scripts/build_project_claude.py`.
   `--secret-guard` adds the same kind of hook, `scripts/secret_read_guard.py`,
   which stops agents from reading credential files or dumping the environment.
@@ -200,6 +201,10 @@ Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. 
 ### Triage labels
 
 The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### PR review
+
+Pull requests are assessed, reviewed and labeled by `.github/workflows/pr-review.yml`. Its model-free `publish` job may enable native auto-merge on a `risk:low` docs-only pull request with `review:pass` while `PR_AUTO_MERGE` is `true`; GitHub merges after the required checks pass (`docs/adr/0011-pr-review-merge-exception.md`). This is the only merge exception. You, an interactive agent, never merge and never enable auto-merge, even on a pull request that qualifies. Setup, rollout, labels and troubleshooting: `docs/agents/pr-review-runbook.md`.
 
 ### Domain docs
 

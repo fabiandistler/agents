@@ -1,0 +1,377 @@
+#!/usr/bin/env python3
+"""Deterministic risk policy for pull requests.
+
+The policy is a pure function over the context produced by ``pr_github.py``.
+It classifies every changed path, applies size, deletion, rename, binary and
+metadata escalations, and emits one JSON decision. The result is a floor: a
+later review may raise the risk, never lower it.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import sys
+
+import pr_cli
+import pr_github
+import pr_github_client
+
+SCHEMA_VERSION = 1
+
+LOW = "low"
+MEDIUM = "medium"
+HIGH = "high"
+
+RISK_ORDER = {LOW: 0, MEDIUM: 1, HIGH: 2}
+
+# Ordered most-specific first. When several rules match one path, the highest
+# risk wins; among equal risks the first rule supplies the reason label.
+PATH_RULES = (
+    # The triage automation is always high, whatever else matches.
+    (re.compile(r"^scripts/pr_merge_guard\.py$"), HIGH, "guard-script"),
+    (re.compile(r"^scripts/secret_read_guard\.py$"), HIGH, "guard-script"),
+    (re.compile(r"^plugins/(?:merge-guard|secret-guard)(?:/|$)"), HIGH, "guard-script"),
+    (re.compile(r"^scripts/(?:pr_|test_pr_)"), HIGH, "triage-automation"),
+    # Workflows, installer, gates, build scripts and their hooks.
+    (re.compile(r"^\.github/"), HIGH, "workflow"),
+    (re.compile(r"^install\.sh$"), HIGH, "installer"),
+    (re.compile(r"^scripts/check_[^/]*$"), HIGH, "gate-script"),
+    (re.compile(r"^scripts/quick_validate\.py$"), HIGH, "gate-script"),
+    (re.compile(r"^scripts/require_python\.sh$"), HIGH, "gate-script"),
+    (re.compile(r"^scripts/catalogue\.py$"), HIGH, "gate-script"),
+    # Gate helpers: imported by a check script, or run as a check_all.sh check.
+    (
+        re.compile(
+            r"^scripts/(?:skill_frontmatter|instruction_fragments|vendoring"
+            r"|vendor_repo_maintenance)\.py$"
+        ),
+        HIGH,
+        "gate-script",
+    ),
+    (re.compile(r"^scripts/build_[^/]*\.py$"), HIGH, "build-script"),
+    (re.compile(r"^scripts/opencode/"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/hooks/"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/python_init_context\.py$"), HIGH, "hook-script"),
+    (re.compile(r"^scripts/install/"), HIGH, "installer"),
+    (re.compile(r"^scripts/plugin_agents\.py$"), HIGH, "installer"),
+    (re.compile(r"^plugins/[^/]+/hooks/"), HIGH, "hook-settings"),
+    # Configuration and dependency pins.
+    (re.compile(r"^\.claude/settings\.json$"), HIGH, "hook-settings"),
+    (re.compile(r"^\.pre-commit-config\.yaml$"), HIGH, "hook-settings"),
+    (re.compile(r"^conftest\.py$"), HIGH, "test-config"),
+    (
+        re.compile(r"^(?:ruff\.toml|pyrightconfig\.json|ty\.toml|\.shellcheckrc)$"),
+        HIGH,
+        "lint-config",
+    ),
+    (re.compile(r"^(?:pyproject\.toml|\.gitattributes|\.gitignore)$"), HIGH, "project-config"),
+    (
+        re.compile(r"(?:^|/)[^/]*\.requirements\.txt$|^(?:package|package-lock)\.json$"),
+        HIGH,
+        "dependency-pins",
+    ),
+    # Pinned Bats submodules and the lock of the vendored maintenance scanner.
+    (re.compile(r"^(?:\.gitmodules$|test/bats/|vendor/)"), HIGH, "dependency-pins"),
+    # Medium: skills, instructions, agent docs, mirror, tests and support code.
+    (
+        re.compile(r"^plugins/(?![^/]+/hooks/)(?!(?:merge-guard|secret-guard)/)"),
+        MEDIUM,
+        "plugins",
+    ),
+    (re.compile(r"^\.claude-plugin/"), MEDIUM, "plugins"),
+    (re.compile(r"^\.claude/"), MEDIUM, "claude-mirror"),
+    (re.compile(r"^skills/"), MEDIUM, "skills"),
+    (re.compile(r"^instructions/"), MEDIUM, "instructions"),
+    (re.compile(r"^docs/agents/"), MEDIUM, "agent-docs"),
+    # Agents load AGENTS.md and CLAUDE.md as instructions wherever they sit.
+    (re.compile(r"(?:^|/)(?:AGENTS|CLAUDE)\.md$"), MEDIUM, "agent-docs"),
+    # Declined ideas that the triage agent checks new requests against.
+    (re.compile(r"^\.out-of-scope/"), MEDIUM, "agent-docs"),
+    # README.md and the ADRs state repository policy, such as the merge rule.
+    (re.compile(r"^README\.md$"), MEDIUM, "policy-docs"),
+    (re.compile(r"^docs/adr/"), MEDIUM, "adr"),
+    (re.compile(r"^skills\.json$"), MEDIUM, "catalogue"),
+    (re.compile(r"^scripts/test_[^/]*\.py$"), MEDIUM, "tests"),
+    (re.compile(r"^scripts/test_install\.sh$"), MEDIUM, "tests"),
+    (re.compile(r"^scripts/fixtures/"), MEDIUM, "tests"),
+    (re.compile(r"^test/(?!bats/)"), MEDIUM, "tests"),
+    # Non-gate scripts. The maintenance scanner is vendored; its lock is a pin.
+    (
+        re.compile(
+            r"^scripts/(?:vendor_mattpocock_skills\.py|skill_audit_select\.py"
+            r"|maintenance-scan\.sh|maintenance-new-deps\.py|maintenance-r-advisories\.py)$"
+        ),
+        MEDIUM,
+        "scripts",
+    ),
+    (re.compile(r"^maintenance/(?!reports/)"), MEDIUM, "maintenance"),
+    # Low: documentation and generated reports.
+    (re.compile(r"^(?:MAINTENANCE|GLOSSARY)\.md$"), LOW, "docs"),
+    (re.compile(r"^docs/(?!agents/|adr/)"), LOW, "docs"),
+    (re.compile(r"^maintenance/reports/"), LOW, "maintenance-reports"),
+)
+
+
+def _classify_path(path: str) -> tuple[str, str]:
+    """Return the risk and reason label of the strongest matching path rule."""
+    best_risk = None
+    best_label = "unknown"
+    for pattern, risk, label in PATH_RULES:
+        if not pattern.search(path):
+            continue
+        if best_risk is None or RISK_ORDER[risk] > RISK_ORDER[best_risk]:
+            best_risk = risk
+            best_label = label
+    if best_risk is None:
+        return HIGH, "unknown"
+    return best_risk, best_label
+
+
+# The statuses GitHub reports for a changed file; pr_github.py folds the last
+# three into "added" and "modified".
+FILE_STATUSES = frozenset(
+    {"added", "removed", "modified", "renamed", "copied", "changed", "unchanged"}
+)
+
+
+def _malformed_fields(entry: dict) -> list[str]:
+    """Name the fields of one file entry the policy cannot rely on."""
+    malformed = [
+        field
+        for field in ("additions", "deletions")
+        if not pr_github.is_line_count(entry.get(field))
+    ]
+    if entry.get("status") not in FILE_STATUSES:
+        malformed.append("status")
+    if not isinstance(entry.get("binary"), bool):
+        malformed.append("binary")
+    renamed_from = entry.get("renamed_from")
+    if renamed_from is not None and not (isinstance(renamed_from, str) and renamed_from):
+        malformed.append("renamed_from")
+    return malformed
+
+
+def raise_risk(current: str, candidate: str) -> str:
+    """The higher of two risks; a risk is only ever raised, never lowered."""
+    return candidate if RISK_ORDER[candidate] > RISK_ORDER[current] else current
+
+
+def _line_count(entry: dict, field: str) -> int:
+    """The count, or 0 for a malformed one, which already made the result high."""
+    value = entry.get(field)
+    return value if pr_github.is_line_count(value) else 0
+
+
+def _is_critical_deletion(path: str) -> bool:
+    guarded_prefixes = (
+        "skills/",
+        ".github/workflows/",
+        "plugins/merge-guard/",
+        "plugins/secret-guard/",
+    )
+    return (
+        path.startswith(guarded_prefixes)
+        or path == "install.sh"
+        or path in {"scripts/pr_merge_guard.py", "scripts/secret_read_guard.py"}
+    )
+
+
+def classify_pull_request(context: dict) -> dict:
+    """Classify one pull request from its changed files and metadata.
+
+    Returns the decision JSON documented in the feature contract. An empty or
+    unreadable file list is high risk, never an error.
+    """
+    if not isinstance(context, dict):
+        raise TypeError("context must be a mapping")
+
+    entries: list[dict] = []
+    reasons: list[str] = []
+    reasons_unreadable = False
+    raw_files = context.get("files")
+    if not isinstance(raw_files, list):
+        reasons_unreadable = True
+        if raw_files is None:
+            reasons.append("unreadable-file-list: files is missing or null")
+        else:
+            reasons.append("unreadable-file-list: files is not a list")
+    else:
+        for index, entry in enumerate(raw_files):
+            path = entry.get("path") if isinstance(entry, dict) else None
+            if not isinstance(path, str) or not path:
+                reasons_unreadable = True
+                reasons.append(f"unreadable-file-list: entry at index {index} has no path")
+                continue
+            for field in _malformed_fields(entry):
+                reasons_unreadable = True
+                reasons.append(
+                    f"unreadable-file-list: entry at index {index} has a malformed {field}"
+                )
+            entries.append(entry)
+
+    additions = sum(_line_count(entry, "additions") for entry in entries)
+    deletions = sum(_line_count(entry, "deletions") for entry in entries)
+    changed_lines = additions + deletions
+
+    risk = HIGH if reasons_unreadable else LOW
+    if not entries:
+        reasons.append("empty-file-list: no changed files")
+        risk = HIGH
+
+    for entry in entries:
+        path_risk, label = _classify_path(entry["path"])
+        reasons.append(f"{label}: {entry['path']}")
+        risk = raise_risk(risk, path_risk)
+
+    if changed_lines > 1000:
+        reasons.append(f"size: {changed_lines} changed lines > 1000")
+        risk = HIGH
+    elif changed_lines > 300:
+        reasons.append(f"size: {changed_lines} changed lines > 300")
+        risk = raise_risk(risk, MEDIUM)
+
+    if len(entries) > 50:
+        reasons.append(f"count: {len(entries)} files > 50")
+        risk = HIGH
+    elif len(entries) > 20:
+        reasons.append(f"count: {len(entries)} files > 20")
+        risk = raise_risk(risk, MEDIUM)
+
+    for entry in entries:
+        path = entry["path"]
+        status = entry.get("status")
+        if status == "removed":
+            if _is_critical_deletion(path):
+                reasons.append(f"critical-deletion: {path}")
+                risk = HIGH
+            else:
+                reasons.append(f"deletion: {path}")
+                risk = raise_risk(risk, MEDIUM)
+        if status == "renamed" or entry.get("renamed_from"):
+            renamed_from = entry.get("renamed_from")
+            if renamed_from:
+                reasons.append(f"rename: {renamed_from} -> {path}")
+            else:
+                reasons.append(f"rename: {path}")
+            risk = raise_risk(risk, MEDIUM)
+        if entry.get("binary") is True:
+            reasons.append(f"binary: {path}")
+            risk = HIGH
+
+    # The diff is what the review reads; without it the change is unreviewable.
+    diff_status = context.get("diff_status")
+    if diff_status == "unavailable":
+        reasons.append("unreadable-diff: GitHub returned no diff")
+        risk = HIGH
+    elif diff_status not in ("complete", "truncated"):
+        reasons.append("unreadable-diff: diff_status is not recognised")
+        risk = HIGH
+
+    fork = context.get("fork")
+    draft = context.get("draft")
+    for field, flag in (("fork", fork), ("draft", draft)):
+        if not isinstance(flag, bool):
+            reasons.append(f"unreadable-metadata: {field} is not a boolean")
+            risk = HIGH
+    if fork is True:
+        reasons.append("fork: head repository differs from base")
+        risk = HIGH
+    if draft is True:
+        reasons.append("draft: auto-merge disabled")
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "number": context.get("number"),
+        "head_sha": context.get("head_sha"),
+        "risk": risk,
+        "reasons": reasons,
+        "auto_merge_eligible": risk == LOW and fork is False and draft is False,
+        "counts": {
+            "files": len(entries),
+            "additions": additions,
+            "deletions": deletions,
+            "changed_lines": changed_lines,
+        },
+    }
+
+
+USAGE = f"""usage: pr_risk.py --context FILE [--output FILE]
+       pr_risk.py --live --pr N --repo OWNER/REPO [--output FILE]
+
+Classify a pull request as low, medium or high risk from its changed paths
+and metadata. Prints the decision JSON on stdout unless --output is given.
+
+  --context FILE   read a context JSON produced by pr_github.py (offline)
+  --live           fetch the context from GitHub; needs GITHUB_TOKEN
+  --pr N           pull request number (with --live)
+  --repo O/R       repository as OWNER/REPO (with --live)
+  --output FILE    write the decision JSON to FILE instead of stdout
+  -h, --help       show this message
+
+examples:
+  python3 scripts/pr_risk.py --context context.json
+  python3 scripts/pr_risk.py --live --pr 42 --repo fabiandistler/agents
+
+{pr_cli.exit_help(0, 2, 3, 4, 5, 6)}
+"""
+
+
+def _parse_arguments(argv: list[str]) -> dict | None:
+    options = pr_cli.parse_flags(argv, ("--context", "--pr", "--repo", "--output"), ("--live",))
+    if options is None:
+        return None
+    has_context = isinstance(options["context"], str)
+    has_live = options["live"] is True
+    if has_context and has_live:
+        raise pr_cli.UsageError("--context and --live are mutually exclusive")
+    if not has_context and not has_live:
+        raise pr_cli.UsageError("one of --context or --live is required")
+    if has_live:
+        pr_cli.require_pull_request(options)
+    elif options["pr"] is not None or options["repo"] is not None:
+        raise pr_cli.UsageError("--pr and --repo are only valid with --live")
+    return options
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = sys.argv[1:] if argv is None else list(argv)
+    try:
+        options = _parse_arguments(arguments)
+    except pr_cli.UsageError as error:
+        return pr_cli.usage_failure("pr_risk.py", USAGE, error)
+    if options is None:
+        print(USAGE, end="")
+        return pr_cli.EXIT_OK
+
+    if options["live"] is True:
+        try:
+            context = pr_github.fetch_context(
+                str(options["repo"]),
+                int(options["pr"]),
+                token=os.environ.get("GITHUB_TOKEN") or None,
+            )
+        except pr_github_client.MissingTokenError as error:
+            print(f"pr_risk.py: {error}", file=sys.stderr)
+            return pr_cli.EXIT_MISSING_TOKEN
+        except pr_github_client.FetchError as error:
+            print(f"pr_risk.py: live fetch failed: {error}", file=sys.stderr)
+            return pr_cli.EXIT_FETCH_FAILED
+    else:
+        try:
+            context = pr_cli.read_json_object(str(options["context"]), "--context")
+        except pr_cli.InputError as error:
+            print(f"pr_risk.py: {error}", file=sys.stderr)
+            return pr_cli.EXIT_BAD_INPUT
+
+    decision = classify_pull_request(context)
+    output = options["output"]
+    if not isinstance(output, str):
+        pr_cli.print_json(decision)
+    elif not pr_cli.write_json_file("pr_risk.py", "--output", output, decision):
+        return pr_cli.EXIT_OUTPUT_FAILED
+    return pr_cli.EXIT_OK
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
