@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Vendor the repo-maintenance scanner, its two helpers and a prek hook into `scripts/`.
+"""Vendor repo-maintenance's scanner, helpers, unicode check and a prek hook into `scripts/`.
 
 Run from repo root:
     python3 scripts/vendor_repo_maintenance.py              # update to upstream main
     python3 scripts/vendor_repo_maintenance.py --ref <sha>  # pin a commit
     python3 scripts/vendor_repo_maintenance.py --dry-run    # print the plan only
     python3 scripts/vendor_repo_maintenance.py --check      # offline drift check (CI)
+    python3 scripts/vendor_repo_maintenance.py --check-upstream  # is the lock behind main?
 
 The maintenance runs in this repo call `scripts/maintenance-scan.sh`. A hand-kept
 copy of it drifted from upstream, so every scanner fix had to be ported by hand
 (#673, #675). This script copies the scanner from upstream
 `plugins/repo-maintenance/assets/` together with the two helpers it loads from its
 own directory, so the three stay siblings and keep upstream's file mode. The
+invisible-character check `maintenance-instruction-unicode.py` comes from the same
+assets directory; `scripts/check_all.sh` runs it as the `instruction-unicode`
+check, and its tests stay upstream (`tests/test_instruction_unicode.py`). The
 `check-file-tokens` prek hook comes from the same commit, from the prek-hooks
 skill's references, into `scripts/hooks/`. The pinned commit, a sha256 and git
 file mode per file, and upstream's license live in `vendor/repo-maintenance/`. A
@@ -21,6 +25,10 @@ re-run at the same ref changes nothing.
 lock, without network access; `scripts/check_all.sh` runs it as the `vendor-lock`
 check. Fixes go upstream, then a re-vendor brings them here: a local edit, a
 flipped executable bit or a hand-edited lock fails the check.
+
+`--check-upstream` is the networked counterpart for the `deps-audit` job: it
+compares the lock's commit with upstream `main` (`git ls-remote`, read-only) and
+reports `current` or `behind`. It never runs in CI.
 
 Exit codes are in EPILOG below. Needs git (except --check); stdlib-only.
 """
@@ -37,7 +45,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from vendoring import clone_at
+from vendoring import check_upstream, clone_at
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 VENDOR_DIR = REPO_ROOT / "vendor" / "repo-maintenance"
@@ -54,26 +62,35 @@ VENDORED = {
     "scripts/maintenance-scan.sh": f"{UPSTREAM_ASSETS}/maintenance-scan.sh",
     "scripts/maintenance-r-advisories.py": f"{UPSTREAM_ASSETS}/maintenance-r-advisories.py",
     "scripts/maintenance-new-deps.py": f"{UPSTREAM_ASSETS}/maintenance-new-deps.py",
+    # scripts/check_all.sh runs this copy as the instruction-unicode check.
+    "scripts/maintenance-instruction-unicode.py": (
+        f"{UPSTREAM_ASSETS}/maintenance-instruction-unicode.py"
+    ),
     # The check-file-tokens hook in .pre-commit-config.yaml runs this copy.
     "scripts/hooks/check-file-tokens.sh": f"{UPSTREAM_PREK_HOOKS}/check-file-tokens.sh",
 }
 REVENDOR = "python3 scripts/vendor_repo_maintenance.py --ref"
 
 DESCRIPTION = """\
-Copy maintenance-scan.sh and its two helpers from fabiandistler/repo-maintenance
-(plugins/repo-maintenance/assets/) into scripts/, and the check-file-tokens.sh
-prek hook (plugins/repo-maintenance/skills/prek-hooks/references/) into
-scripts/hooks/; pin the commit and each file's sha256 and git mode in
+Copy maintenance-scan.sh, its two helpers and maintenance-instruction-unicode.py
+from fabiandistler/repo-maintenance (plugins/repo-maintenance/assets/) into
+scripts/, and the check-file-tokens.sh prek hook
+(plugins/repo-maintenance/skills/prek-hooks/references/) into scripts/hooks/;
+pin the commit and each file's sha256 and git mode in
 vendor/repo-maintenance/lock.json."""
 EPILOG = """\
 examples:
   python3 scripts/vendor_repo_maintenance.py --ref <commit>
   python3 scripts/vendor_repo_maintenance.py --check
+  python3 scripts/vendor_repo_maintenance.py --check-upstream
 
-exit: 0 ok | 1 git clone/checkout failed | 2 usage error
+exit: 0 ok (--check-upstream: lock is at upstream main)
+      1 git clone/checkout failed (--check-upstream: upstream unreachable or
+        has no main; not checked, never current) | 2 usage error
       3 a vendored file or LICENSE is missing upstream at REF (nothing written)
-      4 --check: the lock is missing or malformed or lists other files than the
-        four, or a vendored file is missing or differs in content or mode"""
+      4 --check: the lock is missing or malformed or lists other files than
+        VENDORED, or a vendored file is missing or differs in content or mode
+      5 --check-upstream: the lock is behind upstream main"""
 
 
 class LockError(Exception):
@@ -163,6 +180,18 @@ def check() -> int:
     return 0
 
 
+def check_lock_upstream() -> int:
+    if not LOCK_PATH.is_file():
+        sys.stderr.write(f"no lock at {rel(LOCK_PATH)}; vendor first: {REVENDOR} <commit>\n")
+        return 4
+    try:
+        lock = read_lock()
+    except LockError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 4
+    return check_upstream(UPSTREAM, lock["commit"], "main")
+
+
 def vendor(ref: str, dry_run: bool) -> int:
     with tempfile.TemporaryDirectory() as tmp:
         clone = Path(tmp) / "repo-maintenance"
@@ -227,11 +256,18 @@ def main() -> int:
         action="store_true",
         help="compare the vendored files with the lock, offline; write nothing",
     )
+    mode.add_argument(
+        "--check-upstream",
+        action="store_true",
+        help="compare the lock's commit with upstream main (network, read-only)",
+    )
     args = parser.parse_args()
+    if (args.check or args.check_upstream) and args.ref:
+        parser.error("--check and --check-upstream read the commit from the lock; no --ref")
     if args.check:
-        if args.ref:
-            parser.error("--check reads the commit from the lock; it takes no --ref")
         return check()
+    if args.check_upstream:
+        return check_lock_upstream()
     return vendor(args.ref or "main", args.dry_run)
 
 

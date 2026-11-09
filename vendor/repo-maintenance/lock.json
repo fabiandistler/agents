@@ -1,17 +1,21 @@
 {
   "upstream": "https://github.com/fabiandistler/repo-maintenance",
-  "commit": "177c3a71c8ac751f0bc3ee8f2faa47a1d0f19a3c",
+  "commit": "096b87c595161307dd0866d239670bb9cbaec7e4",
   "files": {
     "scripts/maintenance-scan.sh": {
-      "sha256": "fe6570028a1644f46db4e5517ffd271e12fb083890ec029985bf2809aae5cacd",
+      "sha256": "7d91fe96f4bab623e3417848889091afae9649cd3c13006f762a69d527462217",
       "mode": "100755"
     },
     "scripts/maintenance-r-advisories.py": {
-      "sha256": "3fcfa81fcf5b0246bc51aaf133d072b70e72c673eb619b0a3d309717cc51056d",
+      "sha256": "13d18c077a8d83f7163566037e7c9dda866f27e239d1399d0683a741f6c9648d",
       "mode": "100755"
     },
     "scripts/maintenance-new-deps.py": {
-      "sha256": "9a778266386c0dfe5b44b904a8ee3ea08f92274510d46fc23636f739e0502c4f",
+      "sha256": "b50e42f5a7953402887895dd349aa391ed530b29470faac77120e9305758313c",
+      "mode": "100755"
+    },
+    "scripts/maintenance-instruction-unicode.py": {
+      "sha256": "049109640078a3bc398afacc54424b9f9e86fdc1c66850c7a0ed75624b32b953",
       "mode": "100755"
     },
     "scripts/hooks/check-file-tokens.sh": {

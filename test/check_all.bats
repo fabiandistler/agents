@@ -35,6 +35,28 @@ EOF
   chmod +x "$scratch_repo_runner"
 }
 
+# A bare checkout whose Bats runner writes its arguments to $runner_args.
+make_checkout_with_recording_runner() {
+  make_bare_checkout
+  local bats_dir="$bare_checkout/test/bats"
+  mkdir -p "$bats_dir/bats-core/bin" "$bats_dir/bats-support" "$bats_dir/bats-assert"
+  touch "$bats_dir/bats-support/load.bash" "$bats_dir/bats-assert/load.bash"
+  runner_args="$bare_checkout/runner-args"
+  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >%q\n' "$runner_args" \
+    >"$bats_dir/bats-core/bin/bats"
+  chmod +x "$bats_dir/bats-core/bin/bats"
+}
+
+# stub_parallel VERSION_LINE: a parallel command first on PATH whose
+# --version prints VERSION_LINE.
+stub_parallel() {
+  local stub_bin="$BATS_TEST_TMPDIR/stub-bin"
+  mkdir -p "$stub_bin"
+  printf '#!/usr/bin/env bash\necho %q\n' "$1" >"$stub_bin/parallel"
+  chmod +x "$stub_bin/parallel"
+  stub_path="$stub_bin:$(path_without parallel)"
+}
+
 # A throwaway repository standing in for the one a pre-push hook runs in.
 make_decoy_repo() {
   git init -q "$BATS_TEST_TMPDIR/decoy"
@@ -57,6 +79,8 @@ decoy_config() {
   assert_success
   assert_line --regexp $'^manifest\t'
   assert_line --regexp $'^bats\tbash .* bats-submodules$'
+  # The vendored invisible-character check needs only the standard library.
+  assert_line --regexp $'^instruction-unicode\t[^ ]*python[^ ]*$'
   refute_output --partial 'install-smoke'
 }
 
@@ -137,4 +161,31 @@ decoy_config() {
   before="$(decoy_config)"
   env GIT_DIR="$decoy_git_dir" "$scratch_repo_runner"
   assert_not_equal "$(decoy_config)" "$before"
+}
+
+@test "with GNU parallel the bats check runs one job per core" {
+  make_checkout_with_recording_runner
+  stub_parallel 'GNU parallel 20231122'
+  run env PATH="$stub_path" "$bare_checkout/scripts/check_all.sh" --only bats
+  assert_success
+  assert_line --regexp '^PASS bats \([0-9]+s\)$'
+  cores="$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN)"
+  assert_equal "$(cat "$runner_args")" "--jobs $cores test/"
+}
+
+@test "without GNU parallel the bats check runs serially and passes" {
+  make_checkout_with_recording_runner
+  run env PATH="$(path_without parallel)" "$bare_checkout/scripts/check_all.sh" --only bats
+  assert_success
+  assert_line --regexp '^PASS bats \([0-9]+s\)$'
+  assert_equal "$(cat "$runner_args")" "test/"
+}
+
+@test "a parallel that is not GNU parallel leaves the bats check serial" {
+  # moreutils ships a parallel too; Bats' --jobs cannot drive it.
+  make_checkout_with_recording_runner
+  stub_parallel 'parallel: invalid option -- -'
+  run env PATH="$stub_path" "$bare_checkout/scripts/check_all.sh" --only bats
+  assert_success
+  assert_equal "$(cat "$runner_args")" "test/"
 }

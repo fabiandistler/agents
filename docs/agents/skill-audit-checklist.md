@@ -12,8 +12,9 @@ is CI's job (`.github/workflows/ci.yml`); the audit runs those scripts once
 and never re-reports their findings per skill.
 
 Sources: this repo's conventions in `docs/skill-conventions.md` and
-`AGENTS.md` (*Scripts an agent runs*) and Anthropic's *Skill authoring best
-practices*
+`AGENTS.md` (*Scripts an agent runs*, which points to
+`instructions/on-demand/85-agent-scripts.md`) and Anthropic's *Skill
+authoring best practices*
 (<https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices>).
 When that page gains a checkable rule, add an item here in a normal PR
 rather than applying it ad hoc.
@@ -85,7 +86,8 @@ Applies only to skills with `scripts/`.
 
 - **S1** SKILL.md says whether to *run* or *read* each script, and the shown
   invocation matches the script's actual flags (`--help`). (error)
-- **S2** Follows *Scripts an agent runs* in AGENTS.md: non-interactive,
+- **S2** Follows `instructions/on-demand/85-agent-scripts.md` and the
+  repo rules in AGENTS.md (*Scripts an agent runs*): non-interactive,
   `--help` under ~25 lines, data to stdout, documented exit codes, bounded
   output, PEP 723 for third-party deps. (warn)
 - **S3** Errors handled in the script, not deferred to the agent; no

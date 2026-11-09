@@ -23,9 +23,10 @@ ASSETS = {
     "scripts/maintenance-scan.sh": b"#!/usr/bin/env bash\necho scan\n",
     "scripts/maintenance-r-advisories.py": b"#!/usr/bin/env python3\nprint('advisories')\n",
     "scripts/maintenance-new-deps.py": b"#!/usr/bin/env python3\nprint('new deps')\n",
+    "scripts/maintenance-instruction-unicode.py": b"#!/usr/bin/env python3\nprint('unicode')\n",
     "scripts/hooks/check-file-tokens.sh": b"#!/usr/bin/env bash\necho tokens\n",
 }
-# Upstream ships all four executable; this fake one is not, so the lock's
+# Upstream ships every vendored file executable; this fake one is not, so the lock's
 # "100644" mode is exercised as well as "100755".
 NOT_EXECUTABLE = "scripts/maintenance-new-deps.py"
 
@@ -256,3 +257,52 @@ def test_check_rejects_ref(repo, monkeypatch):
     with pytest.raises(SystemExit) as exc:
         _main(monkeypatch, "--check", "--ref", "main")
     assert exc.value.code == 2
+
+
+def _upstream_main(upstream: Path) -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "main"],  # noqa: S607 -- Git intentionally resolves from PATH.
+        cwd=upstream,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_check_upstream_reports_current_at_upstream_main(repo, tmp_path, monkeypatch, capsys):
+    assert _vendor(tmp_path, monkeypatch) == 0
+    capsys.readouterr()
+    assert _main(monkeypatch, "--check-upstream") == 0
+    commit = _upstream_main(Path(vendor.UPSTREAM))
+    assert (
+        capsys.readouterr()
+        .out.strip()
+        .endswith(f"(main): locked {commit}, upstream {commit}: current")
+    )
+
+
+def test_check_upstream_reports_behind_with_both_commits(repo, tmp_path, monkeypatch, capsys):
+    assert _vendor(tmp_path, monkeypatch) == 0
+    upstream = Path(vendor.UPSTREAM)
+    locked = _upstream_main(upstream)
+    _git(upstream, "commit", "-q", "--allow-empty", "-m", "upstream moves on")
+    newer = _upstream_main(upstream)
+    capsys.readouterr()
+    assert _main(monkeypatch, "--check-upstream") == 5
+    assert f"locked {locked}, upstream {newer}: behind" in capsys.readouterr().out
+
+
+def test_check_upstream_unreachable_is_not_current(repo, tmp_path, monkeypatch, capsys):
+    assert _vendor(tmp_path, monkeypatch) == 0
+    monkeypatch.setattr(vendor, "UPSTREAM", str(tmp_path / "gone"))
+    capsys.readouterr()
+    assert _main(monkeypatch, "--check-upstream") == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "not checked: git ls-remote failed:" in captured.err
+
+
+def test_check_upstream_rejects_ref(repo, monkeypatch):
+    with pytest.raises(SystemExit) as excinfo:
+        _main(monkeypatch, "--check-upstream", "--ref", "main")
+    assert excinfo.value.code == 2

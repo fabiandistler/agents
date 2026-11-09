@@ -97,10 +97,20 @@ class Result:
 # --- reading dependencies -----------------------------------------------------------
 
 
+# Decoding policy for every file and all git output this script reads: dependency names are
+# ASCII (PEP 508, CRAN), but R accepts a non-UTF-8 DESCRIPTION (`Encoding: latin1`), so
+# undecodable bytes, e.g. in an author name, are replaced instead of crashing (#125).
+DECODE_ERRORS = "replace"
+
+
 def git(*args: str) -> subprocess.CompletedProcess[str]:
     # git from PATH with an argument list, no shell.
     return subprocess.run(  # nosec B603 B607
-        ["git", *args], capture_output=True, text=True, check=False
+        ["git", *args],
+        capture_output=True,
+        encoding="utf-8",
+        errors=DECODE_ERRORS,
+        check=False,
     )
 
 
@@ -112,7 +122,7 @@ def git_show(rev: str, path: str) -> str | None:
 
 def read_worktree(path: str) -> str | None:
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8", errors=DECODE_ERRORS) as fh:
             return fh.read()
     except FileNotFoundError:
         return None

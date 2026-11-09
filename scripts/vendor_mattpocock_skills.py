@@ -5,6 +5,7 @@ Run from repo root:
     python3 scripts/vendor_mattpocock_skills.py              # update to upstream main
     python3 scripts/vendor_mattpocock_skills.py --ref <sha>  # pin a commit
     python3 scripts/vendor_mattpocock_skills.py --dry-run    # print the plan only
+    python3 scripts/vendor_mattpocock_skills.py --check-upstream  # behind the newest release?
 
 Cloud sessions do not install plugins, so the `mattpocock-skills` plugin is
 copied in as plain project skills. The skill list is upstream's own
@@ -19,9 +20,17 @@ Upstream skills named in the EXCLUDED constant are never vendored; the reason
 sits next to the constant. An excluded name is neither copied nor reported as a
 collision.
 
-Exit codes: 0 ok, 1 git clone/checkout failed, 2 a name collides with a
-directory this script does not own, 3 an INCLUDED_IN_PROGRESS skill is missing
-upstream at the requested ref. Needs git; stdlib-only.
+`--check-upstream` compares the lock's commit with upstream's newest release tag
+(vMAJOR.MINOR.PATCH; the lock records a release `version`, so `main` is not the
+target), read-only over `git ls-remote`, for the `deps-audit` job; it never runs
+in CI.
+
+Exit codes: 0 ok (--check-upstream: lock is at the newest release), 1 git
+clone/checkout failed (--check-upstream: upstream unreachable or no release tag;
+not checked, never current), 2 a name collides with a directory this script does
+not own, 3 an INCLUDED_IN_PROGRESS skill is missing upstream at the requested
+ref, 4 --check-upstream: no lock, 5 --check-upstream: the lock is behind the
+newest release. Needs git; stdlib-only.
 """
 
 from __future__ import annotations
@@ -34,7 +43,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from vendoring import clone_at
+from vendoring import check_upstream, clone_at
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI_DESCRIPTION = (
@@ -61,8 +70,20 @@ def main() -> int:
     parser.add_argument(
         "--ref", default="main", help="upstream branch, tag or commit (default main)"
     )
-    parser.add_argument("--dry-run", action="store_true", help="print the plan, write nothing")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="print the plan, write nothing")
+    mode.add_argument(
+        "--check-upstream",
+        action="store_true",
+        help="compare the lock's commit with the newest release tag (network, read-only)",
+    )
     args = parser.parse_args()
+    if args.check_upstream:
+        if not LOCK_PATH.is_file():
+            sys.stderr.write(f"no lock at {LOCK_PATH.relative_to(REPO_ROOT)}; vendor first\n")
+            return 4
+        lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
+        return check_upstream(UPSTREAM, lock["commit"], None)
 
     previous = (
         json.loads(LOCK_PATH.read_text(encoding="utf-8"))["skills"] if LOCK_PATH.is_file() else []

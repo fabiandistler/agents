@@ -67,8 +67,7 @@ fresh_sandbox() {
   main_clone="$sandbox/main"
   linked="$sandbox/linked"
   mkdir -p "$home" "$main_clone"
-  git -C "$REPO_ROOT" ls-files -z -- ':(exclude)test/bats' |
-    (cd "$REPO_ROOT" && tar --null -T - -cf -) | tar -C "$main_clone" -xf -
+  copy_checkout "$main_clone"
   sandbox_git -C "$main_clone" init -q -b main
   sandbox_git -C "$main_clone" add -A
   sandbox_git -C "$main_clone" commit -q -m sandbox
