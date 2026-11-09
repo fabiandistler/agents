@@ -142,6 +142,38 @@ decoy_config() {
   assert_line 'summary: 0 failed, 1 missing (bats)'
 }
 
+# git push prints only `error: failed to push some refs` after the hook, so the
+# hook's last lines must name the cause on their own (an agent reading the tail
+# took exit 3 for a network error and retried the push).
+@test "exit 3 ends with the missing tools, what exit 3 means, and the fix" {
+  "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/bare"
+  bare_python="$BATS_TEST_TMPDIR/bare/bin/python3"
+  run env PYTHON="$bare_python" "$CHECK_ALL" --only frontmatter,pytest
+  assert_failure 3
+  last_lines="$(printf '%s\n' "$output" | tail -n 2)"
+  assert_equal "$last_lines" "exit 3: not installed: pyyaml pytest. No check failed; this is not a network error, so retrying will not help.
+fix: $bare_python -m pip install -r scripts/check_all.requirements.txt"
+}
+
+@test "each missing tool gets its own fix, once per run" {
+  make_bare_checkout
+  "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/bare"
+  bare_python="$BATS_TEST_TMPDIR/bare/bin/python3"
+  run env PYTHON="$bare_python" "$bare_checkout/scripts/check_all.sh" --only pytest,bats
+  assert_failure 3
+  assert_line "MISSING bats: not installed: pyyaml bats-submodules ($bare_python -m pip install -r scripts/check_all.requirements.txt; git submodule update --init)"
+  assert_line --partial 'exit 3: not installed: pytest pyyaml bats-submodules.'
+  assert_line "fix: $bare_python -m pip install -r scripts/check_all.requirements.txt"
+  assert_equal "$(printf '%s\n' "$output" | tail -n 1)" 'fix: git submodule update --init'
+}
+
+@test "a failed check does not print the exit 3 explanation" {
+  make_bare_checkout
+  run "$bare_checkout/scripts/check_all.sh" --only instructions,bats
+  assert_failure 1
+  refute_output --partial 'exit 3:'
+}
+
 @test "check_all.sh keeps a check's scratch-repo setup off the hook's GIT_DIR" {
   # From a linked worktree, git hands the pre-push hook an absolute GIT_DIR.
   make_checkout_with_scratch_repo_runner
