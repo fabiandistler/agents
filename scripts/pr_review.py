@@ -9,9 +9,16 @@ and long base64 blobs from the untrusted text, then caps the diff, the base
 content and the total payload. A capped request, or one whose diff lost hidden
 markup, is marked `partial`, which the publisher uses to keep auto-merge off.
 
+The model is reached through the unmodified Claude Code CLI (`claude -p`),
+authenticated with the maintainer's subscription token. Anthropic permits a
+subscription only inside its own binary, so the request never goes to the API
+directly. The CLI runs with every tool disabled, the system prompt replaced and
+an empty working directory: injected text in the diff can sway the verdict but
+cannot run a command or read the token.
+
 The model response is parsed by `pr_review_response.py`, which fails safe to
-`verdict: concerns` and `risk: high`. Provider errors, timeouts and a missing
-key become `status: unavailable`, never a pass.
+`verdict: concerns` and `risk: high`. CLI errors, timeouts and a missing token
+become `status: unavailable`, never a pass.
 
 The transport is injectable so tests use canned responses. The module is
 standard library only.
@@ -22,9 +29,9 @@ from __future__ import annotations
 import json
 import os
 import posixpath
+import subprocess
 import sys
-import urllib.error
-import urllib.request
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
@@ -33,12 +40,11 @@ from pr_github import is_line_count
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
 from pr_review_sanitize import sanitize_text
 
-DEFAULT_MODEL = "deepseek-v4.1-flash-free"
-DEFAULT_BASE_URL = "https://opencode.ai/zen/v1"
-KEY_ENV = "OPENCODE_API_KEY"
+DEFAULT_MODEL = "sonnet"
+TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"  # noqa: S105 -- a variable name, not a secret
 MODEL_ENV = "PR_REVIEW_MODEL"
-BASE_URL_ENV = "OPENCODE_BASE_URL"
-TIMEOUT_SECONDS = 60
+CLAUDE_COMMAND = "claude"
+TIMEOUT_SECONDS = 300
 
 MAX_DIFF_LINES = 2000
 MAX_DIFF_BYTES = 200_000
@@ -66,16 +72,16 @@ USAGE = f"""\
 usage: pr_review.py --context FILE [--dry-run [--output FILE] | --response FILE]
 
 Build the pull request review request and parse the model response. Prints
-the review artifact JSON; a missing key or provider failure is an unavailable
-artifact with exit 0, never a pass.
+the review artifact JSON; a missing token or a failed `claude` call is an
+unavailable artifact with exit 0, never a pass.
 
   --context FILE    context JSON produced by pr_github.py
   --dry-run         print a request summary; no network call
   --output FILE     with --dry-run, write the full request JSON to FILE
-  --response FILE   parse this canned response instead of calling the provider
+  --response FILE   parse this canned response instead of calling the model
   -h, --help        show this message
-env: OPENCODE_API_KEY (needed for a live call), PR_REVIEW_MODEL (default
-  deepseek-v4.1-flash-free), OPENCODE_BASE_URL (default https://opencode.ai/zen/v1)
+env: CLAUDE_CODE_OAUTH_TOKEN (needed for a live call; from `claude setup-token`),
+  PR_REVIEW_MODEL (Claude Code model alias or name, default sonnet)
 
 examples:
   python3 scripts/pr_review.py --context context.json --dry-run --output request.json
@@ -86,7 +92,7 @@ examples:
 
 
 class ProviderError(Exception):
-    """Internal: the provider call failed; `review` turns it into unavailable."""
+    """Internal: the `claude` call failed; `review` turns it into unavailable."""
 
 
 def _as_text(value: object) -> str:
@@ -233,7 +239,7 @@ def _render_payload(
 
 
 def build_request(context: dict) -> tuple[dict, bool]:
-    """Assemble the provider request for `context` and report whether it was capped."""
+    """Assemble the model request for `context` and report whether it was capped."""
     _validate_context(context)
     system_prompt = _system_prompt()
     title, title_cut = _truncate_text(
@@ -264,9 +270,7 @@ def build_request(context: dict) -> tuple[dict, bool]:
             _truncate_bytes(payload, room) + note if room > 0 else _truncate_bytes(payload, budget)
         )
 
-    base_url = (os.environ.get(BASE_URL_ENV) or DEFAULT_BASE_URL).rstrip("/")
     request = {
-        "url": f"{base_url}/chat/completions",
         "model": os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -338,16 +342,19 @@ def _review_with(context: dict, respond: Callable[[dict, bool], dict]) -> dict:
     return respond(request, partial)
 
 
-def review(context: dict, transport=None, key: str | None = None) -> dict:
-    """Review one context; `transport(request) -> str` is injectable for tests."""
+def review(context: dict, transport=None, token: str | None = None) -> dict:
+    """Review one context; `transport(request) -> str` is injectable for tests.
+
+    `token` defaults to CLAUDE_CODE_OAUTH_TOKEN and is handed to the CLI only.
+    """
 
     def respond(request: dict, partial: bool) -> dict:
-        api_key = key if key is not None else os.environ.get(KEY_ENV)
-        if not api_key:
+        oauth_token = token if token is not None else os.environ.get(TOKEN_ENV)
+        if not oauth_token:
             return _unavailable_artifact(context, MISSING_KEY_SUMMARY, partial)
         try:
-            text = _post(request, api_key) if transport is None else transport(request)
-        except (ProviderError, TimeoutError, urllib.error.URLError):
+            text = _run_claude(request, oauth_token) if transport is None else transport(request)
+        except (ProviderError, TimeoutError):
             return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
         if not isinstance(text, str) or not text.strip():
             return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
@@ -363,35 +370,66 @@ def _review_canned(context: dict, text: str) -> dict:
     )
 
 
-def _post(request: dict, api_key: str) -> str:
-    body = json.dumps({"model": request["model"], "messages": request["messages"]}).encode("utf-8")
-    http_request = urllib.request.Request(  # noqa: S310 -- operator-configured URL
-        request["url"],
-        data=body,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="POST",
-    )
+def claude_command(request: dict) -> list[str]:
+    """Return the argv for one tool-less, single-turn `claude -p` call.
+
+    The user payload (up to MAX_TOTAL_BYTES) goes to stdin, never into argv.
+    """
+    system = request["messages"][0]["content"]
+    return [
+        CLAUDE_COMMAND,
+        "--print",
+        "--output-format",
+        "json",
+        # No tool at all: the payload is untrusted, and the job holds a secret.
+        "--tools",
+        "",
+        "--system-prompt",
+        system,
+        "--model",
+        request["model"],
+        "--max-turns",
+        "1",
+        "--no-session-persistence",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+        "--setting-sources",
+        "",
+    ]
+
+
+def _run_claude(request: dict, oauth_token: str) -> str:
+    environment = {**os.environ, TOKEN_ENV: oauth_token}
+    payload = request["messages"][1]["content"]
+    # An empty working directory: no CLAUDE.md, settings or hooks from the checkout.
+    with tempfile.TemporaryDirectory(prefix="pr-review-") as workdir:
+        try:
+            completed = subprocess.run(  # noqa: S603 -- fixed argv, no shell
+                claude_command(request),
+                input=payload,
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                cwd=workdir,
+                env=environment,
+                timeout=TIMEOUT_SECONDS,
+                check=False,
+            )
+        except FileNotFoundError as err:
+            raise ProviderError("the claude CLI is not installed") from err
+        except subprocess.TimeoutExpired as err:
+            raise ProviderError("the claude CLI timed out") from err
+    if completed.returncode != 0:
+        raise ProviderError(f"the claude CLI exited with status {completed.returncode}")
     try:
-        # The URL comes from OPERATOR configuration, never from the pull request.
-        with urllib.request.urlopen(http_request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310
-            raw = response.read()
-    except urllib.error.HTTPError as err:
-        raise ProviderError(f"provider returned HTTP {err.code}") from err
-    except (urllib.error.URLError, TimeoutError, OSError) as err:
-        raise ProviderError(f"provider request failed: {type(err).__name__}") from err
-    try:
-        parsed = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError) as err:
-        raise ProviderError("provider response is not JSON") from err
-    try:
-        content = parsed["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as err:
-        raise ProviderError("provider response has no review content") from err
+        parsed = json.loads(completed.stdout)
+    except ValueError as err:
+        raise ProviderError("the claude CLI output is not JSON") from err
+    if not isinstance(parsed, dict) or parsed.get("is_error") is not False:
+        raise ProviderError("the claude CLI reported an error")
+    content = parsed.get("result")
     if not isinstance(content, str) or not content.strip():
-        raise ProviderError("provider returned an empty review")
+        raise ProviderError("the claude CLI returned an empty review")
     return content
 
 
@@ -407,7 +445,6 @@ def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
     system, user = (message["content"].encode("utf-8") for message in request["messages"])
     pr_cli.print_json(
         {
-            "url": request["url"],
             "model": request["model"],
             "partial": partial,
             "system_bytes": len(system),

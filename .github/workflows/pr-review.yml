@@ -1,5 +1,6 @@
 # pr-review - the three-stage pull request review pipeline: assess (model-free),
-# review (model key, read-only token) and publish (write token, no model key).
+# review (Claude subscription token, read-only GitHub token) and publish (write
+# token, no model token).
 #
 # The workflow runs from the base commit on pull_request_target and never
 # checks out or executes the pull request head: metadata, diff and base file
@@ -167,9 +168,15 @@ jobs:
         with:
           name: pr-context
 
+      - name: Install Claude Code
+        # The subscription token works only inside Anthropic's own CLI. The
+        # version is pinned because the next step hands this binary the token;
+        # bump it on purpose (runbook: CLI update), Dependabot does not see it.
+        run: npm install --global @anthropic-ai/claude-code@2.1.321
+
       - name: Review the diff
         env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           PR_REVIEW_MODEL: ${{ vars.PR_REVIEW_MODEL }}
         run: python3 scripts/pr_review.py --context context.json > review.json
 
@@ -224,7 +231,7 @@ jobs:
         continue-on-error: true
 
       - name: Reconstruct the review when the review job was skipped
-        # Without the model key this yields `skipped` for a draft or fork and
+        # Without the model token this yields `skipped` for a draft or fork and
         # `unavailable` otherwise, so a missing review can never look like a pass.
         run: |
           if [ -s review.json ]; then

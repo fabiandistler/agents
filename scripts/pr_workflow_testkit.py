@@ -28,7 +28,9 @@ HOLD_CONDITION = (
 # label changes go through the issues API.
 AUTO_MERGE_SCOPES = {"contents": "write", "pull-requests": "write", "issues": "write"}
 PIPELINE_CLIS = {"pr_github.py", "pr_risk.py", "pr_review.py", "pr_publish.py"}
-MODEL_KEY = "OPENCODE_API_KEY"
+MODEL_KEY = "CLAUDE_CODE_OAUTH_TOKEN"
+# The review step hands the token to this package, so its version stays exact.
+CLAUDE_PACKAGE = "@anthropic-ai/claude-code"
 
 CONTEXT_ARTIFACT = "pr-context"
 ASSESSMENT_ARTIFACT = "pr-assessment"

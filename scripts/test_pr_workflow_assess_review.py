@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
 
 import pytest
 from pr_workflow_testkit import (
+    CLAUDE_PACKAGE,
     CONTEXT_ARTIFACT,
     MODEL_KEY,
     REVIEW_SKIP_CONDITION,
@@ -124,8 +126,8 @@ def test_only_the_review_job_holds_the_model_key(
     assert holders == {"review"}, (
         f"only review may hold {MODEL_KEY}; it is set in {sorted(holders) or 'no job'}"
     )
-    assert job_env(workflow, "review")[MODEL_KEY] == "${{ secrets.OPENCODE_API_KEY }}"
-    assert workflow_text.count("secrets.OPENCODE_API_KEY") == 1, (
+    assert job_env(workflow, "review")[MODEL_KEY] == "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+    assert workflow_text.count("secrets.CLAUDE_CODE_OAUTH_TOKEN") == 1, (
         "the model secret must appear exactly once, in the review job"
     )
 
@@ -199,6 +201,24 @@ def test_review_runs_the_review_cli(workflow: dict[Any, Any]) -> None:
     command = run_containing(job_named(workflow, "review"), "scripts/pr_review.py")
     assert "--context context.json" in command, "the review reads the downloaded context"
     assert "review.json" in command, "the review artifact must be written to review.json"
+
+
+def test_review_installs_an_exact_claude_code_version(workflow: dict[Any, Any]) -> None:
+    command = run_containing(job_named(workflow, "review"), CLAUDE_PACKAGE)
+    assert re.search(re.escape(CLAUDE_PACKAGE) + r"@\d+\.\d+\.\d+(\s|$)", command), (
+        f"the CLI that receives the token must be pinned to an exact version: {command!r}"
+    )
+
+
+def test_the_token_reaches_only_the_review_step(workflow: dict[Any, Any]) -> None:
+    holders = [
+        step.get("name")
+        for step in steps_of(job_named(workflow, "review"))
+        if MODEL_KEY in (step.get("env") or {})
+    ]
+    assert holders == ["Review the diff"], (
+        f"only the review step may see {MODEL_KEY}, not the install step; found {holders}"
+    )
 
 
 def test_review_uploads_the_review(workflow: dict[Any, Any]) -> None:
