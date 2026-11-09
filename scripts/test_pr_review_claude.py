@@ -114,6 +114,38 @@ def test_a_failed_claude_call_is_unavailable(
     )
 
 
+def test_a_failed_call_logs_the_cli_reason_to_stderr(fake_claude, monkeypatch, capsys) -> None:
+    monkeypatch.setenv(
+        "FAKE_CLAUDE_STDOUT",
+        result_json(
+            text="OAuth token has expired",
+            is_error=True,
+            subtype="error_during_execution",
+            api_error_status=401,
+        ),
+    )
+    monkeypatch.setenv("FAKE_CLAUDE_EXIT", "1")
+    artifact = pr_review.review(base_context(), token=FAKE_TOKEN)
+    logged = capsys.readouterr().err
+    assert artifact["status"] == "unavailable"
+    assert "exited with status 1" in logged
+    assert "api_error_status=401" in logged
+    assert "OAuth token has expired" in logged
+    assert FAKE_TOKEN not in logged
+
+
+def test_without_json_the_last_stderr_line_is_the_reason() -> None:
+    reason = pr_review_claude.cli_reason("", "warning\nError: not logged in\n\n")
+    assert reason == "Error: not logged in"
+    assert pr_review_claude.cli_reason("", "") == "(no reason given)"
+    assert len(pr_review_claude.cli_reason("", "x" * 1000)) == pr_review_claude.MAX_REASON_CHARS
+
+
+def test_a_success_never_logs_the_review(fake_claude, capsys) -> None:
+    pr_review.review(base_context(), token=FAKE_TOKEN)
+    assert capsys.readouterr().err == ""
+
+
 def test_a_missing_cli_is_unavailable(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("PATH", str(tmp_path))
     artifact = pr_review.review(base_context(), token=FAKE_TOKEN)

@@ -342,7 +342,9 @@ def review(context: dict, transport=None, token: str | None = None) -> dict:
             return _unavailable_artifact(context, MISSING_KEY_SUMMARY, partial)
         try:
             text = run_claude(request, oauth_token) if transport is None else transport(request)
-        except (ProviderError, TimeoutError):
+        except (ProviderError, TimeoutError) as error:
+            # The run stays green on a failed call, so this line is the only trace of why.
+            print(f"pr_review.py: {error}", file=sys.stderr)
             return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
         if not isinstance(text, str) or not text.strip():
             return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)

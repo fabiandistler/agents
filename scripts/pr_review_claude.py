@@ -19,6 +19,7 @@ import tempfile
 TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"  # noqa: S105 -- a variable name, not a secret
 CLAUDE_COMMAND = "claude"
 TIMEOUT_SECONDS = 300
+MAX_REASON_CHARS = 300
 
 
 class ProviderError(Exception):
@@ -53,6 +54,31 @@ def claude_command(request: dict) -> list[str]:
     ]
 
 
+def cli_reason(stdout: str, stderr: str) -> str:
+    """Return the CLI's own error description as one bounded line.
+
+    An error result carries the CLI's message (an expired token, a usage limit,
+    an unknown model), not the review, so it is safe to log.
+    """
+    try:
+        parsed = json.loads(stdout)
+    except ValueError:
+        parsed = None
+    if isinstance(parsed, dict) and parsed.get("is_error") is True:
+        parts = [
+            f"{field}={parsed[field]}"
+            for field in ("subtype", "api_error_status")
+            if parsed.get(field) is not None
+        ]
+        if isinstance(parsed.get("result"), str):
+            parts.append(parsed["result"])
+        text = " ".join(parts)
+    else:
+        lines = [line for line in stderr.splitlines() if line.strip()]
+        text = lines[-1] if lines else ""
+    return " ".join(text.split())[:MAX_REASON_CHARS] or "(no reason given)"
+
+
 def run_claude(request: dict, oauth_token: str) -> str:
     environment = {**os.environ, TOKEN_ENV: oauth_token}
     payload = request["messages"][1]["content"]
@@ -75,13 +101,18 @@ def run_claude(request: dict, oauth_token: str) -> str:
         except subprocess.TimeoutExpired as err:
             raise ProviderError("the claude CLI timed out") from err
     if completed.returncode != 0:
-        raise ProviderError(f"the claude CLI exited with status {completed.returncode}")
+        raise ProviderError(
+            f"the claude CLI exited with status {completed.returncode}: "
+            f"{cli_reason(completed.stdout, completed.stderr)}"
+        )
     try:
         parsed = json.loads(completed.stdout)
     except ValueError as err:
         raise ProviderError("the claude CLI output is not JSON") from err
     if not isinstance(parsed, dict) or parsed.get("is_error") is not False:
-        raise ProviderError("the claude CLI reported an error")
+        raise ProviderError(
+            f"the claude CLI reported an error: {cli_reason(completed.stdout, completed.stderr)}"
+        )
     content = parsed.get("result")
     if not isinstance(content, str) or not content.strip():
         raise ProviderError("the claude CLI returned an empty review")
