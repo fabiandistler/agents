@@ -38,20 +38,23 @@ with a pull request number and `dry_run` (default `true`).
 
 | Job | Permissions and secrets | Does |
 | --- | --- | --- |
-| `hold` | write: contents, pull-requests, issues; no model key | On a push, disables the bot's auto-merge; when `do-not-merge` is added, disables any auto-merge. Never enables. |
+| `hold` | write: contents, pull-requests, issues; no model token | On a push, disables the bot's auto-merge; when `do-not-merge` is added, disables any auto-merge. Never enables. |
 | `assess` | read: contents, pull-requests, issues | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies it. |
-| `review` | `contents: read`; `OPENCODE_API_KEY` | `pr_review.py` sanitizes and caps the input, calls the model, parses the verdict. |
-| `publish` | write: contents, pull-requests, issues; no model key | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes. |
+| `review` | `contents: read`; `CLAUDE_CODE_OAUTH_TOKEN` | Installs a pinned Claude Code CLI; `pr_review.py` sanitizes and caps the input, runs `claude -p` without tools, parses the verdict. |
+| `publish` | write: contents, pull-requests, issues; no model token | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes. |
 
 - **Base code only.** `pull_request_target` runs the workflow file and scripts
   from the default branch. No job checks out or executes the pull request
   head; the diff, file list and base files arrive through the REST API. A
   pull request that edits the pipeline is reviewed by the version on `main`.
-- **Credential split.** Only `review` holds the model key, and it has no
-  write scope. The jobs that write hold no model key and check out with
+- **Credential split.** Only `review` holds the model token, and it has no
+  write scope. The jobs that write hold no model token and check out with
   `persist-credentials: false`. The workflow default is `permissions: {}`.
-- **The model only advises.** Its risk can raise the path-based risk, never
-  lower it. Title, body and diff are untrusted data: HTML comments,
+- **The model only advises, and holds no tool.** It runs inside the Claude
+  Code CLI with `--tools ""`, a replaced system prompt, no settings, MCP
+  servers or slash commands, and an empty working directory. Injected text can
+  sway its verdict but cannot run a command or read the token. Its risk can
+  raise the path-based risk, never lower it. Title, body and diff are untrusted data: HTML comments,
   zero-width characters and base64 blobs are stripped before the prompt is
   built. Unparseable output becomes `concerns` and `high`.
 - **Drafts and forks** are assessed and labeled but not reviewed; their
@@ -126,12 +129,18 @@ runs again with the next human push.
 
 All settings live under the repository's **Settings** tab.
 
-1. **Model key.** *Secrets and variables → Actions → Secrets*: add
-   `OPENCODE_API_KEY`, an OpenCode Zen API key. Only `review` reads it.
-   Without it every review is `review:unavailable` with `needs-review`.
-2. **Model (optional).** *Variables*: `PR_REVIEW_MODEL`. Unset means
-   `deepseek-v4.1-flash-free` (`DEFAULT_MODEL` in `scripts/pr_review.py`).
-   The base URL is fixed to `https://opencode.ai/zen/v1`.
+1. **Model token.** *Secrets and variables → Actions → Secrets*:
+   `CLAUDE_CODE_OAUTH_TOKEN`, created locally with `claude setup-token` from
+   the maintainer's Claude subscription. It is valid for one year; see
+   [token renewal](#token-renewal). `claude.yml` reads the same secret. Only
+   the `review` step of `pr-review.yml` sees it. Without it every review is
+   `review:unavailable` with `needs-review`. Why a subscription and not an
+   API key: [ADR-0012](../adr/0012-pr-review-on-claude-subscription.md).
+2. **Model (optional).** *Variables*: `PR_REVIEW_MODEL`, a Claude Code model
+   alias (`sonnet`, `opus`, `haiku`) or full model name. Unset means `sonnet`
+   (`DEFAULT_MODEL` in `scripts/pr_review.py`). Delete the variable if it
+   still holds an OpenCode Zen model ID: the CLI rejects it, and every review
+   becomes `review:unavailable`.
 3. **Auto-merge switch.** *Variables*: `PR_AUTO_MERGE`. Leave it unset until
    step 5 of the [rollout](#rollout). Any value but `true` keeps auto-merge
    off.
@@ -185,7 +194,7 @@ export GITHUB_TOKEN="$(gh auth token)"
 python3 "$scripts/pr_github.py" --repo fabiandistler/agents --pr "$pr" --output context.json
 python3 "$scripts/pr_risk.py" --context context.json --output assessment.json
 python3 "$scripts/pr_review.py" --context context.json --dry-run --output request.json  # no network
-python3 "$scripts/pr_review.py" --context context.json > review.json  # model call if OPENCODE_API_KEY is set
+python3 "$scripts/pr_review.py" --context context.json > review.json  # claude -p if CLAUDE_CODE_OAUTH_TOKEN is set
 PR_AUTO_MERGE=true python3 "$scripts/pr_publish.py" --live --repo fabiandistler/agents \
   --pr "$pr" --assessment assessment.json --review review.json
 ```
@@ -228,42 +237,55 @@ fresh data and plans exactly what a write run would, then writes nothing.
 
 ## Model change
 
-The default `deepseek-v4.1-flash-free` was verified in the live OpenCode Zen
-model list on 2026-11-07. Free models are offered for a limited time; a
-retired or misspelled model fails safe as `review:unavailable` on every pull
-request.
+The default is the alias `sonnet`, which follows the current Sonnet model, so
+it does not go stale. A misspelled model fails safe as `review:unavailable` on
+every pull request.
 
-1. List the models the key can use, reading the key from the environment:
-
-   ```bash
-   printf 'Authorization: Bearer %s\n' "$OPENCODE_API_KEY" |
-     curl -sS -H @- https://opencode.ai/zen/v1/models
-   ```
-
-2. Set the repository variable `PR_REVIEW_MODEL` to the new ID. No code change
-   is needed; unset it to return to the default.
+1. Check the name locally: `claude -p --model <name> --tools "" 'Say OK'`.
+2. Set the repository variable `PR_REVIEW_MODEL` to it. No code change is
+   needed; unset it to return to the default.
 3. Dispatch a dry run and check that the review is not `unavailable`.
 
 Changing `DEFAULT_MODEL` itself is a `scripts/pr_*` change, so its pull request
 is high risk and needs a human review.
 
+### CLI update
+
+The review job installs `@anthropic-ai/claude-code` at the exact version
+pinned in `.github/workflows/pr-review.yml`; the next step hands that binary
+the token. Dependabot does not update it. To update, check the release notes,
+change the version, and dispatch a dry run before merging. A test fails if the
+pin loses its exact version.
+
+### Token renewal
+
+`claude setup-token` tokens last one year. An expired token makes every review
+`review:unavailable`. Run `claude setup-token` locally and replace the secret
+`CLAUDE_CODE_OAUTH_TOKEN`; `claude.yml` picks up the same value.
+
 ## Quota and cost
 
-- One review job makes at most one provider request: input capped (diff 2000
-  lines or 200 KB, request 300 KB), 60-second timeout. Label events, drafts
-  and forks make none. A newer push cancels the run for the old head.
-- The pipeline has no request budget of its own. The provider's rate limits
-  and free-tier terms apply; a limit or outage yields `review:unavailable`
-  and no auto-merge, never a pass.
-- The repository is public, so standard runners cost no Actions minutes. A
-  paid `PR_REVIEW_MODEL` is billed to the key's account.
+- One review job makes one single-turn `claude -p` call: input capped (diff
+  2000 lines or 200 KB, request 300 KB, roughly 75k tokens), 300-second
+  timeout. Label events, drafts and forks make none. A newer push cancels the
+  run for the old head.
+- Each review draws on the maintainer's Claude subscription usage limits,
+  shared with interactive Claude Code use. No extra money is charged. Fork
+  pull requests are never reviewed, so outside contributors cannot spend the
+  quota. A reached limit or an outage yields `review:unavailable` and no
+  auto-merge, never a pass. `opus` uses the quota faster than `sonnet`.
+- Anthropic sizes subscription limits for ordinary, individual use. One
+  review per push in the maintainer's own repository is that; do not reuse
+  the token for other people's repositories.
+- The repository is public, so standard runners cost no Actions minutes.
 
 ## Disable and roll back
 
 - **Stop auto-merge:** delete `PR_AUTO_MERGE` or set it to `false`. The next
   run per pull request disables the bot's own auto-merge. To stop one pull
   request at once, add `do-not-merge`.
-- **Stop model calls:** delete `OPENCODE_API_KEY`. Pull requests keep their
+- **Stop model calls:** delete `CLAUDE_CODE_OAUTH_TOKEN` (this also stops
+  `claude.yml`), or pause the workflow as below. Pull requests keep their
   risk labels and comment, with `review:unavailable`.
 - **Pause everything:**
   `gh api --method PUT repos/fabiandistler/agents/actions/workflows/pr-review.yml/disable`
