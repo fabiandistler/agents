@@ -12,24 +12,6 @@ remain in git history (`git show 58fc561^:ROOMBA.md`, `git log -- roomba/`) and 
 PR #412. Two findings were carried forward into *Backlog* below.
 -->
 
-## Status
-
-| Field | Value |
-|---|---|
-| Last run | 2026-10-31 |
-| Last job | `deps-audit` (report-only, 4 updates available, 0 advisories, PR pending merge) |
-| Next due job | `doc-drift` (last run 2026-10-08, cooldown 14d) |
-| Baseline status | The current check list is `scripts/check_all.sh --list`. The last run (2026-10-17) recorded its baseline in its report under `maintenance/reports/`; do not read an old report as today's status |
-| Open maintenance PRs | open PRs whose head branch starts with `maintenance/` (command below the table) |
-
-List open PRs, keeping those whose head branch starts with `maintenance/`. Use
-the GitHub MCP tools if the session has them; otherwise `gh api` (REST; `gh pr
-list` is GraphQL-backed and fails in cloud sessions):
-
-```bash
-gh api "repos/{owner}/{repo}/pulls?state=open&per_page=100" --jq '.[] | select(.head.ref | startswith("maintenance/")) | [.number, .head.ref, .title] | @tsv'
-```
-
 ## Rules
 
 1. **Exactly one job per run.**
@@ -52,6 +34,7 @@ regularly finds nothing when CI is green only burns rotation slots.
 |---|---|
 | security-footguns | `maintenance-gate` -> gitleaks; ruff `S113` via `ruff.toml` |
 | dead-code (local vars/imports) | `ci.yml` -> `scripts/check_all.sh` -> prek's `ruff-check` hook (`F401`/`F841` are in the default set) |
+| invisible characters in instruction files | `ci.yml` -> `scripts/check_all.sh` -> `instruction-unicode` (vendored `scripts/maintenance-instruction-unicode.py`) |
 
 Only the open question stays in the catalog: `dead-exports` (exports across the package boundary).
 
@@ -109,14 +92,14 @@ One standing caveat:
 
 ## Jobs
 
-| # | Job | Scanner | Output | Cooldown | Last run |
-|---|---|---|---|---|---|
-| 1 | `deps-audit` | yes | Report | 7d | 2026-10-31 |
-| 2 | `doc-drift` | no | PR | 14d | 2026-10-08 |
-| 3 | `dead-exports` | yes | PR | 14d | 2026-10-10 |
-| 4 | `error-edges` | no | Report | 14d | 2026-10-13 |
-| 5 | `test-flakiness` | yes | PR | 30d | 2026-10-17 |
-| 6 | `perf-quickwins` | no | Report | 30d | 2026-10-24 |
+| # | Job | Scanner | Output | Cooldown |
+|---|---|---|---|---|
+| 1 | `deps-audit` | yes | Report | 7d |
+| 2 | `doc-drift` | no | PR | 14d |
+| 3 | `dead-exports` | yes | PR | 14d |
+| 4 | `error-edges` | no | Report | 14d |
+| 5 | `test-flakiness` | yes | PR | 30d |
+| 6 | `perf-quickwins` | no | Report | 30d |
 
 Open question per job (details in the external `repo-maintenance` skill's `references/jobs.md`):
 
@@ -136,8 +119,11 @@ Open question per job (details in the external `repo-maintenance` skill's `refer
 `scripts/maintenance-scan.sh` and the two helpers it calls
 (`scripts/maintenance-r-advisories.py`, `scripts/maintenance-new-deps.py`) are vendored
 from [fabiandistler/repo-maintenance](https://github.com/fabiandistler/repo-maintenance)
-(`plugins/repo-maintenance/assets/`), and so is the `check-file-tokens` prek hook
-(`scripts/hooks/check-file-tokens.sh`, from the prek-hooks skill's references).
+(`plugins/repo-maintenance/assets/`), and so are the invisible-character check
+`scripts/maintenance-instruction-unicode.py` (same directory; `scripts/check_all.sh` runs it
+as `instruction-unicode`, and its tests stay upstream in `tests/test_instruction_unicode.py`)
+and the `check-file-tokens` prek hook (`scripts/hooks/check-file-tokens.sh`, from the
+prek-hooks skill's references).
 `vendor/repo-maintenance/lock.json` pins the upstream commit and each file's sha256 and
 git mode. To update, run
 
@@ -145,16 +131,16 @@ git mode. To update, run
 python3 scripts/vendor_repo_maintenance.py --ref <commit>
 ```
 
-and commit the four files and `vendor/repo-maintenance/LICENSE` together with the lock.
+and commit the vendored files and `vendor/repo-maintenance/LICENSE` together with the lock.
 Scanner and hook fixes go upstream, then a re-vendor brings them here: the `vendor-lock` check in
 `scripts/check_all.sh` fails on any local edit or mode change. `--check` compares the files
 against the lock offline. It does not compare the lock against upstream, so after a merge
 conflict in `lock.json`, re-vendor instead of hand-merging.
 
-These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the two
-Python helpers (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner and
+These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the vendored
+Python files (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner and
 the token hook (`.pre-commit-config.yaml`). `trailing-whitespace` and `end-of-file-fixer`
-still run on all four, as they do upstream.
+still run on all of them, as they do upstream.
 
 The scanner keys off `DESCRIPTION` (R) and `pyproject.toml` / `requirements.txt` (Python)
 **at the repository root**, and this repo has none of them, at the root or below it. What
@@ -176,7 +162,7 @@ The catalog-relevant analogues in this repository are:
 
 | Job | What it means here |
 |---|---|
-| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand. Read each changelog from the upstream file on `raw.githubusercontent.com` (`https://raw.githubusercontent.com/<owner>/<repo>/<branch>/CHANGELOG.md`), which a cloud session can fetch (routine run of 2026-10-31: pytest, prek, ruff); its GitHub access may refuse third-party repositories ("GitHub access to this repository is not enabled for this session"), so do not depend on release pages. Only if the raw file cannot be read either, the report marks the update "risk unverified: changelog not readable in this session" instead of estimating a risk from the version number |
+| `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Also the two vendor locks, which only `deps-audit` notices going stale (the CI `vendor-lock` check is offline): `vendor/repo-maintenance/lock.json` (target: upstream `main`) and `.claude/vendor/mattpocock-skills/lock.json` (target: the newest release tag). Check them with `python3 scripts/vendor_repo_maintenance.py --check-upstream` and `python3 scripts/vendor_mattpocock_skills.py --check-upstream`: exit 0 `current`, exit 5 `behind` (both commits printed), exit 1 upstream unreachable or ref unknown. A lock that is `behind` gets re-vendored at the printed upstream commit (`python3 scripts/vendor_repo_maintenance.py --ref <commit>`, or `python3 scripts/vendor_mattpocock_skills.py --ref <tag>`) and `scripts/check_all.sh` re-run; if a check then fails, the run reverts the re-vendor and puts the lock in the report instead. Exit 1 is reported as "not checked" with git's error, never as "current": the repo-maintenance upstream is private, so a session without read access to it cannot check that lock. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand. Read each changelog from the upstream file on `raw.githubusercontent.com` (`https://raw.githubusercontent.com/<owner>/<repo>/<branch>/CHANGELOG.md`), which a cloud session can fetch (routine run of 2026-10-31: pytest, prek, ruff); its GitHub access may refuse third-party repositories ("GitHub access to this repository is not enabled for this session"), so do not depend on release pages. Only if the raw file cannot be read either, the report marks the update "risk unverified: changelog not readable in this session" instead of estimating a risk from the version number |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` and the Bats suites `test/*.bats` |
 
@@ -188,19 +174,6 @@ and is recoverable from git history.
 
 Empty: the one carry-over (unpinned `prek` in `ci.yml`) is resolved by
 `scripts/check_all.requirements.txt`.
-
-## Run history
-
-| Date | Job | Output | PR |
-|---|---|---|---|
-| 2026-09-28 | *(bootstrap)* | catalog + scanner + gitleaks gate; `ROOMBA.md` and its history removed | maintenance/init-2026-09-28 |
-| 2026-10-08 | `deps-audit` | report: `maintenance/reports/2026-10-08-deps-audit.md` | maintenance/deps-audit-2026-10-08 |
-| 2026-10-08 | `doc-drift` | PR: README Contributing list and layout table | maintenance/doc-drift-2026-10-08 |
-| 2026-10-10 | `dead-exports` | report: `maintenance/reports/2026-10-10-dead-exports.md` (0 findings) | maintenance/dead-exports-2026-10-10 |
-| 2026-10-13 | `error-edges` | report: `maintenance/reports/2026-10-13-error-edges.md` (6 findings) | maintenance/error-edges-2026-10-13 |
-| 2026-10-17 | `test-flakiness` | report: `maintenance/reports/2026-10-17-test-flakiness.md` (0 findings) | maintenance/test-flakiness-2026-10-17 |
-| 2026-10-24 | `perf-quickwins` | report: `maintenance/reports/2026-10-24-perf-quickwins.md` (0 findings) | maintenance/perf-quickwins-2026-10-24 |
-| 2026-10-31 | `deps-audit` | report: `maintenance/reports/2026-10-31-deps-audit.md` (4 updates, 0 advisories) | maintenance/deps-audit-2026-10-31 |
 
 ## Sunset condition
 

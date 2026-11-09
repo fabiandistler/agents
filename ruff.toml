@@ -14,6 +14,7 @@ extend-exclude = [
     # rewrite would fail the vendor-lock check.
     "scripts/maintenance-new-deps.py",
     "scripts/maintenance-r-advisories.py",
+    "scripts/maintenance-instruction-unicode.py",
 ]
 
 [lint]

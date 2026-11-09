@@ -3,7 +3,8 @@
 `check_instructions.py` (the fragment gate) and `build_project_claude.py` (the
 cloud-session mirror) read fragments through this module, so both apply the
 same frontmatter and `paths:` rules. install.sh stays an independent reader in
-bash. Stdlib-only.
+bash so it runs without Python; test/instruction_parity.bats checks that both
+readers agree on targets, Claude placement and rendered rules. Stdlib-only.
 """
 
 from __future__ import annotations

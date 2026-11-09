@@ -297,8 +297,7 @@ PY
   checkout_a="$move_parent/rvA"
   checkout_b="$move_parent/rvB"
   mkdir "$checkout_a"
-  git -C "$REPO_ROOT" ls-files -z --cached --others --exclude-standard |
-    (cd "$REPO_ROOT" && tar --null -T - -cf -) | tar -C "$checkout_a" -xf -
+  copy_checkout "$checkout_a"
   plain_home="$(mktemp -d)"
   plain_state="$plain_home/xdg-state"
   HOME="$plain_home" XDG_STATE_HOME="$plain_state" \

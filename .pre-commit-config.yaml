@@ -27,7 +27,7 @@ repos:
   # existing repo reports many findings. Keep the default (extend-select,
   # never select); clear them with ruff check --fix, then --add-noqa.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.2
+    rev: v0.17.3
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -40,7 +40,7 @@ repos:
   # mypy needs additional_dependencies for project dependencies,
   # ty resolves them via uv from pyproject.toml.
   - repo: https://github.com/astral-sh/ty-pre-commit
-    rev: v0.0.91
+    rev: v0.0.95
     hooks:
       - id: ty
         # pytest is imported directly by the test modules, so ty must resolve
@@ -154,10 +154,16 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+      # bats runs only when a pushed file is one the suites read: the install
+      # code, the scripts and suites, the skills' SKILL.md frontmatter, the
+      # plugins, the instruction fragments, the Bats submodule pins, the CI
+      # workflow and this config. test/precommit_bats_filter.bats pins the list.
+      # Deletions and the global `exclude:` never reach `files:`; CI runs the
+      # full suite.
       - id: bats-pre-push
         name: bats test/ (shell script tests)
         language: system
         entry: bash scripts/check_all.sh --only bats
         pass_filenames: false
-        always_run: true
+        files: ^(install(-wizard)?\.sh|\.gitmodules|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|(scripts|test|skills|plugins|instructions)/.*)$
         stages: [pre-push]

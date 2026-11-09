@@ -112,11 +112,16 @@ dropping them from the model's skill list. `--uninstall` removes the block.
   Conventional Commits subjects) and two pre-push hooks that run
   `scripts/check_all.sh --skip prek,mermaid,bats` and
   `scripts/check_all.sh --only bats`; set `PYTHON=` to a 3.11+ interpreter, or
-  the push stops with exit 4.
+  the push stops with exit 4. The bats hook runs only when a pushed file is
+  one the suites read (its `files:` filter, pinned by
+  `test/precommit_bats_filter.bats`); a suite that reads a new checkout path
+  widens that filter. CI runs the full suite on every push.
 - Shell scripts are tested with Bats: one `test/<script>.bats` suite per
   entry point (`install.sh` is split into `test/install*.bats`), run by
-  `test/bats/bats-core/bin/bats test/` after `git submodule update --init`.
-  The rule and its exemptions are `instructions/45-shell-scripts.md`; shared
+  `scripts/check_all.sh --only bats` after `git submodule update --init`.
+  With GNU `parallel` installed it passes `--jobs <cores>`, so a test must not
+  change state another test reads: one that changes the catalogue works on
+  its own `copy_checkout`. The rule and its exemptions are `instructions/45-shell-scripts.md`; shared
   setup lives in `test/test_helper.bash`. The bats-core, bats-support and
   bats-assert submodule pins are bumped by hand, to release tags.
 - The catalogue and plugin checks below read `skills.json`, not the

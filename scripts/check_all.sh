@@ -23,8 +23,8 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 # Order matters: the catalogue and plugin checks read skills.json, so the
 # manifest check runs first.
 CHECKS=(manifest routers descriptions docs plugins instructions python-baseline project-claude
-  vendor-lock frontmatter evals vocab gh-graphql skill-refs reference-tocs dated-claims table-width skill-paths secret-argv pytest prek
-  compileall bats mermaid)
+  vendor-lock instruction-unicode frontmatter evals vocab gh-graphql skill-refs reference-tocs
+  dated-claims table-width skill-paths secret-argv pytest prek compileall bats mermaid)
 
 usage() {
   cat <<'EOF'
@@ -74,6 +74,11 @@ have() {
   esac
 }
 
+# Online cores: nproc on Linux, getconf where coreutils' nproc is missing.
+cpu_count() {
+  nproc 2>/dev/null || getconf _NPROCESSORS_ONLN
+}
+
 run_check() {
   case "$1" in
     manifest) "$PY" scripts/build_manifest.py --check ;;
@@ -84,8 +89,12 @@ run_check() {
     instructions) "$PY" scripts/check_instructions.py ;;
     python-baseline) "$PY" scripts/check_python_baseline.py ;;
     project-claude) "$PY" scripts/build_project_claude.py --check ;;
-    # Offline: the vendored repo-maintenance scanner still matches its lock.
+    # Offline: the files vendored from repo-maintenance still match their lock.
     vendor-lock) "$PY" scripts/vendor_repo_maintenance.py --check ;;
+    # Vendored from repo-maintenance (tests upstream in tests/test_instruction_unicode.py):
+    # no zero-width, bidi or tag characters in tracked instruction files
+    # (AGENTS.md, SKILL.md, .claude/ ...).
+    instruction-unicode) "$PY" scripts/maintenance-instruction-unicode.py ;;
     frontmatter)
       # Running the validator, not just compiling it, proves its allowlist
       # still matches the frontmatter this repo ships.
@@ -115,7 +124,14 @@ run_check() {
     compileall) "$PY" -m compileall -q scripts skills ;;
     # Top-level test/*.bats only: the submodules under test/bats/ carry their
     # own suites, which are not ours to run.
-    bats) test/bats/bats-core/bin/bats test/ ;;
+    # With GNU parallel the files and their tests run as one job per core
+    # (#721); without it Bats runs them one after the other.
+    bats)
+      case "$(parallel --version 2>/dev/null)" in
+        "GNU parallel"*) test/bats/bats-core/bin/bats --jobs "$(cpu_count)" test/ ;;
+        *) test/bats/bats-core/bin/bats test/ ;;
+      esac
+      ;;
     mermaid)
       # Prove the guard can go red first; a validator that parses nothing
       # would otherwise pass forever.
