@@ -5,6 +5,7 @@ from __future__ import annotations
 import pr_review
 import pytest
 from pr_review_testkit import (
+    FAKE_TOKEN,
     PROMPT,
     base_context,
     recording_transport,
@@ -114,7 +115,7 @@ def test_a_malformed_context_is_rejected(overrides: dict) -> None:
 def test_diff_line_cap_truncates_and_marks_partial() -> None:
     calls: list[dict] = []
     context = base_context(diff="\n".join(f"+line {number}" for number in range(2500)))
-    artifact = pr_review.review(context, transport=recording_transport(calls), key="test-key")
+    artifact = pr_review.review(context, transport=recording_transport(calls), token=FAKE_TOKEN)
     assert artifact["status"] == "ok"
     assert artifact["partial"] is True
     payload = user_payload(calls[0])
@@ -127,7 +128,7 @@ def test_diff_line_cap_truncates_and_marks_partial() -> None:
 def test_diff_byte_cap_truncates_and_marks_partial() -> None:
     calls: list[dict] = []
     context = base_context(diff="\n".join("~" * 400 for _ in range(600)))
-    artifact = pr_review.review(context, transport=recording_transport(calls), key="k")
+    artifact = pr_review.review(context, transport=recording_transport(calls), token=FAKE_TOKEN)
     assert artifact["partial"] is True
     assert len(user_payload(calls[0]).encode("utf-8")) <= pr_review.MAX_TOTAL_BYTES
 
@@ -138,7 +139,7 @@ def test_base_content_caps_the_file_count() -> None:
     artifact = pr_review.review(
         base_context(base_files=base_files),
         transport=recording_transport(calls),
-        key="k",
+        token=FAKE_TOKEN,
     )
     assert artifact["partial"] is True
     payload = user_payload(calls[0])
@@ -155,7 +156,7 @@ def test_base_content_caps_the_total_bytes() -> None:
     artifact = pr_review.review(
         base_context(base_files=base_files),
         transport=recording_transport(calls),
-        key="k",
+        token=FAKE_TOKEN,
     )
     assert artifact["partial"] is True
     payload = user_payload(calls[0])
@@ -170,7 +171,7 @@ def test_total_payload_is_capped() -> None:
         base_files={f"docs/file-{number}.md": "y " * 2500 for number in range(20)},
         body="B " * 1000,
     )
-    artifact = pr_review.review(context, transport=recording_transport(calls), key="k")
+    artifact = pr_review.review(context, transport=recording_transport(calls), token=FAKE_TOKEN)
     assert artifact["partial"] is True
     assert len(user_payload(calls[0]).encode("utf-8")) <= pr_review.MAX_TOTAL_BYTES
 
@@ -180,7 +181,9 @@ def test_total_payload_is_capped() -> None:
 
 def test_valid_response_parses_into_the_artifact() -> None:
     calls: list[dict] = []
-    artifact = pr_review.review(base_context(), transport=recording_transport(calls), key="k")
+    artifact = pr_review.review(
+        base_context(), transport=recording_transport(calls), token=FAKE_TOKEN
+    )
     assert artifact == {
         "schema_version": 1,
         "number": 42,
@@ -221,7 +224,7 @@ def test_valid_response_parses_into_the_artifact() -> None:
 
 
 def test_unavailable_status_has_no_verdict() -> None:
-    artifact = pr_review.review(base_context(), transport=lambda request: "", key="k")
+    artifact = pr_review.review(base_context(), transport=lambda request: "", token=FAKE_TOKEN)
     assert (artifact["status"], artifact["risk"], artifact["verdict"]) == (
         "unavailable",
         "high",
@@ -236,7 +239,7 @@ def test_draft_and_fork_skip_without_calling_transport() -> None:
     for flag in ("draft", "fork"):
         calls: list[dict] = []
         artifact = pr_review.review(
-            base_context(**{flag: True}), transport=recording_transport(calls), key="k"
+            base_context(**{flag: True}), transport=recording_transport(calls), token=FAKE_TOKEN
         )
         assert artifact["status"] == "skipped", flag
         assert artifact["risk"] is None, flag
@@ -244,8 +247,8 @@ def test_draft_and_fork_skip_without_calling_transport() -> None:
         assert calls == [], flag
 
 
-def test_missing_key_is_unavailable_without_calling_transport(monkeypatch) -> None:
-    monkeypatch.delenv("OPENCODE_API_KEY", raising=False)
+def test_missing_token_is_unavailable_without_calling_transport(monkeypatch) -> None:
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     calls: list[dict] = []
     artifact = pr_review.review(base_context(), transport=recording_transport(calls))
     assert (artifact["status"], artifact["risk"], artifact["verdict"]) == (
@@ -260,7 +263,7 @@ def test_provider_error_is_unavailable() -> None:
     def failing(request: dict) -> str:
         raise pr_review.ProviderError("HTTP 500")
 
-    artifact = pr_review.review(base_context(), transport=failing, key="k")
+    artifact = pr_review.review(base_context(), transport=failing, token=FAKE_TOKEN)
     assert (artifact["status"], artifact["risk"], artifact["verdict"]) == (
         "unavailable",
         "high",
@@ -273,7 +276,7 @@ def test_timeout_is_unavailable() -> None:
     def timing_out(request: dict) -> str:
         raise TimeoutError("slow provider")
 
-    artifact = pr_review.review(base_context(), transport=timing_out, key="k")
+    artifact = pr_review.review(base_context(), transport=timing_out, token=FAKE_TOKEN)
     assert (artifact["status"], artifact["risk"], artifact["verdict"]) == (
         "unavailable",
         "high",

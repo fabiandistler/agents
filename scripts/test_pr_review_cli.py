@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from pr_review_testkit import (
+    FAKE_TOKEN,
     VALID_RESPONSE,
     base_context,
     dry_run_request,
@@ -20,9 +21,8 @@ from pr_review_testkit import (
 def test_dry_run_assembles_the_request(tmp_path: Path) -> None:
     context = base_context()
     request = dry_run_request(tmp_path, context)
-    assert set(request) == {"url", "model", "messages"}
-    assert request["url"] == "https://opencode.ai/zen/v1/chat/completions"
-    assert request["model"] == "deepseek-v4.1-flash-free"
+    assert set(request) == {"model", "messages"}
+    assert request["model"] == "sonnet"
     assert [message["role"] for message in request["messages"]] == ["system", "user"]
     payload = user_payload(request)
     assert context["title"] in payload
@@ -62,28 +62,22 @@ def test_dry_run_strips_untrusted_markup(tmp_path: Path) -> None:
     assert blob not in payload
 
 
-def test_dry_run_honours_model_and_base_url_env(tmp_path: Path) -> None:
-    request = dry_run_request(
-        tmp_path,
-        base_context(),
-        PR_REVIEW_MODEL="some/other-model",
-        OPENCODE_BASE_URL="https://example.test/v1/",
-    )
-    assert request["model"] == "some/other-model"
-    assert request["url"] == "https://example.test/v1/chat/completions"
+def test_dry_run_honours_the_model_env(tmp_path: Path) -> None:
+    request = dry_run_request(tmp_path, base_context(), PR_REVIEW_MODEL="opus")
+    assert request["model"] == "opus"
 
 
-def test_dry_run_never_echoes_the_api_key(tmp_path: Path) -> None:
+def test_dry_run_never_echoes_the_token(tmp_path: Path) -> None:
     context_path = write_context(tmp_path, base_context())
     run = run_cli(
         "--context",
         str(context_path),
         "--dry-run",
-        OPENCODE_API_KEY="sk-test-secret-value",
+        CLAUDE_CODE_OAUTH_TOKEN=FAKE_TOKEN,
     )
     assert run.returncode == 0, run.stderr
-    assert "sk-test-secret-value" not in run.stdout
-    assert "sk-test-secret-value" not in run.stderr
+    assert FAKE_TOKEN not in run.stdout
+    assert FAKE_TOKEN not in run.stderr
 
 
 def test_dry_run_prints_a_bounded_summary_without_output(tmp_path: Path) -> None:
@@ -93,7 +87,7 @@ def test_dry_run_prints_a_bounded_summary_without_output(tmp_path: Path) -> None
     summary = json.loads(run.stdout)
     assert len(run.stdout) < 1000
     assert "messages" not in summary
-    assert summary["model"] == "deepseek-v4.1-flash-free"
+    assert summary["model"] == "sonnet"
     assert summary["partial"] is False
     assert summary["output"] is None
     assert summary["user_bytes"] > 135_000
@@ -121,7 +115,7 @@ def test_cli_parses_a_canned_response(tmp_path: Path) -> None:
     assert artifact["verdict"] == "concerns"
 
 
-def test_cli_missing_key_prints_unavailable_and_exits_0(tmp_path: Path) -> None:
+def test_cli_missing_token_prints_unavailable_and_exits_0(tmp_path: Path) -> None:
     context_path = write_context(tmp_path, base_context())
     run = run_cli("--context", str(context_path))
     assert run.returncode == 0, run.stderr
@@ -131,7 +125,7 @@ def test_cli_missing_key_prints_unavailable_and_exits_0(tmp_path: Path) -> None:
     assert artifact["verdict"] is None
 
 
-def test_cli_draft_without_key_is_skipped_and_exits_0(tmp_path: Path) -> None:
+def test_cli_draft_without_token_is_skipped_and_exits_0(tmp_path: Path) -> None:
     context_path = write_context(tmp_path, base_context(draft=True))
     run = run_cli("--context", str(context_path))
     assert run.returncode == 0, run.stderr

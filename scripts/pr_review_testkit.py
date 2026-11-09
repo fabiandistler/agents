@@ -67,6 +67,10 @@ def base_context(**overrides: object) -> dict:
     return context
 
 
+# A stand-in for the subscription token; tests check that it is never echoed.
+FAKE_TOKEN = "sk-test-secret-value"  # noqa: S105
+
+
 def recording_transport(calls: list[dict], response: str = VALID_RESPONSE):
     def transport(request: dict) -> str:
         calls.append(request)
@@ -83,7 +87,7 @@ def run_cli(*args: str, **env: str) -> subprocess.CompletedProcess:
     clean_env = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"OPENCODE_API_KEY", "PR_REVIEW_MODEL", "OPENCODE_BASE_URL"}
+        if key not in {"CLAUDE_CODE_OAUTH_TOKEN", "PR_REVIEW_MODEL"}
     }
     clean_env.update(env)
     return subprocess.run(  # noqa: S603 -- test invokes its own script with argv, no shell.
