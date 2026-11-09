@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pr_cli
 from pr_github import is_line_count
+from pr_github_client import USER_AGENT
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
 from pr_review_sanitize import sanitize_text
 
@@ -371,6 +372,8 @@ def _post(request: dict, api_key: str) -> str:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            # Cloudflare in front of the provider rejects urllib's default agent.
+            "User-Agent": USER_AGENT,
         },
         method="POST",
     )

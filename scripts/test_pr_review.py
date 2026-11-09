@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import io
+import json
+
+import pr_github_client
 import pr_review
 import pytest
 from pr_review_testkit import (
@@ -254,6 +258,22 @@ def test_missing_key_is_unavailable_without_calling_transport(monkeypatch) -> No
         None,
     )
     assert calls == []
+
+
+def test_provider_call_identifies_itself_with_a_user_agent(monkeypatch) -> None:
+    # Cloudflare in front of the provider answers urllib's default agent with 403.
+    captured = {}
+
+    def fake_urlopen(http_request, timeout=None):
+        captured["request"] = http_request
+        body = {"choices": [{"message": {"content": "reply"}}]}
+        return io.BytesIO(json.dumps(body).encode("utf-8"))
+
+    monkeypatch.setattr(pr_review.urllib.request, "urlopen", fake_urlopen)
+    request = {"url": "https://provider.test/chat", "model": "m", "messages": []}
+
+    assert pr_review._post(request, "s3cret-token") == "reply"
+    assert captured["request"].get_header("User-agent") == pr_github_client.USER_AGENT
 
 
 def test_provider_error_is_unavailable() -> None:
