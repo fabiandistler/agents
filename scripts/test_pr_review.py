@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pr_review
+import pr_review_claude
 import pytest
 from pr_review_testkit import (
     FAKE_TOKEN,
@@ -261,7 +262,7 @@ def test_missing_token_is_unavailable_without_calling_transport(monkeypatch) -> 
 
 def test_provider_error_is_unavailable() -> None:
     def failing(request: dict) -> str:
-        raise pr_review.ProviderError("HTTP 500")
+        raise pr_review_claude.ProviderError("HTTP 500")
 
     artifact = pr_review.review(base_context(), transport=failing, token=FAKE_TOKEN)
     assert (artifact["status"], artifact["risk"], artifact["verdict"]) == (
