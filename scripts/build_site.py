@@ -26,10 +26,14 @@ def build_site(output: Path, *, dry_run: bool = False) -> None:
     routers = routed_categories(skills)
     counts = {category: sum(skill.category == category for skill in skills) for category in LABELS}
     filters = [
-        f'<button type="button" data-category-filter="all" aria-pressed="true">All skills <span>{len(skills)}</span></button>'
+        (
+            '<button type="button" data-category-filter="all" aria-pressed="true">'
+            f"All skills <span>{len(skills)}</span></button>"
+        )
     ]
     filters.extend(
-        f'<button type="button" data-category-filter="{category}" aria-pressed="false">{escape(label)} <span>{counts[category]}</span></button>'
+        f'<button type="button" data-category-filter="{category}" aria-pressed="false">'
+        f"{escape(label)} <span>{counts[category]}</span></button>"
         for category, label in LABELS.items()
         if counts[category]
     )
@@ -73,7 +77,8 @@ def _skill_card(skill: SkillEntry, routers: set[str]) -> str:
     return (
         f'<a class="skill-card" data-category="{skill.category}" '
         f'href="https://github.com/fabiandistler/agents/blob/main/{escape(skill.path)}">'
-        f'<div class="card-top"><span class="skill-mark" aria-hidden="true">{skill.category[:2].upper()}</span>'
+        '<div class="card-top"><span class="skill-mark" aria-hidden="true">'
+        f"{skill.category[:2].upper()}</span>"
         f'<span class="skill-kind">{escape(kind)}</span></div>'
         f"<h3>{escape(skill.name)}</h3><p>{escape(summary)}</p>"
         f"<footer>{escape(LABELS[skill.category])}<span>Read skill ↗</span></footer></a>"

@@ -231,7 +231,10 @@ def validate_skill(skill_path):
         if len(description) > 1024:
             return (
                 False,
-                f"Description is too long ({len(description)} characters). Maximum is 1024 characters.",
+                (
+                    f"Description is too long ({len(description)} characters). "
+                    "Maximum is 1024 characters."
+                ),
             )
         # This repo's tighter per-skill budgets (default, allowlist, router)
         # live only in scripts/check_descriptions.py, the CI gate for them.
@@ -256,7 +259,10 @@ def validate_skill(skill_path):
         if len(compatibility) > 500:
             return (
                 False,
-                f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters.",
+                (
+                    f"Compatibility is too long ({len(compatibility)} characters). "
+                    "Maximum is 500 characters."
+                ),
             )
 
     if frontmatter.get("activation") == "command":

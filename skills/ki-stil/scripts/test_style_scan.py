@@ -85,7 +85,8 @@ class TestSentenceSplitting(unittest.TestCase):
     def test_list_items_headings_and_code_are_separated(self):
         text = (
             "## Änderung\n\nDrei Punkte:\n- Tests ergänzt\n- Bug behoben\n\n"
-            "```python\nx = 1. \ny = 2\n```\n\nSiehe `cfg.load()` und https://example.com/a.b. Fertig."
+            "```python\nx = 1. \ny = 2\n```\n\n"
+            "Siehe `cfg.load()` und https://example.com/a.b. Fertig."
         )
         self.assertEqual(
             sentence_texts(text),

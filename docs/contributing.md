@@ -159,7 +159,9 @@ skipped. The PR-only gates, `pr-issue-links` and `maintenance-gate`, run as
 separate workflows, not checks inside `check_all.sh`.
 
 A check whose tool is not installed is reported as `MISSING` and the script
-exits 3, so a skipped gate never reads as green. The checks need Python 3.11 or
+exits 3, so a skipped gate never reads as green. Its last lines name the
+missing tools and the command that installs each, because `git push` shows a
+failed pre-push hook only as `failed to push some refs`. The checks need Python 3.11 or
 later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
 newer interpreter. The mermaid check also needs Node.js (`npx`). The bats check
 runs the shell script tests in `test/` with the bats-core, bats-support and

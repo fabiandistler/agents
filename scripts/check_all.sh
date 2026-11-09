@@ -74,6 +74,18 @@ have() {
   esac
 }
 
+# The command that installs one tool from needs(); the MISSING lines and the
+# closing exit-3 lines both read it.
+fix_for() {
+  case "$1" in
+    npx) echo "install Node.js (provides npx)" ;;
+    bats-submodules) echo "git submodule update --init" ;;
+    # $PY's own pip: a bare `pip` can install into another interpreter,
+    # and the check stays MISSING after a successful install.
+    *) echo "$PY -m pip install -r scripts/check_all.requirements.txt" ;;
+  esac
+}
+
 # Online cores: nproc on Linux, getconf where coreutils' nproc is missing.
 cpu_count() {
   nproc 2>/dev/null || getconf _NPROCESSORS_ONLN
@@ -229,21 +241,20 @@ if [ -n "$output" ]; then : >"$output" || exit 2; fi
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
-failed=() missing=()
+failed=() missing=() missing_tools=""
 for name in "${CHECKS[@]}"; do
   selected "$name" || continue
 
-  absent=""
-  for tool in $(needs "$name"); do have "$tool" || absent="$absent $tool"; done
+  absent="" fixes=""
+  for tool in $(needs "$name"); do
+    have "$tool" && continue
+    absent="$absent $tool"
+    case " $missing_tools " in *" $tool "*) ;; *) missing_tools="$missing_tools $tool" ;; esac
+    fix="$(fix_for "$tool")"
+    case "; $fixes; " in *"; $fix; "*) ;; *) fixes="${fixes:+$fixes; }$fix" ;; esac
+  done
   if [ -n "$absent" ]; then
-    case "$absent" in
-      *npx*) fix="install Node.js (provides npx)" ;;
-      *bats-submodules*) fix="git submodule update --init" ;;
-      # $PY's own pip: a bare `pip` can install into another interpreter,
-      # and the check stays MISSING after a successful install.
-      *) fix="$PY -m pip install -r scripts/check_all.requirements.txt" ;;
-    esac
-    echo "MISSING $name: not installed:$absent ($fix)"
+    echo "MISSING $name: not installed:$absent ($fixes)"
     missing+=("$name")
     continue
   fi
@@ -268,5 +279,18 @@ done
 
 echo "summary: ${#failed[@]} failed${failed[*]:+ (${failed[*]})}, ${#missing[@]} missing${missing[*]:+ (${missing[*]})}"
 [ ${#failed[@]} -gt 0 ] && exit 1
-[ ${#missing[@]} -gt 0 ] && exit 3
+if [ ${#missing[@]} -gt 0 ]; then
+  # Last lines on purpose: git push prints only "failed to push some refs"
+  # after a pre-push hook, and a reader of the tail took exit 3 for a network
+  # error and retried.
+  echo "exit 3: not installed:$missing_tools. No check failed; this is not a network error, so retrying will not help."
+  printed=""
+  for tool in $missing_tools; do
+    fix="$(fix_for "$tool")"
+    case "$printed" in *"|$fix|"*) continue ;; esac
+    printed="$printed|$fix|"
+    echo "fix: $fix"
+  done
+  exit 3
+fi
 exit 0

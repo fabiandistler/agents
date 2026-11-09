@@ -23,9 +23,9 @@ either side mentions the GitHub MCP or `gh api`.
 Scope: every skills/*/SKILL.md, skills/*/references/*.md, skill scripts and
 assets (skills/*/scripts/*, skills/*/assets/*, test_*.py excluded),
 docs/agents/*.md, and the top-level *.md files (AGENTS.md, MAINTENANCE.md and
-the like, which agents read and run steps from). Symlinked router-member copies resolve to their real file
-and are counted once. Vendored skills under .claude/ are out of scope; report
-those upstream. Stdlib-only, matching the other scripts/check_*.py gates.
+the like, which agents read and run steps from). Symlinked router-member copies
+resolve to their real file and are counted once. Vendored skills under .claude/
+are out of scope; report those upstream. Stdlib-only, matching the other scripts/check_*.py gates.
 
 Exemptions live in ALLOWLIST as (relative path, command) keys with the reason
 as the value. The list is currently empty; add to it only for a command that

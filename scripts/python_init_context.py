@@ -31,8 +31,10 @@ Reads the event JSON from stdin. The configured hook filters to Bash(uv init*).
 exit: 0 context emitted or event ignored | 3 invalid event JSON/schema
       4 installed baseline missing/unreadable | 5 usage error
 examples:
-  printf '%s' '{"tool_name":"Bash","tool_input":{"command":"uv init --package demo"}}' | python3 scripts/python_init_context.py --baseline instructions/30-python.md
-  printf '%s' '{"tool_name":"Bash","tool_input":{"command":"uv run pytest"}}' | python3 scripts/python_init_context.py
+  printf '%s' '{"tool_name":"Bash","tool_input":{"command":"uv init --package demo"}}' |
+    python3 scripts/python_init_context.py --baseline instructions/30-python.md
+  printf '%s' '{"tool_name":"Bash","tool_input":{"command":"uv run pytest"}}' |
+    python3 scripts/python_init_context.py
 """
 
 

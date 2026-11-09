@@ -57,7 +57,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if canonical != copied:
         sys.stderr.write(
-            "Python baseline drift: update the `toolchains.md` copy to match `instructions/30-python.md`\n"
+            "Python baseline drift: update the `toolchains.md` copy "
+            "to match `instructions/30-python.md`\n"
         )
         return 1
     print("Python baseline copies match")

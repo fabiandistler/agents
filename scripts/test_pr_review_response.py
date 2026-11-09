@@ -52,12 +52,21 @@ LOW_QUALITY_RESPONSES = [
     "VERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
     "RISK: low\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
     "RISK: low\nVERDICT: pass\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
-    "RISK: severe\nVERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
-    "RISK: low\nVERDICT: maybe\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n",
+    (
+        "RISK: severe\nVERDICT: pass\nSUMMARY: Fine.\n"
+        "FINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n"
+    ),
+    (
+        "RISK: low\nVERDICT: maybe\nSUMMARY: Fine.\n"
+        "FINDINGS:\n- docs/x.md:1 [info] ok | fix: none\nEND\n"
+    ),
     "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nEND\n",
     "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n\nEND\n",
     "Not a review at all.",
-    "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\nFINDINGS:\n- docs/x.md:1 [minor] ok | fix: none\nEND\n",
+    (
+        "RISK: low\nVERDICT: pass\nSUMMARY: Fine.\n"
+        "FINDINGS:\n- docs/x.md:1 [minor] ok | fix: none\nEND\n"
+    ),
 ]
 
 
