@@ -74,6 +74,11 @@ have() {
   esac
 }
 
+# Online cores: nproc on Linux, getconf where coreutils' nproc is missing.
+cpu_count() {
+  nproc 2>/dev/null || getconf _NPROCESSORS_ONLN
+}
+
 run_check() {
   case "$1" in
     manifest) "$PY" scripts/build_manifest.py --check ;;
@@ -119,7 +124,14 @@ run_check() {
     compileall) "$PY" -m compileall -q scripts skills ;;
     # Top-level test/*.bats only: the submodules under test/bats/ carry their
     # own suites, which are not ours to run.
-    bats) test/bats/bats-core/bin/bats test/ ;;
+    # With GNU parallel the files and their tests run as one job per core
+    # (#721); without it Bats runs them one after the other.
+    bats)
+      case "$(parallel --version 2>/dev/null)" in
+        "GNU parallel"*) test/bats/bats-core/bin/bats --jobs "$(cpu_count)" test/ ;;
+        *) test/bats/bats-core/bin/bats test/ ;;
+      esac
+      ;;
     mermaid)
       # Prove the guard can go red first; a validator that parses nothing
       # would otherwise pass forever.

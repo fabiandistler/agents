@@ -7,11 +7,6 @@ setup() {
   install_setup
 }
 
-teardown() {
-  # The targets: test adds a fixture skill to this checkout; never leave it.
-  rm -rf "$REPO_ROOT/skills/zz-targets-fixture"
-}
-
 @test "env=chat links only the chat skills" {
   # --env=chat links only the chat subset (non-empty, strictly fewer than all).
   OPENCODE_EXPECTED="$(opencode_expected)"
@@ -97,7 +92,12 @@ teardown() {
   # currently uses the field, so exercise it with a temporary fixture skill
   # that opts out of opencode: it must reach codex only — and a stale link
   # in the opencode skills dir is cleaned up by the next install.
-  TGT_FIXTURE="$REPO_ROOT/skills/zz-targets-fixture"
+  # The fixture goes into a private copy of the checkout: suites running at
+  # the same time read this checkout's skills/ and must not see it (#721).
+  tgt_checkout="$(mktemp -d)"
+  copy_checkout "$tgt_checkout"
+  INSTALL="$tgt_checkout/install.sh"
+  TGT_FIXTURE="$tgt_checkout/skills/zz-targets-fixture"
   mkdir -p "$TGT_FIXTURE/scripts"
   cat >"$TGT_FIXTURE/SKILL.md" <<'FIXTURE'
 ---
