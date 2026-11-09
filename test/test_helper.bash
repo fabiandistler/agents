@@ -14,3 +14,22 @@ common_setup() {
   # mktemp -d lands in the per-test directory that Bats removes afterwards.
   export TMPDIR="$BATS_TEST_TMPDIR"
 }
+
+# path_without NAME: PATH with no NAME command. Every directory that holds one
+# is replaced by a directory of links to its other commands.
+path_without() {
+  local name="$1" dir entry shadow new_path=""
+  local -a dirs
+  IFS=: read -ra dirs <<<"$PATH"
+  for dir in "${dirs[@]}"; do
+    if [[ -x "$dir/$name" ]]; then
+      shadow="$(mktemp -d)"
+      for entry in "$dir"/*; do
+        [[ "${entry##*/}" == "$name" ]] || ln -s "$entry" "$shadow/"
+      done
+      dir="$shadow"
+    fi
+    new_path+="${new_path:+:}$dir"
+  done
+  printf '%s' "$new_path"
+}

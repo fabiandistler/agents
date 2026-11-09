@@ -99,32 +99,21 @@ claude_stub_dir() {
   printf '%s' "$dir"
 }
 
-# PATH without any claude command: drops the stub and replaces every other
-# directory that holds a claude command with links to its other commands.
-path_without_claude() {
-  local dir entry shadow new_path=""
-  local -a dirs
-  IFS=: read -ra dirs <<<"$PATH"
-  for dir in "${dirs[@]}"; do
-    [[ "$dir" == "$CLAUDE_STUB_ROOT/bin" ]] && continue
-    if [[ -x "$dir/claude" ]]; then
-      shadow="$(mktemp -d)"
-      for entry in "$dir"/*; do
-        [[ "${entry##*/}" == claude ]] || ln -s "$entry" "$shadow/"
-      done
-      dir="$shadow"
-    fi
-    new_path+="${new_path:+:}$dir"
-  done
-  printf '%s' "$new_path"
-}
-
 # run_install HOME ARGS...: install.sh under HOME through Bats' run, so
 # $status and $output hold its exit code and combined stdout and stderr.
 run_install() {
   local home="$1"
   shift
   run env HOME="$home" "$INSTALL" "$@"
+}
+
+# copy_checkout DEST: this checkout's tracked and untracked (not ignored)
+# files, without the Bats submodules, into the existing directory DEST. A test
+# that changes the catalogue works on such a copy, so suites running at the
+# same time never see its changes.
+copy_checkout() {
+  git -C "$REPO_ROOT" ls-files -z --cached --others --exclude-standard -- ':(exclude)test/bats' |
+    (cd "$REPO_ROOT" && tar --null -T - -cf -) | tar -C "$1" -xf -
 }
 
 file_inode() {
