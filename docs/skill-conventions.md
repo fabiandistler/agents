@@ -112,7 +112,10 @@ dropping them from the model's skill list. `--uninstall` removes the block.
   Conventional Commits subjects) and two pre-push hooks that run
   `scripts/check_all.sh --skip prek,mermaid,bats` and
   `scripts/check_all.sh --only bats`; set `PYTHON=` to a 3.11+ interpreter, or
-  the push stops with exit 4.
+  the push stops with exit 4. The bats hook runs only when a pushed file is
+  one the suites read (its `files:` filter, pinned by
+  `test/precommit_bats_filter.bats`); a suite that reads a new checkout path
+  widens that filter. CI runs the full suite on every push.
 - Shell scripts are tested with Bats: one `test/<script>.bats` suite per
   entry point (`install.sh` is split into `test/install*.bats`), run by
   `scripts/check_all.sh --only bats` after `git submodule update --init`.

@@ -152,10 +152,16 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+      # bats runs only when a pushed file is one the suites read: the install
+      # code, the scripts and suites, the skills' SKILL.md frontmatter, the
+      # plugins, the instruction fragments, the Bats submodule pins, the CI
+      # workflow and this config. test/precommit_bats_filter.bats pins the list.
+      # Deletions and the global `exclude:` never reach `files:`; CI runs the
+      # full suite.
       - id: bats-pre-push
         name: bats test/ (shell script tests)
         language: system
         entry: bash scripts/check_all.sh --only bats
         pass_filenames: false
-        always_run: true
+        files: ^(install(-wizard)?\.sh|\.gitmodules|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|(scripts|test|skills|plugins|instructions)/.*)$
         stages: [pre-push]
