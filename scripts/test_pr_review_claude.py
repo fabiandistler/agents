@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pr_review
+import pr_review_claude
 import pytest
 from pr_review_testkit import FAKE_TOKEN, VALID_RESPONSE, base_context
 
@@ -121,9 +122,9 @@ def test_a_missing_cli_is_unavailable(tmp_path: Path, monkeypatch) -> None:
 
 def test_a_cli_timeout_is_unavailable(monkeypatch) -> None:
     def timing_out(*args, **kwargs):
-        raise subprocess.TimeoutExpired(cmd="claude", timeout=pr_review.TIMEOUT_SECONDS)
+        raise subprocess.TimeoutExpired(cmd="claude", timeout=pr_review_claude.TIMEOUT_SECONDS)
 
-    monkeypatch.setattr(pr_review.subprocess, "run", timing_out)
+    monkeypatch.setattr(pr_review_claude.subprocess, "run", timing_out)
     artifact = pr_review.review(base_context(), token=FAKE_TOKEN)
     assert artifact["status"] == "unavailable"
 
