@@ -2,8 +2,10 @@
 
 Runbook for the scheduled audit of every skill in this catalogue against its
 format, this repo's conventions, and Anthropic's skill-authoring best
-practices. A Claude Code routine runs it weekly in a fresh cloud session; a
-person can run it by hand the same way ("follow docs/agents/skill-audit.md").
+practices. `.github/workflows/skill-audit.yml` runs it on the 8th and the
+22nd of each month (ADR-0014); start an extra run with the workflow's
+*Run workflow* button, or by hand in any session ("follow
+docs/agents/skill-audit.md").
 
 It is separate from `MAINTENANCE.md`: that catalog rotates code-maintenance
 jobs, one per run. This audit judges skill *content*, which no CI script can
@@ -42,8 +44,9 @@ Per run, at most:
 ## Procedure
 
 1. **Prepare.** From the repo root on the default branch:
-   `git fetch --shallow-since='8 days ago' origin main` (the routine's clone
-   is shallow; without this, step 3 undercounts changed skills). Read
+   `git fetch --shallow-since='8 days ago' origin main` (a shallow clone
+   undercounts changed skills in step 3; the workflow's checkout has full
+   history, so there the fetch changes nothing). Read
    `AGENTS.md`, `docs/skill-conventions.md`,
    `docs/agents/skill-audit-checklist.md`, and the open
    `skill-audit` issue, if any, including its *Accepted* section. Note

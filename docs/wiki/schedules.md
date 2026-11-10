@@ -21,3 +21,12 @@
   the scheduled task and cloned at session start, with `gh api` as fallback
   and a "RUN FAILED" notification if the checkout is missing. Source: the
   stored prompt of the 2026-11-01 run.
+- 2026-11-10: User decided to move this repo's agent runs to GitHub Actions
+  (ADR-0014). The implementer (scheduled task "Software factory",
+  `trig_013XPWNtycFd7A95gpEJDdf6`) and the skill audit
+  (`trig_0134B5GMw25GGcMHrtNLmtVj`) get `implementer.yml` and
+  `skill-audit.yml`; each scheduled task is disabled after its workflow's
+  first green manual run. "agents repo-maintenance"
+  (`trig_016FpvZkZFm5tPdbFCrXebbT`) stays a scheduled task: it needs the
+  private repo-maintenance plugin. Wiki lint was already disabled
+  (2026-11-09) and is not moved.
