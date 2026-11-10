@@ -121,5 +121,5 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 When each toolchain version, runner flag and `az` flag was last checked, what
 has never run for real, and when the skill is retired, is in
 [references/provenance.md](references/provenance.md); read it before the
-first real run. `scripts/test_loop.py` is the stub-CLI test suite for
+first real run. `scripts/test_loop*.py` is the stub-CLI test suite for
 `loop.sh`; the skill never runs it.

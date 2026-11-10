@@ -25,7 +25,7 @@
 # Run logs and last-failure output live under $(git rev-parse --git-dir)/poc-loop,
 # never in the working tree, so a stopped run can be restarted as is.
 #
-# Bats exemption: a skill asset, exempt like templates; scripts/test_loop.py
+# Bats exemption: a skill asset, exempt like templates; scripts/test_loop*.py
 # exercises it with stub CLIs.
 
 set -euo pipefail
