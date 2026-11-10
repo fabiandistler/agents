@@ -131,17 +131,21 @@ def _commits_ahead(client: GitHubClient, repo: str, main_sha: str, branch_sha: s
     return ahead_by
 
 
-def _hand_to_person(client: GitHubClient, repo: str, issue: int, branch: str) -> None:
-    """Comment, then swap the labels; the person is told before the state changes."""
-    issue_path = f"/repos/{repo}/issues/{issue}"
-    client.post(f"{issue_path}/comments", {"body": HANDOFF_COMMENT.format(branch=branch)})
-    client.post(f"{issue_path}/labels", {"labels": [READY_FOR_HUMAN]})
+def _remove_ready_label(client: GitHubClient, issue_path: str) -> None:
     try:
         client.delete(f"{issue_path}/labels/{READY_FOR_AGENT}")
     except FetchError as error:
         # Someone removed the label in the meantime: the state is already right.
         if error.status != HTTP_NOT_FOUND:
             raise
+
+
+def _hand_to_person(client: GitHubClient, repo: str, issue: int, branch: str) -> None:
+    """Comment, then swap the labels; the person is told before the state changes."""
+    issue_path = f"/repos/{repo}/issues/{issue}"
+    client.post(f"{issue_path}/comments", {"body": HANDOFF_COMMENT.format(branch=branch)})
+    client.post(f"{issue_path}/labels", {"labels": [READY_FOR_HUMAN]})
+    _remove_ready_label(client, issue_path)
 
 
 def claim_branch(client: GitHubClient, repo: str, issue: int) -> ClaimOutcome:

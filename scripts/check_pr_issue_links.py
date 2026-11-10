@@ -38,14 +38,14 @@ def closing_references(body: str, repo: str) -> set[str]:
     """Every issue a PR body declares it closes, as lower-case ``owner/repo#n``."""
     return {
         reference
-        for first, comma_joined in _closing_declarations(_prose(body), repo)
+        for first, comma_joined in _closing_declarations(markdown_prose(body), repo)
         for reference in (first, *comma_joined)
     }
 
 
 def issue_link_errors(body: str, repo: str, linked: set[str], *, default_base: bool) -> list[str]:
     """Compare closing intent, including accidentally comma-joined issues."""
-    prose = _prose(body)
+    prose = markdown_prose(body)
     declared: set[str] = set()
     malformed: list[str] = []
     for first, comma_joined in _closing_declarations(prose, repo):
@@ -171,12 +171,13 @@ def _closing_declarations(prose: str, repo: str) -> Iterator[tuple[str, list[str
         comma_joined = []
         position = closing.end()
         while following := CONTINUATION.match(prose, position):
-            comma_joined.append(_reference(following[1], repo))
+            comma_joined.append(normalized_reference(following[1], repo))
             position = following.end()
-        yield _reference(closing[1], repo), comma_joined
+        yield normalized_reference(closing[1], repo), comma_joined
 
 
-def _prose(body: str) -> str:
+def markdown_prose(body: str) -> str:
+    """The prose of a Markdown body: no HTML comments, code blocks or inline code."""
     body = re.sub(r"<!--.*?(?:-->|$)", "", body, flags=re.DOTALL)
     lines = []
     fence = ""
@@ -192,7 +193,8 @@ def _prose(body: str) -> str:
     return re.sub(r"(`+).*?\1", "", "\n".join(lines), flags=re.DOTALL)
 
 
-def _reference(reference: str, repo: str) -> str:
+def normalized_reference(reference: str, repo: str) -> str:
+    """An issue reference in any accepted form, as lower-case ``owner/repo#n``."""
     reference = re.sub(r"^https://github\.com/", "", reference, flags=re.IGNORECASE).replace(
         "/issues/", "#"
     )
