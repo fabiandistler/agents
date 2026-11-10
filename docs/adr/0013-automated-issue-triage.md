@@ -48,7 +48,10 @@ Brakes:
   stop after two bot triages per issue. The maintainer adding `needs-triage`
   or starting a manual run is not capped.
 - When the reporter answers a `needs-info` issue, it moves back to
-  `needs-triage` without a model, whether or not a triage follows.
+  `needs-triage` without a model, whether or not a triage follows. This holds
+  for every reporter, outsiders included, and for a `needs-info` the
+  maintainer set: it is the triage state machine's own transition, and it only
+  returns the issue to the maintainer's queue.
 - Publish re-reads the labels and writes nothing if the maintainer changed the
   state while the model ran.
 
@@ -77,3 +80,16 @@ Brakes:
   with it.
 - Issues filed with a state label already (maintenance runs, `to-tickets`)
   are not triaged again.
+- The issue text is untrusted even from a collaborator. It reaches the model
+  as one JSON document between marker lines, so it cannot pose as prompt
+  structure; it can still sway the recommendation, which is why the bot's own
+  power stops at `needs-info` and a comment.
+- `--restricted` also refuses symlinks in the checkout that resolve outside it
+  (files, directories and `/proc/<pid>/environ`; checked 2026-11-10).
+- Publish posts the comment before it moves the label, so a failed label
+  write leaves the reasoning visible and the run red. The comment still
+  counts towards the two automatic triages.
+- `triage-label.yml` re-reads the labels before it adds `needs-triage`. That
+  narrows the race with a parallel `needs-info` to the gap between two API
+  calls; if both labels ever land, the next run reports conflicting state
+  labels and skips the issue.
