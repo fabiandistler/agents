@@ -167,3 +167,52 @@ def test_without_a_token_the_cli_is_never_started(fake_claude, monkeypatch) -> N
     assert artifact["status"] == "unavailable"
     with pytest.raises(FileNotFoundError):
         fake_claude()
+
+
+def workspace_request() -> dict:
+    return {
+        "model": "sonnet",
+        "messages": [
+            {"role": "system", "content": "Triage the untrusted issue."},
+            {"role": "user", "content": "ISSUE BODY"},
+        ],
+    }
+
+
+def test_a_workspace_call_gets_only_the_read_tools_confined_to_it(
+    fake_claude, tmp_path: Path
+) -> None:
+    workspace = tmp_path / "checkout"
+    workspace.mkdir()
+    (workspace / "README.md").write_text("repo", encoding="utf-8")
+    answer = pr_review_claude.run_claude(workspace_request(), FAKE_TOKEN, workspace=workspace)
+    call = fake_claude()
+    argv = call["argv"]
+    assert answer == VALID_RESPONSE
+    assert option_value(argv, "--tools") == "Read,Grep,Glob"
+    assert "--restricted" in argv, "the file tools must stay inside the workspace"
+    assert option_value(argv, "--setting-sources") == "", "no settings, hooks or CLAUDE.md"
+    assert "--strict-mcp-config" in argv
+    assert int(option_value(argv, "--max-turns")) > 1
+    assert Path(call["cwd"]).resolve() == workspace.resolve()
+    assert call["stdin"] == "ISSUE BODY"
+
+
+def test_a_call_without_workspace_keeps_no_tools_and_no_restricted_flag(fake_claude) -> None:
+    pr_review_claude.run_claude(workspace_request(), FAKE_TOKEN)
+    argv = fake_claude()["argv"]
+    assert option_value(argv, "--tools") == ""
+    assert "--restricted" not in argv
+    assert option_value(argv, "--max-turns") == "1"
+
+
+@pytest.mark.parametrize("use_workspace", [False, True], ids=["tool-less", "workspace"])
+def test_an_answer_that_echoes_the_token_is_refused(
+    fake_claude, monkeypatch, tmp_path: Path, use_workspace: bool
+) -> None:
+    monkeypatch.setenv("FAKE_CLAUDE_STDOUT", result_json(text=f"leak: {FAKE_TOKEN}"))
+    with pytest.raises(pr_review_claude.ProviderError, match="contains the token") as caught:
+        pr_review_claude.run_claude(
+            workspace_request(), FAKE_TOKEN, workspace=tmp_path if use_workspace else None
+        )
+    assert FAKE_TOKEN not in str(caught.value)
