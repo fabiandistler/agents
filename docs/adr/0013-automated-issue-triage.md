@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed (2026-11-10). The maintainer chose the autonomy (`needs-info` only)
-and the runner (three Actions jobs); the brakes below are proposed with the
-pull request that adds the workflow. Builds on
+Accepted (2026-11-10) by the maintainer, after the review of #743: the bot
+sets `needs-info` itself, the three Actions jobs run it, and the brakes below
+stand. Builds on
 [ADR-0012](0012-pr-review-on-claude-subscription.md) (the model runs through
 `claude -p` on the Claude subscription).
 

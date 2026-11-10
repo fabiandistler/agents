@@ -22,7 +22,7 @@ governs; the replacement ADR or current record is named).
 | [0010](0010-claude-marketplace-hybrid.md) | Accepted (2026-10-22); amended for `secret-guard`; supersedes [0004](0004-distribution-channels-per-surface.md) in part | `claude` gets plugins from the marketplace only; `codex` and `opencode` keep `install.sh`. |
 | [0011](0011-pr-review-merge-exception.md) | Accepted (2026-10-28); amended 2026-11-07 (decisions A–D); inert until `PR_AUTO_MERGE=true` | One model-free CI publisher may enable native auto-merge for gated docs-only PRs; interactive agents still never merge. |
 | [0012](0012-pr-review-on-claude-subscription.md) | Accepted (2026-11-09) | The PR review runs `claude -p` without tools on the maintainer's Claude subscription instead of OpenCode Zen. |
-| [0013](0013-automated-issue-triage.md) | Proposed (2026-11-10) | New issues by collaborators get an automated triage comment; the bot sets only `needs-info`, the maintainer every other state. |
+| [0013](0013-automated-issue-triage.md) | Accepted (2026-11-10) | New issues by collaborators get an automated triage comment; the bot sets only `needs-info`, the maintainer every other state. |
 
 ## Supersession
 
