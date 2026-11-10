@@ -68,7 +68,8 @@ def _line_count(entry: dict, field: str) -> int:
     return value
 
 
-def _get_json(client: ReadClient, path: str, params: dict[str, object] | None = None) -> Any:
+def get_json(client: ReadClient, path: str, params: dict[str, object] | None = None) -> Any:
+    """GET ``path`` and decode the JSON body; ``FetchError`` on anything else."""
     response = client.get(path, params=params)
     try:
         return response.json()
@@ -76,11 +77,12 @@ def _get_json(client: ReadClient, path: str, params: dict[str, object] | None = 
         raise FetchError(f"GitHub API returned invalid JSON for {path}") from error
 
 
-def _paginate(client: ReadClient, path: str) -> list[dict]:
+def paginate(client: ReadClient, path: str) -> list[dict]:
+    """GET every page of the list at ``path``; each item must be a JSON object."""
     items: list[dict] = []
     page = 1
     while True:
-        page_items = _get_json(client, path, params={"per_page": PER_PAGE, "page": page})
+        page_items = get_json(client, path, params={"per_page": PER_PAGE, "page": page})
         if not isinstance(page_items, list):
             raise FetchError(f"GitHub API returned an unexpected payload for {path}")
         for item in page_items:
@@ -231,7 +233,7 @@ def _diff(client: ReadClient, pr_path: str) -> tuple[str, str]:
 def _base_paths(client: ReadClient, repo: str, base_sha: str) -> tuple[list[str], bool]:
     """Return the base tree's sorted file paths and whether the list is incomplete."""
     path = f"/repos/{repo}/git/trees/{urllib.parse.quote(base_sha, safe='')}"
-    payload = _get_json(client, path, params={"recursive": "1"})
+    payload = get_json(client, path, params={"recursive": "1"})
     entries = payload.get("tree") if isinstance(payload, dict) else None
     truncated = payload.get("truncated") if isinstance(payload, dict) else None
     if not isinstance(entries, list) or not isinstance(truncated, bool):
@@ -267,15 +269,15 @@ def fetch_context(
         raise ValueError("pull request number must be a positive integer")
 
     pr_path = f"/repos/{repo}/pulls/{number}"
-    pull = _get_json(client, pr_path)
+    pull = get_json(client, pr_path)
     if not isinstance(pull, dict):
         raise FetchError(f"GitHub API returned an unexpected payload for {pr_path}")
 
-    files = [_map_file(entry) for entry in _paginate(client, f"{pr_path}/files")]
+    files = [_map_file(entry) for entry in paginate(client, f"{pr_path}/files")]
     comments = [
-        _comment(entry) for entry in _paginate(client, f"/repos/{repo}/issues/{number}/comments")
+        _comment(entry) for entry in paginate(client, f"/repos/{repo}/issues/{number}/comments")
     ]
-    reviews = _review_state(_paginate(client, f"{pr_path}/reviews"))
+    reviews = _review_state(paginate(client, f"{pr_path}/reviews"))
 
     head_value = pull.get("head")
     head = head_value if isinstance(head_value, dict) else {}
