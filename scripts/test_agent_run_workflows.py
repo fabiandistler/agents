@@ -14,6 +14,7 @@ import re
 import subprocess
 from pathlib import Path
 
+import implementer_claim
 import pytest
 import yaml
 
@@ -56,12 +57,32 @@ def _report_step(job: dict) -> dict:
 BOTH = pytest.mark.parametrize("path", [IMPLEMENTER, SKILL_AUDIT], ids=lambda p: p.name)
 
 
-@BOTH
-def test_permissions_are_empty_by_default_and_narrow_in_the_job(path):
+@pytest.mark.parametrize(
+    ("path", "job_scopes"),
+    [
+        (IMPLEMENTER, {"contents": "read", "actions": "read", "id-token": "write"}),
+        (SKILL_AUDIT, {"contents": "read", "id-token": "write"}),
+    ],
+    ids=["implementer", "skill-audit"],
+)
+def test_permissions_are_empty_by_default_and_narrow_in_the_job(path, job_scopes):
     assert _workflow(path)["permissions"] == {}, "top-level permissions must stay empty"
-    assert _single_job(path)["permissions"] == {"contents": "read", "id-token": "write"}, (
+    assert _single_job(path)["permissions"] == job_scopes, (
         "GitHub writes go through the App token; the job token stays read-only"
     )
+
+
+def test_implementer_hands_the_read_only_job_token_to_the_capacity_gate():
+    assert _model_step(_single_job(IMPLEMENTER))["env"] == {
+        implementer_claim.ACTIONS_TOKEN_VARIABLE: "${{ github.token }}"
+    }
+
+
+def test_capacity_gate_names_this_workflow_and_job():
+    assert IMPLEMENTER.name == implementer_claim.IMPLEMENTER_WORKFLOW
+    assert implementer_claim.IMPLEMENT_JOB in _workflow(IMPLEMENTER)["jobs"]
+    assert "name" not in _single_job(IMPLEMENTER), "a display name would rename the job in the API"
+    assert "matrix" not in _single_job(IMPLEMENTER).get("strategy", {}), "a matrix renames the job"
 
 
 @BOTH
@@ -155,7 +176,16 @@ def test_implementer_claims_through_the_script_before_anything_else():
     )
     assert command in prompt
     assert prompt.index("1. If issue") < prompt.index(command) < prompt.index("3. Contract:")
-    for outcome in ('"claimed"', '"reclaimed"', '"pr-exists"', '"needs-human"', '"failed"'):
+    outcomes = (
+        '"claimed"',
+        '"reclaimed"',
+        '"pr-exists"',
+        '"needs-human"',
+        '"blocked"',
+        '"at-capacity"',
+        '"failed"',
+    )
+    for outcome in outcomes:
         assert outcome in prompt, f"prompt does not act on the claim outcome {outcome}"
 
 

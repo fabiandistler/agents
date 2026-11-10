@@ -55,10 +55,23 @@ Adding `ready-for-agent` starts `.github/workflows/implementer.yml`
 | The branch exists with no commits of its own and no pull request holds the issue (`needs-info` exit, or a crash before the first push) | `reclaimed` | Fast-forwards the branch to `main`, then builds on it | Nobody |
 | An open or merged pull request closes the issue, or an open pull request uses the branch (the stop rule's draft) | `pr-exists` | Ends without changes | The maintainer, on that pull request |
 | The branch has commits and no open pull request (a crash after pushing, or a pull request closed unmerged) | `needs-human` | Comments naming the branch, replaces `ready-for-agent` with `ready-for-human`, ends | A person: open a pull request from the branch, or rescue what is needed, delete the branch and add `ready-for-agent` again |
+| A blocker in the issue body, the latest `## Agent Brief` comment or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository | `blocked` | Comments naming the blockers, removes `ready-for-agent`, ends before any branch exists | A person: add `ready-for-agent` again once every blocker is done, or rewrite an unresolvable entry as `#<n>` |
+| Another implementer run started working first | `at-capacity` | Comments naming the capacity reason, removes `ready-for-agent`, ends before any branch exists | A person: add `ready-for-agent` again when that run has ended |
 | Any other API error | `failed` | Writes `RUN FAILED: claim (<reason>)`, so the run turns red | The maintainer reads the run; a retry is safe |
 
 Runs for one issue share a concurrency group, so a branch that exists at claim
 time never belongs to a live run of this workflow.
+
+At most one implementer run works at a time (`MAX_WORKING_RUNS` in the script).
+Runs are ordered by the start of their `implement` job, then by run id; only
+runs earlier in that order count, so of two simultaneous starts exactly one
+stops. The check reads the Actions API, so it can lag a few seconds; a run about
+to end still counts, and the ticket then waits for a person to re-label it.
+
+An issue stopped as `blocked` or `at-capacity` carries no state label until a
+person adds `ready-for-agent` again. Nothing restarts it on its own: a blocker
+closing fires no run. The triage workflows do not act on it either; they ignore
+the bot's comment, and their state check accepts an issue without a state.
 
 ## Pull request labels
 

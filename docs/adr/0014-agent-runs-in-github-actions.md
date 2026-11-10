@@ -44,8 +44,12 @@ and gives it to the model as `GH_TOKEN`:
 - Its pushes and pull requests start `ci.yml` and `pr-review.yml`. A
   `GITHUB_TOKEN` push would start neither, so the required checks would never
   report and the PR review never run.
-- The job's own token stays `contents: read`; `id-token: write` is the only
-  other scope.
+- The job's own token stays read-only: `contents: read`, plus `actions: read`
+  in the implementer alone, which `scripts/implementer_claim.py` uses to count
+  working runs because the App token cannot be shown to have Actions read.
+  `id-token: write` is the only other scope. The implementer's model step passes
+  this token as `ACTIONS_READ_TOKEN`; the action already exposes it to that step
+  as `DEFAULT_WORKFLOW_TOKEN`, so this adds no token the model could not reach.
 
 The prompts are versioned in the workflow files. The skill audit's prompt
 only points at its runbook, as the scheduled task's did.

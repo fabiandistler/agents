@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
@@ -28,6 +29,15 @@ UPDATE_REF = f"/repos/{REPO}/git/refs/heads/{BRANCH}"
 COMMENTS = f"/repos/{REPO}/issues/{ISSUE}/comments"
 LABELS = f"/repos/{REPO}/issues/{ISSUE}/labels"
 REMOVE_LABEL = f"{LABELS}/ready-for-agent"
+ISSUE_PATH = f"/repos/{REPO}/issues/{ISSUE}"
+DEPENDENCIES = f"{ISSUE_PATH}/dependencies/blocked_by"
+RUNS = f"/repos/{REPO}/actions/workflows/implementer.yml/runs"
+RUN_ID = 5000
+JOB_START = "2026-11-10T10:00:00Z"
+
+
+def working_job(started_at: str = JOB_START, status: str = "in_progress") -> dict:
+    return {"name": "implement", "status": status, "started_at": started_at}
 
 
 def http_error(status: int, path: str) -> pr_github_client.FetchError:
@@ -59,11 +69,17 @@ class FakeGitHub:
     """A routed fake for the claim's REST calls.
 
     ``errors`` maps (method, path) to an error, ``canned_payloads`` a GET path to its answer.
+    ``jobs`` maps a run id to its jobs; by default only this run works.
     """
 
     pulls: list[dict] = field(default_factory=list)
     branch_sha: str | None = None
     ahead_by: int = 0
+    issue_body: str | None = ""
+    issue_comments: list[dict] = field(default_factory=list)
+    native_blockers: list[dict] = field(default_factory=list)
+    blocker_issues: dict[int, dict] = field(default_factory=dict)
+    jobs: dict[int, list[dict]] = field(default_factory=lambda: {RUN_ID: [working_job()]})
     errors: dict[tuple[str, str], Exception] = field(default_factory=dict)
     canned_payloads: dict[str, object] = field(default_factory=dict)
     writes: list[tuple[str, str, dict]] = field(default_factory=list)
@@ -92,6 +108,29 @@ class FakeGitHub:
         if path.startswith(f"/repos/{REPO}/compare/"):
             self.compared.append(path)
             return json_response({"ahead_by": self.ahead_by})
+        return self._get_intake(path, params or {})
+
+    def _get_intake(self, path: str, params: dict) -> pr_github_client.Response:
+        """The routes the intake gates read."""
+        first_page = params.get("page", 1) == 1
+        if path == ISSUE_PATH:
+            return json_response({"body": self.issue_body})
+        if path == COMMENTS:
+            return json_response(self.issue_comments if first_page else [])
+        if path == DEPENDENCIES:
+            return json_response(self.native_blockers if first_page else [])
+        if path == RUNS:
+            assert params.get("status") == "in_progress", "only working runs may be counted"
+            runs = [{"id": run_id} for run_id in self.jobs]
+            return json_response({"total_count": len(runs), "workflow_runs": runs})
+        if (match := re.fullmatch(rf"/repos/{REPO}/actions/runs/(\d+)/jobs", path)) is not None:
+            jobs = self.jobs[int(match[1])]
+            return json_response({"total_count": len(jobs), "jobs": jobs})
+        if (match := re.fullmatch(rf"/repos/{REPO}/issues/(\d+)", path)) is not None:
+            number = int(match[1])
+            if number not in self.blocker_issues:
+                raise http_error(404, path)
+            return json_response(self.blocker_issues[number])
         raise AssertionError(f"unexpected GET {path}")
 
     def post(self, path: str, payload: dict | None = None) -> pr_github_client.Response:
@@ -113,7 +152,8 @@ class FakeGitHub:
 
 
 def claim(fake: FakeGitHub) -> implementer_claim.ClaimOutcome:
-    return implementer_claim.claim_branch(cast(GitHubClient, fake), REPO, ISSUE)
+    client = cast(GitHubClient, fake)
+    return implementer_claim.claim_branch(client, client, REPO, ISSUE, RUN_ID)
 
 
 def test_free_branch_is_created_at_main():
@@ -299,6 +339,8 @@ def test_a_malformed_comparison_is_an_api_error():
 def run_cli(monkeypatch, tmp_path, fake) -> tuple[int, Path]:
     monkeypatch.setattr(implementer_claim, "GitHubClient", lambda token: fake)
     monkeypatch.setenv("GH_TOKEN", "app-token")
+    monkeypatch.setenv("ACTIONS_READ_TOKEN", "job-token")
+    monkeypatch.setenv("GITHUB_RUN_ID", str(RUN_ID))
     summary = tmp_path / "run-summary.md"
     code = implementer_claim.main(
         ["--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)]
