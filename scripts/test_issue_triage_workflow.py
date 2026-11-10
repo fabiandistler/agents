@@ -91,6 +91,15 @@ def test_the_cli_version_matches_the_pr_review_pin():
     assert triage == review, "one Claude Code version for both pipelines"
 
 
+def test_the_model_reads_the_default_branch_whatever_the_trigger():
+    checkout = next(
+        step
+        for step in _jobs()["triage"]["steps"]
+        if str(step.get("uses", "")).startswith("actions/checkout@")
+    )
+    assert checkout["with"]["ref"] == "${{ github.event.repository.default_branch }}"
+
+
 def test_the_model_reads_the_checkout_and_its_inputs_stay_outside_it():
     run = "\n".join(step.get("run", "") for step in _jobs()["triage"]["steps"])
     assert '--workspace "$GITHUB_WORKSPACE"' in run
@@ -123,6 +132,7 @@ def test_only_the_reporter_reply_on_a_needs_info_issue_starts_a_run():
 def test_events_the_filter_drops_never_share_the_triage_concurrency_group():
     group = " ".join(_workflow()["concurrency"]["group"].split())
     condition = " ".join(_jobs()["assess"]["if"].split())
-    assert _workflow()["concurrency"]["cancel-in-progress"] is True
+    # A run in flight is never cancelled, so it cannot stop between comment and label.
+    assert _workflow()["concurrency"]["cancel-in-progress"] is False
     # `a && '' || b` always yields b, so the dropped case must come first.
     assert f"!( {condition} ) && format('-ignored-{{0}}', github.run_id) || ''" in group

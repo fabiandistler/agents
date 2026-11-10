@@ -85,7 +85,12 @@ Brakes:
   structure; it can still sway the recommendation, which is why the bot's own
   power stops at `needs-info` and a comment.
 - `--restricted` also refuses symlinks in the checkout that resolve outside it
-  (files, directories and `/proc/<pid>/environ`; checked 2026-11-10).
+  (files, directories and `/proc/<pid>/environ`; checked 2026-11-10). The
+  check holds for the pinned version only: before the CLI pin is bumped, run
+  it again with the new version (Read and Grep on a file, a `/proc` link and
+  a directory link outside the working directory must all be refused).
+- The triage job always checks out the default branch, and a newer trigger
+  waits for the run in flight instead of cancelling it.
 - Publish posts the comment before it moves the label, so a failed label
   write leaves the reasoning visible and the run red. The comment still
   counts towards the two automatic triages.
