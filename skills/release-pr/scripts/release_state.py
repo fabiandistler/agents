@@ -30,8 +30,8 @@ STATE is one of:
 Exit codes: 0 state is consistent, released, development or open-heading (an
 open heading is adopted, not fixed, so it must not stop a caller); 1 usage
 error; 2 not an R or Python package (or ambiguous without --language, or a
-malformed pyproject.toml); 3 state
-is mismatch, details in the JSON; 4 git unavailable or no commits.
+malformed pyproject.toml); 3 state is mismatch, details in the JSON; 4 git
+unavailable or no commits.
 """
 
 from __future__ import annotations
@@ -157,6 +157,7 @@ def read_pyproject(repo: Path) -> dict | None:
             print(f"error: pyproject.toml is malformed: {exc}", file=sys.stderr)
             sys.exit(2)
     else:
+        # The regex reads only name, version and dynamic; it does not validate TOML.
         block = re.search(r"^\[project\]\n(.*?)(?=^\[|\Z)", text, re.DOTALL | re.MULTILINE)
         if not block:
             return None
