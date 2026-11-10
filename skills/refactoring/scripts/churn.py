@@ -51,6 +51,8 @@ resolves along the chain to its current path, so history accrues to the path
 in the working tree. Paths that are no longer regular files in the working tree --
 deleted, or tracked symlinks pointing at directories -- are counted in the
 summary but dropped from the ranking; there is nothing left to refactor.
+A file that is there but cannot be read (permission denied, broken mount) is
+dropped too, but counted as unreadable rather than gone.
 
 COMMITS counts every non-merge commit that touched the file, both sides of a
 merge included, renames counted under the current path. Cross-checking a row
@@ -127,13 +129,18 @@ def keep(path: str, includes: list[str], excludes: list[str]) -> bool:
 
 
 def measure(root: Path, entry: FileChurn) -> None:
-    """Fill in `exists`, `binary` and `lines` from the working tree."""
+    """Fill in `exists`, `unreadable`, `binary` and `lines` from the working tree.
+
+    A path that stat or read refuses with an OSError is marked unreadable, not
+    missing: the file may well be there, and calling it gone would hide a hotspot.
+    """
     target = root / entry.path
     try:
         if not target.is_file():
             return
         data = target.read_bytes()
     except OSError:
+        entry.unreadable = True
         return
     entry.exists = True
     if b"\0" in data[:BINARY_SNIFF_BYTES]:
@@ -179,6 +186,7 @@ def render(
     since: str,
     top: int,
     dropped_missing: int,
+    dropped_unreadable: int,
     dropped_min: int,
     now: datetime,
 ) -> str:
@@ -186,6 +194,8 @@ def render(
     notes = []
     if dropped_missing:
         notes.append(f"{dropped_missing} gone from the tree")
+    if dropped_unreadable:
+        notes.append(f"{dropped_unreadable} unreadable")
     if dropped_min:
         notes.append(f"{dropped_min} below --min-commits")
     suffix = f" ({', '.join(notes)}, not shown)" if notes else ""
@@ -329,7 +339,8 @@ def main(argv: list[str] | None = None) -> int:
         measure(root, entry)
 
     alive = [e for e in kept if e.exists]
-    dropped_missing = len(kept) - len(alive)
+    dropped_unreadable = sum(1 for e in kept if e.unreadable)
+    dropped_missing = len(kept) - len(alive) - dropped_unreadable
     ranked_input = [e for e in alive if e.commits >= args.min_commits]
     dropped_min = len(alive) - len(ranked_input)
     entries = rank(ranked_input)
@@ -346,6 +357,7 @@ def main(argv: list[str] | None = None) -> int:
                     "files_seen": len(files),
                     "files_ranked": len(entries),
                     "dropped_missing": dropped_missing,
+                    "dropped_unreadable": dropped_unreadable,
                     "dropped_below_min_commits": dropped_min,
                     "files": [to_dict(e) for e in page],
                 },
@@ -355,9 +367,11 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if not entries:
+        unreadable = f"{dropped_unreadable} unreadable, " if dropped_unreadable else ""
         print(
             f"No files survived filtering (seen {len(files)}, "
-            f"{dropped_missing} gone from the tree, {dropped_min} below --min-commits)."
+            f"{dropped_missing} gone from the tree, {unreadable}"
+            f"{dropped_min} below --min-commits)."
         )
         return 0
 
@@ -367,6 +381,7 @@ def main(argv: list[str] | None = None) -> int:
             since=args.since,
             top=args.top,
             dropped_missing=dropped_missing,
+            dropped_unreadable=dropped_unreadable,
             dropped_min=dropped_min,
             now=datetime.now(timezone.utc),
         ),

@@ -29,6 +29,7 @@ class FileChurn:
     last_commit: datetime | None = None
     lines: int = 0
     exists: bool = False
+    unreadable: bool = False
     binary: bool = False
     score: float = 0.0
 

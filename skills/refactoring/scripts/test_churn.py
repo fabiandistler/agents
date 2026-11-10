@@ -1,3 +1,6 @@
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -5,8 +8,18 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 CHURN = Path(__file__).with_name("churn.py")
+
+
+def load_churn():
+    spec = importlib.util.spec_from_file_location("churn", CHURN)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclasses look the module up by name.
+    spec.loader.exec_module(module)
+    return module
 
 
 def run(*args, env=None):
@@ -154,6 +167,67 @@ class TestShallowWorktree(unittest.TestCase):
             self.assertEqual(proc.returncode, 0)
             self.assertTrue(json.loads(proc.stdout)["shallow"])
             self.assertIn("shallow", proc.stderr)
+
+
+class TestDroppedFiles(unittest.TestCase):
+    """Unreadable and deleted files are dropped, each under its own count."""
+
+    ARGS = ("--since", "2020-01-01", "--min-commits", "1")
+
+    def run_main(self, repo, *args, unreadable=None):
+        """Run churn.main in-process; reading `unreadable` raises PermissionError.
+
+        The failure is injected because CI may run as root, where chmod 000
+        does not stop a read.
+        """
+        churn = load_churn()
+        real_read_bytes = Path.read_bytes
+
+        def read_bytes(path):
+            if unreadable is not None and path.name == unreadable:
+                raise PermissionError(13, "Permission denied", str(path))
+            return real_read_bytes(path)
+
+        out = io.StringIO()
+        patch = mock.patch.object(Path, "read_bytes", autospec=True, side_effect=read_bytes)
+        with patch, contextlib.redirect_stdout(out):
+            code = churn.main([*self.ARGS, *args, str(repo)])
+        self.assertEqual(code, 0)
+        return out.getvalue()
+
+    def test_unreadable_file_is_counted_as_unreadable_not_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_repo(tmp)
+            report = json.loads(self.run_main(repo, "--json", unreadable="mod1.py"))
+        self.assertNotIn("mod1.py", [f["path"] for f in report["files"]])
+        self.assertEqual(report["files_ranked"], 2)
+        self.assertEqual(report["dropped_unreadable"], 1)
+        self.assertEqual(report["dropped_missing"], 0)
+
+    def test_deleted_file_is_still_counted_as_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_repo(tmp)
+            (repo / "mod2.py").unlink()
+            report = json.loads(self.run_main(repo, "--json"))
+        self.assertNotIn("mod2.py", [f["path"] for f in report["files"]])
+        self.assertEqual(report["dropped_missing"], 1)
+        self.assertEqual(report["dropped_unreadable"], 0)
+
+    def test_text_output_names_a_nonzero_unreadable_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_repo(tmp)
+            text = self.run_main(repo, unreadable="mod1.py")
+        head = text.splitlines()[0]
+        self.assertIn("1 unreadable", head)
+        self.assertIn("2 files ranked", head)
+
+    def test_text_output_is_silent_about_zero_unreadable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_repo(tmp)
+            (repo / "mod2.py").unlink()
+            text = self.run_main(repo)
+        self.assertIn("1 gone from the tree", text)
+        self.assertNotIn("unreadable", text)
 
 
 if __name__ == "__main__":
