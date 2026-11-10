@@ -34,9 +34,21 @@ for arg in "$@"; do
     exit $?
   fi
 done
+echo task >> "$STUB_LOG/task_calls"
+case ${STUB_TASK:-work} in
+  fail) # the CLI itself fails: no work done
+    echo 'error: 401 Unauthorized' >&2
+    exit 1
+    ;;
+  blocked)
+    echo 'BLOCKED: spec contradicts itself'
+    exit "${STUB_TASK_EXIT:-0}"
+    ;;
+esac
 echo done > done.txt
 git add done.txt
 git commit -qm "feat(prd-01): done"
+exit "${STUB_TASK_EXIT:-0}"
 """
 
 GH_STUB = """#!/usr/bin/env bash
@@ -180,6 +192,17 @@ def read_argv(log_dir, name):
     return (log_dir / f"{name}.argv").read_text().split("\0")[:-1]
 
 
+def task_calls(log_dir):
+    """Number of task (non-preflight) runner calls the stub recorded."""
+    calls = log_dir / "task_calls"
+    return len(calls.read_text().splitlines()) if calls.exists() else 0
+
+
+def stop_diagnosis(stderr):
+    """The one-line reason infrastructure_stop prints before the shared guidance."""
+    return next(line for line in stderr.splitlines() if line.startswith("Infrastructure stop:"))
+
+
 def fail_command(repo, name, arg_glob):
     """Put a `name` wrapper on PATH that fails like a read-only file system.
 
@@ -310,6 +333,60 @@ class LoopRunnerTest(unittest.TestCase):
                 self.assertEqual(current_branch(repo), "main")
                 self.assertFalse((repo / "plans/BLOCKED.md").exists())
                 self.assertEqual(list(log_dir.iterdir()), [])  # no runner or forge call
+
+    def test_agent_failure_mid_run_stops_without_spending_attempts(self):
+        repo, log_dir, env = self.poc()
+        env.update(POC_AGENT="codex", STUB_TASK="fail")
+        result = run_loop(repo, env)
+        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertEqual(task_calls(log_dir), 1)
+        prd = json.loads((repo / "plans/prd.json").read_text())
+        self.assertEqual(prd["items"][0]["attempts"], 0)
+        self.assertIs(prd["items"][0]["passes"], False)
+        self.assertFalse((repo / "plans/BLOCKED.md").exists())
+        diagnosis = stop_diagnosis(result.stderr)
+        self.assertIn("prd-01", diagnosis)
+        self.assertIn("agent exited 1", diagnosis)
+        self.assertIn("run_prd-01.log", diagnosis)
+        self.assertNotIn("preflight", diagnosis)
+        self.assertIn("401 Unauthorized", result.stderr)
+        self.assert_restart_guidance(result.stderr, repo)
+        self.assertFalse((log_dir / "gh.argv").exists())
+        # Restored infrastructure: the restart resumes the same item at attempt 1.
+        env.pop("STUB_TASK")
+        result = run_loop(repo, env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(json.loads((repo / "plans/prd.json").read_text())["items"][0]["passes"])
+
+    def test_agent_failure_after_passing_work_warns_and_continues(self):
+        repo, log_dir, env = self.poc()
+        env.update(POC_AGENT="codex", STUB_TASK_EXIT="1")
+        result = run_loop(repo, env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("WARN: agent exited 1 on prd-01", result.stderr)
+        self.assertTrue(json.loads((repo / "plans/prd.json").read_text())["items"][0]["passes"])
+        self.assertTrue((log_dir / "gh.argv").exists())
+
+    def test_blocked_marker_wins_over_agent_exit_status(self):
+        for exit_status in ("0", "1"):
+            with self.subTest(exit_status=exit_status):
+                repo, log_dir, env = self.poc()
+                env.update(POC_AGENT="codex", STUB_TASK="blocked", STUB_TASK_EXIT=exit_status)
+                result = run_loop(repo, env)
+                self.assertEqual(result.returncode, 3, result.stderr)  # prd-01 blocked
+                self.assertEqual(task_calls(log_dir), 1)
+                self.assertIn(
+                    "BLOCKED: spec contradicts itself", committed(repo, "plans/BLOCKED.md")
+                )
+                prd = json.loads((repo / "plans/prd.json").read_text())
+                self.assertEqual(prd["items"][0]["attempts"], 3)
+
+    def test_preflight_stop_message_makes_no_branch_claim(self):
+        repo, _, env = self.poc()
+        env.update(POC_AGENT="codex", STUB_PREFLIGHT_FAILURE="2")
+        diagnosis = stop_diagnosis(run_loop(repo, env).stderr)
+        self.assertIn("preflight", diagnosis)
+        self.assertNotIn("branch", diagnosis)
 
     def test_flags_override_replaces_defaults(self):
         repo, log_dir, env = self.poc()
