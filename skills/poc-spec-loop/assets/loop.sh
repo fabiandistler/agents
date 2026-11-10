@@ -25,7 +25,7 @@
 # Run logs and last-failure output live under $(git rev-parse --git-dir)/poc-loop,
 # never in the working tree, so a stopped run can be restarted as is.
 #
-# Bats exemption: a skill asset, exempt like templates; scripts/test_loop.py
+# Bats exemption: a skill asset, exempt like templates; scripts/test_loop*.py
 # exercises it with stub CLIs.
 
 set -euo pipefail
@@ -313,7 +313,12 @@ while id=$(next_item) && [[ -n $id ]]; do
     set_field "$id" attempts "$MAX_ATTEMPTS"
     block_item "$id" "$(grep '^BLOCKED:' <<<"$out")"
     consecutive_blocked=$((consecutive_blocked + 1))
-  elif check_out=$(timeout "$CHECK_TIMEOUT" bash -c "$(jq -r --arg id "$id" '.items[]|select(.id==$id)|.check' "$PRD")" 2>&1); then
+  elif
+    check_cmd=$(jq -r --arg id "$id" '.items[]|select(.id==$id)|.check' "$PRD")
+    check_rc=0
+    check_out=$(timeout "$CHECK_TIMEOUT" bash -c "$check_cmd" 2>&1) || check_rc=$?
+    ((check_rc == 0))
+  then
     ((agent_rc == 0)) || echo "WARN: agent exited $agent_rc on $id, but its check passes" >&2
     set_field "$id" passes true
     rm -f "$LOGDIR/last_failure_$id"
@@ -326,6 +331,8 @@ while id=$(next_item) && [[ -n $id ]]; do
   else
     n=$(($(jq -r --arg id "$id" '.items[]|select(.id==$id)|.attempts' "$PRD") + 1))
     set_field "$id" attempts "$n"
+    # A silent check (`test -f`, `grep -q`) would leave an empty reason; name it instead.
+    [[ -n ${check_out//[[:space:]]/} ]] || check_out="check exited $check_rc with no output: $check_cmd"
     printf '%s' "$check_out" | tail -c 4000 >"$LOGDIR/last_failure_$id"
     if ((n >= MAX_ATTEMPTS)); then
       block_item "$id" "$check_out"
