@@ -3,12 +3,15 @@
 Run from the repo root with: uv run --with pytest pytest skills/release-pr/scripts/
 """
 
+import importlib.util
 import json
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 SCRIPT = Path(__file__).with_name("release_state.py")
 
@@ -231,6 +234,54 @@ def test_mentions_truncated_over_cap(tmp_path):
     _, data = report(repo)
     assert len(data["version_mentions"]) == 20
     assert data["mentions_truncated"] is True
+
+
+MALFORMED_PYPROJECT = PYPROJECT.format(version="1.0.0") + "broken =\n\n[tool.x]\nkey = 1\n"
+UNTERMINATED_PYPROJECT = PYPROJECT.format(version="1.0.0") + "classifiers = [\n"
+
+
+def load_release_state():
+    spec = importlib.util.spec_from_file_location("release_state", SCRIPT)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize(
+    ("content", "position"),
+    [(MALFORMED_PYPROJECT, "at line 4, column 9"), (UNTERMINATED_PYPROJECT, "at end of document")],
+)
+def test_malformed_pyproject_is_input_error(tmp_path, content, position):
+    repo = make_repo(tmp_path / "repo", {"pyproject.toml": content})
+    proc = run(repo)
+    assert proc.returncode == 2
+    assert proc.stdout == ""
+    assert "pyproject.toml is malformed" in proc.stderr
+    assert position in proc.stderr
+
+
+def test_malformed_pyproject_ignored_for_r_release(tmp_path):
+    files = r_files("1.4.0", "1.4.0", BULLET)
+    files["pyproject.toml"] = MALFORMED_PYPROJECT
+    repo = make_repo(tmp_path / "repo", files)
+    proc, data = report(repo, "--language", "r")
+    assert proc.returncode == 0
+    assert data["language"] == "r"
+    assert data["package"] == "demo"
+
+
+def test_regex_fallback_without_tomllib(tmp_path, monkeypatch):
+    module = load_release_state()
+    monkeypatch.setattr(module, "tomllib", None)
+    (tmp_path / "pyproject.toml").write_text(
+        PYPROJECT.format(version="1.4.0") + "\n[tool.x]\nkey = 1\n", encoding="utf-8"
+    )
+    pkg = module.read_pyproject(tmp_path)
+    assert pkg["package"] == "demo"
+    assert pkg["version"] == "1.4.0"
+    assert pkg["dynamic_version"] is False
 
 
 def test_mentions_none_found_is_empty(tmp_path):

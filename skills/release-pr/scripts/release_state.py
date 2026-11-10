@@ -29,8 +29,9 @@ STATE is one of:
 
 Exit codes: 0 state is consistent, released, development or open-heading (an
 open heading is adopted, not fixed, so it must not stop a caller); 1 usage
-error; 2 not an R or Python package (or ambiguous without --language); 3 state
-is mismatch, details in the JSON; 4 git unavailable or no commits.
+error; 2 not an R or Python package (or ambiguous without --language, or a
+malformed pyproject.toml); 3 state is mismatch, details in the JSON; 4 git
+unavailable or no commits.
 """
 
 from __future__ import annotations
@@ -149,13 +150,14 @@ def read_pyproject(repo: Path) -> dict | None:
     if not path.is_file():
         return None
     text = path.read_text(encoding="utf-8", errors="replace")
-    project = None
     if tomllib is not None:
         try:
             project = tomllib.loads(text).get("project")
-        except tomllib.TOMLDecodeError:
-            project = None
-    if project is None:
+        except tomllib.TOMLDecodeError as exc:
+            print(f"error: pyproject.toml is malformed: {exc}", file=sys.stderr)
+            sys.exit(2)
+    else:
+        # The regex reads only name, version and dynamic; it does not validate TOML.
         block = re.search(r"^\[project\]\n(.*?)(?=^\[|\Z)", text, re.DOTALL | re.MULTILINE)
         if not block:
             return None
@@ -180,9 +182,10 @@ def read_pyproject(repo: Path) -> dict | None:
 
 
 def detect(repo: Path, language: str | None) -> dict:
-    found = [p for p in (read_description(repo), read_pyproject(repo)) if p]
+    readers = {"r": read_description, "python": read_pyproject}
     if language:
-        found = [p for p in found if p["language"] == language]
+        readers = {language: readers[language]}
+    found = [p for p in (read(repo) for read in readers.values()) if p]
     if not found:
         print("error: no DESCRIPTION or pyproject.toml [project] found", file=sys.stderr)
         sys.exit(2)
