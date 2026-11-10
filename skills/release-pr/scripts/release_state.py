@@ -99,19 +99,20 @@ def usage_error(msg: str) -> None:
     sys.exit(1)
 
 
-def git(repo: Path, *args: str) -> str:
+def git(repo: Path, *args: str, ok_codes: frozenset[int] = frozenset({0})) -> str:
+    """Run a read-only git command; exit 4 if git is missing or exits outside ok_codes."""
     try:
         out = subprocess.run(  # noqa: S603 -- internal read-only Git argv; no shell.
             ["git", "-C", str(repo), *args],  # noqa: S607 -- Git intentionally resolves from PATH.
             capture_output=True,
             text=True,
-            check=True,
+            check=False,
         )
     except FileNotFoundError:
         print("error: git not found", file=sys.stderr)
         sys.exit(4)
-    except subprocess.CalledProcessError as exc:
-        print(f"error: git {' '.join(args)}: {exc.stderr.strip()}", file=sys.stderr)
+    if out.returncode not in ok_codes:
+        print(f"error: git {' '.join(args)}: {out.stderr.strip()}", file=sys.stderr)
         sys.exit(4)
     return out.stdout
 
@@ -330,23 +331,8 @@ def removed_exports(repo: Path, tag: str | None) -> list[str]:
 def version_mentions(repo: Path, version: str | None, skip: set[str]) -> tuple[list[dict], bool]:
     if not version:
         return [], False
-    out = subprocess.run(  # noqa: S603 -- version is a `-e` argument; path is after `--`.
-        [  # noqa: S607 -- Git intentionally resolves from PATH.
-            "git",
-            "-C",
-            str(repo),
-            "grep",
-            "-n",
-            "-F",
-            "-e",
-            version,
-            "--",
-            ".",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout
+    # git grep exits 1 when nothing matches; any other non-zero status is an error.
+    out = git(repo, "grep", "-n", "-F", "-e", version, "--", ".", ok_codes=frozenset({0, 1}))
     whole = re.compile(r"(?<![\d.])" + re.escape(version) + r"(?![\d.])")
     hits = []
     for line in out.splitlines():
