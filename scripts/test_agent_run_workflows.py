@@ -2,7 +2,7 @@
 
 Both run claude-code-action with the Claude GitHub App token (ADR-0014). These
 tests pin what keeps that safe and what keeps it working: an empty top-level
-permission set, the job's narrow scopes, a SHA-pinned action, no
+permission set, the job's narrow scopes and timeout, a SHA-pinned action, no
 `github_token` override (its pushes would start no checks), prompts that
 interpolate no event text, and a report step that fails the job on a failed
 run.
@@ -108,6 +108,20 @@ def test_runs_are_serialised_without_cancelling(path):
     concurrency = _single_job(path)["concurrency"]
     assert concurrency["cancel-in-progress"] is False, (
         "cancelling could stop a run between its push and its pull request"
+    )
+
+
+@pytest.mark.parametrize(
+    ("path", "job_name", "minutes"),
+    [(IMPLEMENTER, "implement", 120), (SKILL_AUDIT, "audit", 90)],
+    ids=lambda value: value.name if isinstance(value, Path) else str(value),
+)
+def test_job_keeps_its_timeout(path, job_name, minutes):
+    jobs = _workflow(path)["jobs"]
+    assert job_name in jobs, f"{path.name} lost its {job_name!r} job"
+    assert jobs[job_name].get("timeout-minutes") == minutes, (
+        f"{path.name} job {job_name!r} needs timeout-minutes: {minutes}; without it a stuck"
+        " model run burns GitHub's default 360 minutes of runner time and subscription limits"
     )
 
 
