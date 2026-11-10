@@ -27,13 +27,10 @@ The bundled script ranks files by their git history, the one source of
 evidence every repo already has:
 
 ```
-python3 <skills-dir>/refactoring/scripts/churn.py [path] [--since '12 months ago'] [--json]
+python3 scripts/churn.py <repo-path> [--since '12 months ago'] [--json]
 ```
 
-`[path]` is the repository to rank (default: the current directory). The
-same script is installed under your agent skills directory.
-Because the script takes the target as an argument, the command works from
-any working directory once installed.
+Run it from this skill's directory; `<repo-path>` is the repository to rank.
 
 Per file it reports commits in the window, distinct authors, current size,
 recency, and one composite score (change frequency × size, Tornhill's hotspot
