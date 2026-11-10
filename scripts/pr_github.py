@@ -77,12 +77,14 @@ def get_json(client: ReadClient, path: str, params: dict[str, object] | None = N
         raise FetchError(f"GitHub API returned invalid JSON for {path}") from error
 
 
-def paginate(client: ReadClient, path: str) -> list[dict]:
+def paginate(client: ReadClient, path: str, params: dict[str, object] | None = None) -> list[dict]:
     """GET every page of the list at ``path``; each item must be a JSON object."""
     items: list[dict] = []
     page = 1
     while True:
-        page_items = get_json(client, path, params={"per_page": PER_PAGE, "page": page})
+        page_items = get_json(
+            client, path, params={**(params or {}), "per_page": PER_PAGE, "page": page}
+        )
         if not isinstance(page_items, list):
             raise FetchError(f"GitHub API returned an unexpected payload for {path}")
         for item in page_items:

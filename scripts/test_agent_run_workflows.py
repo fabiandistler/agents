@@ -147,6 +147,30 @@ def test_implementer_validates_the_issue_number_before_anything_else():
     )
 
 
+def test_implementer_claims_through_the_script_before_anything_else():
+    prompt = _model_step(_single_job(IMPLEMENTER))["with"]["prompt"]
+    command = (
+        "python3 scripts/implementer_claim.py --repo ${{ github.repository }} "
+        '--issue ${{ steps.issue.outputs.number }} --summary "$RUNNER_TEMP/run-summary.md"'
+    )
+    assert command in prompt
+    assert prompt.index("1. If issue") < prompt.index(command) < prompt.index("3. Contract:")
+    for outcome in ('"claimed"', '"reclaimed"', '"pr-exists"', '"needs-human"', '"failed"'):
+        assert outcome in prompt, f"prompt does not act on the claim outcome {outcome}"
+
+
+def test_implementer_prompt_no_longer_claims_by_hand():
+    prompt = _model_step(_single_job(IMPLEMENTER))["with"]["prompt"]
+    for gone in ("git/refs", "HTTP 422", "another run holds this issue"):
+        assert gone not in prompt, f"the claim moved to the script; prompt still has {gone!r}"
+
+
+def test_implementer_prompt_keeps_its_branch_limits():
+    prompt = _model_step(_single_job(IMPLEMENTER))["with"]["prompt"]
+    for limit in ("force-push", "never delete branches", "never touch other branches"):
+        assert limit in prompt, f"prompt lost the hard limit {limit!r}"
+
+
 def test_skill_audit_keeps_its_schedule():
     schedule = _workflow(SKILL_AUDIT)[True]["schedule"]
     assert schedule == [{"cron": "47 13 8,22 * *", "timezone": "Europe/Berlin"}]
