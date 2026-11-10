@@ -61,6 +61,11 @@ REPO_ROOT_SCRIPT_PATH = re.compile(
 
 
 def find_repo_root_script_paths(skill_path):
+    """Scan SKILL.md and references/*.md for repo-root script paths.
+
+    Returns (unreadable, hits): files that could not be read, as
+    '<label>: unreadable: <exc>', and the repo-root path findings.
+    """
     base = Path(skill_path)
     targets = []
     skill_md = base / "SKILL.md"
@@ -69,17 +74,19 @@ def find_repo_root_script_paths(skill_path):
     references = base / "references"
     if references.is_dir():
         targets.extend(sorted(references.glob("*.md")))
+    unreadable = []
     hits = []
     for path in targets:
+        label = "SKILL.md" if path.parent == base else f"references/{path.name}"
         try:
             text = path.read_text(encoding="utf-8")
-        except OSError:
+        except OSError as exc:
+            unreadable.append(f"{label}: unreadable: {exc}")
             continue
-        label = "SKILL.md" if path.parent == base else f"references/{path.name}"
         for match in REPO_ROOT_SCRIPT_PATH.finditer(text):
             line = text.count("\n", 0, match.start()) + 1
             hits.append(f"{label}:{line}: {match.group(0).strip()}")
-    return hits
+    return unreadable, hits
 
 
 def find_command_skill_gap(skill_path, frontmatter):
@@ -270,7 +277,9 @@ def validate_skill(skill_path):
         if problem:
             return False, problem
 
-    hits = find_repo_root_script_paths(skill_path)
+    unreadable, hits = find_repo_root_script_paths(skill_path)
+    if unreadable:
+        return False, "; ".join(unreadable)
     if hits:
         detail = "; ".join(hits)
         return False, (
