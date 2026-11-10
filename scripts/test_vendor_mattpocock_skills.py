@@ -24,7 +24,8 @@ def _fake_upstream(tmp_path: Path, *, with_in_progress: bool) -> Path:
     for rel in released:
         _skill(upstream, rel)
     if with_in_progress:
-        _skill(upstream, "skills/in-progress/chief-of-staff")
+        for name in vendor.INCLUDED_IN_PROGRESS:
+            _skill(upstream, f"skills/in-progress/{name}")
     (upstream / ".claude-plugin").mkdir()
     (upstream / ".claude-plugin" / "plugin.json").write_text(
         json.dumps({"version": "9.9.9", "skills": [f"./{r}" for r in released]}), encoding="utf-8"
@@ -61,10 +62,11 @@ def _run(tmp_path: Path, monkeypatch, *, with_in_progress: bool = True) -> int:
 
 def test_in_progress_skill_is_vendored_and_excluded_are_not(tmp_path, monkeypatch):
     skills_dir, vendor_dir = tmp_path / "skills", tmp_path / "vendor"
+    expected = sorted(["pr", "tdd", *vendor.INCLUDED_IN_PROGRESS])
     assert _run(tmp_path, monkeypatch) == 0
-    assert sorted(p.name for p in skills_dir.iterdir()) == ["chief-of-staff", "pr", "tdd"]
+    assert sorted(p.name for p in skills_dir.iterdir()) == expected
     lock = json.loads((vendor_dir / "lock.json").read_text(encoding="utf-8"))
-    assert lock["skills"] == ["chief-of-staff", "pr", "tdd"]
+    assert lock["skills"] == expected
 
 
 def test_missing_in_progress_skill_fails_without_writing(tmp_path, monkeypatch):

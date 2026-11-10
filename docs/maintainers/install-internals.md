@@ -17,7 +17,7 @@ should have:
 | `.claude/skills/<name>` | symlinks to this repo's `coding` skills (routers, unrouted skills, command skills) | `scripts/build_project_claude.py` |
 | `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
 | `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
-| `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
+| `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` and `software-factory` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
 | `.claude/settings.json` `PreToolUse` entries | the PR merge guard (`scripts/pr_merge_guard.py`) and the Python `Bash(uv init*)` context hook (`scripts/python_init_context.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
@@ -47,9 +47,12 @@ as `improve-codebase` (#492), so cloud sessions offer one such command, not two.
 would bring it back. Pocock's `pr` is vendored again since 2026-10-20 at the
 user's request; the catalogue itself still ships no PR-description skill
 ([`.out-of-scope/pr-description-skill.md`](../../.out-of-scope/pr-description-skill.md)).
-`chief-of-staff` is still in upstream's `in-progress/` and is vendored anyway
-(`INCLUDED_IN_PROGRESS`): it runs the long-lived goal sessions recorded in the
-[wiki](../wiki/index.md).
+`chief-of-staff` and `software-factory` are still in upstream's `in-progress/`
+and are vendored anyway (`INCLUDED_IN_PROGRESS`): `chief-of-staff` runs the
+long-lived goal sessions recorded in the [wiki](../wiki/index.md);
+`software-factory` (user-invoked, vendored on request since 2026-11-10) is the
+glossary for designing a software factory. Upstream may change or drop
+`in-progress/` skills without notice; a re-run then stops with exit 3.
 
 Locally the same project skills would duplicate the marketplace plugins, so
 `.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
