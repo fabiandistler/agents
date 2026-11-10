@@ -42,6 +42,9 @@ case ${STUB_TASK:-work} in
     echo 'BLOCKED: spec contradicts itself'
     exit "${STUB_TASK_EXIT:-0}"
     ;;
+  idle) # the agent runs fine but commits nothing, so the check fails
+    exit 0
+    ;;
 esac
 echo done > done.txt
 git add done.txt
@@ -91,11 +94,12 @@ def git(repo, *args):
     )
 
 
-def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
+def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=(), check=OPEN_ITEM["check"]):
     """A greenfield repo released for Phase 2, with a bare origin and stubs on PATH.
 
     origin carries a forge-looking URL; an insteadOf rewrite sends the push to
-    the local bare repo. done_items are prepended as already-passed items.
+    the local bare repo. done_items are prepended as already-passed items;
+    check replaces the open item's check command.
     """
     parent = Path(parent)
     origin = parent / "origin.git"
@@ -125,7 +129,7 @@ def make_poc(parent, origin_url=FORGE_URLS["github"], done_items=()):
         "---\nlanguage: bash\ntarget: cli\n---\n## Goal\nA marker.\n"
         "## Definition of Done\n- done.txt exists\n"
     )
-    prd = {**PRD, "items": [*done_items, OPEN_ITEM]}
+    prd = {**PRD, "items": [*done_items, {**OPEN_ITEM, "check": check}]}
     (repo / "plans" / "prd.json").write_text(json.dumps(prd, indent=2))
     git(repo, "add", ".")
     git(repo, "commit", "-qm", "chore(plans): spec and prd")
