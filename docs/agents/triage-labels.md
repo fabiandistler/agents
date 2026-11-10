@@ -42,6 +42,24 @@ Setup: the `CLAUDE_CODE_OAUTH_TOKEN` secret of the PR review; the optional
 repository variable `ISSUE_TRIAGE_MODEL` (default `sonnet`). A failed or
 off-format model answer writes nothing; the run log says why.
 
+## Implementer claim
+
+Adding `ready-for-agent` starts `.github/workflows/implementer.yml`
+([ADR-0014](../adr/0014-agent-runs-in-github-actions.md)). Its first write is
+`scripts/implementer_claim.py`, which decides what happens to branch
+`agent/issue-<n>`:
+
+| Situation | Outcome | What the run does | Who acts next |
+| --- | --- | --- | --- |
+| The branch does not exist | `claimed` | Builds on the new branch | Nobody |
+| The branch exists with no commits of its own and no pull request holds the issue (`needs-info` exit, or a crash before the first push) | `reclaimed` | Fast-forwards the branch to `main`, then builds on it | Nobody |
+| An open or merged pull request closes the issue, or an open pull request uses the branch (the stop rule's draft) | `pr-exists` | Ends without changes | The maintainer, on that pull request |
+| The branch has commits and no open pull request (a crash after pushing, or a pull request closed unmerged) | `needs-human` | Comments naming the branch, replaces `ready-for-agent` with `ready-for-human`, ends | A person: open a pull request from the branch, or rescue what is needed, delete the branch and add `ready-for-agent` again |
+| Any other API error | `failed` | Writes `RUN FAILED: claim (<reason>)`, so the run turns red | The maintainer reads the run; a retry is safe |
+
+Runs for one issue share a concurrency group, so a branch that exists at claim
+time never belongs to a live run of this workflow.
+
 ## Pull request labels
 
 Pull requests use separate label families, written by the model-free `hold`
