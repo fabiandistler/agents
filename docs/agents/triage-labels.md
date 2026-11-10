@@ -17,6 +17,31 @@ that opens without a state label. It needs no model and no secret;
 `scripts/test_triage_label_workflow.py` keeps its state labels in sync with
 this table.
 
+## Automated triage
+
+`.github/workflows/issue-triage.yml` triages issues by collaborators
+([ADR-0013](../adr/0013-automated-issue-triage.md)). It posts one comment
+marked `<!-- issue-triage-bot -->` with a category, a recommended state, where
+it looked in the code, and either questions or a draft agent brief.
+
+| The model recommends | The bot leaves | Who acts next |
+| --- | --- | --- |
+| Recommends `needs-info` | Sets `needs-info` | The reporter answers; the issue returns to `needs-triage` |
+| Recommends `ready-for-agent` or `ready-for-human` | Keeps `needs-triage` | The maintainer sets the state and posts the brief |
+| Recommends `wontfix` | Keeps `needs-triage` | The maintainer sets `wontfix` and closes |
+
+Runs start on a new issue, on the reporter's reply to `needs-info`, when the
+maintainer adds `needs-triage` again, and from a manual run (Actions →
+issue-triage → Run workflow, dry run by default). The two automatic triggers
+stop after two bot triages per issue. Issues by people without write access,
+bot issues and issues filed with a state label are not sent to the model.
+`scripts/test_issue_triage_policy.py` keeps the bot's state labels in sync
+with this table.
+
+Setup: the `CLAUDE_CODE_OAUTH_TOKEN` secret of the PR review; the optional
+repository variable `ISSUE_TRIAGE_MODEL` (default `sonnet`). A failed or
+off-format model answer writes nothing; the run log says why.
+
 ## Pull request labels
 
 Pull requests use separate label families, written by the model-free `hold`

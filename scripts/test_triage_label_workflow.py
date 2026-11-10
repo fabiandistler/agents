@@ -36,7 +36,9 @@ def _state_labels() -> dict[str, str]:
         LABELS_DOC.read_text(encoding="utf-8"),
         re.MULTILINE,
     )
-    mapping = dict(rows)
+    mapping: dict[str, str] = {}
+    for role, label in rows:  # the role table comes first; later tables do not override it
+        mapping.setdefault(role, label)
     missing = [role for role in STATE_ROLES if role not in mapping]
     assert not missing, f"triage-labels.md lost state roles: {missing}"
     return {role: mapping[role] for role in STATE_ROLES}
@@ -71,3 +73,10 @@ def test_adds_needs_triage_label_through_rest():
     assert "gh api --method POST" in run and "/labels" in run, "label via the REST endpoint"
     assert f"labels[]={needs_triage}" in run
     assert "gh issue" not in run, "gh issue porcelain is GraphQL-backed"
+
+
+def test_rechecks_fresh_labels_before_adding():
+    run = "\n".join(step.get("run", "") for step in _label_job()["steps"])
+    for label in _state_labels().values():
+        assert f'"{label}"' in run, f"the fresh check does not look for {label!r}"
+    assert run.index('repos/$GITHUB_REPOSITORY/issues/$NUMBER"') < run.index("--method POST")
