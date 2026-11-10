@@ -4,7 +4,7 @@
 > 2025). This sheet **complements** `../SKILL.md`: it carries the granular,
 > falsifiable conventions the three-part narrative doesn't spell out. Where a
 > topic is already covered in SKILL.md — the adaptation ladder, the sample-size
-> rule, the five deployment baselines, the architecture build order, the six
+> rule, the deployment baselines, the architecture build order, the six
 > monitoring metric families, the five implicit-feedback signals — **SKILL.md is
 > authoritative and it is not repeated here.** References are book chapter
 > numbers `(Ch. N)`; the few rules drawn from elsewhere carry the source's
@@ -48,8 +48,8 @@
 
 ## Evaluation
 
-_Extends SKILL.md Part A. The sample-size rule and the five deployment
-baselines live in SKILL.md — cross-reference, don't duplicate._
+_Extends SKILL.md Part A. The sample-size rule and the deployment
+baselines (generative: four, in SKILL.md Part C; classifier: five, in `members/ml-project-lifecycle/SKILL.md`, read via the `ai-ml` router) live in SKILL.md — cross-reference, don't duplicate._
 
 - **Write the evaluation guideline as a first draft before building, then revise it after error analysis** — including out-of-scope
   inputs and the required refusal behavior. "Correct" ≠ "good"; define good per
