@@ -142,3 +142,60 @@ def test_auto_skill_needs_no_sidecar(tmp_path):
     valid, message = validate_skill(skill_dir)
 
     assert valid, message
+
+
+VALID_FRONTMATTER = "name: demo-skill\ndescription: Does a thing."
+REPO_ROOT_PATH_MESSAGE = (
+    "Repo-root skill script path (SKILL.md:7: skills/foo/scripts/): reference bundled "
+    "scripts relative to the skill directory (scripts/...) and pass the target repo as "
+    "an argument"
+)
+
+
+def fail_reading(monkeypatch, unreadable_name: str) -> None:
+    original = Path.read_text
+
+    def read_text(self, *args, **kwargs):
+        if self.name == unreadable_name:
+            raise PermissionError(13, "Permission denied", str(self))
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+
+
+def test_unreadable_skill_md_fails_without_path_wording(tmp_path, monkeypatch):
+    skill_dir = write_skill(tmp_path, "demo-skill", VALID_FRONTMATTER)
+    fail_reading(monkeypatch, "SKILL.md")
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert "SKILL.md: unreadable:" in message
+    assert "Repo-root skill script path" not in message
+
+
+def test_unreadable_reference_fails_with_its_label(tmp_path, monkeypatch):
+    skill_dir = write_skill(tmp_path, "demo-skill", VALID_FRONTMATTER)
+    (skill_dir / "references").mkdir()
+    (skill_dir / "references" / "guide.md").write_text("# Guide\n", encoding="utf-8")
+    fail_reading(monkeypatch, "guide.md")
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert "references/guide.md: unreadable:" in message
+    assert "Repo-root skill script path" not in message
+
+
+def test_readable_repo_root_script_path_message_is_unchanged(tmp_path):
+    skill_dir = write_skill(tmp_path, "demo-skill", VALID_FRONTMATTER)
+    skill_md = skill_dir / "SKILL.md"
+    skill_md.write_text(
+        skill_md.read_text(encoding="utf-8") + "Run skills/foo/scripts/x.py.\n",
+        encoding="utf-8",
+    )
+
+    valid, message = validate_skill(skill_dir)
+
+    assert not valid
+    assert message == REPO_ROOT_PATH_MESSAGE

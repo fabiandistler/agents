@@ -32,10 +32,23 @@ Treat this as a sandbox infrastructure failure. Provision the new environment
 and rerun the same loop command there. The preflight must pass before work
 starts. A successful probe establishes current access, not future availability.
 
+## Agent failure mid-run
+
+After the preflight, the driver records each task call's exit status. A
+`BLOCKED:` line in the output still blocks the item, whatever the status.
+Otherwise the item's check runs as usual. If it passes, the item passes and
+stderr warns that the agent exited non-zero. If it fails and the agent exited
+non-zero (auth, rate limit, bad flags), the driver stops with exit 4 instead
+of counting a failed attempt: the item's `attempts` stay as they were, nothing
+goes to `plans/BLOCKED.md`, and stderr names the item, the exit status and
+`.git/poc-loop/run_<id>.log`, with at most its final 4,000 bytes. The agent
+may already have committed on the `poc/*` branch before it failed; those
+commits stay, and the restart resumes the same item.
+
 ## Restart after exit 4
 
-Every exit 4, from the driver's own write checks or from the runner probe,
-prints the same guidance on stderr, with the actual paths filled in and quoted:
+Every exit 4, from the driver's own write checks, from the runner probe or
+from an agent failure mid-run, prints the same guidance on stderr, with the actual paths filled in and quoted:
 
 ```sh
 cd <repo>
@@ -48,8 +61,10 @@ stays restricted, and runner flags cannot grant it filesystem access. The
 message names the runner that was set, and the restart uses that runner's
 default flags. Three states stay separate:
 
-1. **Infrastructure stop.** Exit 4 changed nothing: task attempts,
-   `plans/prd.json` and the branch are as before, and nothing was repaired.
+1. **Infrastructure stop.** Exit 4 recorded no task attempt and blocked no
+   item, and nothing was repaired. A preflight stop leaves `plans/prd.json`
+   and the branch as before; after a mid-run agent failure the branch may
+   carry commits the agent made before it failed.
 2. **Restored infrastructure.** Only a preflight that passes in the new
    environment shows this. The loop then continues with the items that are
    still selectable.

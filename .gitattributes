@@ -36,6 +36,7 @@ scripts/hooks/check-file-tokens.sh linguist-vendored
 .claude/skills/research/** linguist-vendored
 .claude/skills/retro/** linguist-vendored
 .claude/skills/setup-matt-pocock-skills/** linguist-vendored
+.claude/skills/software-factory/** linguist-vendored
 .claude/skills/tdd/** linguist-vendored
 .claude/skills/teach/** linguist-vendored
 .claude/skills/to-questionnaire/** linguist-vendored

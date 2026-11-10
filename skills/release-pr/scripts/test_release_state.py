@@ -5,6 +5,8 @@ Run from the repo root with: uv run --with pytest pytest skills/release-pr/scrip
 
 import importlib.util
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -280,3 +282,54 @@ def test_regex_fallback_without_tomllib(tmp_path, monkeypatch):
     assert pkg["package"] == "demo"
     assert pkg["version"] == "1.4.0"
     assert pkg["dynamic_version"] is False
+
+
+def test_mentions_none_found_is_empty(tmp_path):
+    # The version appears only in the skipped manifest and changelog, so git grep's
+    # hits are all filtered; a version absent everywhere makes git grep exit 1.
+    repo = make_repo(tmp_path / "repo", python_files("1.4.0", "1.4.0", BULLET))
+    proc, data = report(repo)
+    assert proc.returncode == 0
+    assert data["version_mentions"] == []
+    assert data["mentions_truncated"] is False
+
+
+def test_mentions_git_grep_no_match_exits_0(tmp_path):
+    files = python_files("1.4.0", "1.4.0", BULLET)
+    repo = make_repo(tmp_path / "repo", files)
+    # Untrack both files that carry the version, so git grep itself finds nothing (exit 1).
+    git(repo, "rm", "-q", "--cached", "pyproject.toml", "CHANGELOG.md")
+    git(repo, "-c", "commit.gpgsign=false", "commit", "-qm", "untrack")
+    proc, data = report(repo)
+    assert proc.returncode == 0
+    assert data["version_mentions"] == []
+    assert proc.stderr == ""
+
+
+def test_mentions_git_grep_failure_exits_4(tmp_path):
+    real_git = shutil.which("git")
+    stub_dir = tmp_path / "bin"
+    stub_dir.mkdir()
+    stub = stub_dir / "git"
+    stub.write_text(
+        "#!/bin/sh\n"
+        'for arg in "$@"; do\n'
+        '  if [ "$arg" = grep ]; then echo "fatal: stubbed grep failure" >&2; exit 2; fi\n'
+        "done\n"
+        f'exec "{real_git}" "$@"\n',
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    repo = make_repo(tmp_path / "repo", python_files("1.4.0", "1.4.0", BULLET))
+    env = {**os.environ, "PATH": f"{stub_dir}{os.pathsep}{os.environ['PATH']}"}
+    proc = subprocess.run(  # noqa: S603 -- test invokes release_state.py with argv, no shell.
+        [sys.executable, str(SCRIPT), "--repo", str(repo)],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert proc.returncode == 4
+    assert proc.stdout == ""
+    assert "git grep" in proc.stderr
+    assert "stubbed grep failure" in proc.stderr

@@ -60,7 +60,8 @@ Exit codes:
   2  usage or preconditions failed (bad flag; POC_AGENT missing or unknown; origin not on
      a supported forge; missing tool; dirty tree; prd.json missing or not approved)
   3  blocked stop (3 consecutive blocked items, or prd-01/prd-02 blocked)
-  4  infrastructure preflight failed; task attempts unchanged
+  4  infrastructure stop (preflight failed, or the agent exited non-zero on an item
+     whose check then failed); no task attempt recorded, no item blocked
 EOF
   exit 0
 fi
@@ -117,11 +118,12 @@ bad_deps=$(jq -r '[.items[].id] as $ids | .items[] | .id as $i | .deps[] | selec
 }
 
 # ---------- infrastructure stop ----------
-# Every exit 4 goes through here, so the driver's own write failures and the
-# runner preflight give the same restart guidance as references/runner-recovery.md.
+# Every exit 4 goes through here, so the driver's own write failures, the
+# runner preflight and a failed agent call mid-run give the same restart
+# guidance as references/runner-recovery.md.
 infrastructure_stop() { # <reason> [log to tail]; never returns
   local repo_cmd loop_cmd
-  echo "Infrastructure preflight failed: $1. Task attempts, $PRD and the branch are unchanged." >&2
+  echo "Infrastructure stop: $1. The driver recorded no task attempt and blocked no item for it." >&2
   [[ -z ${2:-} ]] || tail -c 4000 "$2" >&2
   printf -v repo_cmd 'cd %q' "$(git rev-parse --show-toplevel)"
   printf -v loop_cmd 'POC_AGENT=%q bash %q' "$POC_AGENT" "$SKILL_DIR/assets/loop.sh"
@@ -278,7 +280,7 @@ preflight_flags=()
 [[ $POC_AGENT != claude ]] || preflight_flags=("${AGENT_FLAGS[@]}")
 if ! timeout 45 "${AGENT_COMMAND[@]}" "$preflight_prompt" "${preflight_flags[@]}" >"$LOGDIR/preflight.log" 2>&1 ||
   [[ ! -f $preflight_dir/shell-ok ]] || [[ $(<"$preflight_dir/shell-ok") != shell-ok ]]; then
-  infrastructure_stop "runner shell/Git write proof missing" "$LOGDIR/preflight.log"
+  infrastructure_stop "runner preflight: shell/Git write proof missing" "$LOGDIR/preflight.log"
 fi
 rm -rf "$preflight_dir"
 trap - EXIT
@@ -303,19 +305,24 @@ consecutive_blocked=0
 passed_since_checkpoint=0
 while id=$(next_item) && [[ -n $id ]]; do
   echo "== $id"
-  out=$(run_agent "$(render_prompt "$id")" 2>&1 | tee "$LOGDIR/run_$id.log") || true
+  # pipefail: the status is the agent's; capturing it keeps the loop alive under set -e
+  agent_rc=0
+  out=$(run_agent "$(render_prompt "$id")" 2>&1 | tee "$LOGDIR/run_$id.log") || agent_rc=$?
   discard_uncommitted
   if grep -q '^BLOCKED:' <<<"$out"; then
     set_field "$id" attempts "$MAX_ATTEMPTS"
     block_item "$id" "$(grep '^BLOCKED:' <<<"$out")"
     consecutive_blocked=$((consecutive_blocked + 1))
   elif check_out=$(timeout "$CHECK_TIMEOUT" bash -c "$(jq -r --arg id "$id" '.items[]|select(.id==$id)|.check' "$PRD")" 2>&1); then
+    ((agent_rc == 0)) || echo "WARN: agent exited $agent_rc on $id, but its check passes" >&2
     set_field "$id" passes true
     rm -f "$LOGDIR/last_failure_$id"
     git add "$PRD"
     git commit -qm "chore(plans): $id passes"
     consecutive_blocked=0
     passed_since_checkpoint=$((passed_since_checkpoint + 1))
+  elif ((agent_rc != 0)); then # the agent failed, not the task: spend no attempt
+    infrastructure_stop "agent exited $agent_rc on $id and its check fails; run log $LOGDIR/run_$id.log" "$LOGDIR/run_$id.log"
   else
     n=$(($(jq -r --arg id "$id" '.items[]|select(.id==$id)|.attempts' "$PRD") + 1))
     set_field "$id" attempts "$n"

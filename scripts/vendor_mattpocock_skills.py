@@ -60,8 +60,9 @@ UPSTREAM = "https://github.com/mattpocock/skills.git"
 # previously vendored copy is removed on re-run.
 EXCLUDED = frozenset({"ask-matt", "improve-codebase-architecture"})
 # Unreleased upstream skills vendored anyway: chief-of-staff runs the long-lived
-# goal sessions whose record lives in docs/wiki/.
-INCLUDED_IN_PROGRESS = ("chief-of-staff",)
+# goal sessions whose record lives in docs/wiki/; software-factory is the
+# user-invoked glossary for designing a software factory, vendored on request.
+INCLUDED_IN_PROGRESS = ("chief-of-staff", "software-factory")
 
 
 def main() -> int:
