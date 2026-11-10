@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import agent_run_report as report
+import pytest
 
 
 def _assistant(*tools: dict) -> dict:
@@ -108,3 +109,24 @@ def test_main_fails_without_a_summary_file(tmp_path):
     )
     assert code == report.EXIT_RUN_FAILED
     assert "Ended early." in output.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("missing_flag", ["--summary", "--output"])
+def test_main_rejects_a_missing_required_flag_and_writes_nothing(tmp_path, capsys, missing_flag):
+    summary = tmp_path / "run-summary.md"
+    summary.write_text("Audit done: 0 error\n", encoding="utf-8")
+    output = tmp_path / "step-summary.md"
+    output.write_text("earlier step\n", encoding="utf-8")
+    flags = {"--summary": str(summary), "--output": str(output)}
+    del flags[missing_flag]
+    argv = [part for flag, value in flags.items() for part in (flag, value)]
+
+    with pytest.raises(SystemExit) as exit_info:
+        report.main(argv)
+
+    assert exit_info.value.code == report.EXIT_USAGE
+    assert output.read_text(encoding="utf-8") == "earlier step\n"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["run-summary.md", "step-summary.md"]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert missing_flag in captured.err
