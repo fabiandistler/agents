@@ -8,6 +8,8 @@ interpolate no event text, and a report step that fails the job on a failed
 run.
 """
 
+import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -87,6 +89,9 @@ def test_prompt_keeps_the_hard_limits(path):
     for limit in ("never push to main", "never merge", "never enable auto-merge"):
         assert limit in prompt, f"prompt lost the hard limit {limit!r}"
     assert "RUN FAILED" in prompt and "$RUNNER_TEMP/run-summary.md" in prompt
+    assert "run_in_background: false" in prompt, (
+        "a headless run ends with the model's turn and kills background subagents"
+    )
 
 
 @BOTH
@@ -135,20 +140,32 @@ def test_skill_audit_keeps_its_schedule():
     assert checkout["with"]["fetch-depth"] == 0, "skill selection reads last week's commits"
 
 
-def _run_report(job: dict, tmp_path: Path, summary: str | None) -> tuple[int, str]:
+def _run_report(
+    job: dict, tmp_path: Path, summary: str | None, messages: list | None = None
+) -> tuple[int, str]:
+    """Run the report step's own script as the runner would, from the repo root."""
     step = _report_step(job)
     assert step["if"] == "always()", "the report must run after a failed model step"
+    assert step["env"] == {"EXECUTION_FILE": "${{ steps.claude.outputs.execution_file }}"}
+    assert _model_step(job)["id"] == "claude"
     runner_temp = tmp_path / "runner"
     runner_temp.mkdir()
     if summary is not None:
         (runner_temp / "run-summary.md").write_text(summary, encoding="utf-8")
+    execution_file = ""
+    if messages is not None:
+        execution_path = runner_temp / "claude-execution-output.json"
+        execution_path.write_text(json.dumps(messages), encoding="utf-8")
+        execution_file = str(execution_path)
     step_summary = tmp_path / "step-summary.md"
     result = subprocess.run(  # noqa: S603 -- runs the workflow's own report script, no shell input.
         ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
+        cwd=REPO_ROOT,
         env={
             "RUNNER_TEMP": str(runner_temp),
             "GITHUB_STEP_SUMMARY": str(step_summary),
-            "PATH": "/usr/bin:/bin",
+            "EXECUTION_FILE": execution_file,
+            "PATH": os.environ["PATH"],
         },
         check=False,
     )
@@ -171,7 +188,20 @@ def test_report_fails_the_job_on_a_failed_run(path, tmp_path):
 
 
 @BOTH
-def test_report_fails_the_job_when_the_model_wrote_nothing(path, tmp_path):
-    code, text = _run_report(_single_job(path), tmp_path, None)
+def test_report_diagnoses_a_run_that_wrote_nothing(path, tmp_path):
+    messages = [
+        {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {"type": "tool_use", "name": "Agent", "input": {"run_in_background": True}}
+                ]
+            },
+        },
+        {"type": "result", "result": "Waiting for the subagents."},
+    ]
+    code, text = _run_report(_single_job(path), tmp_path, None, messages)
     assert code != 0
     assert "wrote no summary" in text
+    assert "Waiting for the subagents." in text
+    assert "1 subagent(s) ran in the background" in text
