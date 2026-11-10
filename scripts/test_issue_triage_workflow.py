@@ -118,3 +118,11 @@ def test_only_the_reporter_reply_on_a_needs_info_issue_starts_a_run():
     assert "contains(github.event.issue.labels.*.name, 'needs-info')" in condition
     assert "!github.event.issue.pull_request" in condition
     assert "github.event.label.name == 'needs-triage'" in condition
+
+
+def test_events_the_filter_drops_never_share_the_triage_concurrency_group():
+    group = " ".join(_workflow()["concurrency"]["group"].split())
+    condition = " ".join(_jobs()["assess"]["if"].split())
+    assert _workflow()["concurrency"]["cancel-in-progress"] is True
+    # `a && '' || b` always yields b, so the dropped case must come first.
+    assert f"!( {condition} ) && format('-ignored-{{0}}', github.run_id) || ''" in group
