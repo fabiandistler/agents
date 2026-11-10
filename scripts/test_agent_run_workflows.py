@@ -1,0 +1,177 @@
+"""Guardrails for the agent-run workflows: implementer.yml and skill-audit.yml.
+
+Both run claude-code-action with the Claude GitHub App token (ADR-0014). These
+tests pin what keeps that safe and what keeps it working: an empty top-level
+permission set, the job's narrow scopes, a SHA-pinned action, no
+`github_token` override (its pushes would start no checks), prompts that
+interpolate no event text, and a report step that fails the job on a failed
+run.
+"""
+
+import re
+import subprocess
+from pathlib import Path
+
+import pytest
+import yaml
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+IMPLEMENTER = WORKFLOWS / "implementer.yml"
+SKILL_AUDIT = WORKFLOWS / "skill-audit.yml"
+
+ACTION = "anthropics/claude-code-action@"
+SHA_PIN = re.compile(r"^anthropics/claude-code-action@[0-9a-f]{40}$")
+EXPRESSION = re.compile(r"\$\{\{\s*(.*?)\s*\}\}")
+
+# The only values a prompt may interpolate: a number validated in the job, and
+# the repository name. Event text (titles, bodies, labels) must never reach it.
+PROMPT_EXPRESSIONS = {"steps.issue.outputs.number", "github.repository"}
+
+
+def _workflow(path: Path) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _single_job(path: Path) -> dict:
+    jobs = _workflow(path)["jobs"]
+    assert len(jobs) == 1, f"{path.name} should have one job"
+    return next(iter(jobs.values()))
+
+
+def _model_step(job: dict) -> dict:
+    steps = [step for step in job["steps"] if step.get("uses", "").startswith(ACTION)]
+    assert len(steps) == 1, "exactly one claude-code-action step"
+    return steps[0]
+
+
+def _report_step(job: dict) -> dict:
+    steps = [step for step in job["steps"] if step.get("name") == "Report the run"]
+    assert len(steps) == 1, "exactly one report step"
+    return steps[0]
+
+
+BOTH = pytest.mark.parametrize("path", [IMPLEMENTER, SKILL_AUDIT], ids=lambda p: p.name)
+
+
+@BOTH
+def test_permissions_are_empty_by_default_and_narrow_in_the_job(path):
+    assert _workflow(path)["permissions"] == {}, "top-level permissions must stay empty"
+    assert _single_job(path)["permissions"] == {"contents": "read", "id-token": "write"}, (
+        "GitHub writes go through the App token; the job token stays read-only"
+    )
+
+
+@BOTH
+def test_action_is_sha_pinned_and_uses_the_app_token(path):
+    step = _model_step(_single_job(path))
+    assert SHA_PIN.match(step["uses"]), "pin claude-code-action to a full commit SHA"
+    inputs = step["with"]
+    assert "github_token" not in inputs, (
+        "a GITHUB_TOKEN override makes the run's pull requests start no checks"
+    )
+    secret_ref = "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"  # noqa: S105 -- a reference, not a value.
+    assert inputs["claude_code_oauth_token"] == secret_ref, "the model token comes from the secret"
+
+
+@BOTH
+def test_prompt_interpolates_no_event_text(path):
+    prompt = _model_step(_single_job(path))["with"]["prompt"]
+    used = set(EXPRESSION.findall(prompt))
+    assert used <= PROMPT_EXPRESSIONS, f"unexpected expressions in the prompt: {used}"
+
+
+@BOTH
+def test_prompt_keeps_the_hard_limits(path):
+    prompt = _model_step(_single_job(path))["with"]["prompt"]
+    for limit in ("never push to main", "never merge", "never enable auto-merge"):
+        assert limit in prompt, f"prompt lost the hard limit {limit!r}"
+    assert "RUN FAILED" in prompt and "$RUNNER_TEMP/run-summary.md" in prompt
+
+
+@BOTH
+def test_checkout_keeps_no_credentials_and_fetches_submodules(path):
+    checkout = next(
+        step for step in _single_job(path)["steps"] if "actions/checkout@" in step.get("uses", "")
+    )
+    assert checkout["with"]["persist-credentials"] is False
+    assert checkout["with"]["submodules"] is True, "the bats check needs test/bats/"
+
+
+@BOTH
+def test_runs_are_serialised_without_cancelling(path):
+    concurrency = _single_job(path)["concurrency"]
+    assert concurrency["cancel-in-progress"] is False, (
+        "cancelling could stop a run between its push and its pull request"
+    )
+
+
+def test_implementer_starts_only_on_a_person_adding_ready_for_agent():
+    workflow = _workflow(IMPLEMENTER)
+    # PyYAML reads the bare `on` key as boolean True.
+    assert workflow[True]["issues"] == {"types": ["labeled"]}
+    assert "workflow_dispatch" in workflow[True]
+    guard = _single_job(IMPLEMENTER)["if"]
+    assert "github.event.label.name == 'ready-for-agent'" in guard
+    assert "github.event.sender.type != 'Bot'" in guard, "a bot label must not start a run"
+    assert "github.event.issue.state == 'open'" in guard
+
+
+def test_implementer_validates_the_issue_number_before_anything_else():
+    job = _single_job(IMPLEMENTER)
+    first = job["steps"][0]
+    assert first["id"] == "issue"
+    assert "^[1-9][0-9]*$" in first["run"]
+    assert "${{" not in first["run"], "event values reach the shell through env only"
+    assert job["concurrency"]["group"] == (
+        "implementer-${{ github.event.issue.number || inputs.issue }}"
+    )
+
+
+def test_skill_audit_keeps_its_schedule():
+    schedule = _workflow(SKILL_AUDIT)[True]["schedule"]
+    assert schedule == [{"cron": "47 13 8,22 * *", "timezone": "Europe/Berlin"}]
+    checkout = _single_job(SKILL_AUDIT)["steps"][0]
+    assert checkout["with"]["fetch-depth"] == 0, "skill selection reads last week's commits"
+
+
+def _run_report(job: dict, tmp_path: Path, summary: str | None) -> tuple[int, str]:
+    step = _report_step(job)
+    assert step["if"] == "always()", "the report must run after a failed model step"
+    runner_temp = tmp_path / "runner"
+    runner_temp.mkdir()
+    if summary is not None:
+        (runner_temp / "run-summary.md").write_text(summary, encoding="utf-8")
+    step_summary = tmp_path / "step-summary.md"
+    result = subprocess.run(  # noqa: S603 -- runs the workflow's own report script, no shell input.
+        ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
+        env={
+            "RUNNER_TEMP": str(runner_temp),
+            "GITHUB_STEP_SUMMARY": str(step_summary),
+            "PATH": "/usr/bin:/bin",
+        },
+        check=False,
+    )
+    text = step_summary.read_text(encoding="utf-8") if step_summary.exists() else ""
+    return result.returncode, text
+
+
+@BOTH
+def test_report_passes_a_good_summary_through(path, tmp_path):
+    code, text = _run_report(_single_job(path), tmp_path, "Issue #1\nPR opened\nhttps://x\n")
+    assert code == 0
+    assert "PR opened" in text
+
+
+@BOTH
+def test_report_fails_the_job_on_a_failed_run(path, tmp_path):
+    code, text = _run_report(_single_job(path), tmp_path, "RUN FAILED: claim (HTTP 500)\n")
+    assert code != 0
+    assert "RUN FAILED: claim" in text
+
+
+@BOTH
+def test_report_fails_the_job_when_the_model_wrote_nothing(path, tmp_path):
+    code, text = _run_report(_single_job(path), tmp_path, None)
+    assert code != 0
+    assert "wrote no summary" in text

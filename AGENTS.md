@@ -204,6 +204,10 @@ The five canonical triage roles use their default label strings (`needs-triage`,
 
 `.github/workflows/issue-triage.yml` triages new issues by collaborators with a model that recommends a state in a comment; it sets only `needs-info` itself (`docs/adr/0013-automated-issue-triage.md`).
 
+### Implementer
+
+Adding `ready-for-agent` to an open issue starts `.github/workflows/implementer.yml`: one `claude-code-action` run claims branch `agent/issue-<n>` and opens a pull request, which `pr-review.yml` then reviews. It and the skill audit hold the Claude GitHub App token, so their pull requests start the checks (`docs/adr/0014-agent-runs-in-github-actions.md`).
+
 ### PR review
 
 Pull requests are assessed, reviewed and labeled by `.github/workflows/pr-review.yml`. Its model-free `publish` job may enable native auto-merge on a `risk:low` docs-only pull request with `review:pass` while `PR_AUTO_MERGE` is `true`; GitHub merges after the required checks pass (`docs/adr/0011-pr-review-merge-exception.md`). This is the only merge exception. You, an interactive agent, never merge and never enable auto-merge, even on a pull request that qualifies. Setup, rollout, labels and troubleshooting: `docs/agents/pr-review-runbook.md`.
@@ -214,8 +218,8 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 ### Weekly skill audit
 
-A scheduled Claude Code routine follows `docs/agents/skill-audit.md` every
-week: the `repo-error-checker` subagent runs the CI checks repo-wide, and the
+`.github/workflows/skill-audit.yml` follows `docs/agents/skill-audit.md` on
+the 8th and the 22nd of each month: the `repo-error-checker` subagent runs the CI checks repo-wide, and the
 `skill-reviewer` subagent judges a rotating quarter of the skills (plus the
 most-changed ones) against `docs/agents/skill-audit-checklist.md`. Findings
 land in one rolling `skill-audit` issue; mechanical fixes in one

@@ -20,6 +20,7 @@ product page; this page routes from a job to the page that does it.
 - [Install internals](maintainers/install-internals.md) — Claude cloud mirror, vendored skills, regeneration order
 - [Homepage](maintainers/homepage.md) — local preview and GitHub Pages deployment
 - [Weekly skill audit](agents/skill-audit.md) — the scheduled content review and its checklist
+- [Agent runs in Actions](adr/0014-agent-runs-in-github-actions.md) — implementer and skill audit workflows, their token and brakes
 
 ## Reference and records
 
