@@ -32,7 +32,11 @@ PATH_RULES = (
     (re.compile(r"^scripts/pr_merge_guard\.py$"), HIGH, "guard-script"),
     (re.compile(r"^scripts/secret_read_guard\.py$"), HIGH, "guard-script"),
     (re.compile(r"^plugins/(?:merge-guard|secret-guard)(?:/|$)"), HIGH, "guard-script"),
-    (re.compile(r"^scripts/(?:pr_|test_pr_)"), HIGH, "triage-automation"),
+    (
+        re.compile(r"^scripts/(?:pr_|test_pr_|issue_triage|test_issue_triage)"),
+        HIGH,
+        "triage-automation",
+    ),
     # Workflows, installer, gates, build scripts and their hooks.
     (re.compile(r"^\.github/"), HIGH, "workflow"),
     (re.compile(r"^install\.sh$"), HIGH, "installer"),

@@ -71,3 +71,10 @@ def test_adds_needs_triage_label_through_rest():
     assert "gh api --method POST" in run and "/labels" in run, "label via the REST endpoint"
     assert f"labels[]={needs_triage}" in run
     assert "gh issue" not in run, "gh issue porcelain is GraphQL-backed"
+
+
+def test_rechecks_fresh_labels_before_adding():
+    run = "\n".join(step.get("run", "") for step in _label_job()["steps"])
+    for label in _state_labels().values():
+        assert f'"{label}"' in run, f"the fresh check does not look for {label!r}"
+    assert run.index('repos/$GITHUB_REPOSITORY/issues/$NUMBER"') < run.index("--method POST")

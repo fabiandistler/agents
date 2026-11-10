@@ -5,7 +5,7 @@ name: Triage label
 # state label already (to-tickets sets `ready-for-agent`) keeps it: a second
 # state label would break "exactly one state role". The guard's labels follow
 # docs/agents/triage-labels.md; scripts/test_triage_label_workflow.py keeps
-# them in sync.
+# them in sync. The automated triage (issue-triage.yml) runs on the same event.
 
 on:
   issues:
@@ -30,6 +30,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number }}
-        run: >-
-          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels"
-          -f "labels[]=needs-triage"
+        # issue-triage.yml may have set needs-info since the event, so the
+        # labels are read fresh: an issue never carries two state labels.
+        run: |
+          set -euo pipefail
+          states=$(gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER" --jq '[.labels[].name
+            | select(IN("needs-triage", "needs-info", "ready-for-agent", "ready-for-human",
+            "wontfix"))] | length')
+          if [ "$states" -gt 0 ]; then
+            exit 0
+          fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels" \
+            -f "labels[]=needs-triage"

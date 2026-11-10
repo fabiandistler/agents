@@ -70,6 +70,10 @@ PATH_CASES = [
     ("scripts/test_pr_publish.py", "high", "triage-automation"),
     ("scripts/test_pr_apply.py", "high", "triage-automation"),
     ("scripts/test_pr_workflow.py", "high", "triage-automation"),
+    ("scripts/issue_triage.py", "high", "triage-automation"),
+    ("scripts/issue_triage_prompt.md", "high", "triage-automation"),
+    ("scripts/test_issue_triage_policy.py", "high", "triage-automation"),
+    (".github/workflows/issue-triage.yml", "high", "workflow"),
     (".github/workflows/pr-review.yml", "high", "workflow"),
     # high: workflows, installer, gates, guards, configuration
     (".github/workflows/ci.yml", "high", "workflow"),
