@@ -61,6 +61,12 @@ REPO_ROOT_SCRIPT_PATH = re.compile(
 
 
 def find_repo_root_script_paths(skill_path):
+    """Return (hits, unreadable) for SKILL.md and references/*.md.
+
+    hits name repo-root script paths as '<label>:<line>: <path>'; unreadable
+    names each file that raised OSError as '<label>: unreadable: <exc>', the
+    same message check_reference_tocs.py and check_skill_vocab.py report.
+    """
     base = Path(skill_path)
     targets = []
     skill_md = base / "SKILL.md"
@@ -70,16 +76,18 @@ def find_repo_root_script_paths(skill_path):
     if references.is_dir():
         targets.extend(sorted(references.glob("*.md")))
     hits = []
+    unreadable = []
     for path in targets:
+        label = "SKILL.md" if path.parent == base else f"references/{path.name}"
         try:
             text = path.read_text(encoding="utf-8")
-        except OSError:
+        except OSError as exc:
+            unreadable.append(f"{label}: unreadable: {exc}")
             continue
-        label = "SKILL.md" if path.parent == base else f"references/{path.name}"
         for match in REPO_ROOT_SCRIPT_PATH.finditer(text):
             line = text.count("\n", 0, match.start()) + 1
             hits.append(f"{label}:{line}: {match.group(0).strip()}")
-    return hits
+    return hits, unreadable
 
 
 def find_command_skill_gap(skill_path, frontmatter):
@@ -131,7 +139,10 @@ def validate_skill(skill_path):
         return False, "SKILL.md not found"
 
     # Read and validate frontmatter
-    content = skill_md.read_text()
+    try:
+        content = skill_md.read_text()
+    except OSError as exc:
+        return False, f"SKILL.md: unreadable: {exc}"
     if not content.startswith("---"):
         return False, "No YAML frontmatter found"
 
@@ -270,7 +281,9 @@ def validate_skill(skill_path):
         if problem:
             return False, problem
 
-    hits = find_repo_root_script_paths(skill_path)
+    hits, unreadable = find_repo_root_script_paths(skill_path)
+    if unreadable:
+        return False, "; ".join(unreadable)
     if hits:
         detail = "; ".join(hits)
         return False, (
