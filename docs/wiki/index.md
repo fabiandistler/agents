@@ -20,6 +20,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [router cross-references](problems/router-cross-references.md) — skills naming router members as standalone skills; the main source of audit errors.
 - [unrunnable commands in skills](problems/unrunnable-skill-commands.md) — shell snippets in SKILL.md that fail when an agent follows them.
 - [unlinked PRs](problems/unlinked-prs.md) — merged work left its issue open; caused a wasted worker run.
+- [Dependabot on private repos](problems/dependabot-private-repos.md) — update jobs wait for a `dependabot`-labelled runner and are cancelled after 24 h.
 
 ## Snapshots
 
@@ -27,3 +28,4 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-10-19 CI health](snapshots/2026-10-19-ci-health.md) — all runnable checks green; warn-only gaps and unverifiable steps.
 - [2026-10-19 env gaps](snapshots/2026-10-19-env-gaps.md) — missing guardrails for agents, ranked.
 - [2026-10-20 skill candidates](snapshots/2026-10-20-skill-candidates.md) — ranked proposals for new skills.
+- [2026-11-10 ready-for-human](snapshots/2026-11-10-ready-for-human.md) — four human issues across three repos and their recommended order.
