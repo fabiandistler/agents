@@ -202,6 +202,8 @@ Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. 
 
 The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
+`.github/workflows/issue-triage.yml` triages new issues by collaborators with a model that recommends a state in a comment; it sets only `needs-info` itself (`docs/adr/0013-automated-issue-triage.md`).
+
 ### PR review
 
 Pull requests are assessed, reviewed and labeled by `.github/workflows/pr-review.yml`. Its model-free `publish` job may enable native auto-merge on a `risk:low` docs-only pull request with `review:pass` while `PR_AUTO_MERGE` is `true`; GitHub merges after the required checks pass (`docs/adr/0011-pr-review-merge-exception.md`). This is the only merge exception. You, an interactive agent, never merge and never enable auto-merge, even on a pull request that qualifies. Setup, rollout, labels and troubleshooting: `docs/agents/pr-review-runbook.md`.
