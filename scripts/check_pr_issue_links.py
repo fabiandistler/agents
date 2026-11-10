@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 REFERENCE = r"(?:https://github\.com/[\w.-]+/[\w.-]+/issues/|[\w.-]+/[\w.-]+#|#)[1-9]\d*"
@@ -33,23 +34,28 @@ class GitHubError(Exception):
     """The live pull-request snapshot could not be obtained consistently."""
 
 
+def closing_references(body: str, repo: str) -> set[str]:
+    """Every issue a PR body declares it closes, as lower-case ``owner/repo#n``."""
+    return {
+        reference
+        for first, comma_joined in _closing_declarations(_prose(body), repo)
+        for reference in (first, *comma_joined)
+    }
+
+
 def issue_link_errors(body: str, repo: str, linked: set[str], *, default_base: bool) -> list[str]:
     """Compare closing intent, including accidentally comma-joined issues."""
     prose = _prose(body)
     declared: set[str] = set()
     malformed: list[str] = []
-    for closing in CLOSING.finditer(prose):
-        first = _reference(closing[1], repo)
+    for first, comma_joined in _closing_declarations(prose, repo):
         declared.add(first)
-        position = closing.end()
-        while following := CONTINUATION.match(prose, position):
-            reference = _reference(following[1], repo)
+        for reference in comma_joined:
             declared.add(reference)
             malformed.append(
                 f"{_display(reference, repo)} needs its own closing keyword; "
                 f"use 'Closes {_display(first, repo)}, closes {_display(reference, repo)}'"
             )
-            position = following.end()
     errors = list(dict.fromkeys(malformed))
     if not declared and not re.search(r"\bno[ -]issue\b", prose, re.IGNORECASE):
         errors.append("Add a closing issue declaration or an explicit 'no issue' statement")
@@ -157,6 +163,17 @@ def main(argv: list[str] | None = None) -> int:
     if len(errors) > 10:
         sys.stderr.write("Additional violations omitted; use --output for the full report\n")
     return int(bool(errors))
+
+
+def _closing_declarations(prose: str, repo: str) -> Iterator[tuple[str, list[str]]]:
+    """Yield each closing keyword's reference and the references comma-joined to it."""
+    for closing in CLOSING.finditer(prose):
+        comma_joined = []
+        position = closing.end()
+        while following := CONTINUATION.match(prose, position):
+            comma_joined.append(_reference(following[1], repo))
+            position = following.end()
+        yield _reference(closing[1], repo), comma_joined
 
 
 def _prose(body: str) -> str:
