@@ -1,8 +1,9 @@
-"""Strip markup an author can use to hide text from a human reader.
+"""Strip markup an author can use to hide text from a human reader, and cap text.
 
 Pull request text is untrusted. Before it reaches the review model, HTML
 comments, CSS-hidden or ``hidden`` elements, zero-width characters and long
-base64 blobs are removed, so the model sees what a human reviewer sees.
+base64 blobs are removed, so the model sees what a human reviewer sees. The
+byte caps cut text without splitting a character or a line.
 """
 
 from __future__ import annotations
@@ -52,3 +53,26 @@ def sanitize_text(text: str) -> str:
     text = _HTML_COMMENT_UNCLOSED.sub("", text)
     text = _remove_hidden_elements(text)
     return _BASE64.sub("", text)
+
+
+def truncate_bytes(text: str, limit: int) -> str:
+    """Cut UTF-8 text to a byte budget without splitting a character or a line."""
+    if limit <= 0:
+        return ""
+    data = text.encode("utf-8")
+    if len(data) <= limit:
+        return text
+    cut = data[:limit].decode("utf-8", errors="ignore")
+    newline = cut.rfind("\n")
+    return cut[:newline] if newline > 0 else cut
+
+
+def truncate_text(text: str, limit: int) -> tuple[str, bool]:
+    """``truncate_bytes`` and whether it cut anything."""
+    capped = truncate_bytes(text, limit)
+    return capped, capped != text
+
+
+def single_line(text: str, limit: int) -> str:
+    """Sanitized ``text`` on one line, within ``limit`` bytes."""
+    return truncate_bytes(" ".join(sanitize_text(text).split()), limit)

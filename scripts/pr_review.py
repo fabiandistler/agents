@@ -33,7 +33,7 @@ import pr_cli
 from pr_github import is_line_count
 from pr_review_claude import TOKEN_ENV, ProviderError, run_claude
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
-from pr_review_sanitize import sanitize_text
+from pr_review_sanitize import sanitize_text, single_line, truncate_bytes, truncate_text
 
 DEFAULT_MODEL = "sonnet"
 MODEL_ENV = "PR_REVIEW_MODEL"
@@ -102,27 +102,6 @@ def _as_text(value: object) -> str:
     return "" if value is None else str(value)
 
 
-def _single_line(text: str, limit: int) -> str:
-    return _truncate_bytes(" ".join(sanitize_text(text).split()), limit)
-
-
-def _truncate_bytes(text: str, limit: int) -> str:
-    """Cut UTF-8 text to a byte budget without splitting a character or a line."""
-    if limit <= 0:
-        return ""
-    data = text.encode("utf-8")
-    if len(data) <= limit:
-        return text
-    cut = data[:limit].decode("utf-8", errors="ignore")
-    newline = cut.rfind("\n")
-    return cut[:newline] if newline > 0 else cut
-
-
-def _truncate_text(text: str, limit: int) -> tuple[str, bool]:
-    capped = _truncate_bytes(text, limit)
-    return capped, capped != text
-
-
 # --- Request assembly --------------------------------------------------------
 
 
@@ -161,12 +140,12 @@ def read_standards(path: str) -> str:
 def _render_files(files: list[dict]) -> list[str]:
     rendered: list[str] = []
     for item in files:
-        path = _single_line(item["path"], 300)
-        status = _single_line(item["status"], 40)
+        path = single_line(item["path"], 300)
+        status = single_line(item["status"], 40)
         line = f"- {path} [{status}, +{item['additions']}/-{item['deletions']}]"
         if item.get("binary"):
             line += " binary"
-        renamed_from = _single_line(_as_text(item.get("renamed_from")), 300)
+        renamed_from = single_line(_as_text(item.get("renamed_from")), 300)
         if renamed_from:
             line += f" (renamed from {renamed_from})"
         rendered.append(line)
@@ -189,7 +168,7 @@ def _render_base_paths(context: dict) -> list[str]:
     rendered: list[str] = []
     used = 0
     for path in paths:
-        line = f"- {_single_line(path, 300)}"
+        line = f"- {single_line(path, 300)}"
         used += len(line.encode("utf-8")) + 1
         if used > MAX_TREE_BYTES:
             break
@@ -207,7 +186,7 @@ def _cap_diff(diff: str) -> tuple[str, bool]:
     if len(lines) > MAX_DIFF_LINES:
         diff = "\n".join(lines[:MAX_DIFF_LINES]) + "\n"
         truncated = True
-    capped, bytes_cut = _truncate_text(diff, MAX_DIFF_BYTES)
+    capped, bytes_cut = truncate_text(diff, MAX_DIFF_BYTES)
     return capped, truncated or bytes_cut
 
 
@@ -216,7 +195,7 @@ def _cap_base_files(base_files: dict) -> tuple[list[tuple[str, str]], bool]:
     used = 0
     truncated = False
     for raw_path, raw_content in base_files.items():
-        path = _single_line(_as_text(raw_path), 300)
+        path = single_line(_as_text(raw_path), 300)
         content = sanitize_text(_as_text(raw_content))
         size = len(content.encode("utf-8"))
         if len(entries) >= MAX_BASE_FILES or used + size > MAX_BASE_BYTES:
@@ -243,7 +222,7 @@ def _render_payload(
     for note in notes:
         lines += [note, ""]
     lines += [
-        f"PULL REQUEST: {_single_line(_as_text(context.get('repo')), 200)}#{context.get('number')}",
+        f"PULL REQUEST: {single_line(_as_text(context.get('repo')), 200)}#{context.get('number')}",
         "",
         "TITLE:",
         title,
@@ -275,10 +254,10 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
     """
     _validate_context(context)
     system_prompt = _system_prompt(standards)
-    title, title_cut = _truncate_text(
+    title, title_cut = truncate_text(
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
     )
-    body, body_cut = _truncate_text(sanitize_text(_as_text(context.get("body"))), MAX_BODY_BYTES)
+    body, body_cut = truncate_text(sanitize_text(_as_text(context.get("body"))), MAX_BODY_BYTES)
     sanitized_diff = sanitize_text(context["diff"])
     diff, diff_cut = _cap_diff(sanitized_diff)
     if context["diff_status"] == "unavailable":
@@ -300,7 +279,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
         note = "\n\n[Input truncated to the total review limit.]\n"
         room = budget - len(note.encode("utf-8"))
         payload = (
-            _truncate_bytes(payload, room) + note if room > 0 else _truncate_bytes(payload, budget)
+            truncate_bytes(payload, room) + note if room > 0 else truncate_bytes(payload, budget)
         )
 
     request = {
