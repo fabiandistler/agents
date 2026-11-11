@@ -1,0 +1,44 @@
+# token-probe - a throwaway probe for #786. DO NOT MERGE.
+#
+# Question: does claude-code-action's OIDC -> Claude GitHub App token exchange
+# work when the action runs inside this reusable workflow, called from another
+# repository (fabiandistler/dotfiles)? anthropics/claude-code-action#443
+# reports a 401 "Workflow validation failed" for that shape. The caller's run
+# log answers it; the step changes nothing.
+name: token-probe
+
+on:
+  workflow_call:
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # contents: read for the checkout; id-token: write for the App token
+    # exchange under test.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Probe the App token
+        # The same pin as implementer.yml. No github_token input: the action
+        # must exchange the OIDC token for the App token, which is the test.
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --model sonnet
+            --allowedTools "Bash(gh api:*)"
+            --max-turns 3
+          prompt: |
+            Run exactly this command once: gh api repos/$GITHUB_REPOSITORY --jq .full_name
+            Print its output verbatim (or its error message verbatim). Change nothing, run nothing else, then end.
