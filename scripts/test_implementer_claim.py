@@ -76,6 +76,7 @@ class FakeGitHub:
     branch_sha: str | None = None
     ahead_by: int = 0
     issue_body: str | None = ""
+    issue_author_association: str = "OWNER"
     issue_comments: list[dict] = field(default_factory=list)
     native_blockers: list[dict] = field(default_factory=list)
     blocker_issues: dict[int, dict] = field(default_factory=dict)
@@ -114,7 +115,9 @@ class FakeGitHub:
         """The routes the intake gates read."""
         first_page = params.get("page", 1) == 1
         if path == ISSUE_PATH:
-            return json_response({"body": self.issue_body})
+            return json_response(
+                {"body": self.issue_body, "author_association": self.issue_author_association}
+            )
         if path == COMMENTS:
             return json_response(self.issue_comments if first_page else [])
         if path == DEPENDENCIES:
@@ -343,7 +346,10 @@ def run_cli(monkeypatch, tmp_path, fake) -> tuple[int, Path]:
     monkeypatch.setenv("GITHUB_RUN_ID", str(RUN_ID))
     summary = tmp_path / "run-summary.md"
     code = implementer_claim.main(
-        ["--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)]
+        [
+            *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
+            *("--contract", str(tmp_path / "contract.md")),
+        ]
     )
     return code, summary
 
@@ -384,7 +390,10 @@ def test_cli_without_a_token_fails_the_claim(monkeypatch, tmp_path, capsys):
     monkeypatch.delenv("GH_TOKEN", raising=False)
     summary = tmp_path / "run-summary.md"
     code = implementer_claim.main(
-        ["--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)]
+        [
+            *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
+            *("--contract", str(tmp_path / "contract.md")),
+        ]
     )
     assert code == implementer_claim.EXIT_FAILED
     assert json.loads(capsys.readouterr().out)["reason"] == "GH_TOKEN is not set"
@@ -410,8 +419,9 @@ def test_failure_output_carries_no_issue_or_pull_request_text(monkeypatch, tmp_p
         ["--repo", REPO, "--issue", "0", "--summary", "s"],
         ["--repo", REPO, "--issue", "1; rm -rf /", "--summary", "s"],
         ["--repo", REPO, "--issue", "12"],
+        ["--repo", REPO, "--issue", "12", "--summary", "s"],
     ],
-    ids=["bad-repo", "zero-issue", "non-numeric-issue", "missing-summary"],
+    ids=["bad-repo", "zero-issue", "non-numeric-issue", "missing-summary", "missing-contract"],
 )
 def test_cli_rejects_bad_usage_before_any_call(arguments, capsys):
     with pytest.raises(SystemExit) as caught:

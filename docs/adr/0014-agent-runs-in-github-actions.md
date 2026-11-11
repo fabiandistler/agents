@@ -78,6 +78,12 @@ only points at its runbook, as the scheduled task's did.
   required checks; the automated PR review; and the human merge.
 - Only a person starts the implementer: the job skips labels added by a bot,
   and claude-code-action checks that the actor has write access.
+- Only a person with write access writes what the implementer builds.
+  `scripts/implementer_claim.py` writes the contract file from the latest
+  `## Agent Brief` comment by an owner, member or collaborator, or without one
+  from a trusted author's issue body and the trusted comments. Text by anyone
+  else stays data, and an outsider's issue without a trusted brief stops as
+  `no-contract`.
 - Runs draw on the subscription limits, shared with interactive use, the PR
   review and the triage. The implementer runs on `opus`, the audit on
   `sonnet`, as the scheduled tasks did.
