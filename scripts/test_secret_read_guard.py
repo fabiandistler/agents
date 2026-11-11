@@ -105,6 +105,7 @@ BLOCKED_COMMANDS = [
     "kubectl --kubeconfig=/home/me/.kube/config get pods",
     "ls -la # list\ncat .env",
     "n=${#FILES[@]}; cat .env",
+    "cat a\\ #x; cat .env",
     "bash -lc 'cat .env'",
     "bash -euo pipefail <<'EOF'\ncat .env\nEOF",
     "cat \\\n  .env",

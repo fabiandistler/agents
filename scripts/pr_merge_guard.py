@@ -140,7 +140,8 @@ def strip_comments_and_continuations(command: str) -> str:
         elif char in "'\"":
             out.append(char)
             quote = char
-        elif char == "#" and (not out or out[-1][-1] in WORD_BREAKS):
+        # An escape pair (`\ `, `\;`) is one entry and never ends a word.
+        elif char == "#" and (not out or out[-1] in WORD_BREAKS):
             end = command.find("\n", i)
             i = len(command) if end < 0 else end
             continue

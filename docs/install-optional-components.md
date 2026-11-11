@@ -124,7 +124,9 @@ Limits:
   continuations and combined shell flags (`bash -lc`, `bash -euo pipefail <<EOF`)
   as bash does. It still takes a `<<WORD` inside quotes or a comment for a
   heredoc and skips the lines up to `WORD`, and it stops checking after three
-  levels of nested `bash -c`/`eval`.
+  levels of nested `bash -c`/`eval`. It does not know ANSI-C quoting: an
+  escaped quote in `$'…'` throws its quote tracking off, and a `#` that bash
+  reads as quoted text can then end the command early.
 
 ## Secret read guard (`--secret-guard`)
 

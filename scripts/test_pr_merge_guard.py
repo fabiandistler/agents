@@ -56,6 +56,10 @@ BLOCKED_COMMANDS = [
     "n=${#PRS[@]}; gh pr merge 7",
     "echo $# ; gh pr merge 7",
     "gh pr view https://github.com/o/r/pull/7#issuecomment-1 && gh pr merge 7",
+    # An escaped blank or operator keeps the word going, so `#` after it is not a comment.
+    "echo a\\ #b; gh pr merge 7",
+    "echo a\\;#b; gh pr merge 7",
+    "echo a\\\t#b; gh pr merge 7",
     # Combined shell flags.
     'bash -lc "gh pr merge 7"',
     "bash -euc 'gh pr merge 7'",
