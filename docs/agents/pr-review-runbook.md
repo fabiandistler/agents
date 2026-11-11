@@ -17,6 +17,7 @@ Related pages:
 - [Troubleshooting and reading a run](pr-review-troubleshooting.md)
 - [Acceptance record](pr-review-acceptance.md)
 - [Linked issues in the review payload](pr-review-linked-issues.md)
+- [Event policy for `pull_request_target`](pr-review-event-policy.md)
 
 ## Contents
 
@@ -37,7 +38,9 @@ Related pages:
 
 The workflow triggers on `pull_request_target` (`opened`, `synchronize`,
 `reopened`, `ready_for_review`, `labeled`) and on a manual `workflow_dispatch`
-with a pull request number and `dry_run` (default `true`).
+with a pull request number and `dry_run` (default `true`). From 2026-12-02
+the `pull_request_target` trigger runs only with the event policy of
+[setup step 8](#setup).
 
 | Job | Permissions and secrets | Does |
 | --- | --- | --- |
@@ -162,6 +165,11 @@ All settings live under the repository's **Settings** tab.
    allowed-actions policy permits `actions/checkout`, `actions/setup-python`,
    `actions/upload-artifact` and `actions/download-artifact` (all pinned to
    commit SHAs).
+8. **Event policy (one-time, manual).** *Actions → Policies*: an active
+   policy that allows `pull_request_target` and `workflow_dispatch` for
+   `.github/workflows/pr-review.yml` only. From 2026-12-02 GitHub blocks
+   `pull_request_target` in public repositories without one. Steps, check
+   and sources: [pr-review-event-policy.md](pr-review-event-policy.md).
 
 Nothing runs before the workflow is on the default branch: a dispatch needs
 the file there, and `pull_request_target` reads it from there.
