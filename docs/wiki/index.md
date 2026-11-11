@@ -14,6 +14,9 @@ nothing here describes the present. See [conventions](conventions.md).
 
 - [2026-10-19 wiki location](decisions/2026-10-19-wiki-location.md) — why the wiki lives in `docs/wiki/`.
 - [2026-10-19 router references](decisions/2026-10-19-router-references.md) — option A: rewrite to router form, enforce in CI.
+- [2026-11-11 factory expansion order](decisions/2026-11-11-factory-expansion-order.md) — brakes (#763, #764, #770) first, then new tasks, then rollout.
+- [2026-11-11 new factory tasks](decisions/2026-11-11-new-factory-tasks.md) — Rework #782, Fix #783, Retro #784 filed `ready-for-human`.
+- [2026-11-11 factory rollout](decisions/2026-11-11-factory-rollout.md) — dotfiles and repo-maintenance via reusable workflows, spec #786.
 
 ## Recurring problems
 
@@ -21,6 +24,9 @@ nothing here describes the present. See [conventions](conventions.md).
 - [unrunnable commands in skills](problems/unrunnable-skill-commands.md) — shell snippets in SKILL.md that fail when an agent follows them.
 - [unlinked PRs](problems/unlinked-prs.md) — merged work left its issue open; caused a wasted worker run.
 - [Dependabot on private repos](problems/dependabot-private-repos.md) — update jobs wait for a `dependabot`-labelled runner and are cancelled after 24 h.
+- [private repos without rulesets](problems/private-repos-no-rulesets.md) — rollout targets cannot require checks; weaker brakes, push guard #789.
+- [cross-repo token exchange](problems/cross-repo-token-exchange.md) — claude-code-action#443 may break the App token in a called workflow; probe pending.
+- [cross-repo `Blocked by` URLs](problems/cross-repo-blocked-by.md) — fail closed after #785 and stop the implementer until removed.
 
 ## Snapshots
 
