@@ -84,6 +84,26 @@ def test_the_payload_goes_to_stdin_and_the_cwd_is_empty(fake_claude) -> None:
     assert Path(call["cwd"]).resolve() != Path.cwd().resolve()
 
 
+def test_standards_change_only_the_system_prompt_of_the_call(fake_claude) -> None:
+    standards = "- Every function has a docstring.\n"
+    pr_review.review(base_context(), token=FAKE_TOKEN)
+    plain = fake_claude()
+    pr_review.review(base_context(), token=FAKE_TOKEN, standards=standards)
+    with_standards = fake_claude()
+
+    def without_system_prompt(argv: list[str]) -> list[str]:
+        index = argv.index("--system-prompt")
+        return argv[:index] + argv[index + 2 :]
+
+    assert without_system_prompt(with_standards["argv"]) == without_system_prompt(plain["argv"])
+    assert option_value(with_standards["argv"], "--system-prompt").endswith(standards)
+    assert option_value(with_standards["argv"], "--system-prompt") != option_value(
+        plain["argv"], "--system-prompt"
+    )
+    assert with_standards["stdin"] == plain["stdin"]
+    assert with_standards["cwd_entries"] == plain["cwd_entries"] == []
+
+
 def test_the_model_env_selects_the_model(fake_claude, monkeypatch) -> None:
     monkeypatch.setenv("PR_REVIEW_MODEL", "opus")
     pr_review.review(base_context(), token=FAKE_TOKEN)
