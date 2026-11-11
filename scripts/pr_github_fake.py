@@ -24,6 +24,7 @@ COMMENTS_PATH = f"/repos/{REPO}/issues/{NUMBER}/comments"
 REVIEWS_PATH = f"{PR_PATH}/reviews"
 CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
 TREE_PATH = f"/repos/{REPO}/git/trees/base-sha"
+ISSUES_PREFIX = f"/repos/{REPO}/issues/"
 
 SCRIPT = Path(__file__).resolve().parent / "pr_github.py"
 DIFF_ACCEPT = "application/vnd.github.v3.diff"
@@ -59,6 +60,7 @@ class FakeClient:
         diff: str = "",
         contents: dict[str, Any] | None = None,
         tree: object = None,
+        issues: dict[int, object] | None = None,
         errors: dict[str, Exception] | None = None,
     ) -> None:
         self.pr = pull_request() if pr is None else pr
@@ -68,6 +70,7 @@ class FakeClient:
         self.diff = diff
         self.contents = contents or {}
         self.tree = {"sha": "base-sha", "tree": [], "truncated": False} if tree is None else tree
+        self.issues = issues or {}
         self.errors = errors or {}
         self.calls: list[Call] = []
 
@@ -104,7 +107,19 @@ class FakeClient:
                 if isinstance(handler, pr_github_client.Response)
                 else json_response(handler)
             )
+        if path.startswith(ISSUES_PREFIX) and path[len(ISSUES_PREFIX) :].isdigit():
+            issue = self.issues.get(int(path[len(ISSUES_PREFIX) :]))
+            if issue is None:
+                raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
+            return issue if isinstance(issue, pr_github_client.Response) else json_response(issue)
         raise AssertionError(f"unexpected GET {path}")
+
+    def issue_calls(self) -> list[Call]:
+        return [
+            call
+            for call in self.calls
+            if call.path.startswith(ISSUES_PREFIX) and call.path[len(ISSUES_PREFIX) :].isdigit()
+        ]
 
     def contents_calls(self) -> list[Call]:
         return [call for call in self.calls if call.path.startswith(CONTENTS_PREFIX)]
@@ -186,6 +201,15 @@ def contents_response(text: str | bytes, *, encoding: str = "base64", type_: str
         "encoding": encoding,
         "size": len(data),
         "content": base64.b64encode(data).decode("ascii"),
+    }
+
+
+def api_issue(number: int, *, title: str = "", body: str = "", association: str = "OWNER") -> dict:
+    return {
+        "number": number,
+        "title": title or f"Issue {number}",
+        "body": body or f"Body of issue {number}",
+        "author_association": association,
     }
 
 

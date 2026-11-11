@@ -20,6 +20,8 @@ import urllib.parse
 from typing import Any, TypeGuard
 
 import pr_cli
+from check_pr_issue_links import closing_references
+from issue_triage_policy import TRUSTED_ASSOCIATIONS
 from pr_github_client import (
     REPO_PATTERN,
     FetchError,
@@ -35,21 +37,30 @@ DIFF_LIMIT = 400 * 1024
 BASE_FILE_LIMIT = 20
 BASE_BYTES_LIMIT = 200 * 1024
 BASE_PATH_LIMIT = 5000
+LINKED_ISSUE_LIMIT = 3
+LINKED_ISSUE_STATUSES = ("ok", "unavailable", "outside_author")
 STATUS_ALIASES = {"copied": "added", "changed": "modified", "unchanged": "modified"}
 
-USAGE = f"""usage: pr_github.py --pr N --repo OWNER/REPO [--output FILE]
+USAGE = f"""usage: pr_github.py --pr N --repo OWNER/REPO [--output FILE] [--linked-issues]
 
 Fetch a pull request through the GitHub REST API and write the context JSON
 consumed by the risk policy and review pipeline. Reads GITHUB_TOKEN. Stdout
 gets a short JSON summary; the full context (diff included) only goes to FILE.
 
-  --pr N          pull request number
-  --repo O/R      repository as OWNER/REPO
-  --output FILE   write the full context JSON to FILE
-  -h, --help      show this message
+  --pr N            pull request number
+  --repo O/R        repository as OWNER/REPO
+  --output FILE     write the full context JSON to FILE
+  --linked-issues   add the field "linked_issues": up to 3 same-repository
+                    issues the body declares it closes ("Closes #n"), each
+                    {{number, status: ok | unavailable | outside_author, title,
+                    body}}. Title and body only for an OWNER, MEMBER or
+                    COLLABORATOR author; a failed fetch is "unavailable" with
+                    one stderr line and does not fail the run
+  -h, --help        show this message
 
 examples:
   python3 scripts/pr_github.py --pr 42 --repo fabiandistler/agents --output context.json
+  python3 scripts/pr_github.py --pr 42 --repo o/r --linked-issues --output context.json
   GITHUB_TOKEN=... python3 scripts/pr_github.py --pr 42 --repo o/r
 
 {pr_cli.exit_help(0, 2, 4, 5, 6)}
@@ -254,13 +265,65 @@ def _base_paths(client: ReadClient, repo: str, base_sha: str) -> tuple[list[str]
     return paths, truncated
 
 
+def _linked_issue_numbers(body: str, repo: str) -> list[int]:
+    """The same-repository issues ``body`` declares it closes: ascending, at most 3."""
+    prefix = f"{repo.lower()}#"
+    numbers = {
+        int(reference[len(prefix) :])
+        for reference in closing_references(body, repo)
+        if reference.startswith(prefix)
+    }
+    return sorted(numbers)[:LINKED_ISSUE_LIMIT]
+
+
+def _linked_issue(client: ReadClient, repo: str, number: int) -> dict | None:
+    """One linked issue for the context; None when the number names a pull request.
+
+    The token reads this repository only, so other repositories are never
+    asked. Text by an author without write access stays out of the context
+    (ADR-0013). A failed fetch leaves the issue unavailable, never the run.
+    """
+    unavailable = {"number": number, "status": "unavailable", "title": "", "body": ""}
+    try:
+        issue = get_json(client, f"/repos/{repo}/issues/{number}")
+    except FetchError as error:
+        status = error.status if error.status is not None else "none"
+        # Number and status only: the issue text never reaches a log.
+        print(f"pr_github.py: linked issue #{number} unavailable (HTTP {status})", file=sys.stderr)
+        return unavailable
+    if not isinstance(issue, dict):
+        print(f"pr_github.py: linked issue #{number} unavailable (HTTP 200)", file=sys.stderr)
+        return unavailable
+    if "pull_request" in issue:
+        return None
+    if issue.get("author_association") not in TRUSTED_ASSOCIATIONS:
+        return {"number": number, "status": "outside_author", "title": "", "body": ""}
+    title = issue.get("title")
+    body = issue.get("body")
+    return {
+        "number": number,
+        "status": "ok",
+        "title": title if isinstance(title, str) else "",
+        "body": body if isinstance(body, str) else "",
+    }
+
+
+def _linked_issues(client: ReadClient, repo: str, body: str) -> list[dict]:
+    issues = (_linked_issue(client, repo, number) for number in _linked_issue_numbers(body, repo))
+    return [issue for issue in issues if issue is not None]
+
+
 def fetch_context(
     repo: str,
     number: int,
     token: str | None = None,
     client: ReadClient | None = None,
+    linked_issues: bool = False,
 ) -> dict:
-    """Fetch the full context JSON for one pull request."""
+    """Fetch the full context JSON for one pull request.
+
+    With ``linked_issues`` the context gains the field of that name (see USAGE).
+    """
     if client is None:
         if not isinstance(token, str) or not token:
             raise MissingTokenError("GITHUB_TOKEN is not set and no client was injected")
@@ -313,13 +376,14 @@ def fetch_context(
     user = user_value if isinstance(user_value, dict) else {}
 
     default_branch = base_repo.get("default_branch")
+    body = pull.get("body") if isinstance(pull.get("body"), str) else ""
 
-    return {
+    context = {
         "schema_version": SCHEMA_VERSION,
         "repo": repo,
         "number": number,
         "title": pull.get("title") if isinstance(pull.get("title"), str) else "",
-        "body": pull.get("body") if isinstance(pull.get("body"), str) else "",
+        "body": body,
         "author": user.get("login") if isinstance(user.get("login"), str) else "",
         "state": pull.get("state"),
         "head_sha": head_sha,
@@ -342,6 +406,9 @@ def fetch_context(
         "comments": comments,
         "reviews": reviews,
     }
+    if linked_issues:
+        context["linked_issues"] = _linked_issues(client, repo, body)
+    return context
 
 
 def _summary(context: dict, output: str | None) -> dict:
@@ -358,6 +425,7 @@ def _summary(context: dict, output: str | None) -> dict:
         "base_files": len(context["base_files"]),
         "base_paths": len(context["base_paths"]),
         "comments": len(context["comments"]),
+        **({"linked_issues": len(context["linked_issues"])} if "linked_issues" in context else {}),
         "output": output,
     }
 
@@ -365,7 +433,9 @@ def _summary(context: dict, output: str | None) -> dict:
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
-        options = pr_cli.parse_flags(arguments, ("--pr", "--repo", "--output"))
+        options = pr_cli.parse_flags(
+            arguments, ("--pr", "--repo", "--output"), ("--linked-issues",)
+        )
         if options is not None:
             pr_cli.require_pull_request(options)
     except pr_cli.UsageError as error:
@@ -376,7 +446,12 @@ def main(argv: list[str] | None = None) -> int:
 
     token = os.environ.get("GITHUB_TOKEN") or None
     try:
-        context = fetch_context(str(options["repo"]), int(str(options["pr"])), token=token)
+        context = fetch_context(
+            str(options["repo"]),
+            int(str(options["pr"])),
+            token=token,
+            linked_issues=options["linked_issues"] is True,
+        )
     except MissingTokenError as error:
         print(f"pr_github.py: {error}", file=sys.stderr)
         return pr_cli.EXIT_MISSING_TOKEN

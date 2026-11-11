@@ -122,7 +122,9 @@ def test_network_error_becomes_fetch_error():
 
 def test_cli_writes_the_context_and_exits_zero(tmp_path, monkeypatch, capsys):
     context = fetch(FakeClient())
-    monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
+    monkeypatch.setattr(
+        pr_github, "fetch_context", lambda repo, number, token=None, linked_issues=False: context
+    )
     output = tmp_path / "context.json"
 
     code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(output)])
@@ -140,7 +142,9 @@ def test_cli_prints_a_bounded_summary_without_output(monkeypatch, capsys):
             diff="+" + "x" * 300_000 + "\n",
         )
     )
-    monkeypatch.setattr(pr_github, "fetch_context", lambda repo, number, token=None: context)
+    monkeypatch.setattr(
+        pr_github, "fetch_context", lambda repo, number, token=None, linked_issues=False: context
+    )
 
     code = pr_github.main(["--pr", str(NUMBER), "--repo", REPO])
 
@@ -166,7 +170,7 @@ def test_cli_maps_missing_token_to_exit_five(monkeypatch):
 
 
 def test_cli_maps_fetch_failure_to_exit_four(monkeypatch):
-    def fail(repo, number, token=None):
+    def fail(repo, number, token=None, linked_issues=False):
         raise pr_github_client.FetchError("boom")
 
     monkeypatch.setattr(pr_github, "fetch_context", fail)
@@ -194,7 +198,7 @@ def test_cli_output_write_failure_exits_six(tmp_path, monkeypatch):
     monkeypatch.setattr(
         pr_github,
         "fetch_context",
-        lambda repo, number, token=None: {"schema_version": 1, "files": []},
+        lambda repo, number, token=None, linked_issues=False: {"schema_version": 1, "files": []},
     )
 
     assert pr_github.main(["--pr", str(NUMBER), "--repo", REPO, "--output", str(tmp_path)]) == 6

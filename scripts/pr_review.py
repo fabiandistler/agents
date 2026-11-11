@@ -32,6 +32,7 @@ from pathlib import Path
 import pr_cli
 from pr_github import is_line_count
 from pr_review_claude import TOKEN_ENV, ProviderError, run_claude
+from pr_review_linked_issues import render_linked_issues, validate_linked_issues
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
 from pr_review_sanitize import sanitize_text, single_line, truncate_bytes, truncate_text
 
@@ -281,6 +282,10 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
         payload = (
             truncate_bytes(payload, room) + note if room > 0 else truncate_bytes(payload, budget)
         )
+    # Last, into the room left, so issue text never displaces a diff line.
+    payload += render_linked_issues(
+        context.get("linked_issues", []), budget - len(payload.encode("utf-8"))
+    )
 
     request = {
         "model": os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
@@ -321,6 +326,7 @@ def _validate_context(context: dict) -> None:
         raise ContextError("context field 'base_paths' is not a list of strings")
     if not isinstance(context.get("base_paths_truncated"), bool):
         raise ContextError("context field 'base_paths_truncated' is not a boolean")
+    validate_linked_issues(context.get("linked_issues", []))
 
 
 def _skipped_reason(context: dict) -> str | None:
