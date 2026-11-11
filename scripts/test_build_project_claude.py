@@ -1,5 +1,6 @@
 """Tests for the project mirror's instruction-rule selection."""
 
+import json
 from pathlib import Path
 
 import build_project_claude as project_claude
@@ -39,3 +40,53 @@ def test_wanted_rules_uses_shared_rendering_and_keeps_repo_filters(tmp_path, mon
         "managed-by: fabiandistler/agents build_project_claude.py\n"
         "---\n\nR rule.\n"
     )
+
+
+def test_synced_copy_of_every_marketplace_disabled_plugin_is_disabled():
+    settings = {
+        "enabledPlugins": {
+            "ai-ml@fabiandistler-agents": False,
+            "tdd-pack@other": True,
+            "mattpocock-skills@mattpocock": False,
+            "local@inline": False,
+            "folder@skills-dir": False,
+            "unrelated@synced": True,
+        },
+        "hooks": {},
+    }
+
+    plugins = project_claude.with_synced_plugins_disabled(settings)["enabledPlugins"]
+
+    assert list(plugins.items()) == [
+        ("ai-ml@fabiandistler-agents", False),
+        ("ai-ml@synced", False),
+        ("tdd-pack@other", True),
+        ("mattpocock-skills@mattpocock", False),
+        ("mattpocock-skills@synced", False),
+        ("local@inline", False),
+        ("folder@skills-dir", False),
+        ("unrelated@synced", True),
+    ]
+
+
+def test_synced_entries_are_regenerated_in_place_and_idempotent():
+    settings = {"enabledPlugins": {"ai-ml@synced": True, "ai-ml@fabiandistler-agents": False}}
+
+    once = project_claude.with_synced_plugins_disabled(settings)
+    twice = project_claude.with_synced_plugins_disabled(once)
+
+    assert list(once["enabledPlugins"].items()) == [
+        ("ai-ml@fabiandistler-agents", False),
+        ("ai-ml@synced", False),
+    ]
+    assert twice == once
+
+
+def test_committed_settings_disable_synced_copy_of_each_mirrored_plugin():
+    """Every plugin whose skills `.claude/skills` mirrors stays off when synced (#768)."""
+    plugins = json.loads(project_claude.SETTINGS_PATH.read_text(encoding="utf-8"))["enabledPlugins"]
+    skill_plugins = {path.parent.name for path in project_claude.PLUGINS_DIR.glob("*/skills")}
+    mirrored = skill_plugins | {"mattpocock-skills"}
+
+    assert len(skill_plugins) >= 6
+    assert {name for name in mirrored if plugins.get(f"{name}@synced") is not False} == set()
