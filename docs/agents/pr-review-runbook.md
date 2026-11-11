@@ -16,6 +16,7 @@ Related pages:
 - [Labels and thresholds](triage-labels.md#pull-request-labels)
 - [Troubleshooting and reading a run](pr-review-troubleshooting.md)
 - [Acceptance record](pr-review-acceptance.md)
+- [Linked issues in the review payload](pr-review-linked-issues.md)
 
 ## Contents
 
@@ -25,6 +26,7 @@ Related pages:
 - [Rollout](#rollout)
 - [Dry run](#dry-run)
 - [Standards for another repository](#standards-for-another-repository)
+- [Linked issues](#linked-issues)
 - [Manual re-run](#manual-re-run)
 - [Model change](#model-change)
 - [Quota and cost](#quota-and-cost)
@@ -265,6 +267,15 @@ python3 "$scripts/pr_review.py" --context context.json \
 ```
 
 `--dry-run` reports `system_bytes` including the standards text.
+
+## Linked issues
+
+`pr_github.py --linked-issues` adds up to three same-repository issues the
+pull request body closes (`Closes #n`) to the context, as the field
+`linked_issues`. `pr_review.py` renders them after the diff, in the room the
+capped payload leaves, without marking the review partial; only issues by an
+owner, member or collaborator show their text. Fields, caps, failure handling
+and framing: [pr-review-linked-issues.md](pr-review-linked-issues.md).
 
 ## Manual re-run
 
