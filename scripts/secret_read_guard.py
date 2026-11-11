@@ -293,8 +293,10 @@ def check_tool_call(tool: str, tool_input: object, cwd: Path) -> str | None:
     command = tool_input.get("command")
     if tool == "apply_patch":
         # The body is file content, not shell: only the file headers name paths.
-        patch = command if isinstance(command, str) else ""
-        kinds = (secret_file(path, is_path=True) for path in PATCH_FILE_HEADER.findall(patch))
+        # Codex documents a string; any other shape fails closed, not silently open.
+        if not isinstance(command, str):
+            return "the patch is not text, so its target files cannot be checked"
+        kinds = (secret_file(path, is_path=True) for path in PATCH_FILE_HEADER.findall(command))
         return next((f"the patch edits {kind}" for kind in kinds if kind), None)
     if isinstance(command, list) and all(isinstance(c, str) for c in command):
         command = shlex.join(command)

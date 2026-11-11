@@ -204,6 +204,9 @@ BLOCKED_TOOLS = [
     ("codex", apply_patch_event("Update File: .env", "-A=1\n+A=2")),
     ("codex", apply_patch_event("Add File: config/.npmrc", "+registry=x")),
     ("codex", apply_patch_event("Delete File: /home/me/.ssh/id_ed25519", "")),
+    # A patch in another shape than the documented string cannot be checked.
+    ("codex", {"tool_name": "apply_patch", "tool_input": {"command": ["*** Begin Patch"]}}),
+    ("codex", {"tool_name": "apply_patch", "tool_input": {}}),
 ]
 
 ALLOWED_TOOLS = [

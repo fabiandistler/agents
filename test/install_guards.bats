@@ -81,6 +81,9 @@ commands = [e["hooks"][0]["command"] for e in codex["hooks"]["PreToolUse"]]
 assert [c.split("/")[-1] for c in commands] == [
     'pr_merge_guard.py" --harness codex', 'secret_read_guard.py" --harness codex'
 ], commands
+# Codex sends file edits as apply_patch: only the secret guard's entry names it.
+matchers = [e["matcher"] for e in codex["hooks"]["PreToolUse"]]
+assert matchers == ["^(Bash|mcp__.*)$", "^(Bash|apply_patch|mcp__.*)$"], matchers
 PY
   [[ -L "$HOME_SG/.config/opencode/plugins/secret-read-guard.js" ]] ||
     fail "opencode secret guard plugin not linked"
