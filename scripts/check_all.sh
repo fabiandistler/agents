@@ -105,8 +105,19 @@ run_check() {
     vendor-lock) "$PY" scripts/vendor_repo_maintenance.py --check ;;
     # Vendored from repo-maintenance (tests upstream in tests/test_instruction_unicode.py):
     # no zero-width, bidi or tag characters in tracked instruction files
-    # (AGENTS.md, SKILL.md, .claude/ ...).
-    instruction-unicode) "$PY" scripts/maintenance-instruction-unicode.py ;;
+    # (AGENTS.md, SKILL.md, .claude/ ...). --include adds what agents here also
+    # load as guidance: skill references and subagent definitions, the system
+    # prompts of the Actions agents, and the maintenance catalog. A skill's
+    # members/ entries are symlinks to other skill directories, checked there.
+    instruction-unicode)
+      local -a include=()
+      local f
+      while IFS= read -r f; do include+=(--include "$f"); done < <(
+        git ls-files 'skills/*/references/*' 'skills/*/agents/*' \
+          scripts/pr_review_prompt.md scripts/issue_triage_prompt.md MAINTENANCE.md
+      )
+      "$PY" scripts/maintenance-instruction-unicode.py "${include[@]}"
+      ;;
     frontmatter)
       # Running the validator, not just compiling it, proves its allowlist
       # still matches the frontmatter this repo ships.
