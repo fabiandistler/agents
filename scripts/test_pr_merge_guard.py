@@ -50,6 +50,21 @@ BLOCKED_COMMANDS = [
     ),
     "curl -X PUT -H 'Authorization: token t' https://api.github.com/repos/o/r/pulls/7/merge",
     'curl -d \'{"query":"mutation { mergePullRequest(input:{}) {x} }"}\' https://api.github.com/graphql',
+    # A trailing comment ends at the newline; the next line still runs.
+    "gh pr checks 7 # wait for CI\ngh pr merge 7 --squash",
+    # `#` inside a word is not a comment.
+    "n=${#PRS[@]}; gh pr merge 7",
+    "echo $# ; gh pr merge 7",
+    "gh pr view https://github.com/o/r/pull/7#issuecomment-1 && gh pr merge 7",
+    # Combined shell flags.
+    'bash -lc "gh pr merge 7"',
+    "bash -euc 'gh pr merge 7'",
+    "sh -o pipefail -c 'gh pr merge 7'",
+    "bash -e <<'EOF'\ngh pr merge 7\nEOF",
+    "bash -euo pipefail <<'EOF'\ngh pr merge 7\nEOF",
+    # Backslash-newline continues the command.
+    "gh api \\\n  --method PUT \\\n  repos/o/r/pulls/7/merge",
+    "curl -X PUT \\\n  -H 'Authorization: token t' \\\n  https://api.github.com/repos/o/r/pulls/7/merge",
 ]
 
 ALLOWED_COMMANDS = [
@@ -74,6 +89,12 @@ ALLOWED_COMMANDS = [
     "curl https://api.github.com/repos/o/r/pulls/7/merge",
     "python3 scripts/pr_merge_guard.py --help",
     "ls -la",
+    "gh pr view 7 # gh pr merge 7 later",
+    "# gh pr merge 7",
+    "echo 'not # a comment'; gh pr view 7",
+    "bash -lc 'gh pr view 7'",
+    "bash -e script.sh",
+    "gh api \\\n  repos/o/r/pulls/7/merge",
 ]
 
 BLOCKED_TOOLS = [

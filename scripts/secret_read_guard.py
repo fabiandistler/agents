@@ -45,6 +45,7 @@ from pr_merge_guard import (
     UsageError,
     parse_event,
     positionals,
+    shell_script,
     split_heredocs,
     split_simple_commands,
     strip_prefixes,
@@ -129,10 +130,14 @@ SECRET_VAR_PARTS = (
 )  # fmt: skip
 
 
-def secret_file(path: str) -> str | None:
-    """Name the kind of credential file `path` points at, or None."""
-    if not path or any(c.isspace() for c in path):
-        return None  # prose (a commit message, a PR body), not a path
+def secret_file(path: str, is_path: bool = False) -> str | None:
+    """Name the kind of credential file `path` points at, or None.
+
+    A shell word with whitespace is taken for prose (a commit message, a PR
+    body), not a path, unless `is_path` says it comes from a file tool.
+    """
+    if not path or (not is_path and any(c.isspace() for c in path)):
+        return None
     if PROC_ENVIRON.search(path):
         return "a process environment (/proc/<pid>/environ)"
     parts = PurePosixPath(path).parts
@@ -152,7 +157,7 @@ def secret_file(path: str) -> str | None:
             return "a dotenv file"
         # A shell glob skips dotfiles unless the pattern starts with a dot.
         probes = [p for p in GLOB_PROBES if name.startswith(".") or not p.startswith(".")]
-        hits = (secret_file(f"{parent}/{p}") for p in probes if fnmatch(p, name))
+        hits = (secret_file(f"{parent}/{p}", is_path) for p in probes if fnmatch(p, name))
         return next((hit for hit in hits if hit), None)
     if name.endswith(".env") and name.removesuffix(".env") not in DOTENV_TEMPLATES:
         return "a dotenv file"
@@ -243,8 +248,8 @@ def check_argv(argv: list[str], cwd: Path, depth: int) -> str | None:
             return "`env` without a command dumps the environment"
         return None
     program, args = Path(words[0]).name, words[1:]
-    if program in SHELLS and "-c" in args and args.index("-c") + 1 < len(args):
-        return check_shell(args[args.index("-c") + 1], cwd, depth + 1)
+    if program in SHELLS and (script := shell_script(args)) is not None:
+        return check_shell(script, cwd, depth + 1)
     if program == "eval":
         return check_shell(" ".join(args), cwd, depth + 1)
     return (
@@ -289,7 +294,7 @@ def check_tool_call(tool: str, tool_input: object, cwd: Path) -> str | None:
         return None
     for key in PATH_KEYS + GREP_FILTER_KEYS:
         value = tool_input.get(key)
-        if isinstance(value, str) and (kind := secret_file(value)):
+        if isinstance(value, str) and (kind := secret_file(value, is_path=True)):
             return f"the tool `{tool}` reads {kind}"
     return None
 
