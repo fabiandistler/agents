@@ -16,7 +16,8 @@ Blocked: reading dotenv files (`.env`, `.env.*`, `*.env`, but not their
 `rclone/rclone.conf*`, private SSH keys, pyicloud sessions, the Claude, Codex,
 opencode, Gemini, Azure, Kaggle and Todoist CLI credential files, the `pass`
 store and gpg secret keys (also via `gopass`, `sops -d`), through a shell
-command or a file tool (Read, Edit, Grep, MCP tools with a path); dumping the
+command or a file tool (Read, Edit, Grep, MCP tools with a path, the file
+headers of a Codex `apply_patch`, never its body); dumping the
 environment with bare `env`, `printenv`,
 `export -p`, `declare -x`/`-p`, bare `set` or `/proc/<pid>/environ`.
 Allowed: `env FOO=bar cmd` (a launcher), `printenv NAME` for a name that does
@@ -70,6 +71,10 @@ REASON = (
 )
 
 HOOK_MATCHER = "^(Bash|Read|Edit|Grep|mcp__.*)$"
+# Codex sends file edits as `apply_patch` (also matched by `Edit`), with the
+# patch text in `tool_input.command`; check_tool_call() reads only its headers.
+CODEX_HOOK_MATCHER = "^(Bash|apply_patch|mcp__.*)$"
+PATCH_FILE_HEADER = re.compile(r"^\*\*\* (?:Add|Update|Delete) File: (.+?)\s*$", re.MULTILINE)
 HOOK_STATUS = "Checking for secret reads"
 
 DOTENV_TEMPLATES = {"example", "sample", "template"}
@@ -286,6 +291,11 @@ def check_tool_call(tool: str, tool_input: object, cwd: Path) -> str | None:
     if not isinstance(tool_input, dict):
         return None
     command = tool_input.get("command")
+    if tool == "apply_patch":
+        # The body is file content, not shell: only the file headers name paths.
+        patch = command if isinstance(command, str) else ""
+        kinds = (secret_file(path, is_path=True) for path in PATCH_FILE_HEADER.findall(patch))
+        return next((f"the patch edits {kind}" for kind in kinds if kind), None)
     if isinstance(command, list) and all(isinstance(c, str) for c in command):
         command = shlex.join(command)
     if isinstance(command, str) and (reason := check_shell(command, cwd)):

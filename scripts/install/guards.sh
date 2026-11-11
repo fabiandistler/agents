@@ -56,7 +56,7 @@ sys.path.insert(0, sys.argv[1])
 from pr_merge_guard import codex_hook_toml
 
 guard = importlib.import_module(sys.argv[2])
-print(codex_hook_toml(sys.argv[3], guard.HOOK_MATCHER, guard.HOOK_STATUS))
+print(codex_hook_toml(sys.argv[3], guard.CODEX_HOOK_MATCHER, guard.HOOK_STATUS))
 PY
 }
 

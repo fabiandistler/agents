@@ -57,6 +57,8 @@ REASON = (
 # Hook entry shared by every config writer. Both Claude Code and Codex read
 # `matcher` as a regex on the tool name; the script decides the rest.
 HOOK_MATCHER = "^(Bash|mcp__.*)$"
+# install.sh reads each guard's CODEX_HOOK_MATCHER; this guard's tools share one name set.
+CODEX_HOOK_MATCHER = HOOK_MATCHER
 HOOK_STATUS = "Checking for PR merges"
 # Identifies our entry in a settings file that cannot carry marker comments.
 HOOK_ID = "pr_merge_guard.py"
