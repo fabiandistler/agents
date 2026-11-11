@@ -9,9 +9,14 @@ recovered, kept for the pull request that holds it, or handed to a person.
 Runs for one issue are serialised by the job's concurrency group, so an
 existing branch never belongs to a live run of this workflow.
 
-Before any branch exists, two intake gates can stop the run: a ticket whose
-blockers are not done, and a run while another one is working. Both comment and
-remove `ready-for-agent`; a person adds it again, which is the only restart.
+Before any branch exists, three intake gates can stop the run: a ticket with no
+contract written by a person with write access, a ticket whose blockers are not
+done, and a run while another one is working. Each comments and removes
+`ready-for-agent`; a person adds it again, which is the only restart.
+
+The contract is what the run builds; implementer_contract.py decides whose text
+it is. The script writes it to --contract, so the run works from a file fixed
+at claim time.
 The capacity gate reads the Actions API with the job token (ACTIONS_READ_TOKEN),
 because the App token cannot be shown to have Actions read (ADR-0014).
 
@@ -31,6 +36,7 @@ from pathlib import Path
 
 from agent_run_report import FAILED_PREFIX
 from check_pr_issue_links import closing_references
+from implementer_contract import NO_CONTRACT_COMMENT, Ticket, contract_text, read_ticket
 from issue_triage_policy import READY_FOR_AGENT, READY_FOR_HUMAN
 from pr_github import PER_PAGE, get_json, paginate
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
@@ -45,12 +51,12 @@ ACTIONS_TOKEN_VARIABLE = "ACTIONS_READ_TOKEN"  # noqa: S105 -- a variable name, 
 IMPLEMENTER_WORKFLOW = "implementer.yml"
 IMPLEMENT_JOB = "implement"
 MAX_WORKING_RUNS = 1
-AGENT_BRIEF_PREFIX = "## Agent Brief"
 
 CLAIMED = "claimed"
 RECLAIMED = "reclaimed"
 PR_EXISTS = "pr-exists"
 NEEDS_HUMAN = "needs-human"
+NO_CONTRACT = "no-contract"
 BLOCKED = "blocked"
 AT_CAPACITY = "at-capacity"
 FAILED = "failed"
@@ -62,6 +68,7 @@ EXIT_PR_EXISTS = 3
 EXIT_NEEDS_HUMAN = 4
 EXIT_BLOCKED = 5
 EXIT_AT_CAPACITY = 6
+EXIT_NO_CONTRACT = 7
 EXIT_CODES = {
     CLAIMED: EXIT_CONTINUE,
     RECLAIMED: EXIT_CONTINUE,
@@ -69,6 +76,7 @@ EXIT_CODES = {
     NEEDS_HUMAN: EXIT_NEEDS_HUMAN,
     BLOCKED: EXIT_BLOCKED,
     AT_CAPACITY: EXIT_AT_CAPACITY,
+    NO_CONTRACT: EXIT_NO_CONTRACT,
 }
 
 HANDOFF_COMMENT = """\
@@ -103,6 +111,7 @@ has ended: no run starts on its own.
 
 HELP_EPILOG = """\
 stdout: JSON with outcome, branch, pull_request, blockers, unresolved_blockers ("reason" if failed).
+--contract: written on claimed and reclaimed only; the text the run builds.
 outcomes and exit codes:
   0 claimed      branch created at main
   0 reclaimed    branch existed with no commits of its own; moved to main
@@ -110,12 +119,14 @@ outcomes and exit codes:
   4 needs-human  branch has commits and no open PR; commented and set ready-for-human
   5 blocked      a declared blocker is not closed as completed; commented, removed the label
   6 at-capacity  another implementer run is working; commented, removed the label
+  7 no-contract  no contract by a person with write access; commented, removed the label
   1 failed       any other API error; wrote "RUN FAILED: claim (<reason>)" to --summary
   2              usage error
 env: GH_TOKEN (the App token inside claude-code-action), ACTIONS_READ_TOKEN, GITHUB_RUN_ID.
 
 examples:
-  implementer_claim.py --repo owner/repo --issue 42 --summary "$RUNNER_TEMP/run-summary.md"
+  implementer_claim.py --repo owner/repo --issue 42 --summary "$RUNNER_TEMP/run-summary.md" \\
+      --contract "$RUNNER_TEMP/contract.md"
   implementer_claim.py --help
 """
 
@@ -127,6 +138,8 @@ class ClaimOutcome:
     pull_request: int | None = None
     blockers: tuple[int, ...] = ()
     unresolved_blockers: int = 0
+    # The text the run builds; main() writes it to --contract and keeps it off stdout.
+    contract: str | None = None
 
 
 def _read_ref_sha(client: GitHubClient, repo: str, branch: str) -> str:
@@ -200,29 +213,6 @@ def _release_ticket(client: GitHubClient, repo: str, issue: int, comment: str) -
         _remove_ready_label(client, issue_path)
 
 
-def _contract_texts(client: GitHubClient, repo: str, issue: int) -> list[str]:
-    """The issue body and, as in the prompt's contract step, the latest Agent Brief.
-
-    Both count, so a brief written later cannot erase a blocker the body declares.
-    """
-    issue_path = f"/repos/{repo}/issues/{issue}"
-    ticket = get_json(client, issue_path)
-    if not isinstance(ticket, dict) or "body" not in ticket:
-        raise FetchError(f"GitHub API returned a malformed issue for {issue_path}")
-    # GitHub sends a null body for an issue without a description.
-    body = ticket["body"] or ""
-    if not isinstance(body, str):
-        raise FetchError(f"GitHub API returned a malformed issue for {issue_path}")
-    briefs: list[str] = []
-    for comment in paginate(client, f"{issue_path}/comments"):
-        text = comment.get("body") if isinstance(comment, dict) else None
-        if not isinstance(text, str):
-            raise FetchError(f"GitHub API returned a malformed comment for {issue_path}")
-        if text.startswith(AGENT_BRIEF_PREFIX):
-            briefs.append(text)
-    return [body, *briefs[-1:]]
-
-
 def _closed_as_completed(issue: object, path: str) -> bool:
     """Only a completed issue counts: not planned still blocks, and a PR has no such state."""
     if not isinstance(issue, dict) or not isinstance(issue.get("state"), str):
@@ -253,17 +243,21 @@ def _declared_blocker_blocks(client: GitHubClient, repo: str, number: int) -> bo
     return not (_closed_as_completed(blocker, path) and _belongs_to_repo(blocker, repo, path))
 
 
-def _find_blockers(client: GitHubClient, repo: str, issue: int) -> tuple[tuple[int, ...], int]:
+def _find_blockers(
+    client: GitHubClient, repo: str, issue: int, ticket: Ticket
+) -> tuple[tuple[int, ...], int]:
     """Blocking issue numbers, and the blockers that cannot be named as one here.
 
-    The contract's text and the native dependency edges both count: the ticket
-    skills omit the "Blocked by" section when they set native edges. The edge
-    list, unlike the issue's dependency summary, also returns closed blockers,
-    so one closed as not planned is seen.
+    The issue body, the latest trusted brief and the native dependency edges all
+    count: the ticket skills omit the "Blocked by" section when they set native
+    edges, and a brief written later cannot erase a blocker the body declares.
+    The body counts whoever wrote it, because a blocker can only stop a run. The
+    edge list, unlike the issue's dependency summary, also returns closed
+    blockers, so one closed as not planned is seen.
     """
     declared_numbers: set[int] = set()
     unresolved = 0
-    for text in _contract_texts(client, repo, issue):
+    for text in (ticket.body, ticket.brief or ""):
         declared = declared_blockers(text, repo)
         declared_numbers |= declared.numbers
         unresolved += declared.unresolved
@@ -366,7 +360,12 @@ def claim_branch(
     if holding_pull_request is not None:
         return ClaimOutcome(PR_EXISTS, branch, holding_pull_request)
 
-    blockers, unresolved = _find_blockers(client, repo, issue)
+    ticket = read_ticket(client, repo, issue)
+    contract = contract_text(ticket, issue)
+    if contract is None:
+        _release_ticket(client, repo, issue, NO_CONTRACT_COMMENT)
+        return ClaimOutcome(NO_CONTRACT, branch)
+    blockers, unresolved = _find_blockers(client, repo, issue, ticket)
     if blockers or unresolved:
         _release_ticket(client, repo, issue, _blocked_comment(blockers, unresolved))
         return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
@@ -388,7 +387,7 @@ def claim_branch(
                 raise create_error from read_error
             raise
     else:
-        return ClaimOutcome(CLAIMED, branch)
+        return ClaimOutcome(CLAIMED, branch, contract=contract)
 
     if _commits_ahead(client, repo, main_sha, branch_sha) > 0:
         _hand_to_person(client, repo, issue, branch)
@@ -396,7 +395,7 @@ def claim_branch(
     if branch_sha != main_sha:
         # Zero commits ahead makes this a fast-forward; force stays off regardless.
         client.patch(f"/repos/{repo}/git/refs/heads/{branch}", {"sha": main_sha, "force": False})
-    return ClaimOutcome(RECLAIMED, branch)
+    return ClaimOutcome(RECLAIMED, branch, contract=contract)
 
 
 def _required_token(variable: str) -> str:
@@ -436,6 +435,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--summary", required=True, type=Path, help="run summary file; written only on failure"
     )
+    parser.add_argument(
+        "--contract", required=True, type=Path, help="contract file; written when the run continues"
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -447,7 +449,11 @@ def main(argv: list[str] | None = None) -> int:
         args.summary.write_text(f"{FAILED_PREFIX}: claim ({reason})\n", encoding="utf-8")
         print(json.dumps({"outcome": FAILED, "reason": reason}))
         return EXIT_FAILED
-    print(json.dumps(asdict(claim)))
+    report = asdict(claim)
+    contract = report.pop("contract")
+    if contract is not None:
+        args.contract.write_text(contract, encoding="utf-8")
+    print(json.dumps(report))
     return EXIT_CODES[claim.outcome]
 
 
