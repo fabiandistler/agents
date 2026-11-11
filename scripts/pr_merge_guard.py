@@ -84,7 +84,11 @@ WRAPPERS = {
 WRAPPER_VALUE_FLAGS = {"-u", "-g", "-C", "-I", "-n", "-P", "-L", "-s", "-E", "-d", "-k"}
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
-SHELL_READS_STDIN = re.compile(r"^\s*(?:sudo\s+)?(?:\S*/)?(?:ba|z|da|k)?sh(?:\s+-s)?\s*$")
+# A shell with options only (`bash`, `bash -s`, `bash -euo pipefail`) runs its stdin.
+SHELL_READS_STDIN = re.compile(
+    r"^\s*(?:sudo\s+)?(?:\S*/)?(?:ba|z|da|k)?sh"
+    r"(?:\s+(?:[-+][A-Za-z]*[oO]\s+[a-z_]+|[-+][A-Za-z]+|--[a-z-]+))*\s*$"
+)
 PIPED_TO_SHELL = re.compile(r"\|\s*(?:sudo\s+)?(?:\S*/)?(?:ba|z|da|k)?sh\b")
 GH_VALUE_FLAGS = {"-R", "--repo", "--hostname"}
 GH_API_VALUE_FLAGS = {
@@ -102,10 +106,84 @@ class UsageError(argparse.ArgumentParser):
         sys.exit(EXIT_USAGE)
 
 
+# Characters after which a `#` starts a word, and so a comment.
+WORD_BREAKS = set(" \t\r\n;&|()<>`")
+# Shell long options that take a value (`bash --rcfile file -c ...`).
+SHELL_VALUE_OPTIONS = {"--rcfile", "--init-file"}
+
+
+def strip_comments_and_continuations(command: str) -> str:
+    """Shell text without comments and backslash-newline pairs, as bash reads it.
+
+    A `#` starts a comment only at the start of a word (`${#x}`, `$#` and a URL
+    fragment are not comments), runs to the end of the line and keeps the
+    newline that separates commands. A backslash-newline joins two lines
+    outside single quotes. Quotes are tracked so that neither rule applies
+    inside a quoted string; an unbalanced quote is left for the lexer to reject.
+    """
+    out: list[str] = []
+    quote = ""
+    i = 0
+    while i < len(command):
+        char = command[i]
+        if quote == "'":
+            out.append(char)
+            quote = "" if char == "'" else quote
+        elif char == "\\" and i + 1 < len(command):
+            if command[i + 1] != "\n":
+                out.append(command[i : i + 2])
+            i += 2
+            continue
+        elif quote == '"':
+            out.append(char)
+            quote = "" if char == '"' else quote
+        elif char in "'\"":
+            out.append(char)
+            quote = char
+        elif char == "#" and (not out or out[-1][-1] in WORD_BREAKS):
+            end = command.find("\n", i)
+            i = len(command) if end < 0 else end
+            continue
+        else:
+            out.append(char)
+        i += 1
+    return "".join(out)
+
+
+def shell_script(args: list[str]) -> str | None:
+    """The script a shell runs from `-c`, also in combined flags (`-lc`, `-euc`).
+
+    Returns None when the shell reads a file or stdin instead.
+    """
+    takes_script = False
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            i += 1
+            break
+        if arg in SHELL_VALUE_OPTIONS:
+            i += 2
+        elif arg.startswith("--"):
+            i += 1
+        elif len(arg) > 1 and arg[0] in "-+" and arg[1:].isalpha():
+            takes_script = takes_script or (arg[0] == "-" and "c" in arg)
+            # `-o pipefail`, `-O extglob`: the option name follows.
+            i += 1 + sum(arg[1:].count(f) for f in "oO")
+        else:
+            break
+    return args[i] if takes_script and i < len(args) else None
+
+
 def split_simple_commands(command: str) -> list[list[str]]:
     """Tokenize shell text and split it at control operators and substitutions."""
-    lexer = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n`")
+    lexer = shlex.shlex(
+        strip_comments_and_continuations(command),
+        posix=True,
+        punctuation_chars="();<>|&\n`",
+    )
     lexer.whitespace = " \t\r"
+    lexer.commenters = ""
     lexer.whitespace_split = True
     commands: list[list[str]] = [[]]
     for token in lexer:
@@ -214,8 +292,8 @@ def check_argv(argv: list[str], raw: str, cwd: Path, depth: int) -> str | None:
     if not argv:
         return None
     program, args = Path(argv[0]).name, argv[1:]
-    if program in SHELLS and "-c" in args and args.index("-c") + 1 < len(args):
-        return check_shell(args[args.index("-c") + 1], cwd, depth + 1)
+    if program in SHELLS and (script := shell_script(args)) is not None:
+        return check_shell(script, cwd, depth + 1)
     if program == "eval":
         return check_shell(" ".join(args), cwd, depth + 1)
     if program == "gh":

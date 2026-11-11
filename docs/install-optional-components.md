@@ -120,6 +120,11 @@ Limits:
 - Hooks are a guardrail, not a security boundary. A command the parser does not
   recognize (a `gh` alias, a script file that calls `gh pr merge`) gets
   through. A required status check on `main` is still the backstop.
+- The parser reads comments (`#` at the start of a word), backslash-newline
+  continuations and combined shell flags (`bash -lc`, `bash -euo pipefail <<EOF`)
+  as bash does. It still takes a `<<WORD` inside quotes or a comment for a
+  heredoc and skips the lines up to `WORD`, and it stops checking after three
+  levels of nested `bash -c`/`eval`.
 
 ## Secret read guard (`--secret-guard`)
 
@@ -168,4 +173,6 @@ The table above applies with `secret-guard`, `secret-read-guard.js` and the
 accident, it does not sandbox a determined agent. `echo $TOKEN`, a script or
 `python -c` that opens `.env`, or `grep -r TOKEN .` get through. So do a bare
 `cat *` next to a `secrets.env` and a glob in a directory name
-(`cat ~/.config/*/rclone.conf`).
+(`cat ~/.config/*/rclone.conf`). A shell word with whitespace counts as prose,
+not a path, so `git commit -m 'never commit .env'` passes and so does
+`cat "My Project/.env"`; a file tool's path with spaces is blocked.

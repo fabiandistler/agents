@@ -103,6 +103,11 @@ BLOCKED_COMMANDS = [
     "cat .npmrc",
     "kubectl --kubeconfig ~/.kube/config get pods",
     "kubectl --kubeconfig=/home/me/.kube/config get pods",
+    "ls -la # list\ncat .env",
+    "n=${#FILES[@]}; cat .env",
+    "bash -lc 'cat .env'",
+    "bash -euo pipefail <<'EOF'\ncat .env\nEOF",
+    "cat \\\n  .env",
 ]
 
 ALLOWED_COMMANDS = [
@@ -160,6 +165,8 @@ ALLOWED_COMMANDS = [
     "find ~ -name '*.env'",
     "ls ~/.pyicloud",
     "cat ~/.gemini/settings.json",
+    "ls -la # then cat .env",
+    "git commit -m 'docs: never commit .env # really'",
 ]
 
 BLOCKED_TOOLS = [
@@ -181,6 +188,9 @@ BLOCKED_TOOLS = [
     ("claude", {"tool_name": "Grep", "tool_input": {"pattern": "KEY", "glob": "*.env"}}),
     ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/home/me/.pyicloud/me.session"}}),
     ("opencode", {"tool": "read", "args": {"filePath": "/home/me/.claude.json.backup"}}),
+    # File-tool inputs are paths, whitespace included.
+    ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/home/me/My Project/.env"}}),
+    ("opencode", {"tool": "read", "args": {"filePath": "/home/me/My Project/.ssh/id_rsa"}}),
 ]
 
 ALLOWED_TOOLS = [
