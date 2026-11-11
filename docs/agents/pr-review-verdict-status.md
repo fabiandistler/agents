@@ -69,3 +69,5 @@ in this order:
    source.
 3. Push to, or dispatch with `"dry_run": "false"` for, each pull request that
    is still open; until then it has no status on its head and waits.
+
+Inspect the ruleset with `gh api repos/fabiandistler/agents/rulesets`.

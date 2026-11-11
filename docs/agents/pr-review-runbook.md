@@ -18,12 +18,12 @@ Related pages:
 - [Acceptance record](pr-review-acceptance.md)
 - [Linked issues in the review payload](pr-review-linked-issues.md)
 - [Verdict status](pr-review-verdict-status.md)
+- [Event policy for `pull_request_target`](pr-review-event-policy.md)
 
 ## Contents
 
 - [Jobs and security model](#jobs-and-security-model)
 - [Auto-merge](#auto-merge)
-- [Verdict status](#verdict-status)
 - [Setup](#setup)
 - [Rollout](#rollout)
 - [Dry run](#dry-run)
@@ -39,14 +39,16 @@ Related pages:
 
 The workflow triggers on `pull_request_target` (`opened`, `synchronize`,
 `reopened`, `ready_for_review`, `labeled`) and on a manual `workflow_dispatch`
-with a pull request number and `dry_run` (default `true`).
+with a pull request number and `dry_run` (default `true`). From 2026-12-02
+the `pull_request_target` trigger runs only with the event policy of
+[setup step 8](#setup).
 
 | Job | Permissions and secrets | Does |
 | --- | --- | --- |
 | `hold` | write: contents, pull-requests, issues; no model token | On a push, disables the bot's auto-merge; when `do-not-merge` is added, disables any auto-merge. Never enables. |
 | `assess` | read: contents, pull-requests, issues | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies it. |
 | `review` | `contents: read`; `CLAUDE_CODE_OAUTH_TOKEN` | Installs a pinned Claude Code CLI; `pr_review.py` sanitizes and caps the input, runs `claude -p` without tools, parses the verdict. |
-| `publish` | write: contents, pull-requests, issues, statuses; no model token | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes, ending with the [`pr-review/verdict` status](#verdict-status). |
+| `publish` | write: contents, pull-requests, issues, statuses; no model token | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes, then sets [`pr-review/verdict`](pr-review-verdict-status.md). |
 
 - **Base code only.** `pull_request_target` runs the workflow file and scripts
   from the default branch. No job checks out or executes the pull request
@@ -98,9 +100,8 @@ data:
 - no human review requests changes, and `do-not-merge` is absent.
 
 The required checks are not a gate in the script (decision A). The default
-ruleset requires `checks`, `bats`, `mermaid`, `secrets` and
-`pr-review/verdict`; native auto-merge waits for them and merges only when
-they pass. Pending checks never disable the bot's auto-merge; a failing check
+ruleset requires the five checks of [setup step 6](#setup); native auto-merge
+waits for them and merges only when they pass. Pending checks never disable the bot's auto-merge; a failing check
 simply blocks the merge.
 
 The write is GitHub's GraphQL `enablePullRequestAutoMerge` with merge method
@@ -131,13 +132,6 @@ never merges directly.
 `site/`, which are never low risk, so the site is unaffected. CI on `main`
 runs again with the next human push.
 
-## Verdict status
-
-`publish` ends by setting the commit status `pr-review/verdict` on the
-reviewed head, green for any verdict: merges wait for the review, which stays
-advisory. States and escapes:
-[pr-review-verdict-status.md](pr-review-verdict-status.md).
-
 ## Setup
 
 All settings live under the repository's **Settings** tab.
@@ -165,15 +159,17 @@ All settings live under the repository's **Settings** tab.
    `gh api repos/fabiandistler/agents --jq '{allow_auto_merge, delete_branch_on_merge}'`.
 6. **Ruleset (one-time, manual).** *Rules → Rulesets → `default` → Require
    status checks to pass*: require `checks`, `bats`, `mermaid`, `secrets` and
-   `pr-review/verdict` from GitHub Actions. On 2026-11-11 it required
-   `checks`, `mermaid` and `secrets`; add `bats`, and `pr-review/verdict` in
-   [this order](pr-review-verdict-status.md#adding-it-to-the-ruleset).
-   Inspect with
-   `gh api repos/fabiandistler/agents/rulesets`.
+   `pr-review/verdict` from GitHub Actions; add the last
+   [in this order](pr-review-verdict-status.md#adding-it-to-the-ruleset).
 7. **Actions policy.** *Actions → General*: Actions enabled, and the
    allowed-actions policy permits `actions/checkout`, `actions/setup-python`,
    `actions/upload-artifact` and `actions/download-artifact` (all pinned to
    commit SHAs).
+8. **Event policy (one-time, manual).** *Actions → Policies*: an active
+   policy that allows `pull_request_target` and `workflow_dispatch` for
+   `.github/workflows/pr-review.yml` only. From 2026-12-02 GitHub blocks
+   `pull_request_target` in public repositories without one. Steps, check
+   and sources: [pr-review-event-policy.md](pr-review-event-policy.md).
 
 Nothing runs before the workflow is on the default branch: a dispatch needs
 the file there, and `pull_request_target` reads it from there.
@@ -297,9 +293,8 @@ and framing: [pr-review-linked-issues.md](pr-review-linked-issues.md).
   `gh run rerun <run-id>`. A re-run uses the original run's commit. Use
   `--failed` only for a red job: a `review:unavailable` run is green, so
   `--failed` does not retry it.
-- **No verdict on the head** (`pr-review/verdict` missing, `error` or
-  waiting): dispatch with `"dry_run": "false"`; see
-  [verdict status](#verdict-status).
+- **No verdict on the head:** dispatch with `"dry_run": "false"`
+  ([verdict status](pr-review-verdict-status.md)).
 - **A new push** always triggers a fresh assessment and review.
 
 ## Model change
@@ -349,7 +344,7 @@ pin loses its exact version.
 ## Disable and roll back
 
 Before a step that stops reviews, remove `pr-review/verdict` from the
-ruleset, or every merge waits for a verdict that never comes.
+ruleset, or merges wait.
 
 - **Stop auto-merge:** delete `PR_AUTO_MERGE` or set it to `false`. The next
   run per pull request disables the bot's own auto-merge. To stop one pull
