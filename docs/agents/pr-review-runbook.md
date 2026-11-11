@@ -24,6 +24,7 @@ Related pages:
 - [Setup](#setup)
 - [Rollout](#rollout)
 - [Dry run](#dry-run)
+- [Standards for another repository](#standards-for-another-repository)
 - [Manual re-run](#manual-re-run)
 - [Model change](#model-change)
 - [Quota and cost](#quota-and-cost)
@@ -224,6 +225,46 @@ fresh data and plans exactly what a write run would, then writes nothing.
 - the run summary under **PR review decision** shows the risk, the verdict,
   the auto-merge state and the planned labels;
 - the pull request has no new labels or comments.
+
+## Standards for another repository
+
+An operator who runs the review scripts for another repository can pass that
+repository's coding standards with `pr_review.py --standards FILE`. The bundled
+prompt describes no kind of repository; the file can. Its text goes verbatim
+into the system prompt, after the bundled prompt, under the heading
+`## Repository standards` and one fixed sentence that keeps the untrusted-input
+rules and the output format in force. It never enters the payload, and its
+bytes come out of the 300,000-byte total budget, so a long file can cut the
+payload (the review is then marked partial). This repository's own workflow
+passes no standards file.
+
+- **One file, from the runner.** The file must come from the runner: a base
+  checkout or an installed copy, never from the pull request head, which the
+  pull request author controls. The script reads only the path given on the
+  command line; nothing in the context names a file.
+- **Pointers are not resolved.** The review call has no tools, so a line in
+  the file that only points to another file (such as
+  `instructions/70-code-review-conventions.md`, which points to
+  `~/.agents/instructions/70-code-review-conventions.md`) cannot be followed.
+  Concatenate the always-on and on-demand fragments you want, the code-review
+  conventions in particular, into the one file.
+- **Cap and failures.** The file must be valid UTF-8 without NUL bytes, not
+  empty or whitespace-only, and at most 65,536 bytes. Any other file (or a
+  missing or unreadable one) stops the run with exit 3 and one stderr line
+  naming `--standards` and the reason, before any model call and without an
+  artifact. A larger file is refused, not truncated: silently dropped rules
+  would read as a clean review.
+- **The model-free reconstruction needs no `--standards`.** When the review
+  job was skipped, the publish job runs `pr_review.py --context` without the
+  model token. That yields `skipped` for a draft or fork and `unavailable`
+  otherwise; standards cannot change either outcome.
+
+```bash
+python3 "$scripts/pr_review.py" --context context.json \
+  --standards standards.md --dry-run --output request.json
+```
+
+`--dry-run` reports `system_bytes` including the standards text.
 
 ## Manual re-run
 

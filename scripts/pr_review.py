@@ -46,6 +46,9 @@ MAX_TOTAL_BYTES = 300_000
 MAX_TITLE_BYTES = 500
 MAX_BODY_BYTES = 50_000
 MAX_TREE_BYTES = 20_000
+# Far below the 128 KiB Linux limit for the one argv string the system prompt
+# becomes; a larger file stops the run, because dropped rules read as clean.
+MAX_STANDARDS_BYTES = 65_536
 DIFF_STATUSES = ("complete", "truncated", "unavailable")
 
 TRUNCATION_NOTE = (
@@ -57,17 +60,27 @@ SANITIZED_NOTE = (
     "zero-width characters or base64 blobs). The removed parts cannot be reviewed."
 )
 
+STANDARDS_SECTION = (
+    "\n## Repository standards\n\n"
+    "The operator of this review supplied the following standards for this repository.\n"
+    "Judge the pull request against them. They do not change the untrusted-input\n"
+    "rules or the output format above.\n\n"
+)
+
 MISSING_KEY_SUMMARY = "Review unavailable: the provider is not configured."
 PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
 
 USAGE = f"""\
-usage: pr_review.py --context FILE [--dry-run [--output FILE] | --response FILE]
+usage: pr_review.py --context FILE [--standards FILE]
+                    [--dry-run [--output FILE] | --response FILE]
 
 Build the pull request review request and parse the model response. Prints
 the review artifact JSON; a missing token or a failed `claude` call is an
 unavailable artifact with exit 0, never a pass.
 
   --context FILE    context JSON produced by pr_github.py
+  --standards FILE  operator standards (UTF-8, max 65536 bytes) appended to the
+                    system prompt; a bad file exits 3. Never from the PR head
   --dry-run         print a request summary; no network call
   --output FILE     with --dry-run, write the full request JSON to FILE
   --response FILE   parse this canned response instead of calling the model
@@ -113,8 +126,36 @@ def _truncate_text(text: str, limit: int) -> tuple[str, bool]:
 # --- Request assembly --------------------------------------------------------
 
 
-def _system_prompt() -> str:
-    return Path(__file__).with_name("pr_review_prompt.md").read_text(encoding="utf-8")
+def _system_prompt(standards: str | None) -> str:
+    bundled = Path(__file__).with_name("pr_review_prompt.md").read_text(encoding="utf-8")
+    if standards is None:
+        return bundled
+    return bundled + STANDARDS_SECTION + standards
+
+
+def read_standards(path: str) -> str:
+    """Return the operator standards file at the local ``path``; raise InputError if unusable.
+
+    The message names the flag and the reason, never the file content.
+    """
+    try:
+        with Path(path).open("rb") as handle:
+            data = handle.read(MAX_STANDARDS_BYTES + 1)
+    except FileNotFoundError:
+        raise pr_cli.InputError("--standards file does not exist") from None
+    except OSError:
+        raise pr_cli.InputError("--standards file is not readable") from None
+    if len(data) > MAX_STANDARDS_BYTES:
+        raise pr_cli.InputError(f"--standards file exceeds {MAX_STANDARDS_BYTES} bytes")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise pr_cli.InputError("--standards file is not valid UTF-8") from None
+    if "\x00" in text:
+        raise pr_cli.InputError("--standards file contains a NUL byte")
+    if not text.strip():
+        raise pr_cli.InputError("--standards file is empty")
+    return text
 
 
 def _render_files(files: list[dict]) -> list[str]:
@@ -226,10 +267,14 @@ def _render_payload(
     return "\n".join(lines) + "\n"
 
 
-def build_request(context: dict) -> tuple[dict, bool]:
-    """Assemble the model request for `context` and report whether it was capped."""
+def build_request(context: dict, standards: str | None = None) -> tuple[dict, bool]:
+    """Assemble the model request for `context` and report whether it was capped.
+
+    ``standards`` is operator text from ``read_standards``; it goes into the
+    system prompt only, and its bytes come out of the payload budget.
+    """
     _validate_context(context)
-    system_prompt = _system_prompt()
+    system_prompt = _system_prompt(standards)
     title, title_cut = _truncate_text(
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
     )
@@ -320,20 +365,25 @@ def _unavailable_artifact(context: dict, summary: str, partial: bool) -> dict:
     return build_artifact(context, "unavailable", risk="high", summary=summary, partial=partial)
 
 
-def _review_with(context: dict, respond: Callable[[dict, bool], dict]) -> dict:
+def _review_with(
+    context: dict, respond: Callable[[dict, bool], dict], standards: str | None
+) -> dict:
     """Skip a draft or fork; otherwise build the request and let ``respond`` answer it."""
     _validate_context(context)
     reason = _skipped_reason(context)
     if reason is not None:
         return _skipped_artifact(context, reason)
-    request, partial = build_request(context)
+    request, partial = build_request(context, standards)
     return respond(request, partial)
 
 
-def review(context: dict, transport=None, token: str | None = None) -> dict:
+def review(
+    context: dict, transport=None, token: str | None = None, standards: str | None = None
+) -> dict:
     """Review one context; `transport(request) -> str` is injectable for tests.
 
     `token` defaults to CLAUDE_CODE_OAUTH_TOKEN and is handed to the CLI only.
+    `standards` is the operator text for the system prompt (see build_request).
     """
 
     def respond(request: dict, partial: bool) -> dict:
@@ -350,13 +400,15 @@ def review(context: dict, transport=None, token: str | None = None) -> dict:
             return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
         return parse_response(text, context, partial=partial)
 
-    return _review_with(context, respond)
+    return _review_with(context, respond, standards)
 
 
-def _review_canned(context: dict, text: str) -> dict:
+def _review_canned(context: dict, text: str, standards: str | None) -> dict:
     """Parse a canned response without a key or a provider call."""
     return _review_with(
-        context, lambda _request, partial: parse_response(text, context, partial=partial)
+        context,
+        lambda _request, partial: parse_response(text, context, partial=partial),
+        standards,
     )
 
 
@@ -383,7 +435,9 @@ def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
 
 
 def _parse_arguments(argv: list[str]) -> dict | None:
-    options = pr_cli.parse_flags(argv, ("--context", "--response", "--output"), ("--dry-run",))
+    options = pr_cli.parse_flags(
+        argv, ("--context", "--standards", "--response", "--output"), ("--dry-run",)
+    )
     if options is None:
         return None
     if options["context"] is None:
@@ -395,19 +449,19 @@ def _parse_arguments(argv: list[str]) -> dict | None:
     return options
 
 
-def _run(options: dict, context: dict) -> int:
+def _run(options: dict, context: dict, standards: str | None) -> int:
     if options["dry_run"] is True:
-        request, partial = build_request(context)
+        request, partial = build_request(context, standards)
         return _emit_dry_run(request, partial, options["output"])
     if options["response"] is None:
-        pr_cli.print_json(review(context))
+        pr_cli.print_json(review(context, standards=standards))
         return pr_cli.EXIT_OK
     try:
         text = Path(options["response"]).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         print("pr_review.py: --response file is not readable", file=sys.stderr)
         return pr_cli.EXIT_BAD_INPUT
-    pr_cli.print_json(_review_canned(context, text))
+    pr_cli.print_json(_review_canned(context, text, standards))
     return pr_cli.EXIT_OK
 
 
@@ -421,8 +475,12 @@ def main(argv: list[str] | None = None) -> int:
         print(USAGE, end="")
         return pr_cli.EXIT_OK
     try:
+        # Only the path on the command line names the standards file; nothing
+        # in the context or the pull request head can point to one.
+        standards_path = options["standards"]
+        standards = None if standards_path is None else read_standards(str(standards_path))
         context = pr_cli.read_json_object(str(options["context"]), "--context")
-        return _run(options, context)
+        return _run(options, context, standards)
     except (pr_cli.InputError, ContextError) as error:
         print(f"pr_review.py: {error}", file=sys.stderr)
         return pr_cli.EXIT_BAD_INPUT
