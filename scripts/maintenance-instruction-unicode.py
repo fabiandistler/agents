@@ -13,6 +13,10 @@ read through, so its target's content is checked under the link's path:
 - .mcp.json and .github/copilot-instructions.md
 - under .claude/, instructions/ and .cursor/rules/: files ending in .md, .mdc, .txt, .json,
   .yaml or .yml (a logo or a script there is not read)
+- each FILE given with --include, a path from the repo root as `git ls-files` prints it: a
+  repo's own instruction file outside these paths, such as a routine prompt. A FILE that is
+  not tracked is a finding, `path: not a tracked file`, so a moved file does not drop out
+  of the check unnoticed. Without --include only the paths above are read.
 
 Always blocked: U+00AD, U+115F, U+1160, U+180E, U+3164, U+200B, U+200C, U+200E, U+200F,
 U+202A..U+202E, U+2060..U+2064, U+2066..U+2069, U+FE00..U+FE0D, U+E0100..U+E01EF, the tag
@@ -43,10 +47,11 @@ Plugin-wide exit code table: "## Exit codes" in plugins/repo-maintenance/README.
 (repo fabiandistler/repo-maintenance).
 
 Source: issue fabiandistler/repo-maintenance#127, after the CSA research note on
-instruction-file poisoning (2026-10-27).
+instruction-file poisoning (2026-10-27); --include: #138.
 Part of: plugin `repo-maintenance`; run by the `instruction-unicode` job of maintenance-gate.
 
-Usage:   scripts/maintenance-instruction-unicode.py   (anywhere in the work tree)
+Usage:   scripts/maintenance-instruction-unicode.py [--include FILE]...
+         (anywhere in the work tree)
 """
 
 from __future__ import annotations
@@ -184,9 +189,17 @@ def git(*args: str, cwd: Path | None) -> subprocess.CompletedProcess[bytes]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    ).parse_args(argv)
+    )
+    parser.add_argument(
+        "--include",
+        action="append",
+        default=[],
+        metavar="FILE",
+        help="also check FILE, a path from the repo root; repeatable",
+    )
+    args = parser.parse_args(argv)
     try:
         toplevel = git("rev-parse", "--show-toplevel", cwd=None)
     except FileNotFoundError:
@@ -201,10 +214,14 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(tracked.stderr.decode(errors="replace"))
         return 3
     paths = [os.fsdecode(p) for p in tracked.stdout.split(b"\0") if p]
+    included = dict.fromkeys(args.include)  # ordered, without repeats
+    untracked = included.keys() - set(paths)
     findings = [
+        f"{path}: not a tracked file" for path in included if path in untracked
+    ] + [
         finding
         for path in paths
-        if is_instruction_file(path)
+        if is_instruction_file(path) or path in included
         for finding in file_findings(root, path)
     ]
     for finding in findings:

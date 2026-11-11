@@ -221,3 +221,38 @@ fix: $bare_python -m pip install -r scripts/check_all.requirements.txt"
   assert_success
   assert_equal "$(cat "$runner_args")" "test/"
 }
+
+# A tracked repo with the instruction-unicode check and the files its --include
+# list names; $1 is written into the skill reference and the review prompt.
+make_unicode_checkout() {
+  make_bare_checkout
+  cp "$REPO_ROOT/scripts/maintenance-instruction-unicode.py" "$bare_checkout/scripts/"
+  mkdir -p "$bare_checkout/skills/demo/references" "$bare_checkout/skills/demo/agents"
+  printf '# Demo\n' >"$bare_checkout/skills/demo/SKILL.md"
+  printf 'interface:\n  display_name: Demo\n' >"$bare_checkout/skills/demo/agents/openai.yaml"
+  printf 'Step one%s.\n' "$1" >"$bare_checkout/skills/demo/references/steps.md"
+  printf 'Review%s the diff.\n' "$1" >"$bare_checkout/scripts/pr_review_prompt.md"
+  printf 'Triage the issue.\n' >"$bare_checkout/scripts/issue_triage_prompt.md"
+  printf '# Maintenance\n' >"$bare_checkout/MAINTENANCE.md"
+  git -C "$bare_checkout" init -q
+  git -C "$bare_checkout" add -A
+}
+
+@test "instruction-unicode checks skill references and the Actions agents' prompts" {
+  # U+200B, U+202E and a tag character (U+E0041) in files outside the check's
+  # default list (issue #772).
+  make_unicode_checkout $'\xe2\x80\x8b\xe2\x80\xae\xf3\xa0\x81\x81'
+  run "$bare_checkout/scripts/check_all.sh" --only instruction-unicode --tail 40
+  assert_failure 1
+  assert_line --partial 'FAIL instruction-unicode'
+  assert_output --partial 'skills/demo/references/steps.md'
+  assert_output --partial 'scripts/pr_review_prompt.md'
+  refute_output --partial 'issue_triage_prompt.md'
+}
+
+@test "instruction-unicode passes the same files without invisible characters" {
+  make_unicode_checkout ''
+  run "$bare_checkout/scripts/check_all.sh" --only instruction-unicode
+  assert_success
+  assert_line --regexp '^PASS instruction-unicode \([0-9]+s\)$'
+}
