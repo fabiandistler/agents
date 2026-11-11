@@ -55,10 +55,33 @@ Adding `ready-for-agent` starts `.github/workflows/implementer.yml`
 | The branch exists with no commits of its own and no pull request holds the issue (`needs-info` exit, or a crash before the first push) | `reclaimed` | Fast-forwards the branch to `main`, then builds on it | Nobody |
 | An open or merged pull request closes the issue, or an open pull request uses the branch (the stop rule's draft) | `pr-exists` | Ends without changes | The maintainer, on that pull request |
 | The branch has commits and no open pull request (a crash after pushing, or a pull request closed unmerged) | `needs-human` | Comments naming the branch, replaces `ready-for-agent` with `ready-for-human`, ends | A person: open a pull request from the branch, or rescue what is needed, delete the branch and add `ready-for-agent` again |
-| The issue was opened by an account without write access, and no owner, member or collaborator has posted a comment starting with `## Agent Brief` | `no-contract` | Comments, removes `ready-for-agent`, ends before any branch exists | A person with write access: post the brief, then add `ready-for-agent` again |
-| A blocker in the issue body, the latest `## Agent Brief` comment by a person with write access or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository | `blocked` | Comments naming the blockers, removes `ready-for-agent`, ends before any branch exists | A person: add `ready-for-agent` again once every blocker is done, or rewrite an unresolvable entry as `#<n>` |
+| The issue was opened by an account without write access, and no owner, member or collaborator has posted a comment containing a `## Agent Brief` heading | `no-contract` | Comments, removes `ready-for-agent`, ends before any branch exists | A person with write access: post the brief, then add `ready-for-agent` again |
+| A blocker in the issue body, the latest comment by a person with write access containing a `## Agent Brief` heading, or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository (a title, another repository's issue or a pull request) | `blocked` | Comments naming the blockers, removes `ready-for-agent`, ends before any branch exists | A person: add `ready-for-agent` again once every blocker is done, or rewrite an unresolvable entry as `#<n>` or remove it once it is done |
 | Another implementer run started working first | `at-capacity` | Comments naming the capacity reason, removes `ready-for-agent`, ends before any branch exists | A person: add `ready-for-agent` again when that run has ended |
 | Any other API error | `failed` | Writes `RUN FAILED: claim (<reason>)`, so the run turns red | The maintainer reads the run; a retry is safe |
+
+The brief is the latest comment by a person with write access that has a
+`## Agent Brief` heading at the start of a line, so the AI disclaimer the triage
+skill puts first does not hide it. A trusted comment counts with its brief in a
+`<details>` block too; the triage bot's draft brief does not, because the bot's
+association is not a trusted one and the maintainer posts the brief (ADR-0013).
+A heading inside code or an HTML comment is no brief.
+
+**Decision (2026-11-11, #770): `Blocked by <URL>`.** A line starting with
+`Blocked by` followed by a GitHub URL declares a blocker, as `Blocked by #<n>`
+does, with or without a colon:
+
+- `https://github.com/<owner>/<repo>/issues/<n>` of this repository (owner and
+  name in any case) is blocker `#<n>` and is checked like it.
+- A pull request URL, of this repository or another, stays unresolved and
+  blocks: the gate's only done state is an issue closed as completed, which a
+  pull request never reaches. Counting it as `#<n>` would name a blocker that
+  can never clear.
+- An issue URL of another repository stays unresolved and blocks. The claim's
+  token cannot be shown to read other repositories, so the blocker cannot be
+  checked; ignoring it would let the run start on a ticket a person marked as
+  waiting, which is the silent fail-open this gate exists to stop. The comment
+  says so, and a person removes the line once that blocker is done.
 
 Runs for one issue share a concurrency group, so a branch that exists at claim
 time never belongs to a live run of this workflow.

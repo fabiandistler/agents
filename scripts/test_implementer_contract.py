@@ -6,8 +6,9 @@ import json
 
 import implementer_claim
 import pytest
+from test_implementer_briefs import brief
 from test_implementer_claim import ISSUE_PATH, FakeGitHub, claim, run_cli
-from test_implementer_intake_gates import assert_stopped_before_any_branch, blocker, brief
+from test_implementer_intake_gates import assert_stopped_before_any_branch, blocker
 
 
 def contract_of(fake: FakeGitHub) -> str:
@@ -18,7 +19,7 @@ def contract_of(fake: FakeGitHub) -> str:
 
 
 def outsider_brief(text: str) -> dict:
-    return {"body": f"## Agent Brief\n\n{text}", "author_association": "NONE"}
+    return brief(text, author_association="NONE")
 
 
 @pytest.mark.parametrize("association", ["NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR"])
