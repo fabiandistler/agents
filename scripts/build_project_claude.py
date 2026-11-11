@@ -8,9 +8,10 @@ Run from repo root:
 Cloud sessions (Claude Code on the web) start from a fresh clone. They do not
 install the plugins a repository enables in `.claude/settings.json`, and they
 never see `~/.claude/`. What they do load is the clone's own `.claude/skills/`,
-`.claude/agents/` and `.claude/rules/`. This script keeps those in sync with
-the catalogue, so a cloud session in this repo gets the same skills and rules
-as a local install:
+`.claude/agents/` and `.claude/rules/`, plus the plugins enabled on the
+signed-in claude.ai account, which sync in as `<name>@synced`. This script
+keeps the clone's copies in sync with the catalogue, so a cloud session in this
+repo gets the same skills and rules as a local install:
 
   1. `.claude/skills/<name>` -> `../../skills/<name>` for every top-level skill
      (routers, unrouted auto skills, command skills) whose `environments`
@@ -26,9 +27,15 @@ as a local install:
      and the `Bash(uv init*)` hook that injects the Python baseline before the
      first Python file exists. Each entry comes from its hook module, shared
      with install.sh.
+  5. A `"<name>@synced": false` entry in `enabledPlugins` for every plugin the
+     file disables under its marketplace id (`<name>@<marketplace>`). Those are
+     the plugins mirrored above; without the synced entry, an account-synced
+     copy loads next to the mirror and every mirrored skill is listed twice
+     (https://code.claude.com/docs/en/plugins/loading#plugins-synced-from-claude-ai).
 
 It owns only symlinks pointing into this repo, rule files carrying the
-`managed-by:` marker and the guard's entry in settings.json; anything else in
+`managed-by:` marker, the hook entries and the `@synced` entries in
+settings.json; anything else in
 `.claude/` (hand-written subagents and hooks, the vendored third-party skills,
 the rest of settings.json) is left alone. Reads skills.json, so run
 build_manifest.py first. Stdlib-only.
@@ -70,6 +77,10 @@ PYTHON_INIT_COMMAND = (
     'python3 "$CLAUDE_PROJECT_DIR"/scripts/python_init_context.py '
     '--baseline "$CLAUDE_PROJECT_DIR"/instructions/30-python.md'
 )
+# Plugin id origins that are not marketplaces
+# (https://code.claude.com/docs/en/plugins/loading#find-where-a-plugin-came-from).
+SYNCED_ORIGIN = "synced"
+NON_MARKETPLACE_ORIGINS = frozenset({"inline", "skills-dir", SYNCED_ORIGIN})
 
 
 def wanted_skill_links() -> dict[Path, Path]:
@@ -126,8 +137,38 @@ def wanted_rules() -> dict[Path, str]:
     return rules
 
 
+def synced_id_to_disable(plugin_id: str, enabled: object) -> str | None:
+    """The `<name>@synced` id for a plugin disabled by marketplace id, else None."""
+    name, _, origin = plugin_id.rpartition("@")
+    if enabled is False and name and origin not in NON_MARKETPLACE_ORIGINS:
+        return f"{name}@{SYNCED_ORIGIN}"
+    return None
+
+
+def with_synced_plugins_disabled(settings: dict) -> dict:
+    """Disable the account-synced copy of every plugin disabled by marketplace id.
+
+    Each `<name>@synced: false` entry follows its `<name>@<marketplace>` entry.
+    Synced entries without a disabled marketplace counterpart are left as they are.
+    """
+    plugins = settings.get("enabledPlugins")
+    if not plugins:
+        return settings
+    managed = {synced_id_to_disable(pid, on) for pid, on in plugins.items()} - {None}
+    rebuilt: dict[str, object] = {}
+    for plugin_id, enabled in plugins.items():
+        if plugin_id in managed:
+            continue
+        rebuilt[plugin_id] = enabled
+        synced_id = synced_id_to_disable(plugin_id, enabled)
+        if synced_id:
+            rebuilt[synced_id] = False
+    return {**settings, "enabledPlugins": rebuilt}
+
+
 def wanted_settings() -> str:
     settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    settings = with_synced_plugins_disabled(settings)
     settings = with_merge_guard_hook(settings, MERGE_GUARD_COMMAND)
     settings = with_python_init_hook(settings, PYTHON_INIT_COMMAND)
     return json.dumps(settings, indent=2) + "\n"
@@ -191,7 +232,7 @@ def sync(check: bool) -> list[str]:
     settings = wanted_settings()
     if SETTINGS_PATH.read_text(encoding="utf-8") != settings:
         act(
-            f"write {SETTINGS_PATH.relative_to(REPO_ROOT)} (PreToolUse hooks)",
+            f"write {SETTINGS_PATH.relative_to(REPO_ROOT)} (hooks, @synced plugin entries)",
             lambda: SETTINGS_PATH.write_text(settings, encoding="utf-8"),
         )
     return drift

@@ -1,12 +1,19 @@
 {
   "enabledPlugins": {
     "architecture@fabiandistler-agents": false,
+    "architecture@synced": false,
     "refactoring@fabiandistler-agents": false,
+    "refactoring@synced": false,
     "ai-ml@fabiandistler-agents": false,
+    "ai-ml@synced": false,
     "workflow@fabiandistler-agents": false,
+    "workflow@synced": false,
     "communication@fabiandistler-agents": false,
+    "communication@synced": false,
     "personal@fabiandistler-agents": false,
-    "mattpocock-skills@mattpocock": false
+    "personal@synced": false,
+    "mattpocock-skills@mattpocock": false,
+    "mattpocock-skills@synced": false
   },
   "hooks": {
     "SessionStart": [

@@ -9,8 +9,11 @@ this page.
 
 Claude Code cloud sessions start from a fresh clone: they never see
 `~/.claude/`, and they do not install plugins a repository enables in
-`.claude/settings.json`. So this repo commits what a cloud session in it
-should have:
+`.claude/settings.json`. They do load the plugins enabled on the signed-in
+claude.ai account, as `<name>@synced`
+([plugin loading](https://code.claude.com/docs/en/plugins/loading#plugins-synced-from-claude-ai)).
+So this repo commits what a cloud session in it should have, and keeps the
+synced copies of the mirrored plugins off:
 
 | Path | Contents | Maintained by |
 | --- | --- | --- |
@@ -18,7 +21,9 @@ should have:
 | `.claude/agents/*.md` | symlinks to the plugins' subagents, next to the repo's own two | `scripts/build_project_claude.py` |
 | `.claude/rules/agents-*.md` | `instructions/` rendered as rules; `paths:` fragments stay path-scoped, and are left out while no tracked file matches; `SKIPPED_FRAGMENTS` in the script lists fragments that never apply here | `scripts/build_project_claude.py` |
 | `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` and `software-factory` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
-| `.claude/settings.json` `PreToolUse` entries | the PR merge guard (`scripts/pr_merge_guard.py`) and the Python `Bash(uv init*)` context hook (`scripts/python_init_context.py`); the rest of the file is hand-written | `scripts/build_project_claude.py` |
+| `.claude/settings.json` `PreToolUse` entries | the PR merge guard (`scripts/pr_merge_guard.py`) and the Python `Bash(uv init*)` context hook (`scripts/python_init_context.py`) | `scripts/build_project_claude.py` |
+| `.claude/settings.json` `enabledPlugins` `<name>@synced: false` | one per plugin the file disables by marketplace id, so an account-synced copy does not list each mirrored skill a second time (#768) | `scripts/build_project_claude.py` |
+| rest of `.claude/settings.json` | the `<name>@<marketplace>: false` entries and the SessionStart hook | by hand |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
 
 ## Regenerating the mirror
@@ -56,5 +61,6 @@ glossary for designing a software factory. Upstream may change or drop
 
 Locally the same project skills would duplicate the marketplace plugins, so
 `.claude/settings.json` switches this repo's plugins (and `mattpocock-skills`)
-off for sessions inside this repo only. The vendored `code-review` shadows
+off for sessions inside this repo only, under both their marketplace id and
+their `@synced` id. The vendored `code-review` shadows
 Claude Code's built-in skill of that name in this repo.

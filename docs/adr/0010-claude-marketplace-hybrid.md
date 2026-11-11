@@ -16,6 +16,15 @@ command, so the saved install state (`--update`) delivers them too. The
 plugins still come from the marketplace; `install.sh` links nothing into
 `~/.claude`.
 
+Amended (#768): cloud sessions do get plugins — the ones enabled on the
+signed-in claude.ai account, loaded as `<name>@synced`
+([plugin loading](https://code.claude.com/docs/en/plugins/loading#plugins-synced-from-claude-ai)).
+With the cloud-session mirror that listed every mirrored skill twice, the same
+double registration this decision removed for local installs. The mirror's
+generated `.claude/settings.json` therefore also sets `"<name>@synced": false`
+for every mirrored plugin, which the documentation names as the way to keep a
+plugin out of a project in every environment.
+
 ## Context
 
 ADR-0004 gave each install surface one distribution channel and moved `claude`
@@ -58,7 +67,9 @@ what earlier versions created: our links in `~/.claude/skills` and
 `~/.claude/commands` and the merge-guard entry in `~/.claude/settings.json`.
 
 `codex` and `opencode` stay on the symlink channel through `install.sh`. The
-cloud-session mirror (`scripts/build_project_claude.py`) is unaffected.
+cloud-session mirror (`scripts/build_project_claude.py`) stays; it disables the
+mirrored plugins in this repo under both their marketplace id and their
+account-synced `@synced` id, so neither copy duplicates the mirror.
 
 ## Considered options
 
