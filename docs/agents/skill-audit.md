@@ -1,4 +1,4 @@
-# Weekly skill audit
+# Skill audit
 
 Runbook for the scheduled audit of every skill in this catalogue against its
 format, this repo's conventions, and Anthropic's skill-authoring best
@@ -27,7 +27,7 @@ Per run, at most:
    is always the *current* set of open findings; each run adds one comment
    with the delta (new, resolved). Created on the first run, reused after.
 2. **One fix PR** from `claude/skill-audit-<YYYY-MM-DD>`, only when there are
-   mechanical fixes (see step 7). No PR on a week without any.
+   mechanical fixes (see step 7). No PR on a run without any.
 
 ## Guardrails
 
@@ -44,7 +44,7 @@ Per run, at most:
 ## Procedure
 
 1. **Prepare.** From the repo root on the default branch:
-   `git fetch --shallow-since='8 days ago' origin main` (a shallow clone
+   `git fetch --shallow-since='18 days ago' origin main` (a shallow clone
    undercounts changed skills in step 3; the workflow's checkout has full
    history, so there the fetch changes nothing). Read
    `AGENTS.md`, `docs/skill-conventions.md`,
@@ -60,9 +60,12 @@ Per run, at most:
 
 3. **Select skills for the content pass.**
    `python3 scripts/skill_audit_select.py` prints JSON: `selected` is this
-   week's rotating quarter of the catalogue plus the most-changed skills of
-   the last seven days, capped at 12. Record `deferred` in the issue comment;
-   those skills come round in a later slice.
+   run's rotating quarter of the catalogue plus the most-changed skills of
+   the 17 days before the run date (the longest gap between two scheduled
+   runs), capped at 12. The slice steps once per scheduled run (8th, 22nd),
+   so every skill comes up at least once per four runs. Record `slice` as
+   `slice <k>/<K>` in the issue body and `deferred` in the issue comment;
+   deferred skills come round in a later slice.
 
 4. **Content pass.** Delegate `selected` to the `skill-reviewer` subagent in
    batches of about three skills, batches in parallel. Each returns findings
@@ -84,7 +87,7 @@ Per run, at most:
    PR link if step 7 opens one. Create the label and issue if missing.
 
 7. **Fix PR — mechanical fixes only.** Skip this step when no mechanical fix
-   survived step 5, or when last week's audit PR is still open (say so in the
+   survived step 5, or when the previous run's audit PR is still open (say so in the
    comment instead of stacking PRs). Otherwise, on a new branch
    `claude/skill-audit-<YYYY-MM-DD>`:
    - Apply only fixes with one obvious correct form: a dead relative link
