@@ -2,9 +2,10 @@
 """Publish the review of one pull request: plan it, and with --write apply it.
 
 The command reads the risk decision and the review artifact, plans the labels,
-the sticky comment, the reviewer and the auto-merge decision (``pr_plan.py``),
-and with ``--write`` re-fetches the pull request and applies the fresh plan
-through ``pr_apply.py``. Without ``--write`` nothing is written.
+the sticky comment, the reviewer, the auto-merge decision and the
+`pr-review/verdict` commit status (``pr_plan.py``), and with ``--write``
+re-fetches the pull request and applies the fresh plan through ``pr_apply.py``.
+Without ``--write`` nothing is written.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ def publish_live(
     review: dict,
     write: bool = False,
     client=None,
+    status_url: str | None = None,
 ):
     """Fetch, plan and optionally apply one pull request.
 
@@ -40,7 +42,8 @@ def publish_live(
     bot's label, asks for a human and says so in the comment (decision D).
     ``client`` is a ``GitHubClient`` or a fake implementing
     ``get/post/patch/delete``; the fetches and the writes use it, so tests
-    never touch the network.
+    never touch the network. ``status_url`` is the run page the verdict status
+    links to.
     """
     assessment = pr_plan.validate_assessment(assessment)
     review = pr_plan.validate_review(review)
@@ -48,14 +51,22 @@ def publish_live(
 
     context = pr_github.fetch_context(repo, number, token=token, client=client)
     plan = pr_plan.plan_publish(
-        context, assessment, review, auto_merge=os.environ.get(AUTO_MERGE_ENV)
+        context,
+        assessment,
+        review,
+        auto_merge=os.environ.get(AUTO_MERGE_ENV),
+        status_url=status_url,
     )
     if not write or plan["status"] == "aborted":
         return plan
 
     fresh = pr_github.fetch_context(repo, number, token=token, client=client)
     plan = pr_plan.plan_publish(
-        fresh, assessment, review, auto_merge=os.environ.get(AUTO_MERGE_ENV)
+        fresh,
+        assessment,
+        review,
+        auto_merge=os.environ.get(AUTO_MERGE_ENV),
+        status_url=status_url,
     )
     if plan["status"] == "aborted":
         return plan
@@ -70,6 +81,7 @@ def publish_live(
         review,
         auto_merge=os.environ.get(AUTO_MERGE_ENV),
         auto_merge_refused=True,
+        status_url=status_url,
     )
     if follow_up["status"] == "aborted":
         return {**applied, "follow_up": {"plan": follow_up, "results": []}}
@@ -120,8 +132,8 @@ def _apply(plan: dict, token: str | None, client) -> dict:
 USAGE = f"""usage: pr_publish.py --context FILE --assessment FILE --review FILE
        pr_publish.py --live --repo O/R --pr N (--assessment FILE --review FILE | --hold) [--write]
 
-Plan the labels, the sticky comment, the reviewer and the auto-merge decision
-for one pull request. Prints JSON on stdout; --write applies the plan.
+Plan the labels, the sticky comment, the reviewer, the auto-merge decision and
+the pr-review/verdict status of one pull request. Prints JSON; --write applies it.
 
   --context FILE      fresh context JSON from pr_github.py
   --assessment FILE   risk decision JSON from pr_risk.py
@@ -131,6 +143,7 @@ for one pull request. Prints JSON on stdout; --write applies the plan.
   --hold              without a review: only disable the bot's auto-merge (any under do-not-merge)
   --write             apply the plan; needs --live and GITHUB_ACTIONS=true
   --summary FILE      either form: also append a Markdown summary to FILE (not --hold)
+  --status-url URL    either form: https link for the pr-review/verdict status (not --hold)
   -h, --help          show this message
 env: PR_AUTO_MERGE=true enables auto-merge planning; any other value keeps it off.
 examples:
@@ -141,7 +154,15 @@ examples:
 {pr_cli.exit_help(0, 1, 2, 3, 4, 5, 6, 7)}
 """
 
-VALUE_FLAGS = ("--context", "--pr", "--repo", "--assessment", "--review", "--summary")
+VALUE_FLAGS = (
+    "--context",
+    "--pr",
+    "--repo",
+    "--assessment",
+    "--review",
+    "--summary",
+    "--status-url",
+)
 
 
 def _parse_arguments(argv: list[str]) -> dict | None:
@@ -150,10 +171,11 @@ def _parse_arguments(argv: list[str]) -> dict | None:
         return None
     if options["hold"] is True:
         if any(
-            options[name] is not None for name in ("context", "assessment", "review", "summary")
+            options[name] is not None
+            for name in ("context", "assessment", "review", "summary", "status_url")
         ):
             raise pr_cli.UsageError(
-                "--hold takes no --context, --assessment, --review or --summary"
+                "--hold takes no --context, --assessment, --review, --summary or --status-url"
             )
         if options["live"] is not True:
             raise pr_cli.UsageError("--hold requires --live")
@@ -161,6 +183,10 @@ def _parse_arguments(argv: list[str]) -> dict | None:
         for required in ("assessment", "review"):
             if options[required] is None:
                 raise pr_cli.UsageError(f"--{required} is required")
+
+    status_url = options["status_url"]
+    if status_url is not None and not str(status_url).startswith("https://"):
+        raise pr_cli.UsageError("--status-url must be an https URL")
 
     has_context = isinstance(options["context"], str)
     has_live = options["live"] is True
@@ -225,6 +251,7 @@ def main(argv: list[str] | None = None, client=None) -> int:
                     review,
                     write=options["write"] is True,
                     client=client,
+                    status_url=options["status_url"],
                 )
             except pr_github_client.MissingTokenError as error:
                 print(f"pr_publish.py: {error}", file=sys.stderr)
@@ -242,6 +269,7 @@ def main(argv: list[str] | None = None, client=None) -> int:
                 assessment,
                 review,
                 auto_merge=os.environ.get(AUTO_MERGE_ENV),
+                status_url=options["status_url"],
             )
     except (pr_cli.InputError, pr_plan.ArtifactError, pr_apply.PlanError) as error:
         print(f"pr_publish.py: {error}", file=sys.stderr)

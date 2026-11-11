@@ -30,7 +30,7 @@ def test_comment_starts_with_the_marker_and_states_risk_and_verdict():
     assert body.startswith(MARKER)
     assert "risk **low**" in body
     assert "verdict **pass**" in body
-    assert "abc123" in body
+    assert "abc1234" in body
 
 
 def test_comment_carries_the_summary_and_the_policy_reasons():

@@ -14,6 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import pr_github_client
+import pr_verdict_status
 from pr_labels import LABELS
 
 SCHEMA_VERSION = 1
@@ -247,6 +248,49 @@ def _disable_auto_merge_operations(plan: dict, action: dict) -> list[Operation]:
     return _graphql_operation("disable_auto_merge", DISABLE_AUTO_MERGE, variables)
 
 
+def _status_operations(plan: dict, action: dict) -> list[Operation]:
+    # The job holds `statuses: write`, which could set any context on any
+    # commit; the plan may set one context, on the head it assessed.
+    sha = action.get("sha")
+    if not isinstance(sha, str) or not HEAD_SHA_PATTERN.fullmatch(sha):
+        raise PlanError("set_status needs sha as a commit SHA")
+    if sha != plan.get("head_sha"):
+        raise PlanError("set_status must target the head commit the plan assessed")
+    if action.get("context") != pr_verdict_status.CONTEXT:
+        raise PlanError(f"set_status may only set the context {pr_verdict_status.CONTEXT}")
+    state = action.get("state")
+    if state not in pr_verdict_status.STATES:
+        raise PlanError(f"set_status accepts only the states {list(pr_verdict_status.STATES)}")
+    description = action.get("description")
+    if (
+        not isinstance(description, str)
+        or not description.strip()
+        or len(description) > pr_verdict_status.MAX_DESCRIPTION
+    ):
+        raise PlanError(
+            "set_status needs a description of at most "
+            f"{pr_verdict_status.MAX_DESCRIPTION} characters"
+        )
+    payload: dict[str, object] = {
+        "state": state,
+        "context": pr_verdict_status.CONTEXT,
+        "description": description,
+    }
+    target_url = action.get("target_url")
+    if target_url is not None:
+        if not isinstance(target_url, str) or not target_url.startswith("https://"):
+            raise PlanError("set_status target_url must be an https URL or null")
+        payload["target_url"] = target_url
+    return [
+        Operation(
+            kind="set_status",
+            method="POST",
+            path=f"/repos/{plan['repo']}/statuses/{sha}",
+            payload=payload,
+        )
+    ]
+
+
 # Every action kind a plan may carry, with the operations it resolves to. A
 # kind missing here is refused before the first call.
 RESOLVERS: dict[str, Callable[[dict, dict], list[Operation]]] = {
@@ -256,6 +300,7 @@ RESOLVERS: dict[str, Callable[[dict, dict], list[Operation]]] = {
     "assign": _assign_operations,
     "enable_auto_merge": _enable_auto_merge_operations,
     "disable_auto_merge": _disable_auto_merge_operations,
+    "set_status": _status_operations,
 }
 
 

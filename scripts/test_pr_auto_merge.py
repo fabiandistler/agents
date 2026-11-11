@@ -103,14 +103,15 @@ def test_low_risk_pass_enables_native_auto_merge():
         "upsert_comment",
         "request_reviewer",
         "enable_auto_merge",
+        "set_status",
     ]
     # Merge commit, pinned to the reviewed head. Branch deletion comes from the
     # repository setting delete_branch_on_merge, not from the plan.
-    assert plan["actions"][-1] == {
+    assert plan["actions"][-2] == {
         "kind": "enable_auto_merge",
         "pull_request_id": NODE_ID,
         "method": "merge",
-        "expected_head_oid": "abc123",
+        "expected_head_oid": "abc1234",
     }
     assert label_action(plan)["add"] == ["risk:low", "review:pass", "auto-merge:bot"]
     assert plan["decision"]["auto_merge"] == "enabled"

@@ -61,7 +61,10 @@ no rename and within the size limits; `README.md` and ADRs are excluded. It
 also needs a complete `review:pass`, a same-repository non-draft pull request
 to `main`, no `do-not-merge`, and the repository variable `PR_AUTO_MERGE` set
 to `true`. GitHub then merges only after the required checks `checks`,
-`mermaid` and `secrets` pass. The bot never merges directly, and the merge
+`bats`, `mermaid`, `secrets` and `pr-review/verdict` pass; the last is the
+commit status the `publish` job sets once any verdict exists for the head, so
+every merge waits for the review without the review becoming a gate. The bot
+never merges directly, and the merge
 guard still stops any agent session from doing what that job does. Operation:
 [docs/agents/pr-review-runbook.md](agents/pr-review-runbook.md).
 The `secret-guard` plugin (`--secret-guard`) likewise blocks reading credential

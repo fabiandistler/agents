@@ -38,7 +38,7 @@ def make_context(files: list[dict] | None = None, **overrides: object) -> dict:
         "title": "A change",
         "body": "",
         "author": "someone-else",
-        "head_sha": "abc123",
+        "head_sha": "abc1234",
         "head_ref": "fix/x",
         "base_ref": "main",
         "default_branch": "main",
@@ -62,7 +62,7 @@ def make_assessment(**overrides: object) -> dict:
     assessment = {
         "schema_version": 1,
         "number": 42,
-        "head_sha": "abc123",
+        "head_sha": "abc1234",
         "risk": "low",
         "reasons": ["docs: docs/guide.md"],
         "auto_merge_eligible": True,
@@ -76,7 +76,7 @@ def make_review(**overrides: object) -> dict:
     review = {
         "schema_version": 1,
         "number": 42,
-        "head_sha": "abc123",
+        "head_sha": "abc1234",
         "status": "ok",
         "risk": "low",
         "verdict": "pass",
