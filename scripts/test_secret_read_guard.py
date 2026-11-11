@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -170,6 +171,13 @@ ALLOWED_COMMANDS = [
     "git commit -m 'docs: never commit .env # really'",
 ]
 
+
+def apply_patch_event(header: str, body: str) -> dict:
+    """A Codex apply_patch call: the patch text arrives in `tool_input.command`."""
+    patch = f"*** Begin Patch\n*** {header}\n@@\n{body}\n*** End Patch"
+    return {"tool_name": "apply_patch", "tool_input": {"command": patch}, "cwd": "/repo"}
+
+
 BLOCKED_TOOLS = [
     ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/repo/.env"}}),
     ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/home/me/.ssh/id_rsa"}}),
@@ -192,6 +200,13 @@ BLOCKED_TOOLS = [
     # File-tool inputs are paths, whitespace included.
     ("claude", {"tool_name": "Read", "tool_input": {"file_path": "/home/me/My Project/.env"}}),
     ("opencode", {"tool": "read", "args": {"filePath": "/home/me/My Project/.ssh/id_rsa"}}),
+    # A Codex apply_patch is checked by its file headers.
+    ("codex", apply_patch_event("Update File: .env", "-A=1\n+A=2")),
+    ("codex", apply_patch_event("Add File: config/.npmrc", "+registry=x")),
+    ("codex", apply_patch_event("Delete File: /home/me/.ssh/id_ed25519", "")),
+    # A patch in another shape than the documented string cannot be checked.
+    ("codex", {"tool_name": "apply_patch", "tool_input": {"command": ["*** Begin Patch"]}}),
+    ("codex", {"tool_name": "apply_patch", "tool_input": {}}),
 ]
 
 ALLOWED_TOOLS = [
@@ -202,6 +217,15 @@ ALLOWED_TOOLS = [
     ("codex", {"tool_name": "Bash", "tool_input": {"command": "ls -la"}}),
     ("opencode", {"tool": "read", "args": {"filePath": "/repo/README.md"}}),
     ("opencode", {"tool": "glob", "args": {"pattern": ".env*"}}),
+    # An apply_patch body is file content, never shell (issue #773).
+    (
+        "codex",
+        apply_patch_event("Update File: README.md", "+Copy .env.example to .env and fill in."),
+    ),
+    ("codex", apply_patch_event("Update File: compose.yaml", "     env_file:\n+      - .env")),
+    ("codex", apply_patch_event("Update File: Dockerfile", "+COPY .npmrc /app/.npmrc")),
+    ("codex", apply_patch_event("Add File: docs/ssh.md", "+Use ~/.ssh/id_ed25519 to log in.")),
+    ("codex", apply_patch_event("Update File: .gitignore", "+.env")),
 ]
 
 
@@ -297,13 +321,37 @@ def test_help_is_short_and_names_exit_codes() -> None:
     assert len(run.stdout.splitlines()) <= 25
 
 
+def test_issue_773_apply_patch_reproduction() -> None:
+    patch = (
+        "*** Begin Patch\n*** Update File: README.md\n@@\n"
+        "+Copy .env.example to .env and fill in the values.\n*** End Patch"
+    )
+    event = {"tool_name": "apply_patch", "tool_input": {"command": patch}, "cwd": "/repo"}
+    assert run_guard("codex", event).returncode == guard.EXIT_ALLOW
+    event["tool_input"]["command"] = patch.replace("README.md", ".env")
+    run = run_guard("codex", event)
+    assert run.returncode == guard.EXIT_BLOCK
+    assert "the patch edits a dotenv file" in run.stderr
+
+
+def test_codex_matcher_sends_apply_patch_not_claude_file_tools() -> None:
+    matcher = re.compile(guard.CODEX_HOOK_MATCHER)
+    assert all(matcher.match(t) for t in ("Bash", "apply_patch", "mcp__fs__read_file"))
+    assert not any(matcher.match(t) for t in ("Read", "Grep", "apply_patch_x"))
+
+
 def test_codex_toml_parses_next_to_the_merge_guard() -> None:
     secret = pr_merge_guard.codex_hook_toml(
-        'python3 "/r/secret_read_guard.py" --harness codex', guard.HOOK_MATCHER, guard.HOOK_STATUS
+        'python3 "/r/secret_read_guard.py" --harness codex',
+        guard.CODEX_HOOK_MATCHER,
+        guard.HOOK_STATUS,
     )
     merge = pr_merge_guard.codex_hook_toml('python3 "/r/pr_merge_guard.py" --harness codex')
     entries = tomllib.loads(f"{merge}\n\n{secret}")["hooks"]["PreToolUse"]
-    assert [e["matcher"] for e in entries] == [pr_merge_guard.HOOK_MATCHER, guard.HOOK_MATCHER]
+    assert [e["matcher"] for e in entries] == [
+        pr_merge_guard.CODEX_HOOK_MATCHER,
+        guard.CODEX_HOOK_MATCHER,
+    ]
     assert entries[1]["hooks"][0]["statusMessage"] == guard.HOOK_STATUS
 
 
