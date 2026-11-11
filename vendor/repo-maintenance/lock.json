@@ -1,13 +1,13 @@
 {
   "upstream": "https://github.com/fabiandistler/repo-maintenance",
-  "commit": "096b87c595161307dd0866d239670bb9cbaec7e4",
+  "commit": "4d851e08d4056a440c1688732195f748a0c2ba9a",
   "files": {
     "scripts/maintenance-scan.sh": {
       "sha256": "7d91fe96f4bab623e3417848889091afae9649cd3c13006f762a69d527462217",
       "mode": "100755"
     },
     "scripts/maintenance-r-advisories.py": {
-      "sha256": "13d18c077a8d83f7163566037e7c9dda866f27e239d1399d0683a741f6c9648d",
+      "sha256": "42cc5e3d3ed22371d705d42a8b07652036395eda2339bd2fd386e75df43d55af",
       "mode": "100755"
     },
     "scripts/maintenance-new-deps.py": {
@@ -15,7 +15,7 @@
       "mode": "100755"
     },
     "scripts/maintenance-instruction-unicode.py": {
-      "sha256": "049109640078a3bc398afacc54424b9f9e86fdc1c66850c7a0ed75624b32b953",
+      "sha256": "63342d80db29439cc886f3e797aaa064e8f8a61c1f45d9995b6046e0d9664d0f",
       "mode": "100755"
     },
     "scripts/hooks/check-file-tokens.sh": {

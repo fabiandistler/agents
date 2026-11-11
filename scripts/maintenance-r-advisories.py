@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""maintenance-r-advisories - flag R dependencies whose DESCRIPTION constraint admits an affected version.
+"""maintenance-r-advisories - flag R deps whose DESCRIPTION constraint admits an affected version.
 
 renv::vulns() needs a renv.lock and the Posit Package Manager API, oysteR needs Sonatype
 OSS Index, and both need R. A package without renv.lock, or a run environment without R or
