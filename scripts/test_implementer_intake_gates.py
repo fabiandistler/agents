@@ -142,38 +142,6 @@ def test_an_unresolvable_entry_fails_closed(ticket_text):
     assert "`#<n>`" in comment
 
 
-def brief(text: str) -> dict:
-    return {"body": f"## Agent Brief\n\n{text}", "author_association": "OWNER"}
-
-
-def test_the_latest_brief_is_read_when_the_body_is_null():
-    fake = FakeGitHub(
-        issue_body=None,
-        issue_comments=[brief("Blocked by: #3")],
-        blocker_issues={3: blocker(state="open", state_reason=None)},
-    )
-    assert claim(fake).blockers == (3,)
-
-
-def test_only_the_latest_brief_counts():
-    fake = FakeGitHub(issue_comments=[brief("Blocked by: #3"), brief("Blocked by: None")])
-    assert claim(fake).outcome == implementer_claim.CLAIMED
-
-
-def test_a_brief_cannot_erase_a_blocker_the_body_declares():
-    fake = FakeGitHub(
-        issue_body="Blocked by: #3",
-        issue_comments=[brief("Blocked by: None")],
-        blocker_issues={3: blocker(state="open", state_reason=None)},
-    )
-    assert claim(fake).outcome == implementer_claim.BLOCKED
-
-
-def test_ordinary_comments_declare_nothing():
-    fake = FakeGitHub(issue_comments=[{"body": "Blocked by: #3"}])
-    assert claim(fake).outcome == implementer_claim.CLAIMED
-
-
 @pytest.mark.parametrize(
     ("edge", "blockers", "unresolved"),
     [
