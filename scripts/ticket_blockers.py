@@ -5,10 +5,17 @@ This module knows the formats the ticket skills write
 ``## Blocked by`` section with one entry per line, a ``Blocked by: #3, #4`` or
 ``**Blocked by:** #3`` line, and "None (can start immediately)".
 
+A reference is ``#3``, ``owner/repo#3`` or a GitHub URL. A bare URL after
+``Blocked by`` (``Blocked by https://github.com/owner/repo/issues/3``, also in
+``<...>``) is a declaration like ``Blocked by #3``; an issue URL of this
+repository resolves to its number, case-insensitively.
+
 Parsing fails closed. An entry that names no issue of this repository (a title,
-a reference to another repository, an empty section, a reference hidden in
-inline code) cannot be checked, so it counts as unresolved and the ticket stays
-blocked; a person rewrites the entry as ``#<n>`` or removes it.
+a reference to another repository, a pull request URL, an empty section, a
+reference hidden in inline code) cannot be checked, so it counts as unresolved
+and the ticket stays blocked; a person rewrites the entry as ``#<n>`` or removes
+it. A pull request never counts as done, because the gate's only done state is
+an issue closed as completed.
 """
 
 from __future__ import annotations
@@ -27,6 +34,10 @@ _BLOCKED_BY_LINE = re.compile(
 )
 _ENTRY_DECORATION = re.compile(r"^\s*(?:(?:[-*+]|\d+[.)])\s+)?(?:\[[ xX]\]\s+)?")
 _NO_BLOCKERS = re.compile(r"none(?:\s*\(can start immediately\))?", re.IGNORECASE)
+# REFERENCE knows issue URLs only; a pull request URL is still a reference here,
+# so that "Blocked by <pull URL>" declares a blocker instead of reading as prose.
+_PULL_REQUEST_URL = r"https://github\.com/[\w.-]+/[\w.-]+/pull/[1-9]\d*"
+_BLOCKER_REFERENCE = rf"(?:{_PULL_REQUEST_URL}|{REFERENCE})"
 
 
 @dataclass(frozen=True)
@@ -43,12 +54,14 @@ def declared_blockers(ticket_text: str, repo: str) -> DeclaredBlockers:
     numbers: set[int] = set()
     unresolved = 0
     for entry in _blocker_entries(markdown_prose(ticket_text)):
-        references = re.findall(REFERENCE, entry, flags=re.IGNORECASE)
+        references = re.findall(_BLOCKER_REFERENCE, entry, flags=re.IGNORECASE)
         if not references and not _says_no_blockers(entry):
             unresolved += 1
         for reference in references:
             normalized = normalized_reference(reference, repo)
-            if normalized.startswith(same_repo_prefix):
+            if re.fullmatch(_PULL_REQUEST_URL, reference, flags=re.IGNORECASE):
+                unresolved += 1
+            elif normalized.startswith(same_repo_prefix):
                 numbers.add(int(normalized[len(same_repo_prefix) :]))
             else:
                 unresolved += 1
@@ -71,7 +84,11 @@ def _blocker_entries(prose: str) -> list[str]:
 
 def _is_declaration(line: re.Match[str]) -> bool:
     """A colon or closing bold marks a label; bare prose must lead with a reference."""
-    return bool(line["marker"]) or re.match(REFERENCE, line["value"], re.IGNORECASE) is not None
+    leading_reference = rf"<?{_BLOCKER_REFERENCE}"
+    return (
+        bool(line["marker"])
+        or re.match(leading_reference, line["value"], re.IGNORECASE) is not None
+    )
 
 
 def _block_entries(following: list[str], ends_at_blank_line: bool) -> list[str]:
