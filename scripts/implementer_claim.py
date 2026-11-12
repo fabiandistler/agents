@@ -284,8 +284,9 @@ def _blocked_comment(blockers: tuple[int, ...], unresolved: int) -> str:
         reasons.append("Blocked by " + ", ".join(f"#{number}" for number in blockers) + ".")
     if unresolved:
         reasons.append(
-            f'{unresolved} "Blocked by" entries name no issue in this repository, so they '
-            "count as blocking: write each one as `#<n>`, or remove it."
+            f'{unresolved} "Blocked by" entries name no issue in this repository (a title, '
+            "another repository's issue or a pull request), so they count as blocking: "
+            "write each one as `#<n>`, or remove it once it is done."
         )
     return BLOCKED_COMMENT.format(reason=" ".join(reasons))
 
