@@ -36,7 +36,8 @@
 
 See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
 
-- 2026-11-11: State of the brake PRs when read that evening:
+- 2026-11-11: State of the brake PRs when read that evening
+  (*superseded 2026-11-12 for #785 and #791, see below*):
   - #781 (refs #763, docs only) merged by the maintainer, merge commit
     `fabiandistler/agents@7005ffc`. #763 stays open: the Actions event
     policy is a manual repository setting, due before the brownout of
@@ -58,3 +59,23 @@ See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
      push to or re-dispatch the review for each PR still open.
 - 2026-11-11: The rollout tickets (#786 and children, dotfiles#61,
   repo-maintenance#153) wait until #763, #764 and #770 are done.
+
+## 2026-11-12 brakes merged, probe done
+
+- 2026-11-12 (supersedes the 2026-11-11 state of #785 and #791): merge
+  times read with the PR API, all merged by the maintainer:
+  - #781 merged 2026-11-11 20:19 UTC (`fabiandistler/agents@7005ffc`).
+  - #785 merged 2026-11-11 21:00 UTC (`fabiandistler/agents@218c23c`).
+  - #791 merged 2026-11-12 08:38 UTC (`fabiandistler/agents@ea645d3`),
+    after "Update branch" (`4778eaf`); this was step 2 of the order above.
+  - #795 merged 2026-11-12 08:38 UTC (`fabiandistler/agents@9242f8d`),
+    after "Update branch" (`7c0353b`).
+- 2026-11-12: #796 (token probe, "do not merge") closed without merging
+  at 11:36 UTC. dotfiles#62 (probe caller) merged at 11:31 UTC;
+  dotfiles#63 (probe removal) open. Result: see
+  [cross-repo token exchange](problems/cross-repo-token-exchange.md).
+- 2026-11-12: still manual:
+  - the Actions event policy for `pr-review.yml` (#763, #781's manual
+    step), due before the brownout of 2026-11-16 16:00 UTC;
+  - once a PR shows the `pr-review/verdict` status, adding `bats` and
+    `pr-review/verdict` to the `default` ruleset (steps 3–4 above).

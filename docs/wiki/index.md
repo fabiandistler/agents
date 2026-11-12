@@ -25,7 +25,8 @@ nothing here describes the present. See [conventions](conventions.md).
 - [unlinked PRs](problems/unlinked-prs.md) — merged work left its issue open; caused a wasted worker run.
 - [Dependabot on private repos](problems/dependabot-private-repos.md) — update jobs wait for a `dependabot`-labelled runner and are cancelled after 24 h.
 - [private repos without rulesets](problems/private-repos-no-rulesets.md) — rollout targets cannot require checks; weaker brakes, push guard #789.
-- [cross-repo token exchange](problems/cross-repo-token-exchange.md) — claude-code-action#443 may break the App token in a called workflow; probe pending.
+- [cross-repo token exchange](problems/cross-repo-token-exchange.md) — claude-code-action#443 may break the App token in a called workflow; 2026-11-12 probe: the exchange works, token rights unverified.
+- [Actions runs stuck in `queued`](problems/actions-runs-stuck-queued.md) — 2026-11-11 stall during GitHub incidents; runs with zero jobs, cancel refused; fresh runs via "Update branch".
 - [cross-repo `Blocked by` URLs](problems/cross-repo-blocked-by.md) — fail closed after #785 and stop the implementer until removed.
 
 ## Snapshots
