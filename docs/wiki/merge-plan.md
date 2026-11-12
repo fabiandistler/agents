@@ -31,3 +31,30 @@
   MAINTENANCE.md; check_gh_graphql scans root *.md) merged.
 - 2026-10-20: SessionStart hook cold-start time still unmeasured: the
   container resumed with yesterday's cache, so no cold run happened.
+
+## 2026-11-11 factory brakes
+
+See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
+
+- 2026-11-11: State of the brake PRs when read that evening:
+  - #781 (refs #763, docs only) merged by the maintainer, merge commit
+    `fabiandistler/agents@7005ffc`. #763 stays open: the Actions event
+    policy is a manual repository setting, due before the brownout of
+    2026-11-16 16:00 UTC.
+  - #785 (closes #770) open, labelled `risk:high` and `review:pass`.
+  - #791 (refs #764) open; GitHub reported it as not mergeable
+    (`mergeable_state` dirty) after #781 merged, so it needs updating
+    against main first.
+- 2026-11-11: Order of the manual steps around #791, from the
+  chief-of-staff session; steps 2–4 follow #791's own manual step:
+  1. Event policy allowing `pull_request_target` for `pr-review.yml`
+     (#781's manual step). Without it, from 2026-12-02 or during a
+     brownout, no review run reports, so a required verdict would hold
+     every merge.
+  2. Merge #791.
+  3. Wait until a PR shows the `pr-review/verdict` status; GitHub offers
+     only checks that reported in the last seven days.
+  4. Require `bats` and `pr-review/verdict` in the `default` ruleset, then
+     push to or re-dispatch the review for each PR still open.
+- 2026-11-11: The rollout tickets (#786 and children, dotfiles#61,
+  repo-maintenance#153) wait until #763, #764 and #770 are done.
