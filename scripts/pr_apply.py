@@ -18,6 +18,7 @@ from typing import Protocol
 import pr_actions
 import pr_cli
 import pr_github_client
+import pr_verdict_status
 from pr_actions import Operation, PlanError
 
 
@@ -131,6 +132,9 @@ DETAILS: dict[str, Callable[[list[Operation]], str]] = {
     "assign": lambda _operations: f"assigned {pr_actions.MAINTAINER_LOGIN}",
     "enable_auto_merge": lambda _operations: "enabled auto-merge with a merge commit",
     "disable_auto_merge": lambda _operations: "disabled auto-merge",
+    "set_status": lambda operations: (
+        f"set {pr_verdict_status.CONTEXT} to {(operations[0].payload or {})['state']}"
+    ),
 }
 
 
@@ -182,9 +186,25 @@ def _send_all(
 
 
 def apply_plan(plan: dict, client: WriteClient) -> list[dict]:
-    """Apply every action in ``plan`` and return one result per action."""
+    """Apply every action in ``plan`` and return one result per action.
+
+    A green ``set_status`` is sent only when every earlier action succeeded:
+    a run that failed to publish its verdict must not let the merge go ahead.
+    The red job is the signal, and re-running it sets the status.
+    """
     resolved = pr_actions.resolve_plan(plan)
-    return [_apply_action(client, action["kind"], operations) for action, operations in resolved]
+    results: list[dict] = []
+    for action, operations in resolved:
+        if (
+            action["kind"] == "set_status"
+            and action.get("state") == "success"
+            and not all(result["ok"] for result in results)
+        ):
+            detail = "not set: an earlier action failed, so the verdict is not published"
+            results.append({"kind": "set_status", "ok": False, "detail": detail})
+            continue
+        results.append(_apply_action(client, action["kind"], operations))
+    return results
 
 
 def resolve_operations(plan: object) -> list[Operation]:

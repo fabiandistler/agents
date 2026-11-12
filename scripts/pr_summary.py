@@ -1,14 +1,17 @@
 """Render the publish step summary of the PR review workflow.
 
 ``pr_publish.py --summary FILE`` appends this Markdown to the run page: the
-decision, what the review covered, and the labels. A dry run lists the labels
-it planned; a write lists only the labels it actually wrote, which a failed
-write leaves short of the plan. The full JSON follows for the details.
+decision, what the review covered, the verdict status and the labels. A dry
+run lists the labels it planned; a write lists only the labels it actually
+wrote, which a failed write leaves short of the plan. The full JSON follows
+for the details.
 """
 
 from __future__ import annotations
 
 import json
+
+import pr_verdict_status
 
 # The review artifact carries no confidence value. What it does say about how
 # far to trust the verdict is whether the model saw the whole diff.
@@ -73,6 +76,7 @@ def render_summary(payload: dict, review: dict) -> str:
             f"- verdict: {decision.get('verdict')}",
             f"- confidence: {_confidence(review)}",
             f"- auto-merge: {decision.get('auto_merge')}",
+            f"- {pr_verdict_status.CONTEXT}: {decision.get('verdict_status')}",
         ]
     if "results" in payload:
         results = payload["results"] + follow_up.get("results", [])

@@ -17,6 +17,7 @@ Related pages:
 - [Troubleshooting and reading a run](pr-review-troubleshooting.md)
 - [Acceptance record](pr-review-acceptance.md)
 - [Linked issues in the review payload](pr-review-linked-issues.md)
+- [Verdict status](pr-review-verdict-status.md)
 - [Event policy for `pull_request_target`](pr-review-event-policy.md)
 
 ## Contents
@@ -47,7 +48,7 @@ the `pull_request_target` trigger runs only with the event policy of
 | `hold` | write: contents, pull-requests, issues; no model token | On a push, disables the bot's auto-merge; when `do-not-merge` is added, disables any auto-merge. Never enables. |
 | `assess` | read: contents, pull-requests, issues | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies it. |
 | `review` | `contents: read`; `CLAUDE_CODE_OAUTH_TOKEN` | Installs a pinned Claude Code CLI; `pr_review.py` sanitizes and caps the input, runs `claude -p` without tools, parses the verdict. |
-| `publish` | write: contents, pull-requests, issues; no model token | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes. |
+| `publish` | write: contents, pull-requests, issues, statuses; no model token | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes, then sets [`pr-review/verdict`](pr-review-verdict-status.md). |
 
 - **Base code only.** `pull_request_target` runs the workflow file and scripts
   from the default branch. No job checks out or executes the pull request
@@ -99,9 +100,9 @@ data:
 - no human review requests changes, and `do-not-merge` is absent.
 
 The required checks are not a gate in the script (decision A). The default
-ruleset requires `checks`, `mermaid` and `secrets`; native auto-merge waits
-for them and merges only when they pass. Pending checks never disable the
-bot's auto-merge; a failing check simply blocks the merge.
+ruleset requires the five checks of [setup step 6](#setup); native auto-merge
+waits for them and merges only when they pass. Pending checks never disable the bot's auto-merge; a failing check
+simply blocks the merge.
 
 The write is GitHub's GraphQL `enablePullRequestAutoMerge` with merge method
 `MERGE` (a merge commit) and `expectedHeadOid` pinned to the assessed head.
@@ -157,10 +158,9 @@ All settings live under the repository's **Settings** tab.
    On 2026-11-07 both were on. Check with
    `gh api repos/fabiandistler/agents --jq '{allow_auto_merge, delete_branch_on_merge}'`.
 6. **Ruleset (one-time, manual).** *Rules → Rulesets → `default` → Require
-   status checks to pass*: require `checks`, `mermaid` and `secrets` from
-   GitHub Actions. On 2026-11-07 the ruleset required only `checks`; add the
-   other two. Without them, auto-merge would merge as soon as `checks` passes.
-   Inspect with `gh api repos/fabiandistler/agents/rulesets`.
+   status checks to pass*: require `checks`, `bats`, `mermaid`, `secrets` and
+   `pr-review/verdict` from GitHub Actions; add the last
+   [in this order](pr-review-verdict-status.md#adding-it-to-the-ruleset).
 7. **Actions policy.** *Actions → General*: Actions enabled, and the
    allowed-actions policy permits `actions/checkout`, `actions/setup-python`,
    `actions/upload-artifact` and `actions/download-artifact` (all pinned to
@@ -191,7 +191,7 @@ whose CI finishes before `publish` runs is already mergeable, so GitHub
 refuses to arm auto-merge as "clean" ([decision D](#auto-merge)): the run
 stays green but adds `needs-review` and nothing merges. To see an armed
 auto-merge, open the test pull request (or push to it) and let `publish` run
-while `checks`, `mermaid` and `secrets` are still in progress.
+while `checks`, `bats`, `mermaid` and `secrets` are still in progress.
 
 ## Dry run
 
@@ -293,6 +293,8 @@ and framing: [pr-review-linked-issues.md](pr-review-linked-issues.md).
   `gh run rerun <run-id>`. A re-run uses the original run's commit. Use
   `--failed` only for a red job: a `review:unavailable` run is green, so
   `--failed` does not retry it.
+- **No verdict on the head:** dispatch with `"dry_run": "false"`
+  ([verdict status](pr-review-verdict-status.md)).
 - **A new push** always triggers a fresh assessment and review.
 
 ## Model change
@@ -340,6 +342,9 @@ pin loses its exact version.
 - The repository is public, so standard runners cost no Actions minutes.
 
 ## Disable and roll back
+
+Before a step that stops reviews, remove `pr-review/verdict` from the
+ruleset, or merges wait.
 
 - **Stop auto-merge:** delete `PR_AUTO_MERGE` or set it to `false`. The next
   run per pull request disables the bot's own auto-merge. To stop one pull

@@ -57,7 +57,7 @@ def test_an_unavailable_review_has_no_confidence():
 
 
 def test_a_write_shows_the_labels_it_applied_and_each_action():
-    fake = FakeGitHub(["abc123", "abc123"], labels=["risk:high"])
+    fake = FakeGitHub(["abc1234", "abc1234"], labels=["risk:high"])
     fake.fail_paths = {f"/repos/{REPO}/issues/42/labels/risk%3Ahigh"}
     payload = pr_publish.publish_live(
         REPO, 42, make_assessment(), make_review(), write=True, client=fake

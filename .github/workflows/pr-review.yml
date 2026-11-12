@@ -12,6 +12,11 @@
 # before the new head is reviewed (GitHub keeps auto-merge on when someone with
 # write access pushes), and any auto-merge when do-not-merge is added. A label
 # event runs only the hold: it never re-runs the review.
+#
+# Publish also sets the commit status pr-review/verdict on the reviewed head:
+# green for any verdict, so a merge that requires it waits for the review
+# without the review becoming a gate. Nothing sets it green ahead of time: a
+# new head starts with no status, which a required check reads as waiting.
 name: pr-review
 
 on:
@@ -199,10 +204,12 @@ jobs:
       always() && needs.assess.result == 'success'
     runs-on: ubuntu-latest
     # contents: write is for enabling auto-merge; the checkout does not keep it.
+    # statuses: write is for pr-review/verdict, the one context the writer sets.
     permissions:
       contents: write
       pull-requests: write
       issues: write
+      statuses: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -246,6 +253,8 @@ jobs:
           WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
           # Auto-merge is planned only when this repository variable is exactly `true`.
           PR_AUTO_MERGE: ${{ vars.PR_AUTO_MERGE }}
+          # The run page the verdict status links to.
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           # The publisher appends the decision, the confidence and the labels it
@@ -261,6 +270,7 @@ jobs:
               --assessment assessment.json \
               --review review.json \
               --summary "$GITHUB_STEP_SUMMARY" \
+              --status-url "$RUN_URL" \
               --write > plan.json
           else
             # The dry run plans from a fresh fetch too, so it re-checks the head
@@ -271,7 +281,8 @@ jobs:
               --pr "$PR" \
               --assessment assessment.json \
               --review review.json \
-              --summary "$GITHUB_STEP_SUMMARY" > plan.json
+              --summary "$GITHUB_STEP_SUMMARY" \
+              --status-url "$RUN_URL" > plan.json
           fi
           status=$?
           set -e

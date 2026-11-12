@@ -8,15 +8,16 @@ from typing import Any
 import pytest
 from pr_workflow_testkit import (
     ASSESSMENT_ARTIFACT,
-    AUTO_MERGE_SCOPES,
     CONTEXT_ARTIFACT,
     MODEL_KEY,
+    PUBLISH_SCOPES,
     REVIEW_ARTIFACT,
     download_step,
     downloaded_names,
     job_env,
     job_named,
     jobs_holding,
+    jobs_of,
     load_workflow_text,
     needs_of,
     normalize,
@@ -53,9 +54,32 @@ def test_publish_runs_even_when_the_review_was_skipped(workflow: dict[Any, Any])
 
 def test_publish_has_the_scopes_the_write_path_needs(workflow: dict[Any, Any]) -> None:
     permissions = job_named(workflow, "publish").get("permissions")
-    assert permissions == AUTO_MERGE_SCOPES, (
-        "publish writes labels, comments, reviewer requests and auto-merge "
-        f"(contents: write); found {permissions}"
+    assert permissions == PUBLISH_SCOPES, (
+        "publish writes labels, comments, reviewer requests, auto-merge "
+        f"(contents: write) and the pr-review/verdict status (statuses: write); found {permissions}"
+    )
+
+
+def test_only_publish_may_write_a_commit_status(workflow: dict[Any, Any]) -> None:
+    writers = {
+        name
+        for name, job in jobs_of(workflow).items()
+        if "statuses" in (job.get("permissions") or {})
+    }
+    assert writers == {"publish"}, (
+        "the verdict status comes from the publish job alone: an earlier stage that set "
+        f"it could turn it green before a verdict exists; found {sorted(writers)}"
+    )
+
+
+def test_publish_links_the_verdict_status_to_its_run(workflow: dict[Any, Any]) -> None:
+    env = job_env(workflow, "publish")
+    assert normalize(env.get("RUN_URL")) == (
+        "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+    ), "the status link must be this run's page, built from trusted context only"
+    command = run_containing(job_named(workflow, "publish"), "scripts/pr_publish.py")
+    assert command.count('--status-url "$RUN_URL"') == 2, (
+        "the write and the dry-run branch must plan the same status"
     )
 
 

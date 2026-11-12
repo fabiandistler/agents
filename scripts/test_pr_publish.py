@@ -32,12 +32,12 @@ from pr_publish_testkit import (
 
 
 def test_live_dry_run_fetches_once_and_writes_nothing():
-    fake = FakeGitHub(["abc123"])
+    fake = FakeGitHub(["abc1234"])
 
     plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)
 
     assert plan["status"] == "planned"
-    assert plan["head_sha"] == "abc123"
+    assert plan["head_sha"] == "abc1234"
     assert fake.pull_fetches == 1
     assert write_calls(fake) == []
 
@@ -53,7 +53,7 @@ def test_live_dry_run_rechecks_the_head_sha_against_the_assessment():
 
 
 def test_live_write_applies_exactly_the_planned_actions():
-    fake = FakeGitHub(["abc123", "abc123"])
+    fake = FakeGitHub(["abc1234", "abc1234"])
 
     payload = pr_publish.publish_live(
         REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
@@ -66,9 +66,11 @@ def test_live_write_applies_exactly_the_planned_actions():
         "set_labels",
         "upsert_comment",
         "request_reviewer",
+        "set_status",
     ]
     assert fake.pull_fetches == 2
     assert [call["method"] for call in write_calls(fake)] == [
+        "POST",
         "POST",
         "POST",
         "POST",
@@ -79,10 +81,11 @@ def test_live_write_applies_exactly_the_planned_actions():
     assert write_calls(fake)[2]["path"] == f"/repos/{REPO}/issues/{NUMBER}/labels"
     assert write_calls(fake)[3]["path"] == COMMENTS_PATH
     assert write_calls(fake)[4]["path"] == f"/repos/{REPO}/pulls/{NUMBER}/requested_reviewers"
+    assert write_calls(fake)[5]["path"] == f"/repos/{REPO}/statuses/abc1234"
 
 
 def test_a_changed_head_sha_between_the_fetches_aborts_every_write():
-    fake = FakeGitHub(["abc123", "def456"])
+    fake = FakeGitHub(["abc1234", "def456"])
 
     payload = pr_publish.publish_live(
         REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
@@ -102,8 +105,8 @@ def test_a_stale_assessment_aborts_before_the_second_fetch():
     payload = pr_publish.publish_live(
         REPO,
         NUMBER,
-        make_assessment(head_sha="abc123"),
-        make_review(head_sha="abc123"),
+        make_assessment(head_sha="abc1234"),
+        make_review(head_sha="abc1234"),
         write=True,
         client=fake,
     )
@@ -152,7 +155,7 @@ def test_live_write_replans_using_the_final_context(
                 return json_response(replacement)
             return response
 
-    fake = ChangedContext(["abc123", "abc123"])
+    fake = ChangedContext(["abc1234", "abc1234"])
     payload = pr_publish.publish_live(
         REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
     )
@@ -172,7 +175,7 @@ def test_a_pull_request_closed_between_fetches_aborts_every_write():
                 return json_response({**response.json(), "state": "closed"})
             return response
 
-    fake = ClosedPull(["abc123", "abc123"])
+    fake = ClosedPull(["abc1234", "abc1234"])
     plan = pr_publish.publish_live(
         REPO, NUMBER, make_assessment(), make_review(), write=True, client=fake
     )
@@ -192,7 +195,7 @@ def test_an_already_closed_pull_request_produces_no_actions():
 
 
 def test_a_failed_write_is_reported_in_the_results():
-    fake = FakeGitHub(["abc123", "abc123"])
+    fake = FakeGitHub(["abc1234", "abc1234"])
     fake.fail_paths.add(f"/repos/{REPO}/labels")
 
     payload = pr_publish.publish_live(
@@ -200,7 +203,10 @@ def test_a_failed_write_is_reported_in_the_results():
     )
 
     assert payload["ok"] is False
-    assert [result["ok"] for result in payload["results"]] == [False, True, True]
+    assert [result["ok"] for result in payload["results"]] == [False, True, True, False]
+    assert not any("/statuses/" in call["path"] for call in write_calls(fake)), (
+        "a run that failed to publish its verdict must not set the status green"
+    )
 
 
 # --- Auto-merge on the live path ----------------------------------------------
@@ -210,7 +216,7 @@ BOT_LABELS = ["risk:low", "review:pass", "auto-merge:bot"]
 
 def test_live_plan_enables_auto_merge_on_the_fetched_node_id(monkeypatch):
     monkeypatch.setenv("PR_AUTO_MERGE", "true")
-    fake = FakeGitHub(["abc123"])
+    fake = FakeGitHub(["abc1234"])
 
     plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)
 
@@ -219,7 +225,7 @@ def test_live_plan_enables_auto_merge_on_the_fetched_node_id(monkeypatch):
             "kind": "enable_auto_merge",
             "pull_request_id": "PR_kwDOtest42",
             "method": "merge",
-            "expected_head_oid": "abc123",
+            "expected_head_oid": "abc1234",
         }
     ]
 
@@ -279,7 +285,7 @@ def test_any_other_graphql_refusal_still_fails_the_run(monkeypatch):
 @pytest.mark.parametrize(("mergeable", "expected"), [(None, "kept"), (False, "disabled")])
 def test_live_mergeability_still_being_computed_never_disables(monkeypatch, mergeable, expected):
     monkeypatch.setenv("PR_AUTO_MERGE", "true")
-    fake = FakeGitHub(["abc123"], labels=BOT_LABELS)
+    fake = FakeGitHub(["abc1234"], labels=BOT_LABELS)
     fake.pull_overrides = {"mergeable": mergeable, "auto_merge": ACTIVE_AUTO_MERGE}
 
     plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)

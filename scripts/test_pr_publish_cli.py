@@ -34,11 +34,12 @@ def test_cli_prints_the_plan_json(tmp_path):
     plan = json.loads(run.stdout)
     assert plan["status"] == "planned"
     assert plan["number"] == 42
-    assert plan["head_sha"] == "abc123"
+    assert plan["head_sha"] == "abc1234"
     assert [action["kind"] for action in plan["actions"]] == [
         "set_labels",
         "upsert_comment",
         "request_reviewer",
+        "set_status",
     ]
 
 
@@ -64,7 +65,7 @@ def test_cli_help_is_short_and_documents_exit_codes():
 
     assert run.returncode == 0
     assert run.stderr == ""
-    assert len(run.stdout.splitlines()) < 25
+    assert len(run.stdout.splitlines()) < 26
     assert "usage:" in run.stdout
     assert "exit:" in run.stdout
     assert "1 a write action failed" in run.stdout
@@ -229,7 +230,7 @@ def test_cli_write_inside_actions_without_a_token_exits_five(monkeypatch, tmp_pa
 
 
 def test_cli_write_applies_the_plan_and_prints_the_results(monkeypatch, tmp_path, capsys):
-    fake = FakeGitHub(["abc123", "abc123"])
+    fake = FakeGitHub(["abc1234", "abc1234"])
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
 
@@ -244,11 +245,12 @@ def test_cli_write_applies_the_plan_and_prints_the_results(monkeypatch, tmp_path
         "set_labels",
         "upsert_comment",
         "request_reviewer",
+        "set_status",
     ]
 
 
 def test_cli_write_exits_one_when_an_action_failed(monkeypatch, tmp_path, capsys):
-    fake = FakeGitHub(["abc123", "abc123"])
+    fake = FakeGitHub(["abc1234", "abc1234"])
     fake.fail_paths.add(COMMENTS_PATH)
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
@@ -264,14 +266,17 @@ def test_cli_write_exits_one_when_an_action_failed(monkeypatch, tmp_path, capsys
         "set_labels",
         "upsert_comment",
         "request_reviewer",
+        "set_status",
     ]
     failed = [result for result in payload["results"] if not result["ok"]]
-    assert [result["kind"] for result in failed] == ["upsert_comment"]
+    assert [result["kind"] for result in failed] == ["upsert_comment", "set_status"], (
+        "the verdict status stays unset when the comment carrying the verdict failed"
+    )
     assert failed[0]["detail"], "a failed action must say what went wrong"
 
 
 def test_cli_write_prints_an_aborted_plan_when_the_head_changed(monkeypatch, tmp_path, capsys):
-    fake = FakeGitHub(["abc123", "def456"])
+    fake = FakeGitHub(["abc1234", "def456"])
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
 
@@ -294,7 +299,7 @@ def hold_args() -> list[str]:
 
 
 def held_pull_request() -> FakeGitHub:
-    fake = FakeGitHub(["abc123"], labels=["risk:low", "review:pass", "auto-merge:bot"])
+    fake = FakeGitHub(["abc1234"], labels=["risk:low", "review:pass", "auto-merge:bot"])
     fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
     return fake
 

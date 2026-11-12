@@ -3,7 +3,8 @@
 ## Status
 
 Accepted (2026-10-28) by the maintainer on #621, for the gated cases below
-only. Amended 2026-11-07 with decisions A–D. Implemented in #635 and in force
+only. Amended 2026-11-07 with decisions A–D, and 2026-11-11 with the five
+required checks of decision A (#764). Implemented in #635 and in force
 from merge, but inert until the maintainer sets `PR_AUTO_MERGE=true` at the
 end of the [rollout](../agents/pr-review-runbook.md#rollout). The interactive
 merge guard is unchanged.
@@ -62,6 +63,26 @@ Decisions taken on 2026-11-07:
   refuses to arm auto-merge because the checks are already done, the
   publisher records "not enabled", adds `needs-review` and says so in its
   comment. It never falls back to a direct merge.
+
+**Amendment of 2026-11-11 to decision A (#764).** The default ruleset
+requires five checks: `checks`, `bats` and `mermaid` from `ci.yml`, `secrets`
+from `maintenance-gate.yml`, and the commit status `pr-review/verdict`.
+
+- `bats` is the only job that runs `install.sh` and `scripts/install/*.sh`;
+  `checks` only lints them. It was missing from the ruleset by omission, and
+  two hand-armed auto-merges merged before it reported.
+- `pr-review/verdict` makes a merge, a hand-armed auto-merge included, wait
+  for the review. The `publish` job sets it on the head it reviewed: green
+  for any verdict (`pass`, `concerns`, `block`), so the review stays
+  advisory. A draft stays pending until its `ready_for_review` run; an
+  unavailable review is an error until a re-run yields a verdict; a fork,
+  which the model never reviews, is green once published. Nothing sets the
+  status ahead of the review: a new head starts without one, which the
+  ruleset reads as waiting.
+- Whether a `concerns` verdict on a `risk:high` pull request should block is
+  a separate decision, not taken here.
+- Adding the two checks to the ruleset is again a manual step
+  ([runbook setup](../agents/pr-review-runbook.md#setup), step 6).
 
 The bot marks its own auto-merge with `auto-merge:bot`. It disables only that
 one when a later push, a worse verdict or a failed gate revokes eligibility,

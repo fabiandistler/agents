@@ -23,7 +23,7 @@ merged to `main` first.
 | Scenario | Status and manual step |
 | --- | --- |
 | Dry run on a docs pull request: all jobs green, plan shows `risk:low`, no writes | Pending. Needs `CLAUDE_CODE_OAUTH_TOKEN` set (it is, for `claude.yml`); then dispatch with `dry_run: true` on an open docs-only pull request ([rollout](pr-review-runbook.md#rollout) step 2). |
-| Throwaway docs pull request: bot arms auto-merge, adds `auto-merge:bot`, and the merge waits for `checks`, `mermaid` and `secrets` | Pending. Needs the observation week, the [ruleset change](pr-review-runbook.md#setup) and `PR_AUTO_MERGE=true` (rollout steps 3–5). Open the pull request while its checks still run, so decision D does not apply. |
+| Throwaway docs pull request: bot arms auto-merge, adds `auto-merge:bot`, and the merge waits for `checks`, `bats`, `mermaid`, `secrets` and `pr-review/verdict` | Pending. Needs the observation week, the [ruleset change](pr-review-runbook.md#setup) and `PR_AUTO_MERGE=true` (rollout steps 3–5). Open the pull request while its checks still run, so decision D does not apply. |
 | Non-docs pull request (for example a skill change): `risk:medium`, `needs-review`, sticky comment, reviewer request or assignment, no auto-merge | Pending. Needs the workflow merged and the secret set; any skill-content pull request after the merge serves. |
 
 Record format, one line per scenario: `run <URL>, head <sha>, observed:

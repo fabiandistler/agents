@@ -4,9 +4,10 @@ The planner is model-free. It reads the risk decision produced by
 ``pr_risk.py`` and the review artifact produced by ``pr_review.py``, re-runs the
 risk policy on a fresh context, and emits the exact list of actions it would
 take: label changes, one sticky comment (``pr_comment.py``), a reviewer request
-(or an assignment when the maintainer authored the pull request), and an
-auto-merge enable or disable (``pr_auto_merge.py``). Nothing here writes to
-GitHub; the plan is the whole output.
+(or an assignment when the maintainer authored the pull request), an
+auto-merge enable or disable (``pr_auto_merge.py``) and, last, the
+`pr-review/verdict` commit status on the assessed head (``pr_verdict_status.py``).
+Nothing here writes to GitHub; the plan is the whole output.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import pr_auto_merge
 import pr_comment
 import pr_github_client
 import pr_risk
+import pr_verdict_status
 from pr_actions import MAINTAINER_LOGIN
 from pr_labels import AUTO_MERGE_BOT, NEEDS_REVIEW, RISK_PREFIX, VERDICT_PREFIX
 from pr_review_response import REVIEW_STATUSES, VERDICTS
@@ -202,12 +204,13 @@ def _plan(
     }
 
 
-def _decision(risk: str, review: dict, auto_merge: str) -> dict:
+def _decision(risk: str, review: dict, auto_merge: str, verdict_status: str) -> dict:
     return {
         "risk": risk,
         "review_status": review["status"],
         "verdict": review.get("verdict") if review["status"] == "ok" else None,
         "auto_merge": auto_merge,
+        "verdict_status": verdict_status,
     }
 
 
@@ -217,6 +220,7 @@ def _aborted_decision(review: dict) -> dict:
         "review_status": review["status"],
         "verdict": None,
         "auto_merge": "off",
+        "verdict_status": None,
     }
 
 
@@ -232,13 +236,16 @@ def plan_publish(
     review: dict,
     auto_merge: bool | str | None = False,
     auto_merge_refused: bool = False,
+    status_url: str | None = None,
 ) -> dict:
     """Return the planned actions for one pull request; never writes.
 
     ``auto_merge`` is the repository variable: only ``True`` or the string
     ``"true"`` enables auto-merge planning; ``None`` (unset) keeps it off.
     ``auto_merge_refused`` replans after GitHub refused to arm auto-merge on an
-    already mergeable pull request (decision D).
+    already mergeable pull request (decision D). ``status_url`` is the run the
+    verdict status links to. The status comes last: after the labels and the
+    comment that publish the verdict, and after the auto-merge decision.
     """
     context = _validate_context(context)
     assessment = validate_assessment(assessment)
@@ -273,12 +280,14 @@ def plan_publish(
         actions.append(reviewer)
     if auto_merge_action is not None:
         actions.append(auto_merge_action)
+    status = pr_verdict_status.status_action(context, review, status_url)
+    actions.append(status)
     return _plan(
         context,
         "planned",
         None,
         actions,
-        _decision(risk, review, auto_merge_state),
+        _decision(risk, review, auto_merge_state, status["state"]),
     )
 
 

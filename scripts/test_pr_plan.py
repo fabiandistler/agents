@@ -41,7 +41,7 @@ def test_plan_has_the_documented_shape():
     assert plan["schema_version"] == 1
     assert plan["repo"] == "fabiandistler/agents"
     assert plan["number"] == 42
-    assert plan["head_sha"] == "abc123"
+    assert plan["head_sha"] == "abc1234"
     assert plan["status"] == "planned"
     assert plan["abort_reason"] is None
 
@@ -54,6 +54,7 @@ def test_plan_carries_the_decision_for_the_step_summary():
         "review_status": "ok",
         "verdict": "pass",
         "auto_merge": "off",
+        "verdict_status": "success",
     }
 
 
@@ -85,8 +86,8 @@ def test_decision_reports_the_effective_risk_and_verdict():
 def test_aborted_plan_has_no_decision_to_apply():
     plan = pr_plan.plan_publish(
         make_context(head_sha="def456"),
-        make_assessment(head_sha="abc123"),
-        make_review(head_sha="abc123"),
+        make_assessment(head_sha="abc1234"),
+        make_review(head_sha="abc1234"),
     )
 
     assert plan["decision"] == {
@@ -94,6 +95,7 @@ def test_aborted_plan_has_no_decision_to_apply():
         "review_status": "ok",
         "verdict": None,
         "auto_merge": "off",
+        "verdict_status": None,
     }
 
 
@@ -113,6 +115,7 @@ def test_docs_pull_request_plans_labels_comment_and_reviewer():
         "set_labels",
         "upsert_comment",
         "request_reviewer",
+        "set_status",
     ]
     assert label_action(plan)["add"] == ["risk:low", "review:pass"]
     assert label_action(plan)["remove"] == []
@@ -129,8 +132,8 @@ def test_docs_pull_request_plans_labels_comment_and_reviewer():
 def test_stale_assessment_sha_aborts_every_action():
     plan = pr_plan.plan_publish(
         make_context(head_sha="def456"),
-        make_assessment(head_sha="abc123"),
-        make_review(head_sha="abc123"),
+        make_assessment(head_sha="abc1234"),
+        make_review(head_sha="abc1234"),
         auto_merge=True,
     )
 
@@ -144,7 +147,7 @@ def test_stale_review_sha_aborts_every_action():
     plan = pr_plan.plan_publish(
         make_context(head_sha="def456"),
         make_assessment(head_sha="def456"),
-        make_review(head_sha="abc123"),
+        make_review(head_sha="abc1234"),
     )
 
     assert plan["status"] == "aborted"

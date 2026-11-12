@@ -27,6 +27,8 @@ HOLD_CONDITION = (
 # Enabling and disabling auto-merge needs contents and pull-requests write;
 # label changes go through the issues API.
 AUTO_MERGE_SCOPES = {"contents": "write", "pull-requests": "write", "issues": "write"}
+# Publish also sets the pr-review/verdict commit status; no other job may.
+PUBLISH_SCOPES = {**AUTO_MERGE_SCOPES, "statuses": "write"}
 PIPELINE_CLIS = {"pr_github.py", "pr_risk.py", "pr_review.py", "pr_publish.py"}
 MODEL_KEY = "CLAUDE_CODE_OAUTH_TOKEN"
 # The review step hands the token to this package, so its version stays exact.
