@@ -20,5 +20,12 @@
   runs the factory workflows create for issue and comment events; 72 of
   the 95 runs queued at 20:41 UTC were such no-ops. #797 leaves the
   GitHub-side root cause out of scope.
+- 2026-11-13: the stuck runs did not end on their own. A `status=queued`
+  listing showed 108 runs, all created 2026-11-11 between 20:17:41 and
+  20:47:04 UTC (`issue-triage` 36, `Claude Code` 18, `implementer` 18,
+  `CI` 9, `Triage label` 9, 18 others); none newer. #797 removed the `issues` trigger from `claude.yml` and stopped
+  `issue-triage.yml` from starting a runner for issues filed with a state
+  label; a new issue with two labels and one comment now creates 8 runs, all
+  skipped without a runner unless one of them has work to do.
 
 Related: [cross-repo token exchange](cross-repo-token-exchange.md).
