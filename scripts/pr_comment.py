@@ -35,7 +35,8 @@ def _render_finding(finding: dict) -> str:
     return rendered
 
 
-def _fenced_block(text: str) -> list[str]:
+def fenced_block(text: str) -> list[str]:
+    """A ```text block around `text`, fenced longer than any backtick run in it."""
     longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
     fence = "`" * max(3, longest + 1)
     return [f"{fence}text", text.rstrip(), fence]
@@ -74,7 +75,7 @@ def _render_comment(
             "",
             "The model response could not be parsed, so it is shown verbatim:",
             "",
-            *_fenced_block(raw),
+            *fenced_block(raw),
         ]
     if review.get("partial") is True:
         lines += [

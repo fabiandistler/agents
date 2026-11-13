@@ -62,7 +62,8 @@ def _tolerated(operation: Operation, status: object) -> bool:
     return operation.tolerate == "missing" and status == 404
 
 
-def _send(client: WriteClient, operation: Operation) -> None:
+def send(client: WriteClient, operation: Operation) -> None:
+    """Send one operation; a status its `tolerate` names counts as done."""
     try:
         if operation.method == "POST":
             response = client.post(operation.path, operation.payload)
@@ -168,7 +169,7 @@ def _send_all(
 ) -> dict:
     try:
         for operation in operations:
-            _send(client, operation)
+            send(client, operation)
             sent.append(operation)
     except pr_github_client.FetchError as error:
         detail = f"{error} (HTTP {error.status})" if error.status is not None else str(error)
