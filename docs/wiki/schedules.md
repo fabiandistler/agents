@@ -30,3 +30,14 @@
   (`trig_016FpvZkZFm5tPdbFCrXebbT`) stays a scheduled task: it needs the
   private repo-maintenance plugin. Wiki lint was already disabled
   (2026-11-09) and is not moved.
+- 2026-11-13: all three scheduled tasks named "Weekly issue sweep" were
+  disabled: `trig_017XrHjyAa3owGmFmCpAr2S1` (disabled 2026-11-09),
+  `trig_01FDujccZqWMu6pBji59YmBW` and `trig_01XCRCjbPZpkusCJ6EDhKdD9`
+  (disable dates not recorded). With no implementer workflow in
+  repo-maintenance and dotfiles, nothing there consumes `ready-for-agent`:
+  [no agent consumer outside agents](problems/no-agent-consumer-outside-agents.md).
+- 2026-11-13: one-off scheduled check `trig_01HdS5BtHMcP5ris2tjwviwh` for
+  the Dependabot runner-type setting (repo-maintenance#142, dotfiles#52),
+  due 2026-11-15 09:07 UTC. The scheduled maintenance run of 2026-11-16
+  07:32 UTC is expected to open repo-maintenance's first deps-audit PR
+  (repo-maintenance#137).

@@ -12,3 +12,6 @@
   against GitHub's resolved issue links (#657, `fabiandistler/agents@4093b2b`);
   #676 documents the exact no-issue phrase it accepts. The worker-dispatch
   idea above remains undecided.
+- 2026-11-13: the opposite failure, a closing keyword in quoted text that
+  closed an issue whose work had not merged (#783 via PR #795):
+  [closing keyword in quoted text](closing-keyword-in-quotes.md).
