@@ -8,8 +8,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    # One PR per week for all action bumps, not one per action: this repo pins
-    # four actions across two workflows and reviews them as a set.
+    # One PR per week for all action bumps, not one per action: every workflow
+    # pins its actions to a commit SHA, and the pins are reviewed as a set.
     groups:
       actions:
         patterns:

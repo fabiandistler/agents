@@ -148,7 +148,7 @@ Install the pinned check tools once, then run the whole list before opening a
 pull request. `ci.yml` calls the same script, so this is CI's whole list:
 
 ```bash
-pip install -r scripts/check_all.requirements.txt  # pinned prek, pytest, pyyaml
+pip install -r scripts/check_all.requirements.txt  # pinned prek, pytest, pyyaml, zizmor
 scripts/check_all.sh          # one PASS/FAIL/MISSING line per check
 scripts/check_all.sh --list   # the checks and the tools each needs
 scripts/check_all.sh --only docs,plugins  # the fast loop for a docs or plugin change

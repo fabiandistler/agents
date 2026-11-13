@@ -24,7 +24,7 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 # manifest check runs first.
 CHECKS=(manifest routers descriptions docs plugins instructions python-baseline project-claude
   vendor-lock instruction-unicode frontmatter evals vocab gh-graphql skill-refs reference-tocs
-  dated-claims table-width skill-paths secret-argv pytest prek compileall bats mermaid)
+  dated-claims table-width skill-paths secret-argv zizmor pytest prek compileall bats mermaid)
 
 usage() {
   cat <<'EOF'
@@ -140,6 +140,9 @@ run_check() {
     table-width) "$PY" scripts/check_table_width.py ;;
     skill-paths) "$PY" scripts/check_skill_paths.py ;;
     secret-argv) "$PY" scripts/check_secret_argv.py ;;
+    # Workflow security audit, offline (no GitHub API). Deliberate findings are
+    # suppressed inline, or in .github/zizmor.yml, each with its reason.
+    zizmor) zizmor --offline --persona=regular --min-severity=medium .github/workflows/ ;;
     # Every test_*.py under scripts/ and skills/; naming one file left the
     # other skills' tests unrun.
     pytest) "$PY" -m pytest -q scripts skills ;;

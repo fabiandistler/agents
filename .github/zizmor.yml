@@ -1,0 +1,16 @@
+# zizmor configuration, read by the `zizmor` check in scripts/check_all.sh.
+# Each ignore names its reason. Other workflows suppress deliberate findings
+# inline; claude.yml's are kept here so its edits stay limited to the action
+# pin while #797 changes its triggers. Move them inline afterwards.
+rules:
+  dangerous-triggers:
+    ignore:
+      # issue_comment: claude-code-action stops unless the commenting actor has
+      # write access to the repository (docs/security.md of the pinned
+      # release); allowed_bots and allowed_non_write_users are unset.
+      - claude.yml
+  artipacked:
+    ignore:
+      # The job's token is read-only (contents: read) and the workflow uploads
+      # no artifacts. Set persist-credentials: false with the move inline.
+      - claude.yml

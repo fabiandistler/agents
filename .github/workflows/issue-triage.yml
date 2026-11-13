@@ -17,7 +17,10 @@ name: issue-triage
 on:
   issues:
     types: [opened, labeled]
-  issue_comment:
+  # Deliberate (ADR-0013): the reporter answering a needs-info issue. Only
+  # issues by authors with write access reach the model
+  # (scripts/issue_triage_policy.py).
+  issue_comment: # zizmor: ignore[dangerous-triggers]
     types: [created]
   workflow_dispatch:
     inputs:
