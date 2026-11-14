@@ -19,5 +19,9 @@
 - Follow-ups filed 2026-11-14: #806 (lint on edit, agent), #807 (show all
   hook failures, agent), #808 (define a round in the stop rule, workflow,
   interactive session).
+- 2026-11-14: #808 defines a round in `factory-implementer.yml` and
+  `rework.yml`: a rerun after a tool rewrote files belongs to the same
+  round, and a draft or handoff needs one more red run after the last
+  counted round. Counting rounds for retros is left to a follow-up issue.
 
 Related: [shared usage limit](shared-usage-limit.md).
