@@ -33,11 +33,19 @@ it looked in the code, and either questions or a draft agent brief.
 Runs start on a new issue, on the reporter's reply to `needs-info`, when the
 maintainer adds `needs-triage` again, and from a manual run (Actions →
 issue-triage → Run workflow, dry run by default). The two automatic triggers
-stop after two bot triages per issue. Issues by people without write access,
-bot issues and issues filed with a state label are not sent to the model. The
-workflow filter already drops a bot's issue and an issue filed with a state
-label other than `needs-triage`, so neither starts a runner; an issue filed
-with `needs-triage` is triaged from its `labeled` event, not from `opened`.
+stop after two bot triages per issue. A new issue gets one automated triage,
+even when it is filed with `needs-triage`: the workflow filter drops that
+issue's `opened` run. When two runs do start for a new issue, the per-issue
+concurrency group starts the second only after the first has posted its
+triage, so the second finds the bot triage and skips without a model call.
+The skip relies on that order: `assess` reads the comments when it starts, and
+`publish` does not check again. Adding `needs-triage` starts a run only when a
+person's label event is newer than the last bot triage; a bot's label event
+never does.
+Issues by people without write access, bot issues and issues filed with a
+state label are not sent to the model. The workflow filter already drops a
+bot's issue and an issue filed with a state label other than `needs-triage`,
+so neither starts a runner.
 `scripts/test_issue_triage_policy.py` keeps the bot's state labels in sync
 with this table.
 

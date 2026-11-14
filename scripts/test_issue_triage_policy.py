@@ -31,13 +31,27 @@ def issue(**overrides: object) -> dict:
         "author_type": "User",
         "author_association": "OWNER",
         "labels": [NEEDS_TRIAGE, "bug"],
+        "label_events": [],
     }
     facts.update(overrides)
     return facts
 
 
-def bot_triage() -> dict:
-    return {"author": COMMENT_AUTHOR, "body": f"{COMMENT_MARKER}\nearlier triage"}
+CREATED = "2026-11-13T10:00:00Z"
+TRIAGED = "2026-11-13T10:02:00Z"
+RELABELED = "2026-11-13T12:00:00Z"
+
+
+def bot_triage(created_at: str = TRIAGED) -> dict:
+    return {
+        "author": COMMENT_AUTHOR,
+        "body": f"{COMMENT_MARKER}\nearlier triage",
+        "created_at": created_at,
+    }
+
+
+def labeled(created_at: str, actor_type: str = "User", label: str = NEEDS_TRIAGE) -> dict:
+    return {"label": label, "actor_type": actor_type, "created_at": created_at}
 
 
 def test_the_state_labels_match_the_tracker_vocabulary():
@@ -88,8 +102,45 @@ def test_automatic_triggers_stop_at_the_limit_but_a_human_does_not():
     capped = assess(issue(labels=[NEEDS_INFO]), comments, "reply")
     assert capped["eligible"] is False
     assert "limit" in capped["skip_reason"]
+    relabeled = issue(label_events=[labeled(CREATED), labeled(RELABELED)])
     for trigger in ("relabel", "dispatch"):
-        assert assess(issue(), comments, trigger)["eligible"] is True
+        assert assess(relabeled, comments, trigger)["eligible"] is True
+
+
+def test_opened_first_then_the_creation_label_event_does_not_triage_again():
+    created = issue(label_events=[labeled(CREATED)])
+    assert assess(created, [], "opened")["eligible"] is True
+    decision = assess(created, [bot_triage()], "relabel")
+    assert decision["eligible"] is False
+    assert "since the last triage" in decision["skip_reason"]
+
+
+def test_labeled_first_then_opened_does_not_triage_again():
+    created = issue(label_events=[labeled(CREATED)])
+    assert assess(created, [], "relabel")["eligible"] is True
+    decision = assess(created, [bot_triage()], "opened")
+    assert decision["eligible"] is False
+    assert "first triage" in decision["skip_reason"]
+    assert "limit" not in decision["skip_reason"]
+
+
+def test_a_person_re_adding_needs_triage_after_the_triage_gets_a_run():
+    once = issue(label_events=[labeled(CREATED), labeled(RELABELED)])
+    assert assess(once, [bot_triage()], "relabel")["eligible"] is True
+    older = issue(label_events=[labeled(CREATED)])
+    triaged_twice = [bot_triage(), bot_triage(RELABELED)]
+    assert assess(older, triaged_twice, "relabel")["eligible"] is False
+
+
+@pytest.mark.parametrize(
+    "event",
+    [labeled(RELABELED, actor_type="Bot"), labeled(RELABELED, label="bug")],
+    ids=["bot", "other-label"],
+)
+def test_only_a_persons_needs_triage_event_counts_as_a_re_add(event: dict):
+    decision = assess(issue(label_events=[labeled(CREATED), event]), [bot_triage()], "relabel")
+    assert decision["eligible"] is False
+    assert "since the last triage" in decision["skip_reason"]
 
 
 def test_only_the_bot_comment_with_the_marker_counts_as_a_triage():
