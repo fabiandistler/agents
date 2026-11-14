@@ -42,7 +42,7 @@ from pr_actions import Operation
 from pr_apply import WriteClient
 from pr_apply import _send as send_operation
 from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
-from pr_github import get_json, paginate
+from pr_github import PER_PAGE, get_json, paginate
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
 from pr_labels import VERDICT_PREFIX
 
@@ -249,32 +249,34 @@ def _issue_comments(client: ReadClient, repo: str, number: int) -> list[dict]:
 def implementer_run(client: ReadClient, repo: str, issue: int) -> int | None:
     """The newest implementer run for the issue that kept a run-summary artifact."""
     title = f"implementer: issue #{issue}"
-    payload = get_json(
-        client,
-        f"/repos/{repo}/actions/workflows/{IMPLEMENTER_WORKFLOW}/runs",
-        params={"per_page": 100},
-    )
-    runs = payload.get("workflow_runs") if isinstance(payload, dict) else None
-    if not isinstance(runs, list):
-        raise FetchError(f"GitHub API returned no runs for {IMPLEMENTER_WORKFLOW}")
-    for run in runs:
-        if not isinstance(run, dict) or run.get("display_title") != title:
-            continue
-        run_id = run.get("id")
-        if isinstance(run_id, bool) or not isinstance(run_id, int):
-            continue
-        artifacts = get_json(client, f"/repos/{repo}/actions/runs/{run_id}/artifacts")
-        listed = artifacts.get("artifacts") if isinstance(artifacts, dict) else None
-        if not isinstance(listed, list):
-            raise FetchError(f"GitHub API returned no artifacts list for run {run_id}")
-        if any(
-            isinstance(artifact, dict)
-            and artifact.get("name") == SUMMARY_ARTIFACT
-            and not artifact.get("expired")
-            for artifact in listed
-        ):
-            return run_id
-    return None
+    path = f"/repos/{repo}/actions/workflows/{IMPLEMENTER_WORKFLOW}/runs"
+    page = 1
+    while True:
+        # Newest first, page by page: the run can sit past the first page.
+        payload = get_json(client, path, params={"per_page": PER_PAGE, "page": page})
+        runs = payload.get("workflow_runs") if isinstance(payload, dict) else None
+        if not isinstance(runs, list):
+            raise FetchError(f"GitHub API returned no runs for {IMPLEMENTER_WORKFLOW}")
+        for run in runs:
+            if not isinstance(run, dict) or run.get("display_title") != title:
+                continue
+            run_id = run.get("id")
+            if isinstance(run_id, bool) or not isinstance(run_id, int):
+                continue
+            artifacts = get_json(client, f"/repos/{repo}/actions/runs/{run_id}/artifacts")
+            listed = artifacts.get("artifacts") if isinstance(artifacts, dict) else None
+            if not isinstance(listed, list):
+                raise FetchError(f"GitHub API returned no artifacts list for run {run_id}")
+            if any(
+                isinstance(artifact, dict)
+                and artifact.get("name") == SUMMARY_ARTIFACT
+                and not artifact.get("expired")
+                for artifact in listed
+            ):
+                return run_id
+        if len(runs) < PER_PAGE:
+            return None
+        page += 1
 
 
 def label_done(client: GateClient, repo: str, number: int) -> None:

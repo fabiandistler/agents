@@ -70,6 +70,8 @@ class RoutedClient:
         key = path
         if path == f"/repos/{REPO}/pulls":
             key = f"{path}?state={params['state']}"
+        if f"{key}?page={params.get('page')}" in self.routes:
+            key = f"{key}?page={params['page']}"
         if key not in self.routes:
             raise AssertionError(f"unexpected GET {key}")
         self.events.append(f"GET {key}")
@@ -298,6 +300,23 @@ def test_selection_names_the_implementer_run_with_a_summary():
         ]
     }
     routes[f"/repos/{REPO}/actions/runs/8/artifacts"] = {"artifacts": []}
+    routes[f"/repos/{REPO}/actions/runs/9/artifacts"] = {
+        "artifacts": [{"name": "run-summary", "expired": False}]
+    }
+    assert retro_gate.run_gate(RoutedClient(routes), REPO, 10).implementer_run == 9
+
+
+def test_the_implementer_run_is_found_past_the_first_page_of_runs():
+    runs_path = f"/repos/{REPO}/actions/workflows/implementer.yml/runs"
+    routes = gate_routes(ten_after_floor())
+    routes[f"{runs_path}?page=1"] = {
+        "workflow_runs": [
+            {"id": 100 + n, "display_title": f"implementer: issue #{n}"} for n in range(100)
+        ]
+    }
+    routes[f"{runs_path}?page=2"] = {
+        "workflow_runs": [{"id": 9, "display_title": "implementer: issue #1010"}]
+    }
     routes[f"/repos/{REPO}/actions/runs/9/artifacts"] = {
         "artifacts": [{"name": "run-summary", "expired": False}]
     }
