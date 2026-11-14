@@ -141,7 +141,7 @@ run_check() {
     skill-paths) "$PY" scripts/check_skill_paths.py ;;
     secret-argv) "$PY" scripts/check_secret_argv.py ;;
     # Workflow security audit, offline (no GitHub API). Deliberate findings are
-    # suppressed inline, or in .github/zizmor.yml, each with its reason.
+    # suppressed inline, each with its reason.
     zizmor) zizmor --offline --persona=regular --min-severity=medium .github/workflows/ ;;
     # Every test_*.py under scripts/ and skills/; naming one file left the
     # other skills' tests unrun.
