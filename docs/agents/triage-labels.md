@@ -50,7 +50,11 @@ off-format model answer writes nothing; the run log says why.
 Adding `ready-for-agent` starts `.github/workflows/implementer.yml`
 ([ADR-0014](../adr/0014-agent-runs-in-github-actions.md)). Its first write is
 `scripts/implementer_claim.py`, which decides what happens to branch
-`agent/issue-<n>`:
+`agent/issue-<n>`. Called as a reusable workflow from another repository, it
+takes the workflow file whose runs it counts from `--workflow-file` or
+`GITHUB_WORKFLOW_REF`, matches the job by `--job-name` also as
+`<caller job> / <name>`, and names the branch with `--branch-prefix`; the
+defaults are `implementer.yml`, `implement` and `agent/issue-`. The outcomes:
 
 | Situation | Outcome | What the run does | Who acts next |
 | --- | --- | --- | --- |

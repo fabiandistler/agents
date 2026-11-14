@@ -25,6 +25,7 @@ from test_implementer_claim import (
     claim,
     http_error,
     run_cli,
+    run_main,
     working_job,
 )
 
@@ -420,13 +421,7 @@ def test_cli_reads_the_actions_api_with_the_job_token(monkeypatch, tmp_path, cap
     monkeypatch.setattr(implementer_claim, "GitHubClient", lambda token: fakes[token])
     # A run list only the job token can read: the App token's route answers 403.
     app_fake.errors[("GET", RUNS)] = http_error(403, RUNS)
-    summary = tmp_path / "run-summary.md"
-    code = implementer_claim.main(
-        [
-            *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
-            *("--contract", str(tmp_path / "contract.md")),
-        ]
-    )
+    code, _ = run_main(monkeypatch, tmp_path)
     assert code == implementer_claim.EXIT_CONTINUE
     assert json.loads(capsys.readouterr().out)["outcome"] == "claimed"
     assert job_fake.writes == []
@@ -447,13 +442,7 @@ def test_cli_rejects_a_bad_run_id(monkeypatch, tmp_path, capsys, run_id):
     monkeypatch.setenv("GH_TOKEN", "app-token")
     monkeypatch.setenv("ACTIONS_READ_TOKEN", "job-token")
     monkeypatch.setenv("GITHUB_RUN_ID", run_id)
-    summary = tmp_path / "run-summary.md"
-    code = implementer_claim.main(
-        [
-            *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
-            *("--contract", str(tmp_path / "contract.md")),
-        ]
-    )
+    code, _ = run_main(monkeypatch, tmp_path)
     assert code == implementer_claim.EXIT_FAILED
     assert json.loads(capsys.readouterr().out)["reason"] == (
         "GITHUB_RUN_ID is not a positive integer"
@@ -463,13 +452,7 @@ def test_cli_rejects_a_bad_run_id(monkeypatch, tmp_path, capsys, run_id):
 def test_cli_without_the_actions_token_fails_the_claim(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("GH_TOKEN", "app-token")
     monkeypatch.delenv("ACTIONS_READ_TOKEN", raising=False)
-    summary = tmp_path / "run-summary.md"
-    code = implementer_claim.main(
-        [
-            *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
-            *("--contract", str(tmp_path / "contract.md")),
-        ]
-    )
+    code, _ = run_main(monkeypatch, tmp_path)
     assert code == implementer_claim.EXIT_FAILED
     assert json.loads(capsys.readouterr().out)["reason"] == "ACTIONS_READ_TOKEN is not set"
 
