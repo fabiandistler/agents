@@ -282,7 +282,7 @@ else
   banner "Factory setup for $repo"
 fi
 
-# ── Stage 1 ───────────────────────────────────────────────────────────────
+# ── Stage 1 ────────────────────
 stage "Preconditions"
 command -v gh >/dev/null 2>&1 || die 3 "gh is not installed: https://cli.github.com"
 command -v python3 >/dev/null 2>&1 || die 3 "python3 is not installed"
@@ -299,7 +299,7 @@ else
   warn "need Pro). Brakes: the push guard and merging only on green."
 fi
 
-# ── Stage 2 ───────────────────────────────────────────────────────────────
+# ── Stage 2 ────────────────────
 stage "Labels"
 local wanted existing label
 local -a missing_labels=()
@@ -325,7 +325,7 @@ for label in "${missing_labels[@]}"; do
 done
 ((${#missing_labels[@]})) || say "All labels exist; nothing to create."
 
-# ── Stage 3 ───────────────────────────────────────────────────────────────
+# ── Stage 3 ────────────────────
 stage "Secret CLAUDE_CODE_OAUTH_TOKEN"
 note "The token comes from \`claude setup-token\` (valid one year; pr-review-runbook.md, Setup)."
 local secret_names secret_exists=no source_name="hidden entry"
@@ -369,7 +369,7 @@ else
   say "${GREEN}✓ set${RESET} GitHub secret CLAUDE_CODE_OAUTH_TOKEN"
 fi
 
-# ── Stage 4 ───────────────────────────────────────────────────────────────
+# ── Stage 4 ────────────────────
 stage "Actions allow-list"
 local allowed_actions selected_actions pattern
 local -a missing_patterns=()
@@ -396,7 +396,7 @@ else
   fi
 fi
 
-# ── Stage 5 ───────────────────────────────────────────────────────────────
+# ── Stage 5 ────────────────────
 stage "Clicks without an API"
 local app_url="https://github.com/$repo/settings/installations"
 local dependabot_url="https://github.com/$repo/settings/security_analysis"
@@ -419,7 +419,7 @@ if ! dry_run && ! confirm "After the reload, is Standard GitHub runner selected?
   SKIPPED+=("Dependabot runner type on $repo: $dependabot_url")
 fi
 
-# ── Stage 6 ───────────────────────────────────────────────────────────────
+# ── Stage 6 ────────────────────
 stage "Verify"
 local gh_token check_status=0
 gh_token="$(gh auth token)" || die 3 "gh auth token printed no token"
