@@ -130,3 +130,51 @@ def test_main_rejects_a_missing_required_flag_and_writes_nothing(tmp_path, capsy
     captured = capsys.readouterr()
     assert captured.out == ""
     assert missing_flag in captured.err
+
+
+@pytest.mark.parametrize(
+    ("summary_text", "expected"),
+    [
+        ("RUN FAILED: claim (HTTP 500)\nmore\n", "::error::RUN FAILED: claim (HTTP 500)"),
+        ("  RUN FAILED:   tabs\tand  spaces\n", "::error::RUN FAILED: tabs and spaces"),
+        ("RUN FAILED: 100% broken", "::error::RUN FAILED: 100%25 broken"),
+        (None, f"::error::{report.NO_SUMMARY_LINE}"),
+        (" \n", f"::error::{report.NO_SUMMARY_LINE}"),
+    ],
+)
+def test_a_failed_run_gets_one_single_line_error_annotation(summary_text, expected):
+    assert report.error_annotation(summary_text) == expected
+
+
+def test_a_good_run_gets_no_error_annotation():
+    assert report.error_annotation("Issue #1\nPR opened\n") is None
+
+
+def test_the_error_annotation_is_capped():
+    annotation = report.error_annotation("RUN FAILED: " + "x" * report.MAX_ANNOTATION)
+    assert annotation is not None and annotation.endswith(" [truncated]")
+    assert len(annotation) == len("::error::") + report.MAX_ANNOTATION + len(" [truncated]")
+
+
+@pytest.mark.parametrize(
+    ("summary_text", "code", "error_lines"),
+    [
+        ("Audit done: 0 error\n", report.EXIT_OK, []),
+        ("RUN FAILED: tests red\n", report.EXIT_RUN_FAILED, ["::error::RUN FAILED: tests red"]),
+        (None, report.EXIT_RUN_FAILED, [f"::error::{report.NO_SUMMARY_LINE}"]),
+    ],
+)
+def test_main_prints_exactly_one_error_line_only_for_a_failed_run(
+    tmp_path, capsys, summary_text, code, error_lines
+):
+    summary = tmp_path / "run-summary.md"
+    if summary_text is not None:
+        summary.write_text(summary_text, encoding="utf-8")
+    output = tmp_path / "step-summary.md"
+    argv = ["--summary", str(summary), "--execution-file", "", "--output", str(output)]
+
+    assert report.main(argv) == code
+
+    stdout = capsys.readouterr().out.splitlines()
+    assert stdout == error_lines
+    assert "::error::" not in output.read_text(encoding="utf-8")
