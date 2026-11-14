@@ -44,8 +44,16 @@ from pr_actions import Operation
 from pr_apply import WriteClient
 from pr_apply import _send as send_operation
 from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
-from pr_github import PER_PAGE, get_json, paginate
-from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
+from pr_github_client import (
+    PER_PAGE,
+    REPO_PATTERN,
+    FetchError,
+    GitHubClient,
+    MissingTokenError,
+    ReadClient,
+    get_json,
+    paginate,
+)
 from pr_labels import VERDICT_PREFIX
 
 RETRO_WORKFLOW = ".github/workflows/retro.yml"

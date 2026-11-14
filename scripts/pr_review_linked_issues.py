@@ -10,7 +10,7 @@ the review partial, and it never reaches the system prompt.
 
 from __future__ import annotations
 
-from pr_github import LINKED_ISSUE_STATUSES
+from pr_github_linked_issues import LINKED_ISSUE_STATUSES
 from pr_review_response import ContextError
 from pr_review_sanitize import sanitize_text, single_line, truncate_text
 

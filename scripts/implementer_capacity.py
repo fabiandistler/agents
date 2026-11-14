@@ -13,8 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from implementer_setup import ImplementerSetup
-from pr_github import PER_PAGE, get_json
-from pr_github_client import FetchError, ReadClient
+from pr_github_client import PER_PAGE, FetchError, ReadClient, get_json
 
 MAX_WORKING_RUNS = 1
 
