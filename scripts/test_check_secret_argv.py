@@ -30,6 +30,8 @@ POSITIVE = [
     ('cat notes | upload "$CLIENT_SECRET"', "secret-var"),
     ('curl -H "X-Custom: $(printf %s "$SERVICE_TOKEN")" https://x', "secret-var"),
     ('upload --verbose "${ACCESS_TOKEN_FILE}"', "secret-var"),
+    # One element of an array is one value.
+    ('upload "${DEPLOY_SECRET[0]}"', "secret-var"),
 ]
 
 SAFE = [
@@ -52,6 +54,8 @@ SAFE = [
     # A plural TOKENS is a token count, not a credential.
     "Files stay under ${MAX_TOKENS} tokens so an agent can read any file whole",
     'summarize "$TOKENS" report.md',
+    # A whole-array expansion lists names (the wizard library's summary line).
+    'note "set ${#WRITTEN_SECRET[@]} GitHub secret(s): ${WRITTEN_SECRET[*]}"',
     "curl -s https://api.example.com/v1/orders?limit=2",
 ]
 

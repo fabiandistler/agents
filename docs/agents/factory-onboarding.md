@@ -5,11 +5,14 @@ label, the issue triage, the PR review and the implementer, each called from
 the target as a reusable workflow of this repository
 ([ADR-0018](../adr/0018-reusable-factory-workflows.md)). This page lists what
 to add, what to set by hand and in which order, and how to check the result
-with `scripts/factory_onboarding_check.py`.
+with `scripts/factory_onboarding_check.py`. For a new repository, start with
+the [setup wizard](#setup-wizard); the [manual steps](#manual-steps-in-order)
+are the fallback.
 
 ## Contents
 
 - [Before you start](#before-you-start)
+- [Setup wizard](#setup-wizard)
 - [Caller templates](#caller-templates)
 - [Inputs and secret](#inputs-and-secret)
 - [One SHA for all callers](#one-sha-for-all-callers)
@@ -44,6 +47,37 @@ with `scripts/factory_onboarding_check.py`.
   its checks with a ruleset and needs an event policy for
   `pull_request_target` ([event policy](pr-review-event-policy.md); ADR-0018,
   "Brakes in target repositories").
+
+## Setup wizard
+
+The first step for a new repository. `scripts/factory-repo-setup.sh` does
+everything outside the caller files with the maintainer's own `gh` login, in
+six stages:
+
+1. Preconditions: `gh auth status`, the repository is reachable, and what its
+   visibility means (a private repository on GitHub Free gets no ruleset).
+2. Labels: the five state labels and the categories `bug` and `enhancement`,
+   created if missing; an existing label keeps its colour and description.
+3. Secret: `CLAUDE_CODE_OAUTH_TOKEN` from hidden entry or `--token-file`,
+   created with `claude setup-token`. The value is never printed or logged; an
+   existing secret is replaced only after a confirmation.
+4. Actions allow-list: if the repository allows only selected actions, adds
+   `fabiandistler/agents/.github/workflows/*` and the actions the factory
+   workflows use. An unrestricted policy is left unchanged.
+5. Clicks without an API: opens the page for the Claude GitHub App and for the
+   Dependabot runner type, with the path to click.
+6. Verify: runs `scripts/factory_onboarding_check.py` with the `gh` login's
+   token.
+
+```bash
+scripts/factory-repo-setup.sh --repo OWNER/NAME          # dry run: prints every planned write
+scripts/factory-repo-setup.sh --repo OWNER/NAME --apply  # performs them, asks for the token and the clicks
+```
+
+Every stage is safe to re-run. The wizard writes no file: the caller workflows
+come from the template repository or from [Caller templates](#caller-templates),
+and the callers still need merging to the default branch (step 6 below). If the
+wizard cannot run, follow the [manual steps](#manual-steps-in-order).
 
 ## Caller templates
 
@@ -241,6 +275,8 @@ gh api repos/fabiandistler/agents/commits/main --jq .sha
 ```
 
 ## Manual steps, in order
+
+The fallback for the [setup wizard](#setup-wizard), and the order it follows.
 
 1. Install the Claude GitHub App on the repository
    (<https://github.com/apps/claude>), or confirm that an existing
