@@ -230,6 +230,20 @@ assert_no_token_anywhere() {
   assert_no_token_anywhere
 }
 
+@test "a token without the sk-ant-oat prefix is set only after a confirmation" {
+  local junk=not-a-claude-token
+  # banner, token, set anyway? no
+  apply "" "$junk" n
+  assert_failure 2
+  assert_line --partial 'does not start with sk-ant-oat'
+  [[ ! -e "$GH_SECRET_STDIN" ]] || fail "the secret was set"
+  [[ "$output$stderr" != *"$junk"* ]] || fail "the token appeared in the output"
+  # banner, token, set anyway? yes, App, Dependabot
+  apply "" "$junk" y y y
+  assert_success
+  assert_equal "$(cat "$GH_SECRET_STDIN")" "$junk"
+}
+
 @test "a failed gh secret set exits 4 without printing the token" {
   export GH_SECRET_SET_STATUS=1
   apply "" "$TOKEN_VALUE" y y

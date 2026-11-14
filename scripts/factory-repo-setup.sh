@@ -199,12 +199,9 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 # factory-repo-setup.sh puts a new repository on the factory with the
-# maintainer's own gh login: state and category labels, the
-# CLAUDE_CODE_OAUTH_TOKEN secret, the Actions allow-list, the clicks GitHub has
-# no API for, then scripts/factory_onboarding_check.py. The labels and the
-# allow-list patterns come from scripts/factory_repo_setup.py. Runbook:
-# docs/agents/factory-onboarding.md. Tests: test/factory_repo_setup.bats.
-# It writes no file: the caller workflows come from the template repo or runbook.
+# maintainer's gh login; usage() lists the stages. Labels and patterns:
+# scripts/factory_repo_setup.py. Runbook: docs/agents/factory-onboarding.md.
+# Tests: test/factory_repo_setup.bats. It writes no file into the target.
 
 run_wizard() {
 
@@ -352,14 +349,18 @@ else
     step "Run \`claude setup-token\` in another terminal and copy the token."
     ask_secret CLAUDE_CODE_OAUTH_TOKEN "Paste the token (hidden):" || die 2 "no token entered"
   fi
-  # Drop surrounding blanks and a CRLF. A token has none inside, so a second
-  # word or line is refused rather than guessed at.
+  # Drop surrounding blanks and a CRLF; refuse a blank or line left inside.
   blank="${CLAUDE_CODE_OAUTH_TOKEN%%[![:space:]]*}"
   CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN#"$blank"}"
   blank="${CLAUDE_CODE_OAUTH_TOKEN##*[![:space:]]}"
   CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN%"$blank"}"
   [[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]] || die 2 "the token is empty"
   [[ "$CLAUDE_CODE_OAUTH_TOKEN" != *[[:space:]]* ]] || die 2 "the token has a blank or a second line in it"
+  # The prefix claude setup-token prints; not a documented format, so it asks.
+  [[ "$CLAUDE_CODE_OAUTH_TOKEN" == sk-ant-oat* ]] || {
+    warn "The token does not start with sk-ant-oat, as claude setup-token tokens do."
+    confirm "Set it anyway?" || die 2 "the secret was not set"
+  }
   # On stdin, never in argv. set_secret would hide a failure as "skipped".
   printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo "$repo" >/dev/null ||
     die 4 "could not set secret CLAUDE_CODE_OAUTH_TOKEN"
