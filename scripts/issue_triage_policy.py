@@ -62,6 +62,18 @@ def count_bot_triages(comments: list[dict]) -> int:
     return sum(1 for comment in comments if _is_bot_triage(comment))
 
 
+def parse_time(text: str) -> datetime:
+    """An ISO 8601 time with a UTC offset, as GitHub sends ``created_at``.
+
+    Raises ValueError for any other text, and for a time without an offset,
+    which cannot be compared with one that has it.
+    """
+    moment = datetime.fromisoformat(text)
+    if moment.tzinfo is None:
+        raise ValueError("the time has no UTC offset")
+    return moment
+
+
 def _relabeled_since_last_triage(comments: list[dict], label_events: list[dict]) -> bool:
     """Whether a person added needs-triage after the newest bot triage.
 
@@ -70,12 +82,10 @@ def _relabeled_since_last_triage(comments: list[dict], label_events: list[dict])
     never counts: only a maintainer's later re-add asks for another run.
     """
     newest_triage = max(
-        datetime.fromisoformat(comment["created_at"])
-        for comment in comments
-        if _is_bot_triage(comment)
+        parse_time(comment["created_at"]) for comment in comments if _is_bot_triage(comment)
     )
     return any(
-        datetime.fromisoformat(event["created_at"]) > newest_triage
+        parse_time(event["created_at"]) > newest_triage
         for event in label_events
         if event["label"] == NEEDS_TRIAGE and event["actor_type"] != "Bot"
     )

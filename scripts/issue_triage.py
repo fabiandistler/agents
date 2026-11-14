@@ -29,6 +29,7 @@ from issue_triage_policy import (
     NEEDS_TRIAGE,
     TRIGGERS,
     assess,
+    parse_time,
     plan_labels,
     unchanged_since_assessment,
 )
@@ -122,6 +123,12 @@ def _time(entry: dict) -> str:
     created_at = entry.get("created_at")
     if not isinstance(created_at, str):
         raise pr_github_client.FetchError("GitHub API returned an item without created_at")
+    try:
+        parse_time(created_at)
+    except ValueError as error:
+        raise pr_github_client.FetchError(
+            "GitHub API returned an item with a malformed created_at"
+        ) from error
     return created_at
 
 

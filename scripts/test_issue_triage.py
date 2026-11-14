@@ -155,6 +155,22 @@ def test_a_failed_events_fetch_is_a_fetch_failure(tmp_path: Path):
     )
 
 
+@pytest.mark.parametrize("created_at", ["yesterday", "2026-11-13T10:02:00"], ids=["text", "naive"])
+@pytest.mark.parametrize("item", ["comment", "event"])
+def test_a_malformed_time_is_a_fetch_failure(tmp_path: Path, item: str, created_at: str):
+    comment_time, event_time = (
+        (created_at, RELABELED) if item == "comment" else (TRIAGED, created_at)
+    )
+    client = FakeClient(
+        api_issue(), [api_bot_triage(comment_time)], events=[api_labeled(event_time)]
+    )
+    argv = ["assess", "--repo", REPO, "--issue", str(NUMBER), "--trigger", "relabel"]
+    output = str(tmp_path / "c.json")
+    assert issue_triage.main([*argv, "--output", output], client=client) == (
+        pr_cli.EXIT_FETCH_FAILED
+    )
+
+
 def test_assess_skips_an_outside_author():
     context = assessed(FakeClient(api_issue(author_association="NONE")))
     assert context["eligible"] is False
