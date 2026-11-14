@@ -153,6 +153,18 @@ def test_all_pass_selects_the_newest():
     assert retro_gate.run_gate(client, REPO, 10).selected == 10
 
 
+def test_bot_comments_without_a_rework_marker_count_no_round():
+    pull = retro_gate.merged_agent_pull(api_pull(1, merged_at=after(1)), REPO)
+    assert pull is not None
+    bot_comments = [
+        comment(f"{COMMENT_MARKER}\nreview", COMMENT_AUTHOR),
+        comment(f"<!-- rework-handoff head:{'a' * 40} -->\nhandoff", COMMENT_AUTHOR),
+        comment("plain text", COMMENT_AUTHOR),
+    ]
+    assert retro_gate.non_pass_rounds(pull, bot_comments) == 0
+    assert retro_gate.non_pass_rounds(pull, [*bot_comments, rework(1), rework(2)]) == 2
+
+
 def test_rework_markers_count_only_from_the_review_bot():
     pulls = ten_after_floor()
     forged = comment("<!-- rework-round:1 --><!-- rework-round:2 -->", "outsider")
