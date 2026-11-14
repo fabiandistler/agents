@@ -57,6 +57,76 @@ stub_parallel() {
   stub_path="$stub_bin:$(path_without parallel)"
 }
 
+# A bare checkout that is a git repo with one tracked file, and a stub prek
+# first on PATH. With $1 = fail the stub acts like a hook run that rewrote
+# that file: it changes it, prints the hook results (one Failed with its
+# message), and only if asked with --show-diff-on-failure, as the real prek
+# does, a diff of more than 40 lines last; then it exits 1. With $1 = pass it
+# prints a Passed line and exits 0.
+make_checkout_with_stub_prek() {
+  make_bare_checkout
+  printf 'line\n' >"$bare_checkout/formatted.py"
+  git -C "$bare_checkout" init -q
+  git -C "$bare_checkout" add formatted.py
+  git -C "$bare_checkout" -c user.name=Test -c user.email=test@example.com commit -qm init
+  local stub_bin="$BATS_TEST_TMPDIR/stub-bin"
+  mkdir -p "$stub_bin"
+  if [ "$1" = pass ]; then
+    printf '#!/usr/bin/env bash\necho "ruff format....Passed"\n' >"$stub_bin/prek"
+  else
+    cat >"$stub_bin/prek" <<'EOF'
+#!/usr/bin/env bash
+for i in $(seq 1 45); do echo "rewritten $i"; done >>formatted.py
+echo "ruff format..........................................Failed"
+echo "- hook id: ruff-format"
+echo "- files were modified by this hook"
+echo "ty check.............................................Failed"
+echo "- hook id: ty"
+echo "error[invalid-return-type]: Return type does not match returned value"
+echo "shfmt................................................Passed"
+case " $* " in *" --show-diff-on-failure "*)
+  echo "All changes made by hooks:"
+  git diff
+  ;;
+esac
+exit 1
+EOF
+  fi
+  chmod +x "$stub_bin/prek"
+  stub_path="$stub_bin:$PATH"
+}
+
+# The incident in #807: the diff pushed the Failed hook lines out of the tail.
+@test "a failing prek check shows every Failed hook and its message in the default tail" {
+  make_checkout_with_stub_prek fail
+  run env PATH="$stub_path" "$bare_checkout/scripts/check_all.sh" --only prek
+  assert_failure 1
+  assert_line 'FAIL prek (exit 1)'
+  assert_line '  | ruff format..........................................Failed'
+  assert_line '  | - files were modified by this hook'
+  assert_line '  | ty check.............................................Failed'
+  assert_line '  | error[invalid-return-type]: Return type does not match returned value'
+  assert_line 'summary: 1 failed (prek), 0 missing'
+}
+
+@test "a failing prek check names the changed files and how to see the full diff" {
+  make_checkout_with_stub_prek fail
+  run env PATH="$stub_path" "$bare_checkout/scripts/check_all.sh" --only prek --tail 0
+  assert_failure 1
+  assert_output --partial '`git diff` shows them in full'
+  assert_line --regexp '^  \|  formatted\.py \| 45 \+'
+  assert_line --partial '1 file changed, 45 insertions(+)'
+  refute_output --partial 'rewritten 1'
+}
+
+@test "a passing prek check prints PASS and a clean summary" {
+  make_checkout_with_stub_prek pass
+  run env PATH="$stub_path" "$bare_checkout/scripts/check_all.sh" --only prek
+  assert_success
+  assert_line --regexp '^PASS prek \([0-9]+s\)$'
+  assert_line 'summary: 0 failed, 0 missing'
+}
+
 # A throwaway repository standing in for the one a pre-push hook runs in.
 make_decoy_repo() {
   git init -q "$BATS_TEST_TMPDIR/decoy"
