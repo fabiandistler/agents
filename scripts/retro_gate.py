@@ -322,7 +322,14 @@ def run_gate(client: GateClient, repo: str, every: int) -> Selection:
         for pull in pending
     }
     selected = choose(pending, rounds)
-    run_id = implementer_run(client, repo, selected.issue)
+    try:
+        run_id = implementer_run(client, repo, selected.issue)
+    except FetchError as error:
+        # The run listing stops at 1,000 results and artifact lists can fail. The
+        # retro still runs, without the summary (ADR-0017); failing here would
+        # leave the pull request unlabelled and select it again every day.
+        print(f"retro_gate.py: going on without a run summary: {error}", file=sys.stderr)
+        run_id = None
     label_done(client, repo, selected.number)
     reason = f"{rounds[selected.number]} non-pass review round(s), the most of {len(pending)}"
     return Selection(

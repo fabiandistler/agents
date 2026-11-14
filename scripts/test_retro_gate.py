@@ -335,6 +335,28 @@ def test_the_implementer_run_is_found_past_the_first_page_of_runs():
     assert retro_gate.run_gate(RoutedClient(routes), REPO, 10).implementer_run == 9
 
 
+@pytest.mark.parametrize("failing", ["runs", "artifacts"])
+def test_a_failed_implementer_run_lookup_still_selects_and_labels(failing, capsys):
+    """Past the 1000-run listing cap, or with an unreadable artifact list, the retro
+    goes on without a run summary; failing would pick the same PR every day."""
+    runs_path = f"/repos/{REPO}/actions/workflows/implementer.yml/runs"
+    routes = gate_routes(ten_after_floor())
+    error = FetchError("GitHub API returned 422", status=422)
+    if failing == "runs":
+        routes[runs_path] = error
+    else:
+        routes[runs_path] = {
+            "workflow_runs": [{"id": 9, "display_title": "implementer: issue #1010"}]
+        }
+        routes[f"/repos/{REPO}/actions/runs/9/artifacts"] = error
+    client = RoutedClient(routes)
+    selection = retro_gate.run_gate(client, REPO, 10)
+    assert selection.selected == 10
+    assert selection.implementer_run is None
+    assert client.posts[-1] == (f"/repos/{REPO}/issues/10/labels", {"labels": ["retro:done"]})
+    assert "without a run summary" in capsys.readouterr().err
+
+
 def test_cli_every_rejects_non_numbers():
     assert retro_gate.main(["select", "--repo", REPO, "--every", "ten"]) == retro_gate.EXIT_USAGE
 
