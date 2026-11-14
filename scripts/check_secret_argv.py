@@ -21,7 +21,9 @@ plugins/ and scripts/, and reports:
   API_KEY, a PAT segment) expanded into a command's arguments. Assigning,
   exporting or testing it passes, and so does handing it to a shell builtin
   (echo, printf), whose arguments never reach a process's argv. A plural
-  TOKENS names a count (MAX_TOKENS), not a credential, and passes too.
+  TOKENS names a count (MAX_TOKENS), not a credential, and passes too, as
+  does a whole-array expansion (`${WRITTEN_SECRET[*]}`, `${#NAME[@]}`): a list
+  or count of names; one element (`${NAME[0]}`) is still flagged.
 
 Safe forms stay quiet: the program reading the variable from its environment
 (`GH_TOKEN=... gh api`, `os.environ`), a token file, stdin, gh's own auth,
@@ -89,6 +91,9 @@ FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 CODE_SPAN = re.compile(r"(`+)(.+?)\1")
 COMMAND_SEPARATOR = re.compile(r"\|\||&&|;|\|")
 LEADING_ASSIGNMENTS = re.compile(r"""^\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s*)+""")
+# `${NAME[*]}`, `${NAME[@]}` and their `${#...}` counts expand a whole array:
+# a list of names, like a plural, not one credential.
+WHOLE_ARRAY = re.compile(r"\$\{#?[A-Za-z_]\w*\[[*@]\]\}")
 # Shell builtins: their arguments never reach a process's argv.
 NON_ARGV_COMMANDS = {
     *("[", "[[", "test", ":", "echo", "printf"),
@@ -143,7 +148,7 @@ def secret_in_arguments(command: str) -> bool:
     """Whether a simple command expands a secret-named variable into its arguments."""
     # NAME=value prefixes set the environment, which is the safe channel.
     rest = LEADING_ASSIGNMENTS.sub("", command, count=1)
-    if not SECRET_VAR.search(rest):
+    if not SECRET_VAR.search(WHOLE_ARRAY.sub("", rest)):
         return False
     words = rest.split()
     return words[0] not in NON_ARGV_COMMANDS
