@@ -6,8 +6,10 @@ how many other runs of the same workflow are working and come earlier.
 
 A workflow names its *working jobs*. The first one is the job that asks; its
 start orders the runs. A run is working while its first job is in progress, or
-after it, while a later working job has not completed (queued counts: the run
-has decided to work). A job the workflow's ``if`` skipped is completed.
+after it, while a later working job has not completed. Every status but
+`completed` counts (queued, waiting, pending): the run has decided to work, so a
+job held back by its concurrency group keeps the capacity until it ends. A job
+the workflow's ``if`` skipped is completed.
 
 Standard library only. Errors name the API call, never run or job payloads.
 """
