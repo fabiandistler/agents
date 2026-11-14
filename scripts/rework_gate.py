@@ -7,8 +7,8 @@ completed review of the pull request's live head. `decide` reads that run,
 its `pr-review` and `pr-context` artifacts, the live pull request, its linked
 issue and its comments, and applies ``rework_policy.decide``. On `proceed` it
 also checks that no other rework run is working, then posts the round marker
-and writes the findings file the model job receives. On `handoff` it comments
-on the pull request and swaps the issue to `ready-for-human`. A stop writes
+and writes the findings file the model job receives. On `handoff` it swaps the
+issue to `ready-for-human`, then comments on the pull request. A stop writes
 nothing.
 
 Runs with the workflow's GITHUB_TOKEN. Standard library only. Prints one JSON
@@ -126,11 +126,13 @@ def decide_rework(
     decision = rework_policy.decide(repo=repo, review=review, context=context, **facts)
     pr = review["number"] if decision.action != rework_policy.STOP else None
     if decision.action == rework_policy.HANDOFF and write:
+        # Swap first: the comment's marker turns a rerun into a stop, so it may
+        # land only once the issue waits for a person.
+        swap_to_human(client, f"/repos/{repo}/issues/{decision.issue}")
         client.post(
             f"/repos/{repo}/issues/{pr}/comments",
             {"body": rework_policy.handoff_comment(decision.head_sha or "")},
         )
-        swap_to_human(client, f"/repos/{repo}/issues/{decision.issue}")
     if decision.action != rework_policy.PROCEED:
         return decision
     working = runs_working_ahead(client, repo, own_run_id, REWORK_WORKFLOW, (GATE_JOB, REWORK_JOB))

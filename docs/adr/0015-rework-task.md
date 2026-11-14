@@ -60,10 +60,11 @@ by `github-actions[bot]` count, so a person quoting one neither spends nor
 resets a round. One marker per head makes a repeated review of the same commit
 a no-op.
 
-**Cap.** With two markers and a new non-pass verdict, the gate posts one
-handoff comment marked `<!-- rework-handoff head:<sha> -->` on the pull request
-and replaces `ready-for-agent` with `ready-for-human` on the issue. No model
-runs. A repeat for the same head writes nothing.
+**Cap.** With two markers and a new non-pass verdict, the gate replaces
+`ready-for-agent` with `ready-for-human` on the issue, then posts one handoff
+comment marked `<!-- rework-handoff head:<sha> -->` on the pull request. No
+model runs. A repeat for the same head writes nothing. The marker lands last,
+so a run that fails at the swap leaves none, and a rerun retries the swap.
 
 **Model job.** `claude-code-action` with the Claude GitHub App token, as in the
 implementer, on the model alias the skill audit uses (`sonnet`), overridable by

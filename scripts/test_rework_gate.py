@@ -9,7 +9,7 @@ from typing import cast
 import pytest
 import rework_gate
 import rework_policy
-from pr_github_client import GitHubClient
+from pr_github_client import FetchError, GitHubClient
 from rework_testkit import (
     HEAD,
     ISSUE,
@@ -124,11 +124,24 @@ def test_two_markers_hand_off_once_with_the_issue_swap(tmp_path):
     decision = gate(fake, tmp_path)
     assert decision.action == rework_policy.HANDOFF
     assert fake.writes == [
-        ("POST", PR_COMMENTS, {"body": rework_policy.handoff_comment(HEAD)}),
         ("POST", f"{ISSUE_PATH}/labels", {"labels": ["ready-for-human"]}),
         ("DELETE", f"{ISSUE_PATH}/labels/ready-for-agent", None),
+        ("POST", PR_COMMENTS, {"body": rework_policy.handoff_comment(HEAD)}),
     ]
     assert not (tmp_path / "rework" / "findings.json").exists()
+
+
+def test_a_failed_issue_swap_leaves_no_handoff_marker_so_a_rerun_hands_off(tmp_path):
+    # The handoff marker makes a repeat a no-op, so it may only land once the
+    # issue waits for a person; otherwise the issue would keep ready-for-agent.
+    fake = FakeGitHub(comments=_two_rounds(), failing_label_add=True)
+    with pytest.raises(FetchError):
+        gate(fake, tmp_path)
+    assert [path for _, path, _ in fake.writes] == [f"{ISSUE_PATH}/labels"]
+    fake.failing_label_add = False
+    fake.writes.clear()
+    assert gate(fake, tmp_path).action == rework_policy.HANDOFF
+    assert ("POST", f"{ISSUE_PATH}/labels", {"labels": ["ready-for-human"]}) in fake.writes
 
 
 def test_a_repeat_handoff_for_the_same_head_writes_nothing(tmp_path):

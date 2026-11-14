@@ -127,6 +127,7 @@ class FakeGitHub:
     jobs: dict[int, list[dict]] = field(default_factory=lambda: {OWN_RUN: [gate_job()]})
     review_runs: list[dict] = field(default_factory=list)
     missing_label: bool = False
+    failing_label_add: bool = False
     writes: list[tuple[str, str, dict | None]] = field(default_factory=list)
 
     def get(
@@ -157,6 +158,8 @@ class FakeGitHub:
 
     def post(self, path: str, payload: dict | None = None) -> pr_github_client.Response:
         self.writes.append(("POST", path, payload))
+        if self.failing_label_add and path == f"{ISSUE_PATH}/labels":
+            raise pr_github_client.FetchError(f"GitHub API returned 502 for {path}", status=502)
         if path == PR_COMMENTS and payload is not None:
             # A posted comment is seen by the next run, as on GitHub.
             self.comments.append({"id": 9, "body": payload["body"], "user": {"login": BOT}})
