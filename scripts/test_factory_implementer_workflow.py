@@ -253,3 +253,30 @@ def test_caller_calls_the_local_factory_workflow_with_this_repositorys_inputs():
 def test_caller_passes_the_secret_by_name_not_inherit():
     secrets = single_job(IMPLEMENTER)["secrets"]
     assert secrets == {"CLAUDE_CODE_OAUTH_TOKEN": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"}
+
+
+def test_the_factory_fetch_matches_the_pr_reviews():
+    """One mechanism for every factory task (ADR-0018): same env, same git commands."""
+    review = workflow(FACTORY_IMPLEMENTER.parent / "factory-pr-review.yml")
+    fetches = [
+        step
+        for job in review["jobs"].values()
+        for step in job.get("steps", [])
+        if step.get("name") == "Fetch the factory scripts"
+    ]
+    assert fetches
+    implementer = step_with_id(single_job(FACTORY_IMPLEMENTER), "factory")
+    assert implementer["name"] == "Fetch the factory scripts"
+    for fetch in fetches:
+        assert fetch["env"] == implementer["env"]
+    expected = [
+        line.strip().replace('"$RUNNER_TEMP/factory"', '"$dir"')
+        for line in fetches[0]["run"].splitlines()
+        if line.strip().startswith("git") or line.strip().startswith('"$SERVER_URL')
+    ]
+    actual = [
+        line.strip()
+        for line in implementer["run"].splitlines()
+        if line.strip().startswith("git") or line.strip().startswith('"$SERVER_URL')
+    ]
+    assert actual == expected
