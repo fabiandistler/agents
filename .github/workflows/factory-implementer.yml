@@ -33,7 +33,7 @@ on:
         type: string
         required: true
       setup_command:
-        description: Runs after the checkouts and before the model step; a non-zero exit fails the job
+        description: Runs after the checkout and before the model step; a non-zero exit fails the job
         type: string
         default: ""
       submodules:
@@ -85,7 +85,7 @@ jobs:
     concurrency:
       group: implementer-${{ github.event.issue.number || inputs.issue }}
       cancel-in-progress: false
-    # contents: read for the checkouts; id-token: write for the App token
+    # contents: read for the checkout; id-token: write for the App token
     # exchange; actions: read so the claim script can count working runs (it is
     # not established that the App token can). Every GitHub write goes through
     # the App token, not this one. That token exists only inside the model step,
@@ -134,22 +134,23 @@ jobs:
           echo "model=$MODEL" >> "$GITHUB_OUTPUT"
 
       # The factory's scripts at the commit of this workflow file, so they match
-      # it exactly (ADR-0018). actions/checkout only writes under the workspace,
-      # so the next step moves the checkout out before the target arrives: the
-      # model must never take it for the repository it works on.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          path: .factory
-          persist-credentials: false
-
-      - name: Move the factory checkout out of the workspace
+      # it exactly (ADR-0018). Fetched as in factory-pr-review.yml: anonymously,
+      # so no token is involved, and straight into $RUNNER_TEMP/factory, outside
+      # the workspace, so the model never takes it for the repository it works
+      # on. actions/checkout cannot do that: it writes only under the workspace.
+      - name: Fetch the factory scripts
         id: factory
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
         run: |
+          set -euo pipefail
           dir="$RUNNER_TEMP/factory"
-          rm -rf "$dir"
-          mv "$GITHUB_WORKSPACE/.factory" "$dir"
+          git init --quiet "$dir"
+          git -C "$dir" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$dir" checkout --quiet --detach FETCH_HEAD
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
