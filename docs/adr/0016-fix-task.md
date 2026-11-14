@@ -4,7 +4,9 @@
 
 Proposed (2026-11-13) for #783. The scripts, tests and docs land first; the
 workflow `.github/workflows/fix-task.yml` is added by hand from the pull
-request, because the implementer cannot write workflow files.
+request, because the implementer cannot write workflow files. The status stays
+Proposed until then; the commit that adds the workflow sets it to Accepted
+here and in the index.
 
 ## Context
 
@@ -100,6 +102,10 @@ and a human merge.
   with exit code `<n>`." gets one signature for every such failure, so
   unrelated failures of that step share an issue. The agent runs avoid this
   with their `RUN FAILED` line; the signature fields stay as decided above.
+- Only the first failed job is read for annotations and the signature, as the
+  brief of #783 decides. A later failed job with another cause in the same
+  run is filed under the first job's signature; it surfaces once the first
+  job is fixed.
 - A job or step rename gives a new signature and a new issue.
 - An implementer run started before the `run-name` handover lands has the
   issue title as its display title and is filed by signature only.
