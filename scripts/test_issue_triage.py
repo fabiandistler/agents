@@ -42,9 +42,17 @@ def api_issue(labels: tuple[str, ...] = ("needs-triage",), **overrides: object) 
 class FakeClient:
     """Serves one issue and its comments; records every write."""
 
-    def __init__(self, issue: dict | None, comments: list[dict] | None = None, fail_writes=False):
+    def __init__(
+        self,
+        issue: dict | None,
+        comments: list[dict] | None = None,
+        fail_writes=False,
+        events: list[dict] | None = None,
+    ):
         self.issue = issue
         self.comments = comments or []
+        self.events = events or []
+        self.fail_events = False
         self.fail_writes = fail_writes
         self.writes: list[tuple[str, str, dict]] = []
 
@@ -54,6 +62,12 @@ class FakeClient:
         if path == f"{ISSUE_PATH}/comments":
             page = (params or {}).get("page", 1)
             items = self.comments if page == 1 else []
+            return Response(200, json.dumps(items).encode())
+        if path == f"{ISSUE_PATH}/events":
+            if self.fail_events:
+                raise FetchError(f"GitHub API returned 502 for {path}", status=502)
+            page = (params or {}).get("page", 1)
+            items = self.events if page == 1 else []
             return Response(200, json.dumps(items).encode())
         raise FetchError(f"unexpected GET {path}", status=404)
 
@@ -74,11 +88,35 @@ def assessed(client: FakeClient, trigger: str = "opened") -> dict:
     return issue_triage.fetch_context(client, REPO, NUMBER, trigger)
 
 
+CREATED = "2026-11-13T10:00:00Z"
+TRIAGED = "2026-11-13T10:02:00Z"
+RELABELED = "2026-11-13T12:00:00Z"
+
+
+def api_bot_triage(created_at: str = TRIAGED) -> dict:
+    return {
+        "user": {"login": "github-actions[bot]"},
+        "body": f"{COMMENT_MARKER}\nold",
+        "created_at": created_at,
+    }
+
+
+def api_labeled(created_at: str, actor_type: str = "User", label: str = "needs-triage") -> dict:
+    return {
+        "event": "labeled",
+        "label": {"name": label},
+        "actor": {"login": "someone", "type": actor_type},
+        "created_at": created_at,
+    }
+
+
 def test_assess_collects_the_issue_and_decides(tmp_path: Path, capsys):
-    bot = {"user": {"login": "github-actions[bot]"}, "body": f"{COMMENT_MARKER}\nold"}
-    client = FakeClient(api_issue(labels=("needs-triage", "bug")), [bot])
+    events = [api_labeled(CREATED), {"event": "assigned"}, api_labeled(RELABELED)]
+    client = FakeClient(
+        api_issue(labels=("needs-triage", "bug")), [api_bot_triage()], events=events
+    )
     output = tmp_path / "context.json"
-    argv = ["assess", "--repo", REPO, "--issue", str(NUMBER), "--trigger", "opened"]
+    argv = ["assess", "--repo", REPO, "--issue", str(NUMBER), "--trigger", "relabel"]
     code = issue_triage.main([*argv, "--output", str(output)], client=client)
     assert code == pr_cli.EXIT_OK
     context = json.loads(output.read_text(encoding="utf-8"))
@@ -92,6 +130,45 @@ def test_assess_collects_the_issue_and_decides(tmp_path: Path, capsys):
         "eligible": True,
         "skip_reason": None,
     }
+
+
+def test_assess_skips_an_opened_run_after_a_bot_triage():
+    context = assessed(FakeClient(api_issue(), [api_bot_triage()]), "opened")
+    assert context["eligible"] is False
+    assert "first triage" in context["skip_reason"]
+
+
+def test_assess_skips_relabel_from_the_creation_label_event_before_the_triage():
+    client = FakeClient(api_issue(), [api_bot_triage()], events=[api_labeled(CREATED)])
+    context = assessed(client, "relabel")
+    assert context["eligible"] is False
+    assert "since the last triage" in context["skip_reason"]
+
+
+def test_a_failed_events_fetch_is_a_fetch_failure(tmp_path: Path):
+    client = FakeClient(api_issue())
+    client.fail_events = True
+    argv = ["assess", "--repo", REPO, "--issue", str(NUMBER), "--trigger", "relabel"]
+    output = str(tmp_path / "c.json")
+    assert issue_triage.main([*argv, "--output", output], client=client) == (
+        pr_cli.EXIT_FETCH_FAILED
+    )
+
+
+@pytest.mark.parametrize("created_at", ["yesterday", "2026-11-13T10:02:00"], ids=["text", "naive"])
+@pytest.mark.parametrize("item", ["comment", "event"])
+def test_a_malformed_time_is_a_fetch_failure(tmp_path: Path, item: str, created_at: str):
+    comment_time, event_time = (
+        (created_at, RELABELED) if item == "comment" else (TRIAGED, created_at)
+    )
+    client = FakeClient(
+        api_issue(), [api_bot_triage(comment_time)], events=[api_labeled(event_time)]
+    )
+    argv = ["assess", "--repo", REPO, "--issue", str(NUMBER), "--trigger", "relabel"]
+    output = str(tmp_path / "c.json")
+    assert issue_triage.main([*argv, "--output", output], client=client) == (
+        pr_cli.EXIT_FETCH_FAILED
+    )
 
 
 def test_assess_skips_an_outside_author():

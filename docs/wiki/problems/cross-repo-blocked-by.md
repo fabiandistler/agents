@@ -1,6 +1,6 @@
 # Cross-repo `Blocked by` URLs stop the implementer until removed
 
-- 2026-11-11: PR #785 (closes #770, open) makes the implementer's blocker
+- 2026-11-11: PR #785 (closing #770, open) makes the implementer's blocker
   gate read `Blocked by <URL>`. A same-repo issue URL becomes `#<n>` and
   clears when that issue is closed as completed. Another repository's URL,
   or any pull-request URL, stays unresolved and returns `blocked`: it fails

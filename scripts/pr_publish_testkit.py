@@ -254,7 +254,7 @@ def run_cli(*args: str, **env: str) -> subprocess.CompletedProcess:
     clean_env = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"PR_AUTO_MERGE", "GITHUB_TOKEN"}
+        if key not in {"PR_AUTO_MERGE", "PR_SKIP_HEAD_PREFIXES", "GITHUB_TOKEN"}
     }
     clean_env.update(env)
     return subprocess.run(  # noqa: S603 -- test invokes its own script with argv, no shell.

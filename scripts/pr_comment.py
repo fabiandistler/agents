@@ -124,9 +124,14 @@ def bot_comments(comments: object) -> list[dict]:
     ]
 
 
+def is_sticky_comment(comment: dict) -> bool:
+    """Whether ``comment`` is this bot's own review comment, not a human one quoting its marker."""
+    return any(COMMENT_MARKER in own["body"] for own in bot_comments([comment]))
+
+
 def _sticky_comment(context: dict) -> dict | None:
     for comment in bot_comments(context.get("comments")):
-        if COMMENT_MARKER in comment["body"]:
+        if is_sticky_comment(comment):
             return comment
     return None
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Claim one issue's branch for an implementer run, or say why the run must stop.
 
-implementer.yml's model runs this as its first write, with the App token it
+factory-implementer.yml's model runs this as its first write, with the App token it
 already holds: no step before the model step has a token that can create a
 ref. Creating the branch is the atomic claim. A branch that already exists is
 recovered, kept for the pull request that holds it, or handed to a person.
@@ -51,8 +51,15 @@ from implementer_setup import (
     workflow_file,
 )
 from issue_triage_policy import READY_FOR_AGENT, READY_FOR_HUMAN
-from pr_github import get_json, paginate
-from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
+from pr_github_client import (
+    REPO_PATTERN,
+    FetchError,
+    GitHubClient,
+    MissingTokenError,
+    ReadClient,
+    get_json,
+    paginate,
+)
 from ticket_blockers import declared_blockers
 
 MAIN_BRANCH = "main"

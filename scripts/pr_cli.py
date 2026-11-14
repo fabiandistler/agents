@@ -24,6 +24,7 @@ EXIT_FETCH_FAILED = 4
 EXIT_MISSING_TOKEN = 5
 EXIT_OUTPUT_FAILED = 6
 EXIT_OUTSIDE_ACTIONS = 7
+EXIT_REVIEW_UNAVAILABLE = 8
 
 EXIT_CODES = {
     EXIT_OK: "success",
@@ -34,6 +35,7 @@ EXIT_CODES = {
     EXIT_MISSING_TOKEN: "missing GITHUB_TOKEN",
     EXIT_OUTPUT_FAILED: "output file not writable",
     EXIT_OUTSIDE_ACTIONS: "--write outside GitHub Actions",
+    EXIT_REVIEW_UNAVAILABLE: "review unavailable",
 }
 
 

@@ -16,6 +16,7 @@ import pr_auto_merge
 import pr_comment
 import pr_github_client
 import pr_risk
+import pr_skip
 import pr_verdict_status
 from pr_actions import MAINTAINER_LOGIN
 from pr_labels import AUTO_MERGE_BOT, NEEDS_REVIEW, RISK_PREFIX, VERDICT_PREFIX
@@ -237,6 +238,7 @@ def plan_publish(
     auto_merge: bool | str | None = False,
     auto_merge_refused: bool = False,
     status_url: str | None = None,
+    skip_prefixes: tuple[str, ...] = (),
 ) -> dict:
     """Return the planned actions for one pull request; never writes.
 
@@ -245,7 +247,9 @@ def plan_publish(
     ``auto_merge_refused`` replans after GitHub refused to arm auto-merge on an
     already mergeable pull request (decision D). ``status_url`` is the run the
     verdict status links to. The status comes last: after the labels and the
-    comment that publish the verdict, and after the auto-merge decision.
+    comment that publish the verdict, and after the auto-merge decision. A head
+    branch that starts with one of ``skip_prefixes`` aborts with
+    ``head_skipped``: another process reviews it (``pr_skip.py``).
     """
     context = _validate_context(context)
     assessment = validate_assessment(assessment)
@@ -253,6 +257,9 @@ def plan_publish(
 
     if context.get("state") == "closed":
         return _plan(context, "aborted", "pull_request_closed", [], _aborted_decision(review))
+
+    if pr_skip.head_skipped(context, skip_prefixes):
+        return _plan(context, "aborted", pr_skip.ABORT_REASON, [], _aborted_decision(review))
 
     if _is_stale(assessment, review, context["head_sha"]):
         return _plan(
@@ -291,12 +298,17 @@ def plan_publish(
     )
 
 
-def plan_hold(context: dict) -> dict:
-    """Return the review-free hold plan for one pull request; never writes."""
+def plan_hold(context: dict, skip_prefixes: tuple[str, ...] = ()) -> dict:
+    """Return the review-free hold plan for one pull request; never writes.
+
+    ``skip_prefixes`` aborts it as in ``plan_publish``.
+    """
     context = _validate_context(context)
     decision = {"risk": None, "review_status": None, "verdict": None, "auto_merge": "off"}
     if context.get("state") == "closed":
         return _plan(context, "aborted", "pull_request_closed", [], decision)
+    if pr_skip.head_skipped(context, skip_prefixes):
+        return _plan(context, "aborted", pr_skip.ABORT_REASON, [], decision)
 
     state, action = pr_auto_merge.plan_hold(context)
     actions: list[dict] = []

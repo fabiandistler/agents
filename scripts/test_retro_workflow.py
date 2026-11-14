@@ -9,6 +9,8 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RETRO = REPO_ROOT / ".github" / "workflows" / "retro.yml"
 IMPLEMENTER = REPO_ROOT / ".github" / "workflows" / "implementer.yml"
+# implementer.yml calls it; the called job's artifacts belong to the caller's run.
+FACTORY_IMPLEMENTER = REPO_ROOT / ".github" / "workflows" / "factory-implementer.yml"
 ACTION = "anthropics/claude-code-action@"
 SHA_PIN = re.compile(r"^anthropics/claude-code-action@[0-9a-f]{40}$")
 EXPRESSION = re.compile(r"\$\{\{\s*(.*?)\s*\}\}")
@@ -157,7 +159,9 @@ def test_implementer_run_name_is_the_title_the_gate_looks_for():
 
 
 def test_implementer_keeps_its_run_summary_after_the_report():
-    steps = next(iter(_workflow(IMPLEMENTER)["jobs"].values()))["steps"]
+    (caller,) = _workflow(IMPLEMENTER)["jobs"].values()
+    assert caller["uses"] == f"./.github/workflows/{FACTORY_IMPLEMENTER.name}"
+    steps = next(iter(_workflow(FACTORY_IMPLEMENTER)["jobs"].values()))["steps"]
     names = [step.get("name") for step in steps]
     upload = steps[names.index("Keep the run summary")]
     assert names.index("Report the run") < names.index("Keep the run summary")

@@ -15,7 +15,7 @@ from issue_triage_policy import STATE_LABELS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "issue-triage.yml"
-PR_REVIEW = REPO_ROOT / ".github" / "workflows" / "pr-review.yml"
+PR_REVIEW = REPO_ROOT / ".github" / "workflows" / "factory-pr-review.yml"
 MODEL_KEY = "CLAUDE_CODE_OAUTH_TOKEN"
 UNTRUSTED = re.compile(r"github\.event\.(?:issue\.(?:title|body)|comment\.body)")
 

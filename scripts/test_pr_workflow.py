@@ -1,12 +1,13 @@
-"""Structure tests for the PR review workflow (.github/workflows/pr-review.yml).
+"""Structure tests for the reusable PR review (.github/workflows/factory-pr-review.yml).
 
 The workflow is the trust boundary of the pipeline: it decides which credential
 each stage holds and guarantees that the pull request head is never checked out
 or executed. Each safety property is asserted on its own, so removing one names
 itself in the failing test instead of hiding behind a generic YAML comparison.
-This module holds the triggers, the permissions and the run-wide invariants;
-the per-job tests live in test_pr_workflow_assess_review.py and
-test_pr_workflow_publish.py.
+This module holds the trigger, the inputs, the permissions and the run-wide
+invariants; the per-job tests live in test_pr_workflow_assess_review.py,
+test_pr_workflow_hold.py and test_pr_workflow_publish.py, and this repository's
+caller is tested in test_pr_review_caller.py.
 """
 
 from __future__ import annotations
@@ -18,12 +19,13 @@ from typing import Any
 
 import pytest
 from pr_workflow_testkit import (
+    FACTORY_ENV,
+    FACTORY_SCRIPTS,
     HOLD_CONDITION,
     JOB_NAMES,
-    LABEL_EVENT,
+    MODEL_KEY,
     PIPELINE_CLIS,
     REPO_ROOT,
-    REVIEW_EVENTS,
     downloaded_names,
     job_named,
     jobs_of,
@@ -49,40 +51,39 @@ def workflow(workflow_text: str) -> dict[Any, Any]:
     return parse_workflow(workflow_text)
 
 
-def test_pull_request_target_carries_the_review_events(workflow: dict[Any, Any]) -> None:
-    target = triggers_of(workflow).get("pull_request_target")
-    assert isinstance(target, dict), "the workflow must trigger on pull_request_target"
-    declared = target.get("types")
-    expected = [*REVIEW_EVENTS, LABEL_EVENT]
-    assert sorted(declared or []) == sorted(expected), (
-        f"pull_request_target must list exactly {expected}; found {declared}"
+def test_the_pipeline_is_only_callable(workflow: dict[Any, Any]) -> None:
+    # The triggers live in each caller; a direct trigger here would run the
+    # pipeline without the caller's permission cap.
+    assert list(triggers_of(workflow)) == ["workflow_call"], (
+        f"the reusable pipeline triggers only on workflow_call; found {list(triggers_of(workflow))}"
     )
 
 
-def test_workflow_does_not_trigger_on_pull_request(workflow: dict[Any, Any]) -> None:
-    assert "pull_request" not in triggers_of(workflow), (
-        "pull_request runs the workflow from the head commit; only pull_request_target is allowed"
-    )
+# Name -> (type, default) of every input a caller may pass (#792).
+CALLER_INPUTS = {
+    "pr": ("string", ""),
+    "dry_run": ("boolean", True),
+    "skip_head_prefixes": ("string", ""),
+    "standards_path": ("string", ""),
+    "fail_on_unavailable": ("boolean", False),
+    "quiet_logs": ("boolean", False),
+    "setup_command": ("string", ""),
+}
 
 
-def test_workflow_dispatch_takes_a_pull_request_and_a_dry_run_flag(
-    workflow: dict[Any, Any],
-) -> None:
-    dispatch = triggers_of(workflow).get("workflow_dispatch")
-    assert isinstance(dispatch, dict), "the workflow needs a manual workflow_dispatch trigger"
-    inputs = dispatch.get("inputs") or {}
+def test_the_inputs_default_to_todays_behaviour(workflow: dict[Any, Any]) -> None:
+    inputs = triggers_of(workflow)["workflow_call"].get("inputs") or {}
+    found = {
+        name: (spec.get("type"), spec.get("default"), spec.get("required"))
+        for name, spec in inputs.items()
+    }
+    expected = {name: (kind, default, False) for name, (kind, default) in CALLER_INPUTS.items()}
+    assert found == expected, "a caller that passes nothing must get the review as it was"
 
-    pr = inputs.get("pr") or {}
-    assert pr.get("required") is True, "workflow_dispatch input 'pr' must be required"
-    assert pr.get("type") in {"string", "number"}, (
-        f"workflow_dispatch input 'pr' must be a string or a number; found {pr.get('type')!r}"
-    )
 
-    dry_run = inputs.get("dry_run") or {}
-    assert dry_run.get("type") == "boolean", (
-        f"workflow_dispatch input 'dry_run' must be a boolean; found {dry_run.get('type')!r}"
-    )
-    assert dry_run.get("default") is True, "a manual run must default to a dry run"
+def test_the_model_token_is_the_one_required_secret(workflow: dict[Any, Any]) -> None:
+    secrets = triggers_of(workflow)["workflow_call"].get("secrets")
+    assert secrets == {MODEL_KEY: {"required": True}}
 
 
 def test_default_permissions_are_empty(workflow: dict[Any, Any]) -> None:
@@ -281,12 +282,12 @@ def test_the_head_checkout_check_catches_a_head_checkout(
     tampered = copy.deepcopy(workflow)
     checkout = next(
         step
-        for step in steps_of(job_named(tampered, "publish"))
+        for step in steps_of(job_named(tampered, "review"))
         if "actions/checkout@" in str(step.get("uses", ""))
     )
     checkout.setdefault("with", {})[key] = value
 
-    assert f"job 'publish' checks out with {key}:" in head_checkouts(tampered, workflow_text)
+    assert f"job 'review' checks out with {key}:" in head_checkouts(tampered, workflow_text)
 
 
 # Event and dispatch data are attacker-influenced; inside run: they would be
@@ -319,3 +320,71 @@ def test_the_interpolation_check_catches_an_input_in_a_run_script(
     step["run"] = 'echo "${{ inputs.pr }}"'
 
     assert untrusted_interpolations(tampered) == ["job 'assess' interpolates '${{ inputs.pr }}'"]
+
+
+# --- Factory checkout ---------------------------------------------------------
+
+
+def factory_fetch(job: dict[str, Any]) -> dict[str, Any]:
+    fetches = [step for step in steps_of(job) if "FACTORY_SHA" in (step.get("env") or {})]
+    assert len(fetches) == 1, "every job fetches the factory scripts exactly once"
+    return fetches[0]
+
+
+def test_every_job_fetches_this_workflows_own_commit(workflow: dict[Any, Any]) -> None:
+    for name, job in jobs_of(workflow).items():
+        env = factory_fetch(job).get("env") or {}
+        for key, expected in FACTORY_ENV.items():
+            assert env.get(key) == expected, (
+                f"job {name!r}: the scripts must come from the pinned workflow's repository "
+                f"and commit ({key}={expected})"
+            )
+
+
+def test_the_factory_lands_outside_the_workspace_without_a_credential(
+    workflow: dict[Any, Any],
+) -> None:
+    for name, job in jobs_of(workflow).items():
+        step = factory_fetch(job)
+        command = str(step["run"])
+        assert 'git init --quiet "$RUNNER_TEMP/factory"' in command, name
+        assert '"$FACTORY_SHA"' in command, f"job {name!r} must fetch the exact commit"
+        assert "checkout --quiet --detach FETCH_HEAD" in command, name
+        assert "secrets." not in str(step), f"job {name!r} fetches a public repository anonymously"
+
+
+def test_the_factory_is_fetched_before_any_script_runs(workflow: dict[Any, Any]) -> None:
+    for name, job in jobs_of(workflow).items():
+        steps = steps_of(job)
+        first_script = next(
+            index for index, step in enumerate(steps) if FACTORY_SCRIPTS in str(step.get("run", ""))
+        )
+        assert steps.index(factory_fetch(job)) < first_script, name
+
+
+def test_every_script_runs_from_the_factory_checkout(workflow: dict[Any, Any]) -> None:
+    for name, job in jobs_of(workflow).items():
+        for command in runs_of(job):
+            for path in re.findall(r"\S*scripts/[\w./-]+\.py", command):
+                assert path.startswith(FACTORY_SCRIPTS), (
+                    f"job {name!r} runs {path} from the workspace; the caller's checkout "
+                    "holds no factory scripts"
+                )
+
+
+def test_only_the_review_checks_out_the_caller(workflow: dict[Any, Any]) -> None:
+    for name, job in jobs_of(workflow).items():
+        checkouts = [
+            step for step in steps_of(job) if "actions/checkout@" in str(step.get("uses", ""))
+        ]
+        if name == "review":
+            assert len(checkouts) == 1, "review reads standards_path and runs setup_command there"
+            assert (checkouts[0].get("with") or {}).get("persist-credentials") is False
+        else:
+            assert checkouts == [], f"job {name!r} reads no file of the caller"
+
+
+def test_the_model_token_is_read_from_the_called_workflows_secret(
+    workflow: dict[Any, Any], workflow_text: str
+) -> None:
+    assert workflow_text.count(f"secrets.{MODEL_KEY}") == 1

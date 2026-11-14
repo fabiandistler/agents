@@ -33,11 +33,19 @@ it looked in the code, and either questions or a draft agent brief.
 Runs start on a new issue, on the reporter's reply to `needs-info`, when the
 maintainer adds `needs-triage` again, and from a manual run (Actions →
 issue-triage → Run workflow, dry run by default). The two automatic triggers
-stop after two bot triages per issue. Issues by people without write access,
-bot issues and issues filed with a state label are not sent to the model. The
-workflow filter already drops a bot's issue and an issue filed with a state
-label other than `needs-triage`, so neither starts a runner; an issue filed
-with `needs-triage` is triaged from its `labeled` event, not from `opened`.
+stop after two bot triages per issue. A new issue gets one automated triage,
+even when it is filed with `needs-triage`: the workflow filter drops that
+issue's `opened` run. When two runs do start for a new issue, the per-issue
+concurrency group starts the second only after the first has posted its
+triage, so the second finds the bot triage and skips without a model call.
+The skip relies on that order: `assess` reads the comments when it starts, and
+`publish` does not check again. Adding `needs-triage` starts a run only when a
+person's label event is newer than the last bot triage; a bot's label event
+never does.
+Issues by people without write access, bot issues and issues filed with a
+state label are not sent to the model. The workflow filter already drops a
+bot's issue and an issue filed with a state label other than `needs-triage`,
+so neither starts a runner.
 `scripts/test_issue_triage_policy.py` keeps the bot's state labels in sync
 with this table.
 
@@ -48,13 +56,18 @@ off-format model answer writes nothing; the run log says why.
 ## Implementer claim
 
 Adding `ready-for-agent` starts `.github/workflows/implementer.yml`
-([ADR-0014](../adr/0014-agent-runs-in-github-actions.md)). Its first write is
-`scripts/implementer_claim.py`, which decides what happens to branch
-`agent/issue-<n>`. Called as a reusable workflow from another repository, it
-takes the workflow file whose runs it counts from `--workflow-file` or
-`GITHUB_WORKFLOW_REF`, matches the job by `--job-name` also as
-`<caller job> / <name>`, and names the branch with `--branch-prefix`; the
-defaults are `implementer.yml`, `implement` and `agent/issue-`. The outcomes:
+([ADR-0014](../adr/0014-agent-runs-in-github-actions.md)), which calls the
+reusable `.github/workflows/factory-implementer.yml`
+([ADR-0018](../adr/0018-reusable-factory-workflows.md)). Its first write is
+`scripts/implementer_claim.py`, run from the factory checkout under
+`$RUNNER_TEMP/factory`, which decides what happens to branch `agent/issue-<n>`.
+The script takes the workflow file whose runs it counts from `--workflow-file`
+or, as the reusable workflow leaves it, from `GITHUB_WORKFLOW_REF`, which names
+the caller's file. It matches the job by `--job-name` also as
+`<caller job> / <name>` (here `implement / implement`), and names the branch
+with `--branch-prefix`, which the reusable workflow passes from its
+`branch_prefix` input; the defaults are `implementer.yml`, `implement` and
+`agent/issue-`. The outcomes:
 
 | Situation | Outcome | What the run does | Who acts next |
 | --- | --- | --- | --- |
@@ -150,7 +163,8 @@ fix-task → Run workflow, with a run id) plans only unless `dry_run` is false.
 ## Pull request labels
 
 Pull requests use separate label families, written by the model-free `hold`
-and `publish` jobs of `.github/workflows/pr-review.yml` ([runbook](pr-review-runbook.md)).
+and `publish` jobs of `.github/workflows/factory-pr-review.yml`, which
+`.github/workflows/pr-review.yml` calls ([runbook](pr-review-runbook.md)).
 They never carry the issue roles above. `publish` creates all ten labels on
 first use (`LABELS` in `scripts/pr_labels.py`) and keeps one label per
 family, removing stale ones.

@@ -1,7 +1,8 @@
 # PR review verdict status
 
 For the repository maintainer. The `publish` job of
-`.github/workflows/pr-review.yml` sets the commit status `pr-review/verdict`
+`.github/workflows/factory-pr-review.yml`, called by
+`.github/workflows/pr-review.yml`, sets the commit status `pr-review/verdict`
 on the head SHA it reviewed, as its last write. Once the ruleset requires it,
 every merge, a hand-armed auto-merge included, waits until the review of that
 head is published. It does not judge the verdict: the review stays advisory

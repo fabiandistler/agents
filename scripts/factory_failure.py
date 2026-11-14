@@ -34,8 +34,7 @@ from factory_failure_policy import (
 )
 from pr_actions import Operation
 from pr_apply import WriteClient, send_operation
-from pr_github import PER_PAGE, get_json, paginate
-from pr_github_client import GitHubClient, ReadClient
+from pr_github_client import PER_PAGE, GitHubClient, ReadClient, get_json, paginate
 
 SCRIPT = "factory_failure.py"
 
