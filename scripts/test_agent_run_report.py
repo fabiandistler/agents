@@ -56,8 +56,28 @@ def test_background_subagents_are_counted_and_named():
     text, code = report.build_report(None, messages)
     assert code == report.EXIT_RUN_FAILED
     assert "Agent x2, Task x1" in text
-    assert "2 subagent(s) ran in the background" in text
+    assert "2 tool call(s) ran in the background (Agent x1, Task x1)" in text
     assert "Waiting for the reviewers." in text
+
+
+def test_a_background_bash_call_is_named_in_the_diagnosis():
+    messages = [
+        _assistant({"name": "Bash", "input": {"command": "x", "run_in_background": True}}),
+        {"type": "result", "result": "Checks are running."},
+    ]
+    text, code = report.build_report(None, messages)
+    assert code == report.EXIT_RUN_FAILED
+    assert "1 tool call(s) ran in the background (Bash x1)" in text
+    assert "headless run ends with the model's turn" in text
+
+
+@pytest.mark.parametrize("bash_input", [{"run_in_background": False}, {}])
+def test_a_foreground_bash_call_is_no_background_finding(bash_input):
+    messages = [_assistant({"name": "Bash", "input": bash_input})]
+    text, code = report.build_report(None, messages)
+    assert code == report.EXIT_RUN_FAILED
+    assert "Bash x1" in text
+    assert "ran in the background" not in text
 
 
 def test_tool_inputs_never_reach_the_report():

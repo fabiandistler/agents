@@ -26,7 +26,6 @@ from collections import Counter
 from pathlib import Path
 
 FAILED_PREFIX = "RUN FAILED"
-SUBAGENT_TOOLS = ("Agent", "Task")
 # The last message is model text from a public run page; a cap keeps one
 # runaway answer from filling the summary.
 MAX_LAST_MESSAGE = 3000
@@ -75,10 +74,14 @@ def last_message(messages: list[dict]) -> str | None:
     return None
 
 
-def tool_counts(messages: list[dict]) -> tuple[Counter, int]:
-    """Count the model's tool calls by name, and its background subagents."""
+def tool_counts(messages: list[dict]) -> tuple[Counter, Counter]:
+    """Count the model's tool calls by name, and those it ran in the background.
+
+    Any tool can take ``run_in_background`` (a subagent, a long Bash command);
+    in a headless run the end of the model's turn stops all of them.
+    """
     counts: Counter = Counter()
-    background = 0
+    background: Counter = Counter()
     for message in messages:
         if message.get("type") != "assistant":
             continue
@@ -89,9 +92,13 @@ def tool_counts(messages: list[dict]) -> tuple[Counter, int]:
             name = str(block.get("name", "?"))
             counts[name] += 1
             tool_input = block.get("input") or {}
-            if name in SUBAGENT_TOOLS and tool_input.get("run_in_background") is True:
-                background += 1
+            if isinstance(tool_input, dict) and tool_input.get("run_in_background") is True:
+                background[name] += 1
     return counts, background
+
+
+def _listing(counts: Counter) -> str:
+    return ", ".join(f"{name} x{count}" for name, count in sorted(counts.items()))
 
 
 def diagnosis(messages: list[dict] | None) -> str:
@@ -100,14 +107,14 @@ def diagnosis(messages: list[dict] | None) -> str:
     lines = []
     counts, background = tool_counts(messages)
     if counts:
-        listed = ", ".join(f"{name} x{count}" for name, count in sorted(counts.items()))
-        lines.append(f"Tool calls: {listed}.")
+        lines.append(f"Tool calls: {_listing(counts)}.")
     else:
         lines.append("Tool calls: none.")
     if background:
         lines.append(
-            f"{background} subagent(s) ran in the background: a headless run ends "
-            "with the model's turn, which stops them."
+            f"{background.total()} tool call(s) ran in the background "
+            f"({_listing(background)}): a headless run ends with the model's turn, "
+            "which stops them."
         )
     text = last_message(messages)
     lines.append("")

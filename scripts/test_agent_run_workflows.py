@@ -316,4 +316,4 @@ def test_report_diagnoses_a_run_that_wrote_nothing(path, tmp_path):
     assert code != 0
     assert "wrote no summary" in text
     assert "Waiting for the subagents." in text
-    assert "1 subagent(s) ran in the background" in text
+    assert "1 tool call(s) ran in the background (Agent x1)" in text
