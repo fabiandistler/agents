@@ -91,8 +91,8 @@ with `--branch-prefix`, which the reusable workflow passes from its
 | An open or merged pull request closes the issue, or an open pull request uses the branch (the stop rule's draft) | `pr-exists` | Ends without changes | The maintainer, on that pull request |
 | The branch has commits and no open pull request (a crash after pushing, or a pull request closed unmerged) | `needs-human` | Comments naming the branch, replaces `ready-for-agent` with `ready-for-human`, ends | A person: open a pull request from the branch, or rescue what is needed, delete the branch and add `ready-for-agent` again |
 | The issue was opened by an account without write access, and no owner, member or collaborator has posted a comment containing a `## Agent Brief` heading | `no-contract` | Comments, removes `ready-for-agent`, ends before any branch exists | A person with write access: post the brief, then add `ready-for-agent` again |
-| A blocker in the issue body, the latest comment by a person with write access containing a `## Agent Brief` heading, or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository (a title, another repository's issue or a pull request) | `blocked` | Comments naming the blockers, removes `ready-for-agent`, ends before any branch exists | A person: add `ready-for-agent` again once every blocker is done, or rewrite an unresolvable entry as `#<n>` or remove it once it is done |
-| Another implementer run started working first | `at-capacity` | Comments naming the capacity reason, removes `ready-for-agent`, ends before any branch exists | A person: add `ready-for-agent` again when that run has ended |
+| A blocker in the issue body, the latest comment by a person with write access containing a `## Agent Brief` heading, or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository (a title, another repository's issue or a pull request) | `blocked` | Comments naming the blockers, keeps `ready-for-agent`, ends before any branch exists | The [queue](#implementer-queue), once every blocker is closed as completed; a person rewrites an unresolvable entry as `#<n>` or removes it once it is done |
+| Another implementer run started working first | `at-capacity` | Comments naming the capacity reason, keeps `ready-for-agent`, ends before any branch exists | The [queue](#implementer-queue), when no run is working |
 | Any other API error | `failed` | Writes `RUN FAILED: claim (<reason>)`, so the run turns red | The maintainer reads the run; a retry is safe |
 
 The brief is the latest comment by a person with write access that has a
@@ -125,12 +125,49 @@ At most one implementer run works at a time (`MAX_WORKING_RUNS` in the script).
 Runs are ordered by the start of their `implement` job, then by run id; only
 runs earlier in that order count, so of two simultaneous starts exactly one
 stops. The check reads the Actions API, so it can lag a few seconds; a run about
-to end still counts, and the ticket then waits for a person to re-label it.
+to end still counts, and the ticket then waits in the queue.
 
-An issue stopped as `no-contract`, `blocked` or `at-capacity` carries no state label until a
-person adds `ready-for-agent` again. Nothing restarts it on its own: a blocker
-closing fires no run. The triage workflows do not act on it either; they ignore
+An issue stopped as `no-contract` carries no state label until a person adds
+`ready-for-agent` again; nothing restarts it on its own, because only a
+person's brief can. The triage workflows do not act on it either; they ignore
 the bot's comment, and their state check accepts an issue without a state.
+
+## Implementer queue
+
+`ready-for-agent` is the queue (#801). An issue stopped as `blocked` or
+`at-capacity` keeps the label and waits; its comment says so and that removing
+the label takes it out of the queue. `scripts/implementer_queue.py`, model-free,
+dispatches the implementer workflow (`inputs.issue`, on the default branch) for
+one waiting issue. It runs from `.github/workflows/implementer-queue.yml`, which
+calls the reusable `.github/workflows/factory-implementer-queue.yml`: after an
+implementer run completes (unless its job was skipped), when an issue closes, on
+an hourly schedule, and by hand (Actions → implementer-queue → Run workflow, a
+dry run by default). The maintainer adds both files by hand; until they are on
+`main`, waiting issues start only from a manual dispatch of `implementer.yml`.
+
+| Situation | Outcome | What the starter does |
+| --- | --- | --- |
+| An implementer job is working | `busy` | Dispatches nothing and reads no issue |
+| An open issue with `ready-for-agent` passes every check below | `dispatched` | Dispatches the implementer for the lowest such number, once |
+| No issue waits, or every one is skipped | `empty` | Dispatches nothing |
+
+**Order rule:** lowest issue number first. A waiting issue is skipped when its
+latest implementer run (by the run name `implementer: issue #<n>`) has not
+completed or ended other than success or skipped (`run-active`, `run-failed`:
+a failed run waits for a person and the Fix task, so a failing issue is not
+dispatched again and again), when its branch exists (`branch`: a run claimed it
+and ended without a pull request), and by the claim's own checks when a pull
+request holds it, it has no contract or a blocker is not done (`pull-request`,
+`no-contract`, `blocked`; a blocker closed as not planned still blocks).
+
+The starter dispatches nothing while a run works, so a dispatched run that
+stops `at-capacity` and ends starts no other run: no loop of model starts. The
+capacity gate stays the only arbiter of who works. A run whose job is still
+queued does not count as working, so a dispatch can race a person's new label;
+one of the two runs stops `at-capacity`, keeps waiting, and starts after the
+other. Adding `ready-for-agent` again to a waiting issue fires no event; to
+restart one by hand, dispatch `implementer.yml` with its number, or remove and
+add the label.
 
 ## Rework
 

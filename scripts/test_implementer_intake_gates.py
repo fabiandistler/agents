@@ -66,6 +66,16 @@ def assert_stopped_before_any_branch(fake: FakeGitHub) -> str:
     return comment
 
 
+def assert_waits_before_any_branch(fake: FakeGitHub) -> str:
+    """The waiting path's only write, a comment; the label stays. Returns the comment."""
+    assert [write[:2] for write in fake.writes] == [("POST", COMMENTS)]
+    comment = " ".join(fake.writes[0][2]["body"].split())
+    assert comment.startswith(AI_MARKER.strip())
+    assert "keeps `ready-for-agent` and waits in the implementer queue" in comment
+    assert "To take it out of the queue, remove `ready-for-agent`." in comment
+    return comment
+
+
 # Gate 1: blocked.
 
 
@@ -87,7 +97,7 @@ def test_a_declared_blocker_that_is_not_done_stops_the_run(issue):
     assert outcome.outcome == implementer_claim.BLOCKED
     assert outcome.branch == BRANCH
     assert outcome.blockers == (3,)
-    assert "Blocked by #3." in assert_stopped_before_any_branch(fake)
+    assert "Blocked by #3." in assert_waits_before_any_branch(fake)
 
 
 def test_a_blocker_closed_as_not_planned_is_named_as_still_blocking():
@@ -138,7 +148,7 @@ def test_an_unresolvable_entry_fails_closed(ticket_text):
     assert outcome.outcome == implementer_claim.BLOCKED
     assert outcome.blockers == ()
     assert outcome.unresolved_blockers == 1
-    comment = assert_stopped_before_any_branch(fake)
+    comment = assert_waits_before_any_branch(fake)
     assert "1 " in comment
     assert "`#<n>`" in comment
 
@@ -233,28 +243,45 @@ def test_a_malformed_blocker_is_an_api_error():
     assert fake.writes == []
 
 
-# The stop path, shared by both gates.
+# The waiting path, shared by both gates: comment, keep the label.
 
 
 @pytest.mark.parametrize("gate", ["blocked", "at-capacity"])
-def test_a_failed_comment_still_frees_the_label(gate):
+def test_a_failed_comment_propagates_and_keeps_the_label(gate):
     fake = stopped_fake(gate)
+    fake.errors[("POST", COMMENTS)] = http_error(500, COMMENTS)
+    with pytest.raises(pr_github_client.FetchError):
+        claim(fake)
+    assert fake.writes == []
+
+
+@pytest.mark.parametrize("gate", ["blocked", "at-capacity"])
+def test_a_waiting_ticket_never_touches_its_labels(gate):
+    fake = stopped_fake(gate)
+    fake.errors[("DELETE", REMOVE_LABEL)] = AssertionError("the label must stay")
+    assert claim(fake).outcome == gate
+    assert all(method == "POST" and path == COMMENTS for method, path, _ in fake.writes)
+
+
+# The release path of a ticket with no contract: it alone loses the label.
+
+
+def test_a_failed_comment_still_frees_the_label_of_a_ticket_without_contract():
+    fake = stopped_fake("no-contract")
     fake.errors[("POST", COMMENTS)] = http_error(500, COMMENTS)
     with pytest.raises(pr_github_client.FetchError):
         claim(fake)
     assert [write[:2] for write in fake.writes] == [("DELETE", REMOVE_LABEL)]
 
 
-@pytest.mark.parametrize("gate", ["blocked", "at-capacity"])
-def test_a_label_already_gone_is_tolerated(gate):
-    fake = stopped_fake(gate)
+def test_a_label_already_gone_is_tolerated():
+    fake = stopped_fake("no-contract")
     fake.errors[("DELETE", REMOVE_LABEL)] = http_error(404, REMOVE_LABEL)
-    assert claim(fake).outcome == gate
+    assert claim(fake).outcome == implementer_claim.NO_CONTRACT
 
 
-@pytest.mark.parametrize("gate", ["blocked", "at-capacity"])
-def test_a_refused_label_removal_propagates(gate):
-    fake = stopped_fake(gate)
+def test_a_refused_label_removal_propagates():
+    fake = stopped_fake("no-contract")
     fake.errors[("DELETE", REMOVE_LABEL)] = http_error(403, REMOVE_LABEL)
     with pytest.raises(pr_github_client.FetchError) as caught:
         claim(fake)
@@ -262,6 +289,8 @@ def test_a_refused_label_removal_propagates(gate):
 
 
 def stopped_fake(gate: str) -> FakeGitHub:
+    if gate == "no-contract":
+        return FakeGitHub(issue_author_association="NONE")
     if gate == "blocked":
         return FakeGitHub(issue_body="Blocked by: other/repo#3")
     return FakeGitHub(jobs={RUN_ID: [working_job()], 4999: [working_job(EARLIER)]})
@@ -275,7 +304,7 @@ def test_an_earlier_working_run_stops_this_one():
     outcome = claim(fake)
     assert outcome.outcome == implementer_claim.AT_CAPACITY
     assert outcome.branch == BRANCH
-    comment = assert_stopped_before_any_branch(fake)
+    comment = assert_waits_before_any_branch(fake)
     assert "another implementer run is working" in comment
 
 
