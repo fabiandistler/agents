@@ -169,21 +169,14 @@ def make_plan(client: ReadClient, repo: str, run_id: int, date: str) -> dict:
     return plan(run, failure, open_issue, closed_issue, fix_issue, date)
 
 
-def apply(client: WriteClient, repo: str, planned: dict) -> None:
-    action = planned["action"]
-    if action is None:
-        return
+def create_label(client: WriteClient, repo: str) -> None:
+    """Create the ``factory-failure`` label; one that already exists counts as done."""
+    label: dict[str, object] = {
+        "name": LABEL,
+        "color": LABEL_COLOR,
+        "description": LABEL_DESCRIPTION,
+    }
     try:
-        if action["kind"] == "comment":
-            client.post(
-                f"/repos/{repo}/issues/{action['number']}/comments", {"body": action["body"]}
-            )
-            return
-        label: dict[str, object] = {
-            "name": LABEL,
-            "color": LABEL_COLOR,
-            "description": LABEL_DESCRIPTION,
-        }
         send(
             client,
             Operation(
@@ -194,6 +187,21 @@ def apply(client: WriteClient, repo: str, planned: dict) -> None:
                 tolerate="already_exists",
             ),
         )
+    except pr_github_client.FetchError as error:
+        raise ApplyError(str(error)) from error
+
+
+def apply(client: WriteClient, repo: str, planned: dict) -> None:
+    """Send the plan's one write: a comment or a new issue."""
+    action = planned["action"]
+    if action is None:
+        return
+    try:
+        if action["kind"] == "comment":
+            client.post(
+                f"/repos/{repo}/issues/{action['number']}/comments", {"body": action["body"]}
+            )
+            return
         client.post(
             f"/repos/{repo}/issues",
             {"title": action["title"], "body": action["body"], "labels": action["labels"]},
@@ -238,6 +246,11 @@ def main(
         github = _client(client)
         planned = make_plan(github, repo, options["run_id"], date)
         if write and planned["action"] is not None:
+            if planned["action"]["kind"] == "create_issue":
+                # Before the re-read, so no other call sits between it and the
+                # write. A plan that turns into a new issue only on the re-read
+                # had a labelled match a moment ago, so the label exists.
+                create_label(github, repo)
             # Re-read right before writing: a parallel run may have filed it.
             planned = make_plan(github, repo, options["run_id"], date)
             apply(github, repo, planned)

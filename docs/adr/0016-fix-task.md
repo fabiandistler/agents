@@ -51,8 +51,9 @@ marker `<!-- factory-failure:<hash> -->`.
   step and the reason in a fenced block with `@` neutralized. No log text;
 - with only a closed one, a new issue that names it.
 
-The script reads everything again right before it writes, and creates the
-`factory-failure` label on first use; a 422 "already exists" counts as done.
+The script reads everything again right before its one write, with no other
+call in between. It creates the `factory-failure` label on first use, before
+that re-read; a 422 "already exists" counts as done.
 
 **Fix-related runs.** An implementer run whose `run-name` is
 `implementer: issue #<n>` works on issue `<n>`. When that issue carries

@@ -82,15 +82,19 @@ class FakeClient:
         self.label_status = label_status
         self.gets: list[tuple[str, dict]] = []
         self.writes: list[tuple[str, str, dict]] = []
+        # Every call in order, as (method, path), to check what precedes a write.
+        self.calls: list[tuple[str, str]] = []
 
     def get(self, path, params=None, accept=None):
         self.gets.append((path, dict(params or {})))
+        self.calls.append(("GET", path))
         if path not in self.routes:
             raise AssertionError(f"unexpected GET {path}")
         return json_response(self.routes[path])
 
     def post(self, path, payload=None):
         self.writes.append(("POST", path, dict(payload or {})))
+        self.calls.append(("POST", path))
         if path == LABELS_PATH and self.label_status == 422:
             raise pr_github_client.FetchError("exists", status=422)
         return json_response({}, status=201)
@@ -147,6 +151,15 @@ def test_write_re_reads_before_writing(monkeypatch, capsys):
     client = FakeClient()
     run_main(client, "--write")
     assert [path for path, _ in client.gets].count(ISSUES_PATH) == 2
+
+
+def test_nothing_is_written_between_the_last_re_read_and_the_new_issue(monkeypatch, capsys):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    client = FakeClient()
+    assert run_main(client, "--write") == pr_cli.EXIT_OK
+    last_read = max(i for i, call in enumerate(client.calls) if call == ("GET", ISSUES_PATH))
+    after = [call for call in client.calls[last_read:] if call[0] != "GET"]
+    assert after == [("POST", ISSUES_PATH)]
 
 
 def test_write_comments_on_the_open_match(monkeypatch, capsys):
