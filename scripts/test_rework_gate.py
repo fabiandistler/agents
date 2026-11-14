@@ -168,24 +168,43 @@ def test_a_second_run_for_the_same_head_writes_nothing(tmp_path):
     assert fake.writes == []
 
 
+REVIEWED = ["pr-context", "pr-review"]
+
+
 def test_locate_takes_the_latest_successful_review_of_the_live_head():
-    runs = [
-        {"id": 5, "conclusion": "success"},
-        {"id": 8, "conclusion": "success"},
-        {"id": 6, "conclusion": "success"},
-    ]
-    fake = FakeGitHub(review_runs=runs)
+    fake = FakeGitHub(
+        review_runs=[
+            {"id": 5, "conclusion": "success"},
+            {"id": 8, "conclusion": "success"},
+            {"id": 6, "conclusion": "success"},
+        ],
+        run_artifacts={5: REVIEWED, 8: REVIEWED, 6: REVIEWED},
+    )
     assert rework_gate.locate_run(cast(GitHubClient, fake), REPO, PR) == 8
 
 
-def test_locate_skips_a_newer_failed_or_cancelled_review():
-    runs = [
-        {"id": 5, "conclusion": "success"},
-        {"id": 8, "conclusion": "failure"},
-        {"id": 9, "conclusion": "cancelled"},
-    ]
-    fake = FakeGitHub(review_runs=runs)
+def test_locate_skips_a_newer_failed_run_and_a_newer_label_only_run():
+    # A failed or cancelled review, and a run started by a label (which skips
+    # the review and uploads no review artifact), must not shadow the review.
+    fake = FakeGitHub(
+        review_runs=[
+            {"id": 5, "conclusion": "success"},
+            {"id": 8, "conclusion": "failure"},
+            {"id": 7, "conclusion": "cancelled"},
+            {"id": 9, "conclusion": "success"},
+        ],
+        run_artifacts={5: REVIEWED, 8: REVIEWED, 7: REVIEWED, 9: []},
+    )
     assert rework_gate.locate_run(cast(GitHubClient, fake), REPO, PR) == 5
+
+
+def test_locate_fails_when_no_successful_run_uploaded_a_review():
+    fake = FakeGitHub(
+        review_runs=[{"id": 8, "conclusion": "failure"}, {"id": 9, "conclusion": "success"}],
+        run_artifacts={8: REVIEWED},
+    )
+    with pytest.raises(FetchError):
+        rework_gate.locate_run(cast(GitHubClient, fake), REPO, PR)
 
 
 def test_cli_decide_reports_and_writes_outputs(monkeypatch, tmp_path, capsys):
