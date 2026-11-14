@@ -19,6 +19,9 @@
 # A global concurrency group would keep only one pending run and cancel the
 # others.
 name: implementer
+# The Fix task (scripts/factory_failure_policy.py) and the Retro gate
+# (scripts/retro_gate.py) find this issue's run by this title.
+run-name: "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
 
 on:
   issues:

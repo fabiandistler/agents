@@ -1,0 +1,71 @@
+# fix-task - files each failed factory run as one deduplicated issue (ADR-0016).
+#
+# Model-free: scripts/factory_failure.py reads the failed run, its jobs and the
+# first failed job's annotations, and comments on the open `factory-failure`
+# issue for the failure signature or files a new one. Issues and comments made
+# with GITHUB_TOKEN start no workflow, and this workflow does not watch itself,
+# so nothing here starts a fix: a person posts a brief and adds ready-for-agent.
+name: fix-task
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] model-free, GITHUB_TOKEN only; it reads the run by id and writes issues
+    workflows: [implementer, skill-audit, issue-triage, pr-review]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Workflow run id
+        required: true
+        type: string
+      dry_run:
+        # A manual run plans only unless this is set to false.
+        description: Print the plan instead of applying it
+        required: false
+        type: boolean
+        default: true
+
+# No scope by default; the job below opts in to exactly what it needs.
+permissions: {}
+
+# One run per watched workflow at a time; a later failure waits instead of
+# cancelling a run between its re-read and its write.
+concurrency:
+  group: fix-task-${{ github.event.workflow_run.name || 'dispatch' }}
+  cancel-in-progress: false
+
+jobs:
+  file:
+    # Filter in the expression so green and cancelled runs start no runner.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'timed_out'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      actions: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: File the failure
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Event and dispatch values reach the script through env, never as
+          # shell source.
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          args=(--repo "$GITHUB_REPOSITORY" --run-id "$RUN_ID")
+          if [ "$WRITE" = "true" ]; then
+            args+=(--write)
+          fi
+          python3 scripts/factory_failure.py "${args[@]}"

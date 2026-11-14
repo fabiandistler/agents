@@ -2,11 +2,9 @@
 
 ## Status
 
-Proposed (2026-11-13) for #783. The scripts, tests and docs land first; the
-workflow `.github/workflows/fix-task.yml` is added by hand from the pull
-request, because the implementer cannot write workflow files. The status stays
-Proposed until then; the commit that adds the workflow sets it to Accepted
-here and in the index.
+Accepted (2026-11-14) for #783; proposed 2026-11-13. The scripts, tests and
+docs landed first; the workflow `.github/workflows/fix-task.yml` was added by
+hand afterwards, because the implementer cannot write workflow files.
 
 ## Context
 
