@@ -221,6 +221,21 @@ def test_implementer_prompt_keeps_its_branch_limits():
         assert limit in prompt, f"prompt lost the hard limit {limit!r}"
 
 
+def test_implementer_stop_rule_counts_only_rounds_a_tool_did_not_fix():
+    # Issue #808: run 43500665465 spent its rounds on lint that prek had
+    # already rewritten, and opened a draft that pr-review skipped.
+    prompt = model_step(single_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
+    for rule in (
+        "stage your own edits (`git add -A`) before each run of the checks",
+        "a tool rewrote files: stage them and run the checks again at once",
+        "that rerun belongs to the same round",
+        "A round is red only if its last run is red",
+        "after 3 red check rounds, fix the last failure and run the checks once more",
+        "only if that run is red too, push the branch, open a DRAFT PR",
+    ):
+        assert rule in prompt, f"prompt lost the check-round rule {rule!r}"
+
+
 def test_skill_audit_keeps_its_schedule():
     schedule = workflow(SKILL_AUDIT)[True]["schedule"]
     assert schedule == [{"cron": "47 13 8,22 * *", "timezone": "Europe/Berlin"}]
