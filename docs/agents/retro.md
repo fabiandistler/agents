@@ -4,7 +4,8 @@ Runbook for the Retro task: about one merged agent pull request in ten
 becomes one proposed change to the factory's own instruction texts. The
 workflow `.github/workflows/retro.yml` runs it daily (ADR-0017). Its
 model-free gate, `scripts/retro_gate.py`, picks the pull request and writes
-the context file; the model follows this runbook.
+the context file; the model follows this runbook. Where Retro sits among the
+factory's tasks: [architecture](../factory/architecture.md).
 
 ## Contents
 

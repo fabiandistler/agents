@@ -7,7 +7,9 @@ the target as a reusable workflow of this repository
 to add, what to set by hand and in which order, and how to check the result
 with `scripts/factory_onboarding_check.py`. For a new repository, start with
 the [setup wizard](#setup-wizard); the [manual steps](#manual-steps-in-order)
-are the fallback.
+are the fallback. The factory's day-to-day use is in the
+[user guide](../factory/README.md), its design in the
+[architecture](../factory/architecture.md).
 
 ## Contents
 
