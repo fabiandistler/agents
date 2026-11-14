@@ -183,6 +183,7 @@ decides from the review run's artifacts and the live pull request:
 | Non-pass review with findings of the live head, fewer than two round markers, no other rework run working | `proceed` | Posts `<!-- rework-round:<k> head:<sha> -->`, hands the findings to the model job as a file; it fixes them, pushes, comments fixed or declined | The next review of the pushed commit |
 | Two round markers and a new non-pass verdict | `handoff` | Comments once per head on the pull request, replaces `ready-for-agent` with `ready-for-human` on the issue; no model runs | A person, on the pull request |
 | The model job's checks stay red after two rounds | (model job) | Pushes nothing, comments, replaces `ready-for-agent` with `ready-for-human` | A person, on the pull request |
+| The model job declines every finding | (model job) | Pushes nothing, comments every finding as declined with its reason | A person, on the pull request |
 | Anything else: a pass or unavailable review, no findings, a draft, `do-not-merge`, a head that moved, a marker for this head, an issue with `ready-for-human`, another rework run working, a pull request not opened by `claude[bot]` from `agent/issue-<n>` | `stop` | Writes nothing | Nobody; a manual run (Actions → rework → Run workflow) retries |
 
 Only markers by `github-actions[bot]` count, so a quoted marker neither spends
