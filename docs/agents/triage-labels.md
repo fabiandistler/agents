@@ -127,7 +127,8 @@ repository variable `REWORK_MODEL` (default `sonnet`).
 ## Pull request labels
 
 Pull requests use separate label families, written by the model-free `hold`
-and `publish` jobs of `.github/workflows/pr-review.yml` ([runbook](pr-review-runbook.md)).
+and `publish` jobs of `.github/workflows/factory-pr-review.yml`, which
+`.github/workflows/pr-review.yml` calls ([runbook](pr-review-runbook.md)).
 They never carry the issue roles above. `publish` creates all ten labels on
 first use (`LABELS` in `scripts/pr_labels.py`) and keeps one label per
 family, removing stale ones.

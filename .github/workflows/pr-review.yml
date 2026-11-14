@@ -1,28 +1,19 @@
-# pr-review - the three-stage pull request review pipeline: assess (model-free),
-# review (Claude subscription token, read-only GitHub token) and publish (write
-# token, no model token).
+# pr-review - this repository's caller of the reusable PR review pipeline,
+# .github/workflows/factory-pr-review.yml (ADR-0018). The jobs, their
+# credentials and the security model live there; this file keeps the triggers,
+# the file name and the permission cap.
 #
-# The workflow runs from the base commit on pull_request_target and never
-# checks out or executes the pull request head: metadata, diff and base file
-# contents arrive through the REST API. Every job holds only the credential its
-# stage needs, and publish consumes the earlier stages as artifacts. Publish
-# writes on every pull request event; a manual run defaults to a dry run.
-#
-# A fourth, model-free job, hold, disables the bot's auto-merge on every push
-# before the new head is reviewed (GitHub keeps auto-merge on when someone with
-# write access pushes), and any auto-merge when do-not-merge is added. A label
-# event runs only the hold: it never re-runs the review.
-#
-# Publish also sets the commit status pr-review/verdict on the reviewed head:
-# green for any verdict, so a merge that requires it waits for the review
-# without the review becoming a gate. Nothing sets it green ahead of time: a
-# new head starts with no status, which a required check reads as waiting.
+# The file name and its pull_request_target trigger are what the Actions event
+# policy targets (docs/agents/pr-review-event-policy.md) and what the rework
+# task watches (scripts/rework_policy.py): keep both. Every repository-specific
+# input stays at its default here, so the review behaves as before the
+# extraction; other repositories call the same file at a pinned commit SHA.
 name: pr-review
 
 on:
   # Deliberate: the run takes the base commit's workflow and never checks out
   # or executes the head (docs/agents/pr-review-runbook.md, "Jobs and security
-  # model"; the header above).
+  # model"; the header of factory-pr-review.yml).
   pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, synchronize, reopened, ready_for_review, labeled]
   workflow_dispatch:
@@ -39,259 +30,28 @@ on:
         type: boolean
         default: true
 
-# No scope by default; each job below opts in to exactly what it needs.
+# No scope by default; the calling job opts in to the cap below.
 permissions: {}
 
-# A new push supersedes the run still reviewing the previous head. A label
-# event gets a group per label, so it never cancels a review run and a later
-# label never cancels a do-not-merge hold.
-concurrency:
-  group: >-
-    pr-review-${{ github.event.pull_request.number || inputs.pr }}${{
-    github.event.action == 'labeled' && format('-label-{0}', github.event.label.name) || '' }}
-  cancel-in-progress: true
+# No concurrency group here: the called workflow defines the only one, and a
+# group shared by caller and called workflow would cancel the caller.
 
 jobs:
-  hold:
-    # Model-free and review-free: runs at once on a push, in parallel with the
-    # assessment, and on do-not-merge. Never on a manual run, so its write needs
-    # no dry-run guard. It only disables; publish alone may enable.
-    if: >-
-      github.event.action == 'synchronize' ||
-      (github.event.action == 'labeled' && github.event.label.name == 'do-not-merge')
-    runs-on: ubuntu-latest
-    # Disabling auto-merge needs contents and pull-requests write; removing the
-    # auto-merge:bot label goes through the issues API.
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Hold the auto-merge until the new head is reviewed
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          python3 scripts/pr_publish.py --hold --live --repo "${{ github.repository }}" \
-            --pr "$PR" --write
-
-  assess:
-    # A label event only needs the hold; skipping the assessment also skips the
-    # review and publish, so it never calls the model.
-    if: github.event.action != 'labeled'
-    runs-on: ubuntu-latest
-    # Read-only: the policy needs the pull request, its comments and the base
-    # file contents. Check results are no gate (the ruleset waits for them), so
-    # there is no checks scope. Nothing here may write.
-    permissions:
-      contents: read
-      pull-requests: read
-      issues: read
-    outputs:
-      same_repo: ${{ steps.origin.outputs.same_repo }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Fetch the pull request context
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Event and dispatch values reach the script through env, never as
-          # shell source.
-          PR: ${{ github.event.pull_request.number || inputs.pr }}
-        run: |
-          python3 scripts/pr_github.py \
-            --pr "$PR" \
-            --repo "${{ github.repository }}" \
-            --output context.json
-
-      - name: Check whether the head lives in this repository
-        id: origin
-        # A manual run has no pull request event to read the head repository
-        # from, so the review guard takes it from the fetched context. Only an
-        # explicit `fork: false` counts as same-repository.
-        run: |
-          python3 - >> "$GITHUB_OUTPUT" <<'PY'
-          import json
-
-          with open("context.json", encoding="utf-8") as handle:
-              context = json.load(handle)
-          print("same_repo=" + ("true" if context.get("fork") is False else "false"))
-          PY
-
-      - name: Upload the context
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: pr-context
-          path: context.json
-          if-no-files-found: error
-
-      - name: Classify the risk
-        run: python3 scripts/pr_risk.py --context context.json --output assessment.json
-
-      - name: Upload the assessment
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: pr-assessment
-          path: assessment.json
-          if-no-files-found: error
-
-  review:
-    needs: assess
-    # Drafts are assessed but not reviewed until they are marked ready. A fork
-    # pull request is assessed too, but its diff never reaches the model: the
-    # job holds a secret and the diff is untrusted input. A manual run carries
-    # no pull request event, so the same-repository guard reads the assess
-    # output for both triggers.
-    if: >-
-      needs.assess.outputs.same_repo == 'true' &&
-      (github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.draft == false &&
-      github.event.pull_request.head.repo.full_name == github.repository))
-    runs-on: ubuntu-latest
-    # The base checkout is the only thing the review reads; the model response
-    # leaves the job as an artifact, never as a GitHub write.
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Download the context
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: pr-context
-
-      - name: Install Claude Code
-        # The subscription token works only inside Anthropic's own CLI. The
-        # version is pinned because the next step hands this binary the token;
-        # bump it on purpose (runbook: CLI update), Dependabot does not see it.
-        run: npm install --global @anthropic-ai/claude-code@2.1.321
-
-      - name: Review the diff
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          PR_REVIEW_MODEL: ${{ vars.PR_REVIEW_MODEL }}
-        run: python3 scripts/pr_review.py --context context.json > review.json
-
-      - name: Upload the review
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: pr-review
-          path: review.json
-          if-no-files-found: error
-
-  publish:
-    # After the hold, so the auto-merge decision for the reviewed head is the
-    # last write. A failed or skipped hold does not stop it: publish decides
-    # from a fresh fetch.
-    needs: [assess, review, hold]
-    # A skipped review (draft, fork) still publishes the assessment, and a
-    # failed review still publishes `review:unavailable`. Only a failed
-    # assessment leaves nothing to publish.
-    if: >-
-      always() && needs.assess.result == 'success'
-    runs-on: ubuntu-latest
-    # contents: write is for enabling auto-merge; the checkout does not keep it.
-    # statuses: write is for pr-review/verdict, the one context the writer sets.
+  pr-review:
+    # The Actions jobs API lists the called jobs as `pr-review / <job>`.
+    # The union of the called jobs' scopes; each called job asks for less.
+    # statuses: write is for pr-review/verdict, which only publish sets.
     permissions:
       contents: write
       pull-requests: write
       issues: write
       statuses: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-
-      - name: Download the context
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: pr-context
-
-      - name: Download the assessment
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: pr-assessment
-
-      - name: Download the review
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: pr-review
-        # The review job is skipped for drafts and forks, so its artifact is
-        # legitimately absent.
-        continue-on-error: true
-
-      - name: Reconstruct the review when the review job was skipped
-        # Without the model token this yields `skipped` for a draft or fork and
-        # `unavailable` otherwise, so a missing review can never look like a pass.
-        run: |
-          if [ -s review.json ]; then
-            exit 0
-          fi
-          python3 scripts/pr_review.py --context context.json > review.json
-
-      - name: Publish the assessment
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number || inputs.pr }}
-          WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
-          # Auto-merge is planned only when this repository variable is exactly `true`.
-          PR_AUTO_MERGE: ${{ vars.PR_AUTO_MERGE }}
-          # The run page the verdict status links to.
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          # The publisher appends the decision, the confidence and the labels it
-          # applied to the run summary itself, also when an action failed. A
-          # failed action still prints the results JSON, so the exit status is
-          # captured and reported after the JSON has been printed.
-          set +e
-          if [ "$WRITE" = "true" ]; then
-            python3 scripts/pr_publish.py \
-              --live \
-              --repo "${{ github.repository }}" \
-              --pr "$PR" \
-              --assessment assessment.json \
-              --review review.json \
-              --summary "$GITHUB_STEP_SUMMARY" \
-              --status-url "$RUN_URL" \
-              --write > plan.json
-          else
-            # The dry run plans from a fresh fetch too, so it re-checks the head
-            # SHA and runs the current policy exactly as the write path does.
-            python3 scripts/pr_publish.py \
-              --live \
-              --repo "${{ github.repository }}" \
-              --pr "$PR" \
-              --assessment assessment.json \
-              --review review.json \
-              --summary "$GITHUB_STEP_SUMMARY" \
-              --status-url "$RUN_URL" > plan.json
-          fi
-          status=$?
-          set -e
-          cat plan.json
-          exit "$status"
+    uses: ./.github/workflows/factory-pr-review.yml
+    with:
+      # Empty on a pull request event, where the called workflow reads the
+      # number from the event.
+      pr: ${{ inputs.pr || '' }}
+      # Read only on a manual run. Anything but an explicit false plans only.
+      dry_run: ${{ inputs.dry_run != false }}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

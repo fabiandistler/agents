@@ -262,9 +262,15 @@ def test_help_documents_the_flag_its_cap_and_its_failure() -> None:
     assert len(run.stdout.splitlines()) <= 25
 
 
-def test_the_runbook_documents_the_flag() -> None:
-    runbook = Path(__file__).resolve().parent.parent / "docs" / "agents" / "pr-review-runbook.md"
-    text = " ".join(runbook.read_text(encoding="utf-8").split())
+def test_the_operator_docs_document_the_flag() -> None:
+    page = (
+        Path(__file__).resolve().parent.parent
+        / "docs"
+        / "agents"
+        / "pr-review-reusable-workflow.md"
+    )
+    text = " ".join(page.read_text(encoding="utf-8").split())
+    assert "`standards_path`" in text
     assert "--standards" in text
     assert "65,536 bytes" in text
     assert "exit 3" in text
