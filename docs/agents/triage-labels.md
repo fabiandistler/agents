@@ -48,13 +48,18 @@ off-format model answer writes nothing; the run log says why.
 ## Implementer claim
 
 Adding `ready-for-agent` starts `.github/workflows/implementer.yml`
-([ADR-0014](../adr/0014-agent-runs-in-github-actions.md)). Its first write is
-`scripts/implementer_claim.py`, which decides what happens to branch
-`agent/issue-<n>`. Called as a reusable workflow from another repository, it
-takes the workflow file whose runs it counts from `--workflow-file` or
-`GITHUB_WORKFLOW_REF`, matches the job by `--job-name` also as
-`<caller job> / <name>`, and names the branch with `--branch-prefix`; the
-defaults are `implementer.yml`, `implement` and `agent/issue-`. The outcomes:
+([ADR-0014](../adr/0014-agent-runs-in-github-actions.md)), which calls the
+reusable `.github/workflows/factory-implementer.yml`
+([ADR-0018](../adr/0018-reusable-factory-workflows.md)). Its first write is
+`scripts/implementer_claim.py`, run from the factory checkout under
+`$RUNNER_TEMP/factory`, which decides what happens to branch `agent/issue-<n>`.
+The script takes the workflow file whose runs it counts from `--workflow-file`
+or, as the reusable workflow leaves it, from `GITHUB_WORKFLOW_REF`, which names
+the caller's file. It matches the job by `--job-name` also as
+`<caller job> / <name>` (here `implement / implement`), and names the branch
+with `--branch-prefix`, which the reusable workflow passes from its
+`branch_prefix` input; the defaults are `implementer.yml`, `implement` and
+`agent/issue-`. The outcomes:
 
 | Situation | Outcome | What the run does | Who acts next |
 | --- | --- | --- | --- |

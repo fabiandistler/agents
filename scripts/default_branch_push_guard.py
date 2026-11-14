@@ -30,9 +30,10 @@ cannot see which branch is checked out, so a bare `git push`, `git push origin`
 and `git push -u origin HEAD` pass: on the default branch they would update it.
 
 `scripts/agent_run_settings.json` is the Claude Code settings fragment that
-loads this guard and the merge guard for an agent run. The workflow replaces
-`{{factory_dir}}` with the absolute path of the factory checkout and
-`{{default_branch}}` with the shell-quoted default branch. A branch given there
+loads this guard and the merge guard for an agent run.
+`scripts/agent_run_settings.py` replaces `{{factory_dir}}` with the
+shell-quoted absolute path of the factory checkout and `{{default_branch}}`
+with the shell-quoted default branch. A branch given there
 replaces the `main`/`master` fallback, so the workflow passes the repository's
 real default branch. This repository's own `.claude/settings.json` does not
 load the guard.

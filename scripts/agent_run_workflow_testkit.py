@@ -1,6 +1,7 @@
 """Shared loaders and accessors for the agent-run workflow structure tests.
 
-The tests in test_agent_run_workflows.py read the agent-run workflow files
+The tests in test_agent_run_workflows.py and
+test_factory_implementer_workflow.py read the agent-run workflow files
 (.github/workflows/) through these helpers, so each safety property can be
 asserted on its own.
 """
@@ -15,6 +16,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 IMPLEMENTER = WORKFLOWS / "implementer.yml"
+FACTORY_IMPLEMENTER = WORKFLOWS / "factory-implementer.yml"
 SKILL_AUDIT = WORKFLOWS / "skill-audit.yml"
 
 ACTION = "anthropics/claude-code-action@"
@@ -41,4 +43,20 @@ def model_step(job: dict) -> dict:
 def report_step(job: dict) -> dict:
     steps = [step for step in job["steps"] if step.get("name") == "Report the run"]
     assert len(steps) == 1, "exactly one report step"
+    return steps[0]
+
+
+def checkouts(job: dict) -> list[dict]:
+    return [step for step in job["steps"] if "actions/checkout@" in step.get("uses", "")]
+
+
+def step_with_id(job: dict, step_id: str) -> dict:
+    steps = [step for step in job["steps"] if step.get("id") == step_id]
+    assert len(steps) == 1, f"exactly one step with id {step_id!r}"
+    return steps[0]
+
+
+def named_step(job: dict, name: str) -> dict:
+    steps = [step for step in job["steps"] if step.get("name") == name]
+    assert len(steps) == 1, f"exactly one step named {name!r}"
     return steps[0]
