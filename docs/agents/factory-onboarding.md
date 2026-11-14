@@ -50,11 +50,15 @@ with `scripts/factory_onboarding_check.py`.
 One file per factory workflow, in the target's `.github/workflows/`. Each
 starts with `permissions: {}`; the calling job grants the scopes from
 ADR-0018's table (the PR review with `statuses: write` as well), pins the
-reusable workflow to a full 40-hex commit SHA with the date as a comment, and
-passes `CLAUDE_CODE_OAUTH_TOKEN` by name under `secrets:`, never with
-`secrets: inherit`. This repository's `triage-label.yml`, `issue-triage.yml`,
-`pr-review.yml` and `implementer.yml` are the model, with `./` replaced by the
-pinned path. Replace `<SHA>` and `<date>` with the same values in all four.
+reusable workflow to a full 40-hex commit SHA with the comment
+`# agents main, <date>`, and passes `CLAUDE_CODE_OAUTH_TOKEN` by name under
+`secrets:`, never with `secrets: inherit`. The comment has more than one word
+because zizmor's online `ref-version-mismatch` audit reads a one-word comment
+after a SHA as a version and flags it when that SHA carries no such tag. This
+repository's `triage-label.yml`, `issue-triage.yml`, `pr-review.yml` and
+`implementer.yml` are the model, with `./` replaced by the pinned path (the
+triage caller without `issue_comment`, see below). Replace `<SHA>` and
+`<date>` with the same values in all four.
 
 `.github/workflows/triage-label.yml`:
 
@@ -68,7 +72,7 @@ jobs:
   label:
     permissions:
       issues: write
-    uses: fabiandistler/agents/.github/workflows/factory-triage-label.yml@<SHA> # <date>
+    uses: fabiandistler/agents/.github/workflows/factory-triage-label.yml@<SHA> # agents main, <date>
 ```
 
 `.github/workflows/issue-triage.yml`:
@@ -78,8 +82,6 @@ name: issue-triage
 on:
   issues:
     types: [opened, labeled]
-  issue_comment: # zizmor: ignore[dangerous-triggers]
-    types: [created]
   workflow_dispatch:
     inputs:
       issue:
@@ -97,7 +99,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-    uses: fabiandistler/agents/.github/workflows/factory-issue-triage.yml@<SHA> # <date>
+    uses: fabiandistler/agents/.github/workflows/factory-issue-triage.yml@<SHA> # agents main, <date>
     with:
       issue: ${{ inputs.issue }}
       dry_run: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run }}
@@ -105,9 +107,15 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
 
+The triage caller does not subscribe to `issue_comment`, which zizmor rates as
+a dangerous trigger. A reporter's reply to `needs-info` is therefore not
+re-triaged until a person re-adds `needs-triage`. A target that wants
+automatic re-triage may add `issue_comment: [created]` back, with a second
+justified `# zizmor: ignore[dangerous-triggers]` beside the PR review's.
+
 `.github/workflows/pr-review.yml`. A target that runs zizmor keeps the inline
-ignore on the trigger, as this repository's `pr-review.yml` does (and on
-`issue_comment` in the triage caller above). Others may drop the comments.
+ignore on the trigger, as this repository's `pr-review.yml` does. Others may
+drop the comment.
 
 ```yaml
 name: pr-review
@@ -133,7 +141,7 @@ jobs:
       pull-requests: write
       issues: write
       statuses: write
-    uses: fabiandistler/agents/.github/workflows/factory-pr-review.yml@<SHA> # <date>
+    uses: fabiandistler/agents/.github/workflows/factory-pr-review.yml@<SHA> # agents main, <date>
     with:
       pr: ${{ inputs.pr || '' }}
       dry_run: ${{ inputs.dry_run != false }}
@@ -163,7 +171,7 @@ jobs:
       contents: read
       actions: read
       id-token: write
-    uses: fabiandistler/agents/.github/workflows/factory-implementer.yml@<SHA> # <date>
+    uses: fabiandistler/agents/.github/workflows/factory-implementer.yml@<SHA> # agents main, <date>
     with:
       issue: ${{ inputs.issue }}
       check_command: scripts/check.sh
