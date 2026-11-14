@@ -2,8 +2,8 @@
 
 ## Status
 
-Proposed (2026-11-14) in the maintainer's agent brief on #782; accepted when
-the workflow file is merged. Builds on
+Accepted (2026-11-14) with the workflow file; proposed the same day in the
+maintainer's agent brief on #782. Builds on
 [ADR-0014](0014-agent-runs-in-github-actions.md) (agent runs in GitHub
 Actions with the Claude GitHub App token) and leaves
 [ADR-0011](0011-pr-review-merge-exception.md) untouched: the Rework task never
