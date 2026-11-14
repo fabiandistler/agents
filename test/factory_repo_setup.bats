@@ -312,6 +312,20 @@ actions/download-artifact@*
 anthropics/claude-code-action@*"
 }
 
+@test "on a private repo the allowed patterns carry the patterns_allowed caveat" {
+  export GH_SECRETS=CLAUDE_CODE_OAUTH_TOKEN GH_ALLOWED_ACTIONS=selected
+  export GH_SELECTED='{"github_owned_allowed":true,"verified_allowed":false,"patterns_allowed":[]}'
+  apply "" n y y
+  assert_success
+  assert_line --partial 'allowed anthropics/claude-code-action@*'
+  assert_line --partial 'patterns_allowed applies to public repositories only'
+  assert_line --partial "https://github.com/$REPO/settings/actions"
+  export GH_VISIBILITY=public
+  apply "" n y y
+  assert_success
+  refute_line --partial 'patterns_allowed'
+}
+
 @test "dry run lists only the missing patterns of a selected list" {
   export GH_ALLOWED_ACTIONS=selected
   export GH_SELECTED='{"github_owned_allowed":false,"verified_allowed":false,"patterns_allowed":["actions/checkout@*"]}'

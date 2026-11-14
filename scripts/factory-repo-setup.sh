@@ -394,6 +394,10 @@ else
       die 4 "could not update the selected actions of $repo"
     for pattern in "${missing_patterns[@]}"; do say "${GREEN}✓ allowed${RESET} $pattern"; done
   fi
+  [[ "$visibility" == public ]] || {
+    warn "GitHub's REST docs: patterns_allowed applies to public repositories only."
+    warn "Check that the list holds: https://github.com/$repo/settings/actions"
+  }
 fi
 
 # ── Stage 5 ────────────────────
