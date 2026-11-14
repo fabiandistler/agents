@@ -65,7 +65,17 @@ repos:
         # Vendored upstream code: re-vendoring overwrites any local fix. The
         # scanner and the token hook come from scripts/vendor_repo_maintenance.py,
         # whose --check (the vendor-lock check) fails on any byte shfmt would change.
-        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$|scripts/hooks/check-file-tokens\.sh$)
+        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$|scripts/hooks/check-file-tokens\.sh$|scripts/factory-repo-setup\.sh$)
+      # scripts/factory-repo-setup.sh carries the wizard skill's library
+      # (.claude/skills/wizard/template.sh) verbatim above its STAGES marker.
+      # The library trips SC1087 on `$e[Enter` (a prompt string, not an
+      # array), so this file is checked without that one code; shfmt skips
+      # it, because reformatting would edit the copied library.
+      - id: shellcheck
+        name: shellcheck (wizard copy, without SC1087)
+        args: [-S, warning, -e, SC1087]
+        language_version: "3.12"
+        files: ^scripts/factory-repo-setup\.sh$
 
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
@@ -74,7 +84,7 @@ repos:
         args: [-i, '2', '-ci', --write]
         # Python >=3.13 rejects the Zscaler proxy root (no critical Basic Constraints) when the installer downloads.
         language_version: "3.12"
-        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$|scripts/hooks/check-file-tokens\.sh$)
+        exclude: ^(\.claude/skills/|scripts/maintenance-scan\.sh$|scripts/hooks/check-file-tokens\.sh$|scripts/factory-repo-setup\.sh$)
 
   # Secret scanning, included for every project type: the commit hook is the
   # last point before a secret lands in history. Mirrors the gitleaks job of
