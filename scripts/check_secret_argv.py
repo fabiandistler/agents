@@ -22,13 +22,18 @@ plugins/ and scripts/, and reports:
   exporting or testing it passes, and so does handing it to a shell builtin
   (echo, printf), whose arguments never reach a process's argv. A plural
   TOKENS names a count (MAX_TOKENS), not a credential, and passes too, as
-  does a whole-array expansion (`${WRITTEN_SECRET[*]}`, `${#NAME[@]}`): a list
-  or count of names; one element (`${NAME[0]}`) is still flagged.
+  does a length or count (`${#API_TOKEN}`, `${#NAME[@]}`). An array, one
+  element (`${NAME[0]}`) or whole (`${NAME[@]}`), is flagged like a scalar.
 
 Safe forms stay quiet: the program reading the variable from its environment
 (`GH_TOKEN=... gh api`, `os.environ`), a token file, stdin, gh's own auth,
 curl's header-from-file form. Test files hold the patterns as data and are
 not scanned. Stdlib-only, matching the other scripts/check_*.py gates.
+
+Exemptions live in ALLOWLIST as (relative path, variable) keys with the
+reason as the value: in that file only, the variable is not read as a secret.
+An entry that no longer matches a hit is reported as stale, so a fixed file
+must also leave the allowlist.
 """
 
 from __future__ import annotations
@@ -91,9 +96,6 @@ FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 CODE_SPAN = re.compile(r"(`+)(.+?)\1")
 COMMAND_SEPARATOR = re.compile(r"\|\||&&|;|\|")
 LEADING_ASSIGNMENTS = re.compile(r"""^\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s*)+""")
-# `${NAME[*]}`, `${NAME[@]}` and their `${#...}` counts expand a whole array:
-# a list of names, like a plural, not one credential.
-WHOLE_ARRAY = re.compile(r"\$\{#?[A-Za-z_]\w*\[[*@]\]\}")
 # Shell builtins: their arguments never reach a process's argv.
 NON_ARGV_COMMANDS = {
     *("[", "[[", "test", ":", "echo", "printf"),
@@ -102,6 +104,13 @@ NON_ARGV_COMMANDS = {
 # A builtin inside process substitution hands the program a /dev/fd path, not
 # the value: curl's header-from-file form `-H @<(printf ...)`.
 BUILTIN_PROCESS_SUBST = re.compile(r"<\(\s*(?:printf|echo)\b[^)]*\)")
+
+ALLOWLIST: dict[tuple[str, str], str] = {
+    ("scripts/factory-repo-setup.sh", "WRITTEN_SECRET"): (
+        "holds the names, not the values, of the secrets the wizard library "
+        "(copied verbatim from .claude/skills/wizard/template.sh) set"
+    ),
+}
 
 
 def scanned_files(root: Path) -> list[Path]:
@@ -116,15 +125,28 @@ def scanned_files(root: Path) -> list[Path]:
     return unique_real_files(candidates)
 
 
-def secret_argv(path: Path) -> list[tuple[int, str]]:
-    """(line number, rule) for each command line that puts a secret in argv."""
+def secret_argv(
+    path: Path, allowed: frozenset[str] = frozenset()
+) -> tuple[list[tuple[int, str]], set[str]]:
+    """(line number, rule) for each command line that puts a secret in argv,
+    and the allowed variables that kept a line from being reported."""
     text = path.read_text(encoding="utf-8")
     lines = markdown_code(text) if path.suffix == ".md" else enumerate(text.splitlines(), 1)
     found: list[tuple[int, str]] = []
+    used: set[str] = set()
     for number, code in lines:
-        for rule in rules_hit(code):
-            found.append((number, rule))
-    return list(dict.fromkeys(found))
+        hits = rules_hit(code)
+        for variable in sorted(allowed):
+            if not hits:
+                break
+            # Rename the allowed variable to one no secret rule reads.
+            code = re.sub(rf"(\$\{{?){re.escape(variable)}\b", r"\g<1>ALLOWED", code)
+            remaining = rules_hit(code)
+            if remaining != hits:
+                used.add(variable)
+            hits = remaining
+        found.extend((number, rule) for rule in hits)
+    return list(dict.fromkeys(found)), used
 
 
 def rules_hit(code: str) -> list[str]:
@@ -148,7 +170,7 @@ def secret_in_arguments(command: str) -> bool:
     """Whether a simple command expands a secret-named variable into its arguments."""
     # NAME=value prefixes set the environment, which is the safe channel.
     rest = LEADING_ASSIGNMENTS.sub("", command, count=1)
-    if not SECRET_VAR.search(WHOLE_ARRAY.sub("", rest)):
+    if not SECRET_VAR.search(rest):
         return False
     words = rest.split()
     return words[0] not in NON_ARGV_COMMANDS
@@ -185,11 +207,18 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(f"unknown argument: {' '.join(args)}\n{USAGE}")
         return 2
     files = scanned_files(root)
-    violations = [
-        f"{path.relative_to(root)}:{number}: {rule}"
-        for path in files
-        for number, rule in secret_argv(path)
-    ]
+    violations: list[str] = []
+    allowed_hits: set[tuple[str, str]] = set()
+    for path in files:
+        rel = path.relative_to(root).as_posix()
+        allowed = frozenset(variable for key, variable in ALLOWLIST if key == rel)
+        found, used = secret_argv(path, allowed)
+        violations.extend(f"{rel}:{number}: {rule}" for number, rule in found)
+        allowed_hits.update((rel, variable) for variable in used)
+    violations.extend(
+        f"{rel}: {variable}: stale allowlist entry (no hit left); delete it from ALLOWLIST"
+        for rel, variable in sorted(set(ALLOWLIST) - allowed_hits)
+    )
     if violations:
         sys.stderr.write(f"credentials in argv: {len(violations)} in {len(files)} files\n")
         for violation in violations:

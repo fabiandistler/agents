@@ -132,11 +132,18 @@ def test_prompt_keeps_the_hard_limits():
         "never delete branches",
         "never edit files under .github/workflows/",
         "never write to issues or PRs other than your own Retro PR",
-        "run_in_background: false",
         "RUN FAILED",
         "$RUNNER_TEMP/run-summary.md",
     ):
         assert limit in prompt, f"prompt lost {limit!r}"
+
+
+def test_prompt_ends_every_run_with_the_summary():
+    # Issue #843: the runbook's last step opens the pull request and names no summary.
+    prompt = _prompt()
+    assert "Every ending writes the summary last, also where the runbook does not name it." in (
+        prompt
+    )
 
 
 def test_report_step_runs_always():
