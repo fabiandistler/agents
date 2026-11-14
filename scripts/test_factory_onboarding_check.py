@@ -25,6 +25,8 @@ CALLERS = {
     "factory-pr-review.yml": "",
     "factory-issue-triage.yml": "",
     "factory-triage-label.yml": None,
+    "factory-rework.yml": "    with:\n      check_command: scripts/check.sh\n",
+    "factory-fix-task.yml": None,
 }
 
 
@@ -130,6 +132,8 @@ def test_fully_onboarded_private_repo_exits_0(capsys, monkeypatch):
         "caller:factory-pr-review.yml",
         "caller:factory-issue-triage.yml",
         "caller:factory-triage-label.yml",
+        "caller:factory-rework.yml",
+        "caller:factory-fix-task.yml",
         "pin",
     ]
     assert lines["labels"][0] == "OK"

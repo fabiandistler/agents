@@ -1,8 +1,9 @@
 # Factory onboarding runbook
 
 For the maintainer who puts another repository on the factory: the triage
-label, the issue triage, the PR review and the implementer, each called from
-the target as a reusable workflow of this repository
+label, the issue triage, the PR review, the implementer, the Rework task and
+the Fix task, each called from the target as a reusable workflow of this
+repository
 ([ADR-0018](../adr/0018-reusable-factory-workflows.md)). This page lists what
 to add, what to set by hand and in which order, and how to check the result
 with `scripts/factory_onboarding_check.py`. For a new repository, start with
@@ -30,6 +31,12 @@ are the fallback.
   without a credential. Every caller therefore depends on
   `fabiandistler/agents` staying public: made private, every caller's "Fetch
   the factory scripts" step fails.
+- **Fixed names.** The Rework and Fix tasks find the other tasks' runs by
+  file path and workflow name, so the callers keep the names of the
+  templates below: `.github/workflows/pr-review.yml` named `pr-review`,
+  `implementer.yml` named `implementer`, `issue-triage.yml` named
+  `issue-triage`, `rework.yml` named `rework`. Rework serves only branches
+  `agent/issue-<n>`, the implementer's default `branch_prefix`.
 - **Default-branch rule.** Merge each caller to the target's default branch
   before its first run. Issue events run the default branch's file anyway
   (`pull_request_target` the base branch's), and the implementer's App token
@@ -89,10 +96,11 @@ reusable workflow to a full 40-hex commit SHA with the comment
 `secrets:`, never with `secrets: inherit`. The comment has more than one word
 because zizmor's online `ref-version-mismatch` audit reads a one-word comment
 after a SHA as a version and flags it when that SHA carries no such tag. This
-repository's `triage-label.yml`, `issue-triage.yml`, `pr-review.yml` and
-`implementer.yml` are the model, with `./` replaced by the pinned path (the
-triage caller without `issue_comment`, see below). Replace `<SHA>` and
-`<date>` with the same values in all four.
+repository's `triage-label.yml`, `issue-triage.yml`, `pr-review.yml`,
+`implementer.yml`, `rework.yml` and `fix-task.yml` are the model, with `./`
+replaced by the pinned path (the triage caller without `issue_comment`, see
+below; the Fix caller with the target's own watch list). Replace `<SHA>` and
+`<date>` with the same values in all six.
 
 `.github/workflows/triage-label.yml`:
 
@@ -213,6 +221,81 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
 
+`.github/workflows/rework.yml`. It starts when the target's `pr-review` run
+completes, so it needs the PR review caller above under that name. Pass the
+same `check_command`, `setup_command` and `submodules` as the implementer
+caller: the model runs the same checks on the same branch. `workflow_run`
+fires only from the file on the default branch.
+
+```yaml
+name: rework
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] the model-free gate re-checks the run and the pull request
+    workflows: [pr-review]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: string
+permissions: {}
+jobs:
+  rework:
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: fabiandistler/agents/.github/workflows/factory-rework.yml@<SHA> # agents main, <date>
+    with:
+      pr: ${{ inputs.pr }}
+      check_command: scripts/check.sh
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
+`.github/workflows/fix-task.yml`. The `workflow_run` list names this
+repository's own caller workflows by their `name:`, never `fix-task` itself
+and never a `factory-*.yml` file: a called workflow fails inside its caller's
+run. List only callers the target has. Each caller's path must be in
+`WATCHED_WORKFLOWS` of `scripts/factory_failure_policy.py`
+(`implementer.yml`, `issue-triage.yml`, `pr-review.yml`, `rework.yml`, and
+this repository's `skill-audit.yml` and `retro.yml`); a run of any other path
+is not filed. The triage label caller is not watched. Fix is model-free and
+needs no secret.
+
+```yaml
+name: fix-task
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] model-free, GITHUB_TOKEN only
+    workflows: [implementer, pr-review, issue-triage, rework]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Workflow run id
+        required: true
+        type: string
+      dry_run:
+        description: Print the plan instead of applying it
+        required: false
+        type: boolean
+        default: true
+permissions: {}
+jobs:
+  file:
+    permissions:
+      issues: write
+      actions: read
+      checks: read
+    uses: fabiandistler/agents/.github/workflows/factory-fix-task.yml@<SHA> # agents main, <date>
+    with:
+      run_id: ${{ inputs.run_id }}
+      dry_run: ${{ inputs.dry_run != false }}
+```
+
 ## Inputs and secret
 
 Every `workflow_call` input and secret, with its default and an example value.
@@ -254,6 +337,25 @@ fabiandistler/repo-maintenance#153).
 | `dry_run` | `true` | `${{ github.event_name != 'workflow_dispatch' \|\| inputs.dry_run }}` |
 | `setup_command` | `""` | `pip install -r requirements-dev.txt` |
 | secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
+
+`factory-rework.yml`:
+
+| Name | Default | Example |
+| --- | --- | --- |
+| `pr` | `""` | `${{ inputs.pr }}` |
+| `check_command` | required | the implementer caller's value |
+| `setup_command` | `""` | the implementer caller's value |
+| `submodules` | `false` | `true` (dotfiles) |
+| `python_version` | `"3.12"` | `"3.12"` |
+| `model` | `sonnet` | `${{ vars.REWORK_MODEL \|\| 'sonnet' }}` |
+| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
+
+`factory-fix-task.yml`:
+
+| Name | Default | Example |
+| --- | --- | --- |
+| `run_id` | `""` | `${{ inputs.run_id }}` |
+| `dry_run` | `true` | `${{ inputs.dry_run != false }}` |
 
 `factory-triage-label.yml` takes no input and no secret.
 
@@ -325,7 +427,8 @@ policy are not readable with a session token, so they are always
 ## Start slow
 
 Enable the stages one at a time: the triage label and the triage first, then
-the PR review, then the implementer. Until a stage is enabled, its
+the PR review, then the implementer, then the Rework task. The Fix task can
+come with the first caller it watches. Until a stage is enabled, its
 `caller:<file>` line reads `MISSING`, and the `pin` line covers only the
 callers present.
 

@@ -52,6 +52,8 @@ REQUIREMENTS: dict[str, dict[str, tuple[str, ...]]] = {
     "factory-pr-review.yml": {"inputs": (), "secrets": (OAUTH_SECRET,)},
     "factory-issue-triage.yml": {"inputs": (), "secrets": (OAUTH_SECRET,)},
     "factory-triage-label.yml": {"inputs": (), "secrets": ()},
+    "factory-rework.yml": {"inputs": ("check_command",), "secrets": (OAUTH_SECRET,)},
+    "factory-fix-task.yml": {"inputs": (), "secrets": ()},
 }
 
 OK = "OK"
