@@ -108,10 +108,12 @@ def assess(issue: dict, comments: list[dict], trigger: str) -> dict:
     ``labeled`` events, each with ``label``, ``actor_type`` and ``created_at``
     (ISO 8601). Each comment carries ``author``, ``body`` and ``created_at``.
     An ``opened`` run is only ever the first triage; a ``relabel`` run after a
-    bot triage needs a person's newer needs-triage label event. Returns ``eligible``, the
-    ``skip_reason`` when it is not, the current ``states`` labels, the number
-    of earlier automated triages, and ``requeue``: whether a reply moves the
-    issue back to needs-triage even without a usable triage.
+    bot triage needs a person's newer needs-triage label event.
+
+    Returns ``eligible``, the ``skip_reason`` when it is not, the current
+    ``states`` labels, the number of earlier automated triages, and
+    ``requeue``: whether a reply moves the issue back to needs-triage even
+    without a usable triage.
     """
     if trigger not in TRIGGERS:
         raise ValueError(f"trigger must be one of {TRIGGERS}")
