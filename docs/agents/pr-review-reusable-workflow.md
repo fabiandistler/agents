@@ -37,7 +37,9 @@ and `pr-review / publish`.
 
 This repository passes only `pr` and `dry_run`, so its review behaves as before
 the extraction. Another repository's caller pins the reusable workflow to a
-full commit SHA:
+full commit SHA. The [factory onboarding runbook](factory-onboarding.md)
+generalizes this example to all four factory workflows, with the manual
+steps and a read-only check of the target:
 
 ```yaml
 jobs:
