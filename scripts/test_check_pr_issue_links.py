@@ -63,6 +63,31 @@ def test_no_issue_requires_explicit_statement_and_cannot_hide_existing_links():
     assert links.issue_link_errors("Some changes.", REPO, set(), default_base=True)
 
 
+def test_no_issue_body_with_quoted_closing_keyword_fails_naming_the_issue():
+    """Reproduces PR #795, which closed #783 although it said 'No issue'."""
+    body = "No issue: wiki only. Refs #786.\n\n- Rework #782, Fix #783, Retro #784"
+    errors = links.issue_link_errors(body, REPO, {"owner/repo#783"}, default_base=True)
+    assert len(errors) == 1
+    assert "#783" in errors[0] and "Refs #n" in errors[0] and "(#n)" in errors[0]
+    assert "#782" not in errors[0] and "#786" not in errors[0]
+
+
+def test_no_issue_with_any_closing_fails_on_nondefault_base_too():
+    errors = links.issue_link_errors(
+        "No issue.\n\nCloses #1, closes #2", REPO, set(), default_base=False
+    )
+    expected = (
+        "A 'no issue' body must not declare a closing; GitHub would close #1, #2. "
+        "Write 'Refs #n' or '(#n)' instead"
+    )
+    assert errors == [expected]
+
+
+def test_no_issue_with_refs_and_parenthesised_reference_passes():
+    body = "No issue: wiki only. Refs #786.\n\n- Rework (#782), Fix task (#783), Retro (#784)"
+    assert links.issue_link_errors(body, REPO, set(), default_base=True) == []
+
+
 def test_code_and_html_comment_examples_do_not_create_closing_intent():
     body = "<!-- Closes #10 -->\n```md\nCloses #11\n````\n`closes #12`\n    closes #13\nNo issue."
     assert links.issue_link_errors(body, REPO, set(), default_base=True) == []
