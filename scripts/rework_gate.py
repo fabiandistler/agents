@@ -6,10 +6,10 @@ triggering run of a `workflow_run` event, or for a manual run the latest
 successful review of the pull request's live head. `decide` reads that run,
 its `pr-review` and `pr-context` artifacts, the live pull request, its linked
 issue and its comments, and applies ``rework_policy.decide``. On `proceed` it
-also checks that no other rework run is working, then posts the round marker
-and writes the findings file the model job receives. On `handoff` it swaps the
+also checks that no other rework run is working, then writes the findings file
+the model job receives and posts the round marker. On `handoff` it swaps the
 issue to `ready-for-human`, then comments on the pull request. A stop writes
-nothing.
+nothing, and neither does a run without `--write`.
 
 Runs with the workflow's GITHUB_TOKEN. Standard library only. Prints one JSON
 object; errors name the API call and status, never pull request or issue text.
@@ -43,8 +43,9 @@ EXIT_USAGE = 2
 
 HELP_EPILOG = """\
 stdout: locate {"run_id"}; decide {"action", "reason", "pull_request", "issue", "round"}.
-decide actions: proceed (marker posted with --write, findings file written),
-  handoff (comment and ready-for-human with --write), stop (no write).
+decide actions: proceed (with --write: findings file written, marker posted),
+  handoff (with --write: ready-for-human, then the comment), stop (no write).
+Without --write decide plans only and writes nothing, not even the findings file.
 A missing --review file is a stop: pr-review uploads none when it skips the review.
 --outputs FILE appends the same fields as key=value lines (numbers and words only).
 exit codes: 0 decided; 1 GitHub API or artifact error; 2 usage error.
@@ -146,6 +147,8 @@ def decide_rework(
     working = runs_working_ahead(client, repo, own_run_id, REWORK_WORKFLOW, (GATE_JOB, REWORK_JOB))
     if working >= MAX_WORKING_REWORK_RUNS:
         return rework_policy.Decision(rework_policy.STOP, "another rework run is working")
+    if not write:
+        return decision
     round_number = decision.round or 0
     head_sha = decision.head_sha or ""
     findings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -167,12 +170,11 @@ def decide_rework(
         + "\n",
         encoding="utf-8",
     )
-    if write:
-        # The marker is the counter: it lands before the model job starts.
-        client.post(
-            f"/repos/{repo}/issues/{pr}/comments",
-            {"body": rework_policy.round_comment(round_number, head_sha)},
-        )
+    # The marker is the counter: it lands before the model job starts.
+    client.post(
+        f"/repos/{repo}/issues/{pr}/comments",
+        {"body": rework_policy.round_comment(round_number, head_sha)},
+    )
     return decision
 
 

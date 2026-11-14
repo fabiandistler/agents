@@ -59,6 +59,7 @@ def test_a_dry_run_plans_without_writing(tmp_path):
     fake = FakeGitHub()
     assert gate(fake, tmp_path, write=False).action == rework_policy.PROCEED
     assert fake.writes == []
+    assert not (tmp_path / "rework" / "findings.json").exists()
 
 
 def _fake_for(overrides: dict) -> tuple[FakeGitHub, dict, dict]:
