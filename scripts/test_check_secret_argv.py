@@ -30,8 +30,10 @@ POSITIVE = [
     ('cat notes | upload "$CLIENT_SECRET"', "secret-var"),
     ('curl -H "X-Custom: $(printf %s "$SERVICE_TOKEN")" https://x', "secret-var"),
     ('upload --verbose "${ACCESS_TOKEN_FILE}"', "secret-var"),
-    # One element of an array is one value.
+    # One element of an array is one value, and a whole array expands every one.
     ('upload "${DEPLOY_SECRET[0]}"', "secret-var"),
+    ('deploy "${API_TOKEN[@]}"', "secret-var"),
+    ('upload "${DEPLOY_SECRET[*]}"', "secret-var"),
 ]
 
 SAFE = [
@@ -54,8 +56,8 @@ SAFE = [
     # A plural TOKENS is a token count, not a credential.
     "Files stay under ${MAX_TOKENS} tokens so an agent can read any file whole",
     'summarize "$TOKENS" report.md',
-    # A whole-array expansion lists names (the wizard library's summary line).
-    'note "set ${#WRITTEN_SECRET[@]} GitHub secret(s): ${WRITTEN_SECRET[*]}"',
+    # A count is a number, never the value.
+    '(( ${#WRITTEN_SECRET[@]} )) && note "set ${#API_TOKEN} chars"',
     "curl -s https://api.example.com/v1/orders?limit=2",
 ]
 
@@ -74,7 +76,9 @@ def test_detector_stays_quiet_on_safe_forms():
     assert {command: rules for command, rules in flagged.items() if rules} == {}
 
 
-def run_gate(root: Path, capsys):
+def run_gate(root: Path, capsys, monkeypatch, allowlist: dict | None = None):
+    """Run the gate on a fixture root with an empty allowlist unless given one."""
+    monkeypatch.setattr(check_secret_argv, "ALLOWLIST", allowlist or {})
     code = check_secret_argv.main(["--root", str(root)])
     captured = capsys.readouterr()
     return code, captured.out, captured.err
@@ -87,7 +91,7 @@ def write(root: Path, rel: str, text: str) -> Path:
     return path
 
 
-def test_markdown_code_is_scanned_and_prose_is_not(tmp_path, capsys):
+def test_markdown_code_is_scanned_and_prose_is_not(tmp_path, capsys, monkeypatch):
     body = (
         "Never run curl -u with $AUTH_PAT in prose.\n\n"
         '```bash\ncurl -u ":$AUTH_PAT" "$URL"\n```\n\n'
@@ -95,7 +99,7 @@ def test_markdown_code_is_scanned_and_prose_is_not(tmp_path, capsys):
     )
     write(tmp_path, "skills/demo/SKILL.md", body)
 
-    code, _, err = run_gate(tmp_path, capsys)
+    code, _, err = run_gate(tmp_path, capsys, monkeypatch)
 
     assert code == 1
     assert "skills/demo/SKILL.md:4: user-flag" in err
@@ -104,13 +108,13 @@ def test_markdown_code_is_scanned_and_prose_is_not(tmp_path, capsys):
     assert "--token-file" in err
 
 
-def test_scripts_and_instructions_are_scanned_but_tests_are_not(tmp_path, capsys):
+def test_scripts_and_instructions_are_scanned_but_tests_are_not(tmp_path, capsys, monkeypatch):
     write(tmp_path, "instructions/90-x.md", "```sh\ntool --password=hunter2\n```\n")
     write(tmp_path, "skills/demo/scripts/run.sh", '#!/bin/sh\nmytool "$OPENAI_API_KEY"\n')
     write(tmp_path, "scripts/test_x.py", f"CASE = 'curl -u {LITERAL_LOGIN} https://x'\n")
     write(tmp_path, "skills/demo/scripts/test_run.py", "CASE = 'tool --password=x'\n")
 
-    code, _, err = run_gate(tmp_path, capsys)
+    code, _, err = run_gate(tmp_path, capsys, monkeypatch)
 
     assert code == 1
     assert "instructions/90-x.md:2: secret-flag" in err
@@ -118,13 +122,43 @@ def test_scripts_and_instructions_are_scanned_but_tests_are_not(tmp_path, capsys
     assert "test_" not in err
 
 
-def test_safe_tree_passes(tmp_path, capsys):
+def test_safe_tree_passes(tmp_path, capsys, monkeypatch):
     write(tmp_path, "skills/demo/SKILL.md", '```bash\nGH_TOKEN="$GH_TOKEN" gh api user\n```\n')
 
-    code, out, err = run_gate(tmp_path, capsys)
+    code, out, err = run_gate(tmp_path, capsys, monkeypatch)
 
     assert code == 0, err
     assert "secret argv ok (1 files)" in out
+
+
+# The wizard library's summary line, copied verbatim into scripts/.
+SUMMARY_LINE = 'note "set ${#WRITTEN_SECRET[@]} GitHub secret(s): ${WRITTEN_SECRET[*]}"\n'
+SUMMARY_ALLOWED = {("scripts/wizard.sh", "WRITTEN_SECRET"): "lists secret names"}
+
+
+def test_allowlisted_variable_passes_in_its_file_only(tmp_path, capsys, monkeypatch):
+    # Line 2: another secret on the same line as the allowed variable.
+    write(
+        tmp_path, "scripts/wizard.sh", SUMMARY_LINE + 'note "${WRITTEN_SECRET[*]}" "$API_TOKEN"\n'
+    )
+    write(tmp_path, "scripts/other.sh", SUMMARY_LINE)
+
+    code, _, err = run_gate(tmp_path, capsys, monkeypatch, SUMMARY_ALLOWED)
+
+    assert code == 1
+    assert "scripts/other.sh:1: secret-var" in err
+    assert "scripts/wizard.sh:2: secret-var" in err
+    assert "scripts/wizard.sh:1:" not in err
+    assert "stale" not in err
+
+
+def test_allowlist_entry_without_hit_is_reported_stale(tmp_path, capsys, monkeypatch):
+    write(tmp_path, "scripts/wizard.sh", 'note "nothing secret here"\n')
+
+    code, _, err = run_gate(tmp_path, capsys, monkeypatch, SUMMARY_ALLOWED)
+
+    assert code == 1
+    assert "scripts/wizard.sh: WRITTEN_SECRET: stale allowlist entry" in err
 
 
 def test_unknown_argument_is_a_usage_error(capsys):
