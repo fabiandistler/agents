@@ -346,14 +346,15 @@ def test_a_malformed_comparison_is_an_api_error():
 OWN_WORKFLOW_REF = f"{REPO}/.github/workflows/implementer.yml@{MAIN}"
 
 
-def run_cli(
-    monkeypatch, tmp_path, fake, *options: str, workflow_ref: str | None = OWN_WORKFLOW_REF
+def run_main(
+    monkeypatch, tmp_path, *options: str, workflow_ref: str | None = OWN_WORKFLOW_REF
 ) -> tuple[int, Path]:
-    """Run main() against the fake; ``workflow_ref=None`` leaves GITHUB_WORKFLOW_REF unset."""
-    monkeypatch.setattr(implementer_claim, "GitHubClient", lambda token: fake)
-    monkeypatch.setenv("GH_TOKEN", "app-token")
-    monkeypatch.setenv("ACTIONS_READ_TOKEN", "job-token")
-    monkeypatch.setenv("GITHUB_RUN_ID", str(RUN_ID))
+    """Run main() with GITHUB_WORKFLOW_REF pinned; ``workflow_ref=None`` unsets it.
+
+    Actions exports GITHUB_WORKFLOW_REF to every step and main() reads it, so a
+    test that left it alone would list the runs of whatever workflow runs the
+    suite (ci.yml in CI). Every test that gets past argument parsing comes here.
+    """
     if workflow_ref is None:
         monkeypatch.delenv("GITHUB_WORKFLOW_REF", raising=False)
     else:
@@ -367,6 +368,24 @@ def run_cli(
         ]
     )
     return code, summary
+
+
+def run_cli(
+    monkeypatch, tmp_path, fake, *options: str, workflow_ref: str | None = OWN_WORKFLOW_REF
+) -> tuple[int, Path]:
+    """Run main() against the fake, with both tokens and this run's id set."""
+    monkeypatch.setattr(implementer_claim, "GitHubClient", lambda token: fake)
+    monkeypatch.setenv("GH_TOKEN", "app-token")
+    monkeypatch.setenv("ACTIONS_READ_TOKEN", "job-token")
+    monkeypatch.setenv("GITHUB_RUN_ID", str(RUN_ID))
+    return run_main(monkeypatch, tmp_path, *options, workflow_ref=workflow_ref)
+
+
+def test_cli_ignores_the_workflow_that_runs_the_suite(monkeypatch, tmp_path):
+    # CI runs the suite under ci.yml: every step inherits its GITHUB_WORKFLOW_REF.
+    monkeypatch.setenv("GITHUB_WORKFLOW_REF", f"{REPO}/.github/workflows/ci.yml@{MAIN}")
+    code, _ = run_cli(monkeypatch, tmp_path, FakeGitHub())  # Its run list is implementer.yml.
+    assert code == implementer_claim.EXIT_CONTINUE
 
 
 @pytest.mark.parametrize(
@@ -403,13 +422,7 @@ def test_cli_failure_writes_the_line_that_turns_the_run_red(monkeypatch, tmp_pat
 
 def test_cli_without_a_token_fails_the_claim(monkeypatch, tmp_path, capsys):
     monkeypatch.delenv("GH_TOKEN", raising=False)
-    summary = tmp_path / "run-summary.md"
-    code = implementer_claim.main(
-        [
-            *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
-            *("--contract", str(tmp_path / "contract.md")),
-        ]
-    )
+    code, summary = run_main(monkeypatch, tmp_path)
     assert code == implementer_claim.EXIT_FAILED
     assert json.loads(capsys.readouterr().out)["reason"] == "GH_TOKEN is not set"
     assert summary.read_text(encoding="utf-8").startswith("RUN FAILED: claim (GH_TOKEN")
