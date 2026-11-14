@@ -16,7 +16,9 @@ manual step. It prints one tab-separated line per onboarding item,
 - ``pin``: every caller pins the same 40-hex SHA, and it is on agents ``main``.
 
 Standard library only; GET requests only. Callers are scanned line by line for
-the forms the runbook's templates use, not parsed as YAML. Details name files,
+the forms the runbook's templates use, not parsed as YAML: the ``permissions``,
+``with`` and ``secrets`` checks read the whole file, so a caller file with
+several jobs is validated as one unit. Details name files,
 refs, labels and statuses, never file content or the token.
 """
 
@@ -31,6 +33,7 @@ import sys
 import urllib.parse
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import NoReturn
 
 from issue_triage_policy import STATE_LABELS
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, ReadClient, get_json, paginate
@@ -104,6 +107,11 @@ class _Parser(argparse.ArgumentParser):
 
     def format_usage(self) -> str:
         return HELP.splitlines()[0] + "\n"
+
+    def error(self, message: str) -> NoReturn:
+        self.print_usage(sys.stderr)
+        print(f"{self.prog}: error: {message}", file=sys.stderr)
+        raise SystemExit(EXIT_USAGE)
 
 
 def _repo(value: str) -> str:
@@ -271,7 +279,9 @@ def pin_line(client: ReadClient, callers: dict[str, Caller]) -> tuple[str, str, 
         comparison = get_json(client, path)
     except FetchError as error:
         if error.status == 404:
-            return _line(MISSING, "pin", f"{sha} not found in {FACTORY_REPO}")
+            return _line(
+                MISSING, "pin", f"{sha} not found in {FACTORY_REPO}, or unreachable with this token"
+            )
         raise
     if not isinstance(comparison, dict):
         raise FetchError(f"GitHub API returned an unexpected payload for {path}")

@@ -327,3 +327,10 @@ def test_help_is_short(capsys):
     assert len(out.splitlines()) < 25
     assert "--repo" in out
     assert "Exit:" in out
+
+
+def test_bad_repo_value_prints_the_expected_form(capsys, monkeypatch):
+    monkeypatch.setenv("GH_TOKEN", "x")
+    code = check.main(["--repo", "nonsense"])
+    assert code == 2
+    assert "expected OWNER/NAME" in capsys.readouterr().err
