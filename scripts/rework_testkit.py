@@ -56,6 +56,8 @@ def run(**overrides: object) -> dict:
         "path": ".github/workflows/pr-review.yml",
         "conclusion": "success",
         "event": "pull_request_target",
+        # A pull_request_target run carries the pull request's head commit.
+        "head_sha": HEAD,
     }
     payload.update(overrides)
     return payload

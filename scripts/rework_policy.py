@@ -107,7 +107,7 @@ def _run_stop(run: dict) -> str | None:
     return None
 
 
-def _review_stop(review: dict, context: dict) -> str | None:
+def _review_stop(review: dict, context: dict, run: dict) -> str | None:
     if review.get("status") != "ok":
         return "the review did not complete"
     if review.get("verdict") not in REWORK_VERDICTS:
@@ -120,6 +120,10 @@ def _review_stop(review: dict, context: dict) -> str | None:
         return "the review names no head commit"
     if context.get("number") != review.get("number") or context.get("head_sha") != head_sha:
         return "the review and the pull request context disagree"
+    # A pull_request_target run carries the pull request's head commit, so the
+    # artifacts must name the head the triggering run was started for.
+    if run.get("head_sha") != head_sha:
+        return "the triggering run was for another commit"
     return None
 
 
@@ -163,13 +167,13 @@ def decide(
 ) -> Decision:
     """Decide the gate for one completed review.
 
-    ``run`` is the triggering pr-review run (``path``, ``conclusion``,
-    ``event``); ``review`` and ``context`` are its `pr-review` and
+    ``run`` is the triggering pr-review run (``path``, ``conclusion``, ``event``,
+    ``head_sha``); ``review`` and ``context`` are its `pr-review` and
     `pr-context` artifacts; ``pull``, ``issue`` and ``comments`` are live
     REST payloads (comments as ``pr_github.comment_entry``). ``issue`` is
     None when no issue was fetched.
     """
-    reason = _run_stop(run) or _review_stop(review, context) or _pull_stop(pull, repo)
+    reason = _run_stop(run) or _review_stop(review, context, run) or _pull_stop(pull, repo)
     if reason:
         return _stop(reason)
     issue_number = linked_issue(pull, repo)

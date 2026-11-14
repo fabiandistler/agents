@@ -42,6 +42,8 @@ STOP_CASES = {
     "run cancelled": {"run": run(conclusion="cancelled")},
     "run from a manual review": {"run": run(event="workflow_dispatch")},
     "run of another workflow": {"run": run(path=".github/workflows/ci.yml")},
+    "run for another head": {"run": run(head_sha=OTHER_HEAD)},
+    "run without a head": {"run": run(head_sha=None)},
     "pull request closed": {"pull": pull(state="closed")},
     "draft": {"pull": pull(draft=True)},
     "fork head": {"pull": pull(head=head(repo="x/y"))},
@@ -113,6 +115,18 @@ def test_the_round_comment_records_round_and_head():
     body = rework_policy.round_comment(2, HEAD)
     assert body.startswith(f"<!-- rework-round:2 head:{HEAD} -->\n")
     assert rework_policy.round_heads([comment(body)]) == [HEAD]
+
+
+def test_a_bot_comment_without_a_marker_counts_no_round():
+    bot_comments = [
+        comment("<!-- pr-review-bot -->\n## Automated PR review"),
+        comment("Rework round 1 of 2 starts for commit `aaaaaaa`."),
+        comment(rework_policy.handoff_comment(HEAD)),
+    ]
+    assert rework_policy.round_heads(bot_comments) == []
+    assert not rework_policy.handed_off(bot_comments[:2], HEAD)
+    assert rework_policy.ROUND_MARKER.startswith("<!-- rework-round:")
+    assert rework_policy.HANDOFF_MARKER.startswith("<!-- rework-handoff head:")
 
 
 def test_the_handoff_comment_starts_with_its_marker():
