@@ -51,7 +51,10 @@ issue `#<n>` of the branch, and that issue has no `ready-for-human`; the review
 has status `ok`, verdict `concerns` or `block` and at least one finding; the
 review's `head_sha` is the live head; no round marker names that head; and no
 other rework run is working (the implementer's capacity ordering, now
-`scripts/agent_run_capacity.py`). Every stop writes nothing.
+`scripts/agent_run_capacity.py`). Every stop writes nothing. A manual run
+reads the latest successful review run of the live head that still holds a
+`pr-review` artifact: a run started by a label event skips the review and
+uploads none, and a failed run would only stop the gate.
 
 **Counter.** Before the model job starts, the gate posts
 `<!-- rework-round:<k> head:<sha> -->` on the pull request with

@@ -3,9 +3,10 @@
 
 `locate` names the pr-review run whose artifacts the gate reads: the
 triggering run of a `workflow_run` event, or for a manual run the latest
-successful review of the pull request's live head. `decide` reads that run,
-its `pr-review` and `pr-context` artifacts, the live pull request, its linked
-issue and its comments, and applies ``rework_policy.decide``. On `proceed` it
+successful review run of the pull request's live head that uploaded a review.
+`decide` reads that run, its `pr-review` and `pr-context` artifacts, the live
+pull request, its linked issue and its comments, and applies
+``rework_policy.decide``. On `proceed` it
 also checks that no other rework run is working, then writes the findings file
 the model job receives and posts the round marker. On `handoff` it swaps the
 issue to `ready-for-human`, then comments on the pull request. A stop writes
@@ -34,6 +35,7 @@ GATE_JOB = "gate"
 REWORK_JOB = "rework"
 MAX_WORKING_REWORK_RUNS = 1
 REVIEW_WORKFLOW = "pr-review.yml"
+REVIEW_ARTIFACT = "pr-review"
 
 NO_REVIEW = rework_policy.Decision(rework_policy.STOP, "the review job did not run")
 
@@ -58,11 +60,26 @@ examples:
 """
 
 
-def locate_run(client: ReadClient, repo: str, pr: int) -> int:
-    """The latest successful pull request review run for the pull request's live head.
+def _uploaded_review(client: ReadClient, repo: str, run_id: int) -> bool:
+    """Whether the run still holds a `pr-review` artifact; a label-only run uploads none."""
+    path = f"/repos/{repo}/actions/runs/{run_id}/artifacts"
+    listing = get_json(client, path, params={"name": REVIEW_ARTIFACT})
+    artifacts = listing.get("artifacts") if isinstance(listing, dict) else None
+    if not isinstance(artifacts, list):
+        raise FetchError(f"GitHub API returned an unexpected payload for {path}")
+    return any(
+        isinstance(artifact, dict)
+        and artifact.get("name") == REVIEW_ARTIFACT
+        and artifact.get("expired") is False
+        for artifact in artifacts
+    )
 
-    A newer failed or cancelled review would only make the gate stop, so it
-    never shadows an earlier successful one.
+
+def locate_run(client: ReadClient, repo: str, pr: int) -> int:
+    """The latest successful review run of the pull request's live head that uploaded a review.
+
+    A newer failed or cancelled run, or a run started by a label (which skips
+    the review), would only make the gate stop, so neither shadows the review.
     """
     pull = get_json(client, f"/repos/{repo}/pulls/{pr}")
     head = pull.get("head") if isinstance(pull, dict) else None
@@ -83,10 +100,10 @@ def locate_run(client: ReadClient, repo: str, pr: int) -> int:
         for run in runs
         if isinstance(run, dict) and run.get("conclusion") == "success"
     ]
-    ids = [run_id for run_id in ids if isinstance(run_id, int)]
-    if not ids:
-        raise FetchError(f"GitHub API lists no successful review run for the head in {path}")
-    return max(ids)
+    for run_id in sorted((run_id for run_id in ids if isinstance(run_id, int)), reverse=True):
+        if _uploaded_review(client, repo, run_id):
+            return run_id
+    raise FetchError(f"GitHub API lists no successful review run with a review in {path}")
 
 
 def _read_artifact(path: Path) -> dict:
