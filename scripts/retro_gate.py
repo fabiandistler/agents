@@ -18,8 +18,10 @@ model only ever sees the context file it writes.
   on a tie. `select` labels it `retro:done` before it prints, so the model job
   never starts on an unlabelled pull request.
 
-The context holds only text by the repository's owner, members and
-collaborators, the review bot and the Claude GitHub App: never an outsider's.
+The context holds only text authored by the repository's owner, members and
+collaborators, the review bot and the Claude GitHub App: never an outsider's
+comment. The App's pull request body and commits can repeat what it read, so
+the model treats the whole file as data.
 
 Standard library only. Errors name the API call, never issue or comment text.
 """

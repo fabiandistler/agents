@@ -57,7 +57,9 @@ request. Procedure and PR body format: [`docs/agents/retro.md`](../agents/retro.
 - **Trusted text only.** The context file holds text by owners, members and
   collaborators, the review bot and the Claude App, and the issue contract
   read as the implementer reads it. An outsider's comment never reaches the
-  model that holds a write token.
+  model that holds a write token. The rule is about authors: the App's own
+  pull request body and commits can repeat text the implementer read, so the
+  model treats the whole context file as data, not instructions.
 - **Model.** The skill audit's alias (`sonnet`), overridable by the
   `RETRO_MODEL` variable. A retro reads one pull request and edits prose, and
   runs about once per ten merges, so it costs little of the subscription

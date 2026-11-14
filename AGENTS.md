@@ -228,4 +228,4 @@ issue's *Accepted* section so the audit stops reporting it.
 
 ### Retro
 
-`.github/workflows/retro.yml` runs daily: once `RETRO_EVERY` (default 10) agent PRs have merged since the last `retro:done` label, the model-free `scripts/retro_gate.py` picks the one with the most non-pass review rounds, and the model proposes changes to the review and triage prompts, `docs/agents/` runbooks and this file in one `agent/retro-<pr>` PR, never to vendored files. Runbook and PR body format: `docs/agents/retro.md`; decision: `docs/adr/0017-retro-task.md`.
+Once a maintainer adds `.github/workflows/retro.yml` to `main` (its pull request carries the file in its body; until then nothing runs), it runs daily: once `RETRO_EVERY` (default 10) agent PRs have merged since the last `retro:done` label, the model-free `scripts/retro_gate.py` picks the one with the most non-pass review rounds, and the model proposes changes to the review and triage prompts, `docs/agents/` runbooks and this file in one `agent/retro-<pr>` PR, never to vendored files. Runbook and PR body format: `docs/agents/retro.md`; decision: `docs/adr/0017-retro-task.md`.
