@@ -51,8 +51,15 @@ from implementer_setup import (
     workflow_file,
 )
 from issue_triage_policy import READY_FOR_AGENT, READY_FOR_HUMAN
-from pr_github import get_json, paginate
-from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
+from pr_github_client import (
+    REPO_PATTERN,
+    FetchError,
+    GitHubClient,
+    MissingTokenError,
+    ReadClient,
+    get_json,
+    paginate,
+)
 from ticket_blockers import declared_blockers
 
 MAIN_BRANCH = "main"

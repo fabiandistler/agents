@@ -16,7 +16,7 @@ Related pages:
 - [Labels and thresholds](triage-labels.md#pull-request-labels)
 - [Troubleshooting and reading a run](pr-review-troubleshooting.md)
 - [Acceptance record](pr-review-acceptance.md)
-- [Linked issues in the review payload](pr-review-linked-issues.md)
+- In the review payload: [linked issues](pr-review-linked-issues.md), [PR comments](pr-review-comments.md)
 - [Verdict status](pr-review-verdict-status.md)
 - [Event policy for `pull_request_target`](pr-review-event-policy.md)
 
