@@ -206,7 +206,7 @@ The five canonical triage roles use their default label strings (`needs-triage`,
 
 ### Implementer
 
-Adding `ready-for-agent` to an open issue starts `.github/workflows/implementer.yml`: one `claude-code-action` run claims branch `agent/issue-<n>` and opens a pull request, which `pr-review.yml` then reviews. It and the skill audit hold the Claude GitHub App token, so their pull requests start the checks (`docs/adr/0014-agent-runs-in-github-actions.md`). `scripts/implementer_claim.py` makes the claim and handles a branch left behind; the outcomes are in `docs/agents/triage-labels.md`.
+Adding `ready-for-agent` to an open issue starts `.github/workflows/implementer.yml`, which calls the reusable `.github/workflows/factory-implementer.yml` (`docs/adr/0018-reusable-factory-workflows.md`): one `claude-code-action` run claims branch `agent/issue-<n>` and opens a pull request, which `pr-review.yml` then reviews. It and the skill audit hold the Claude GitHub App token, so their pull requests start the checks (`docs/adr/0014-agent-runs-in-github-actions.md`). `scripts/implementer_claim.py` makes the claim and handles a branch left behind; the outcomes are in `docs/agents/triage-labels.md`.
 
 ### Rework
 

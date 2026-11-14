@@ -27,8 +27,16 @@ from pathlib import Path
 import rework_policy
 from agent_run_capacity import runs_working_ahead
 from implementer_claim import swap_to_human
-from pr_github import comment_entry, get_json, paginate
-from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
+from pr_github import comment_entry
+from pr_github_client import (
+    REPO_PATTERN,
+    FetchError,
+    GitHubClient,
+    MissingTokenError,
+    ReadClient,
+    get_json,
+    paginate,
+)
 
 REWORK_WORKFLOW = "rework.yml"
 GATE_JOB = "gate"

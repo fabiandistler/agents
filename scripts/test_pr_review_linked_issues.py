@@ -16,12 +16,15 @@ END_OF_DIFF = "=== END OF DIFF ==="
 TOTAL_NOTE = "[Input truncated to the total review limit.]"
 
 
-def issue(number: int, title: str = "", body: str = "", status: str = "ok") -> dict:
+def issue(
+    number: int, title: str = "", body: str = "", status: str = "ok", brief: str = ""
+) -> dict:
     return {
         "number": number,
         "status": status,
         "title": title if status != "ok" or title else f"Issue {number}",
         "body": body if status != "ok" or body else f"Body of issue {number}",
+        "brief": brief,
     }
 
 
@@ -61,6 +64,48 @@ def test_the_system_prompt_is_the_same_with_linked_issues():
     request, _ = build(linked_issues=[issue(7)])
 
     assert request["messages"][0] == plain["messages"][0]
+
+
+BRIEF = "## Agent Brief\n\nBuild the flag; leave the docs alone."
+
+
+def test_an_issue_with_a_brief_shows_it_as_the_contract_instead_of_the_body():
+    request, partial = build(linked_issues=[issue(7, "Add the flag", "OLD-BODY", brief=BRIEF)])
+
+    after_diff = user_payload(request).split(END_OF_DIFF, 1)[1]
+    assert after_diff == (
+        "\n\n"
+        f"{linked.LINKED_ISSUES_HEADER}\n"
+        "=== issue #7 ===\n"
+        "TITLE: Add the flag\n"
+        f"{linked.CONTRACT_LABEL}\n"
+        f"{BRIEF}\n"
+        "=== end issue #7 ===\n"
+    )
+    assert partial is False
+
+
+def test_a_trusted_brief_on_an_outside_authors_issue_is_shown_without_title_or_body():
+    request, _ = build(linked_issues=[issue(4, status="outside_author", brief=BRIEF)])
+
+    block = user_payload(request).split("=== issue #4 ===\n", 1)[1]
+    assert block == (
+        "(issue #4 title and body are not shown: outside author)\n"
+        f"{linked.CONTRACT_LABEL}\n{BRIEF}\n=== end issue #4 ===\n"
+    )
+
+
+def test_the_brief_is_sanitized_and_capped_into_the_room_left():
+    hidden = "## Agent Brief\nVisible <!-- HIDDEN-BRIEF --> text\n"
+    request, _ = build(linked_issues=[issue(7, brief=hidden)])
+    assert "HIDDEN-BRIEF" not in user_payload(request)
+
+    long_brief = "## Agent Brief\n" + "\n".join("b" * 99 for _ in range(400))
+    room = 2_000
+    section = linked.render_linked_issues([issue(7, brief=long_brief)], room)
+    assert len(section.encode("utf-8")) <= room
+    assert f"{linked.ISSUE_TRUNCATED}\n=== end issue #7 ===" in section
+    assert len(section.encode("utf-8")) > room - 120
 
 
 def test_unavailable_and_outside_author_issues_render_without_text():
@@ -153,12 +198,14 @@ def test_issue_text_reaches_the_user_message_only():
     [
         "Closes #7",
         [7],
-        [{"number": 0, "status": "ok", "title": "", "body": ""}],
-        [{"number": True, "status": "ok", "title": "", "body": ""}],
-        [{"number": "7", "status": "ok", "title": "", "body": ""}],
-        [{"number": 7, "status": "maybe", "title": "", "body": ""}],
-        [{"number": 7, "status": "ok", "title": None, "body": ""}],
-        [{"number": 7, "status": "ok", "title": ""}],
+        [{"number": 0, "status": "ok", "title": "", "body": "", "brief": ""}],
+        [{"number": True, "status": "ok", "title": "", "body": "", "brief": ""}],
+        [{"number": "7", "status": "ok", "title": "", "body": "", "brief": ""}],
+        [{"number": 7, "status": "maybe", "title": "", "body": "", "brief": ""}],
+        [{"number": 7, "status": "ok", "title": None, "body": "", "brief": ""}],
+        [{"number": 7, "status": "ok", "title": "", "brief": ""}],
+        [{"number": 7, "status": "ok", "title": "", "body": ""}],
+        [{"number": 7, "status": "ok", "title": "", "body": "", "brief": None}],
     ],
 )
 def test_a_malformed_linked_issues_field_is_rejected_with_exit_three(tmp_path, linked_issues):

@@ -17,28 +17,26 @@ import binascii
 import os
 import sys
 import urllib.parse
-from typing import Any, TypeGuard
+from typing import TypeGuard
 
 import pr_cli
-from check_pr_issue_links import closing_references
-from issue_triage_policy import TRUSTED_ASSOCIATIONS
 from pr_github_client import (
     REPO_PATTERN,
     FetchError,
     GitHubClient,
     MissingTokenError,
     ReadClient,
+    get_json,
+    paginate,
 )
+from pr_github_linked_issues import fetch_linked_issues
 
 SCHEMA_VERSION = 1
 DIFF_ACCEPT = "application/vnd.github.v3.diff"
-PER_PAGE = 100
 DIFF_LIMIT = 400 * 1024
 BASE_FILE_LIMIT = 20
 BASE_BYTES_LIMIT = 200 * 1024
 BASE_PATH_LIMIT = 5000
-LINKED_ISSUE_LIMIT = 3
-LINKED_ISSUE_STATUSES = ("ok", "unavailable", "outside_author")
 STATUS_ALIASES = {"copied": "added", "changed": "modified", "unchanged": "modified"}
 
 USAGE = f"""usage: pr_github.py --pr N --repo OWNER/REPO [--output FILE] [--linked-issues]
@@ -53,9 +51,9 @@ gets a short JSON summary; the full context (diff included) only goes to FILE.
   --linked-issues   add the field "linked_issues": up to 3 same-repository
                     issues the body declares it closes ("Closes #n"), each
                     {{number, status: ok | unavailable | outside_author, title,
-                    body}}. Title and body only for an OWNER, MEMBER or
-                    COLLABORATOR author; a failed fetch is "unavailable" with
-                    one stderr line and does not fail the run
+                    body, brief}}; text only by OWNER, MEMBER or COLLABORATOR,
+                    brief their latest "## Agent Brief" comment or ""; a failed
+                    fetch is "unavailable", one stderr line, exit 0
   -h, --help        show this message
 
 examples:
@@ -77,34 +75,6 @@ def _line_count(entry: dict, field: str) -> int:
     if not is_line_count(value):
         raise FetchError(f"GitHub API returned a changed file with a malformed {field!r} count")
     return value
-
-
-def get_json(client: ReadClient, path: str, params: dict[str, object] | None = None) -> Any:
-    """GET ``path`` and decode the JSON body; ``FetchError`` on anything else."""
-    response = client.get(path, params=params)
-    try:
-        return response.json()
-    except ValueError as error:
-        raise FetchError(f"GitHub API returned invalid JSON for {path}") from error
-
-
-def paginate(client: ReadClient, path: str, params: dict[str, object] | None = None) -> list[dict]:
-    """GET every page of the list at ``path``; each item must be a JSON object."""
-    items: list[dict] = []
-    page = 1
-    while True:
-        page_items = get_json(
-            client, path, params={**(params or {}), "per_page": PER_PAGE, "page": page}
-        )
-        if not isinstance(page_items, list):
-            raise FetchError(f"GitHub API returned an unexpected payload for {path}")
-        for item in page_items:
-            if not isinstance(item, dict):
-                raise FetchError(f"GitHub API returned a non-object item for {path}")
-            items.append(item)
-        if len(page_items) < PER_PAGE:
-            return items
-        page += 1
 
 
 def _map_file(entry: dict) -> dict:
@@ -132,15 +102,18 @@ def _map_file(entry: dict) -> dict:
 
 
 def comment_entry(entry: dict) -> dict:
-    """One REST issue comment as id, body and author login."""
+    """One REST issue comment as id, body, author login and author association."""
     body = entry.get("body")
     user = entry.get("user")
     login = user.get("login") if isinstance(user, dict) else None
-    # The author tells the bot's sticky comment apart from a human one quoting its marker.
+    association = entry.get("author_association")
+    # The author tells the bot's sticky comment apart from a human one quoting
+    # its marker; the association decides whether the review model sees it.
     return {
         "id": entry.get("id"),
         "body": body if isinstance(body, str) else "",
         "author": login if isinstance(login, str) else "",
+        "author_association": association if isinstance(association, str) else "",
     }
 
 
@@ -266,54 +239,6 @@ def _base_paths(client: ReadClient, repo: str, base_sha: str) -> tuple[list[str]
     return paths, truncated
 
 
-def _linked_issue_numbers(body: str, repo: str) -> list[int]:
-    """The same-repository issues ``body`` declares it closes: ascending, at most 3."""
-    prefix = f"{repo.lower()}#"
-    numbers = {
-        int(reference[len(prefix) :])
-        for reference in closing_references(body, repo)
-        if reference.startswith(prefix)
-    }
-    return sorted(numbers)[:LINKED_ISSUE_LIMIT]
-
-
-def _linked_issue(client: ReadClient, repo: str, number: int) -> dict | None:
-    """One linked issue for the context; None when the number names a pull request.
-
-    The token reads this repository only, so other repositories are never
-    asked. Text by an author without write access stays out of the context
-    (ADR-0013). A failed fetch leaves the issue unavailable, never the run.
-    """
-    unavailable = {"number": number, "status": "unavailable", "title": "", "body": ""}
-    try:
-        issue = get_json(client, f"/repos/{repo}/issues/{number}")
-    except FetchError as error:
-        status = error.status if error.status is not None else "none"
-        # Number and status only: the issue text never reaches a log.
-        print(f"pr_github.py: linked issue #{number} unavailable (HTTP {status})", file=sys.stderr)
-        return unavailable
-    if not isinstance(issue, dict):
-        print(f"pr_github.py: linked issue #{number} unavailable (HTTP 200)", file=sys.stderr)
-        return unavailable
-    if "pull_request" in issue:
-        return None
-    if issue.get("author_association") not in TRUSTED_ASSOCIATIONS:
-        return {"number": number, "status": "outside_author", "title": "", "body": ""}
-    title = issue.get("title")
-    body = issue.get("body")
-    return {
-        "number": number,
-        "status": "ok",
-        "title": title if isinstance(title, str) else "",
-        "body": body if isinstance(body, str) else "",
-    }
-
-
-def _linked_issues(client: ReadClient, repo: str, body: str) -> list[dict]:
-    issues = (_linked_issue(client, repo, number) for number in _linked_issue_numbers(body, repo))
-    return [issue for issue in issues if issue is not None]
-
-
 def fetch_context(
     repo: str,
     number: int,
@@ -409,7 +334,7 @@ def fetch_context(
         "reviews": reviews,
     }
     if linked_issues:
-        context["linked_issues"] = _linked_issues(client, repo, body)
+        context["linked_issues"] = fetch_linked_issues(client, repo, body)
     return context
 
 

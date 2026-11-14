@@ -33,8 +33,7 @@ from issue_triage_policy import (
     plan_labels,
     unchanged_since_assessment,
 )
-from pr_github import get_json, paginate
-from pr_github_client import GitHubClient
+from pr_github_client import GitHubClient, get_json, paginate
 from pr_review_claude import TOKEN_ENV, ProviderError, run_claude
 
 SCRIPT = "issue_triage.py"

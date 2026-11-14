@@ -1,94 +1,88 @@
-"""Guardrails for the agent-run workflows: implementer.yml and skill-audit.yml.
+"""Guardrails for the agent-run workflows: the implementer and skill-audit.yml.
 
-Both run claude-code-action with the Claude GitHub App token (ADR-0014). These
-tests pin what keeps that safe and what keeps it working: an empty top-level
-permission set, the job's narrow scopes and timeout, a SHA-pinned action, no
-`github_token` override (its pushes would start no checks), prompts that
-interpolate no event text, and a report step that fails the job on a failed
-run.
+Both run claude-code-action with the Claude GitHub App token (ADR-0014). The
+implementer's job lives in the reusable factory-implementer.yml, which this
+repository's implementer.yml calls (ADR-0018). These tests pin what keeps that
+safe and what keeps it working: an empty top-level permission set, the job's
+narrow scopes and timeout, a SHA-pinned action, no `github_token` override (its
+pushes would start no checks), prompts that interpolate no event text, and a
+report step that fails the job on a failed run.
 """
 
 import json
 import os
-import re
 import subprocess
 from pathlib import Path
 
+import agent_run_capacity
 import implementer_claim
 import implementer_setup
 import pytest
-import yaml
+from agent_run_workflow_testkit import (
+    EXPRESSION,
+    FACTORY_IMPLEMENTER,
+    IMPLEMENTER,
+    REPO_ROOT,
+    SHA_PIN,
+    SKILL_AUDIT,
+    checkouts,
+    model_step,
+    report_step,
+    single_job,
+    workflow,
+)
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKFLOWS = REPO_ROOT / ".github" / "workflows"
-IMPLEMENTER = WORKFLOWS / "implementer.yml"
-SKILL_AUDIT = WORKFLOWS / "skill-audit.yml"
-
-ACTION = "anthropics/claude-code-action@"
-SHA_PIN = re.compile(r"^anthropics/claude-code-action@[0-9a-f]{40}$")
-EXPRESSION = re.compile(r"\$\{\{\s*(.*?)\s*\}\}")
-
-# The only values a prompt may interpolate: a number validated in the job, and
-# the repository name. Event text (titles, bodies, labels) must never reach it.
 PROMPT_EXPRESSIONS = {"steps.issue.outputs.number", "github.repository"}
+# The reusable implementer adds the factory checkout's path and the branch
+# prefix its validation step passed; no caller input reaches the prompt raw.
+FACTORY_PROMPT_EXPRESSIONS = PROMPT_EXPRESSIONS | {
+    "steps.factory.outputs.dir",
+    "steps.setup.outputs.branch_prefix",
+}
 
 
-def _workflow(path: Path) -> dict:
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
-
-
-def _single_job(path: Path) -> dict:
-    jobs = _workflow(path)["jobs"]
-    assert len(jobs) == 1, f"{path.name} should have one job"
-    return next(iter(jobs.values()))
-
-
-def _model_step(job: dict) -> dict:
-    steps = [step for step in job["steps"] if step.get("uses", "").startswith(ACTION)]
-    assert len(steps) == 1, "exactly one claude-code-action step"
-    return steps[0]
-
-
-def _report_step(job: dict) -> dict:
-    steps = [step for step in job["steps"] if step.get("name") == "Report the run"]
-    assert len(steps) == 1, "exactly one report step"
-    return steps[0]
-
-
-BOTH = pytest.mark.parametrize("path", [IMPLEMENTER, SKILL_AUDIT], ids=lambda p: p.name)
+# The two workflows whose job runs the model.
+BOTH = pytest.mark.parametrize("path", [FACTORY_IMPLEMENTER, SKILL_AUDIT], ids=lambda p: p.name)
 
 
 @pytest.mark.parametrize(
     ("path", "job_scopes"),
     [
         (IMPLEMENTER, {"contents": "read", "actions": "read", "id-token": "write"}),
+        (FACTORY_IMPLEMENTER, {"contents": "read", "actions": "read", "id-token": "write"}),
         (SKILL_AUDIT, {"contents": "read", "id-token": "write"}),
     ],
-    ids=["implementer", "skill-audit"],
+    ids=["implementer", "factory-implementer", "skill-audit"],
 )
 def test_permissions_are_empty_by_default_and_narrow_in_the_job(path, job_scopes):
-    assert _workflow(path)["permissions"] == {}, "top-level permissions must stay empty"
-    assert _single_job(path)["permissions"] == job_scopes, (
+    assert workflow(path)["permissions"] == {}, "top-level permissions must stay empty"
+    assert single_job(path)["permissions"] == job_scopes, (
         "GitHub writes go through the App token; the job token stays read-only"
     )
 
 
 def test_implementer_hands_the_read_only_job_token_to_the_capacity_gate():
-    assert _model_step(_single_job(IMPLEMENTER))["env"] == {
+    assert model_step(single_job(FACTORY_IMPLEMENTER))["env"] == {
         implementer_claim.ACTIONS_TOKEN_VARIABLE: "${{ github.token }}"
     }
 
 
-def test_capacity_gate_names_this_workflow_and_job():
+@pytest.mark.parametrize("path", [IMPLEMENTER, FACTORY_IMPLEMENTER], ids=lambda p: p.name)
+def test_capacity_gate_names_this_workflow_and_job(path):
+    """The jobs API lists the called job as `implement / implement`; the claim matches it."""
     assert IMPLEMENTER.name == implementer_setup.IMPLEMENTER_WORKFLOW
-    assert implementer_setup.IMPLEMENT_JOB in _workflow(IMPLEMENTER)["jobs"]
-    assert "name" not in _single_job(IMPLEMENTER), "a display name would rename the job in the API"
-    assert "matrix" not in _single_job(IMPLEMENTER).get("strategy", {}), "a matrix renames the job"
+    assert implementer_setup.IMPLEMENT_JOB in workflow(path)["jobs"]
+    assert "name" not in single_job(path), "a display name would rename the job in the API"
+    assert "matrix" not in single_job(path).get("strategy", {}), "a matrix renames the job"
+    assert agent_run_capacity.is_job(
+        f"{implementer_setup.IMPLEMENT_JOB} / {implementer_setup.IMPLEMENT_JOB}",
+        implementer_setup.IMPLEMENT_JOB,
+    )
 
 
 @BOTH
 def test_action_is_sha_pinned_and_uses_the_app_token(path):
-    step = _model_step(_single_job(path))
+    step = model_step(single_job(path))
     assert SHA_PIN.match(step["uses"]), "pin claude-code-action to a full commit SHA"
     inputs = step["with"]
     assert "github_token" not in inputs, (
@@ -98,16 +92,23 @@ def test_action_is_sha_pinned_and_uses_the_app_token(path):
     assert inputs["claude_code_oauth_token"] == secret_ref, "the model token comes from the secret"
 
 
-@BOTH
-def test_prompt_interpolates_no_event_text(path):
-    prompt = _model_step(_single_job(path))["with"]["prompt"]
+@pytest.mark.parametrize(
+    ("path", "allowed"),
+    [(FACTORY_IMPLEMENTER, FACTORY_PROMPT_EXPRESSIONS), (SKILL_AUDIT, PROMPT_EXPRESSIONS)],
+    ids=["factory-implementer", "skill-audit"],
+)
+def test_prompt_interpolates_no_event_text(path, allowed):
+    prompt = model_step(single_job(path))["with"]["prompt"]
     used = set(EXPRESSION.findall(prompt))
-    assert used <= PROMPT_EXPRESSIONS, f"unexpected expressions in the prompt: {used}"
+    assert used <= allowed, f"unexpected expressions in the prompt: {used}"
+    assert not any(expression.startswith("inputs.") for expression in used), (
+        "caller inputs reach the prompt only through a validating step"
+    )
 
 
 @BOTH
 def test_prompt_keeps_the_hard_limits(path):
-    prompt = _model_step(_single_job(path))["with"]["prompt"]
+    prompt = model_step(single_job(path))["with"]["prompt"]
     for limit in ("never push to main", "never merge", "never enable auto-merge"):
         assert limit in prompt, f"prompt lost the hard limit {limit!r}"
     assert "RUN FAILED" in prompt and "$RUNNER_TEMP/run-summary.md" in prompt
@@ -117,17 +118,19 @@ def test_prompt_keeps_the_hard_limits(path):
 
 
 @BOTH
-def test_checkout_keeps_no_credentials_and_fetches_submodules(path):
-    checkout = next(
-        step for step in _single_job(path)["steps"] if "actions/checkout@" in step.get("uses", "")
-    )
-    assert checkout["with"]["persist-credentials"] is False
-    assert checkout["with"]["submodules"] is True, "the bats check needs test/bats/"
+def test_checkouts_keep_no_credentials(path):
+    steps = checkouts(single_job(path))
+    assert steps
+    assert all(step["with"]["persist-credentials"] is False for step in steps)
+
+
+def test_skill_audit_fetches_submodules():
+    assert checkouts(single_job(SKILL_AUDIT))[0]["with"]["submodules"] is True
 
 
 @BOTH
 def test_runs_are_serialised_without_cancelling(path):
-    concurrency = _single_job(path)["concurrency"]
+    concurrency = single_job(path)["concurrency"]
     assert concurrency["cancel-in-progress"] is False, (
         "cancelling could stop a run between its push and its pull request"
     )
@@ -135,11 +138,11 @@ def test_runs_are_serialised_without_cancelling(path):
 
 @pytest.mark.parametrize(
     ("path", "job_name", "minutes"),
-    [(IMPLEMENTER, "implement", 120), (SKILL_AUDIT, "audit", 90)],
+    [(FACTORY_IMPLEMENTER, "implement", 120), (SKILL_AUDIT, "audit", 90)],
     ids=lambda value: value.name if isinstance(value, Path) else str(value),
 )
 def test_job_keeps_its_timeout(path, job_name, minutes):
-    jobs = _workflow(path)["jobs"]
+    jobs = workflow(path)["jobs"]
     assert job_name in jobs, f"{path.name} lost its {job_name!r} job"
     assert jobs[job_name].get("timeout-minutes") == minutes, (
         f"{path.name} job {job_name!r} needs timeout-minutes: {minutes}; without it a stuck"
@@ -148,18 +151,19 @@ def test_job_keeps_its_timeout(path, job_name, minutes):
 
 
 def test_implementer_starts_only_on_a_person_adding_ready_for_agent():
-    workflow = _workflow(IMPLEMENTER)
-    # PyYAML reads the bare `on` key as boolean True.
-    assert workflow[True]["issues"] == {"types": ["labeled"]}
-    assert "workflow_dispatch" in workflow[True]
-    guard = _single_job(IMPLEMENTER)["if"]
+    triggers = workflow(IMPLEMENTER)[True]  # PyYAML reads the bare `on` key as boolean True.
+    assert triggers["issues"] == {"types": ["labeled"]}
+    assert "workflow_dispatch" in triggers
+    assert set(workflow(FACTORY_IMPLEMENTER)[True]) == {"workflow_call"}
+    # The called job sees the caller's event, so the filter stays there.
+    guard = single_job(FACTORY_IMPLEMENTER)["if"]
     assert "github.event.label.name == 'ready-for-agent'" in guard
     assert "github.event.sender.type != 'Bot'" in guard, "a bot label must not start a run"
     assert "github.event.issue.state == 'open'" in guard
 
 
 def test_implementer_validates_the_issue_number_before_anything_else():
-    job = _single_job(IMPLEMENTER)
+    job = single_job(FACTORY_IMPLEMENTER)
     first = job["steps"][0]
     assert first["id"] == "issue"
     assert "^[1-9][0-9]*$" in first["run"]
@@ -170,11 +174,13 @@ def test_implementer_validates_the_issue_number_before_anything_else():
 
 
 def test_implementer_claims_through_the_script_before_anything_else():
-    prompt = _model_step(_single_job(IMPLEMENTER))["with"]["prompt"]
+    prompt = model_step(single_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
     command = (
-        "python3 scripts/implementer_claim.py --repo ${{ github.repository }} "
+        'python3 "${{ steps.factory.outputs.dir }}/scripts/implementer_claim.py" '
+        "--repo ${{ github.repository }} "
         '--issue ${{ steps.issue.outputs.number }} --summary "$RUNNER_TEMP/run-summary.md" '
-        '--contract "$RUNNER_TEMP/contract.md"'
+        '--contract "$RUNNER_TEMP/contract.md" --job-name implement '
+        "--branch-prefix ${{ steps.setup.outputs.branch_prefix }}"
     )
     assert command in prompt
     assert prompt.index("1. If issue") < prompt.index(command) < prompt.index("3. Contract:")
@@ -194,7 +200,7 @@ def test_implementer_claims_through_the_script_before_anything_else():
 
 def test_implementer_takes_its_contract_from_the_claim_scripts_file():
     """Anyone can write on a public issue; only the script decides whose text is the contract."""
-    prompt = _model_step(_single_job(IMPLEMENTER))["with"]["prompt"]
+    prompt = model_step(single_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
     contract_step = prompt[prompt.index("3. Contract:") : prompt.index("4. Build on")]
     assert '"$RUNNER_TEMP/contract.md"' in contract_step
     assert "the only text that says what to build" in contract_step
@@ -204,32 +210,40 @@ def test_implementer_takes_its_contract_from_the_claim_scripts_file():
 
 
 def test_implementer_prompt_no_longer_claims_by_hand():
-    prompt = _model_step(_single_job(IMPLEMENTER))["with"]["prompt"]
+    prompt = model_step(single_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
     for gone in ("git/refs", "HTTP 422", "another run holds this issue"):
         assert gone not in prompt, f"the claim moved to the script; prompt still has {gone!r}"
 
 
 def test_implementer_prompt_keeps_its_branch_limits():
-    prompt = _model_step(_single_job(IMPLEMENTER))["with"]["prompt"]
+    prompt = model_step(single_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
     for limit in ("force-push", "never delete branches", "never touch other branches"):
         assert limit in prompt, f"prompt lost the hard limit {limit!r}"
 
 
 def test_skill_audit_keeps_its_schedule():
-    schedule = _workflow(SKILL_AUDIT)[True]["schedule"]
+    schedule = workflow(SKILL_AUDIT)[True]["schedule"]
     assert schedule == [{"cron": "47 13 8,22 * *", "timezone": "Europe/Berlin"}]
-    checkout = _single_job(SKILL_AUDIT)["steps"][0]
+    checkout = single_job(SKILL_AUDIT)["steps"][0]
     assert checkout["with"]["fetch-depth"] == 0, "skill selection reads last week's commits"
 
 
 def _run_report(
     job: dict, tmp_path: Path, summary: str | None, messages: list | None = None
 ) -> tuple[int, str]:
-    """Run the report step's own script as the runner would, from the repo root."""
-    step = _report_step(job)
+    """Run the report step's own script as the runner would.
+
+    A step with FACTORY_DIR runs from a workspace without the scripts, as in a
+    target repository; the others from the repo root.
+    """
+    step = report_step(job)
     assert step["if"] == "always()", "the report must run after a failed model step"
-    assert step["env"] == {"EXECUTION_FILE": "${{ steps.claude.outputs.execution_file }}"}
-    assert _model_step(job)["id"] == "claude"
+    env = dict(step["env"])
+    assert env.pop("EXECUTION_FILE") == "${{ steps.claude.outputs.execution_file }}"
+    assert set(env) <= {"FACTORY_DIR"}
+    workspace = tmp_path / "workspace" if env else REPO_ROOT
+    workspace.mkdir(exist_ok=True)
+    assert model_step(job)["id"] == "claude"
     runner_temp = tmp_path / "runner"
     runner_temp.mkdir()
     if summary is not None:
@@ -242,11 +256,12 @@ def _run_report(
     step_summary = tmp_path / "step-summary.md"
     result = subprocess.run(  # noqa: S603 -- runs the workflow's own report script, no shell input.
         ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
-        cwd=REPO_ROOT,
+        cwd=workspace,
         env={
             "RUNNER_TEMP": str(runner_temp),
             "GITHUB_STEP_SUMMARY": str(step_summary),
             "EXECUTION_FILE": execution_file,
+            "FACTORY_DIR": str(REPO_ROOT),
             "PATH": os.environ["PATH"],
         },
         check=False,
@@ -257,14 +272,14 @@ def _run_report(
 
 @BOTH
 def test_report_passes_a_good_summary_through(path, tmp_path):
-    code, text = _run_report(_single_job(path), tmp_path, "Issue #1\nPR opened\nhttps://x\n")
+    code, text = _run_report(single_job(path), tmp_path, "Issue #1\nPR opened\nhttps://x\n")
     assert code == 0
     assert "PR opened" in text
 
 
 @BOTH
 def test_report_fails_the_job_on_a_failed_run(path, tmp_path):
-    code, text = _run_report(_single_job(path), tmp_path, "RUN FAILED: claim (HTTP 500)\n")
+    code, text = _run_report(single_job(path), tmp_path, "RUN FAILED: claim (HTTP 500)\n")
     assert code != 0
     assert "RUN FAILED: claim" in text
 
@@ -282,7 +297,7 @@ def test_report_diagnoses_a_run_that_wrote_nothing(path, tmp_path):
         },
         {"type": "result", "result": "Waiting for the subagents."},
     ]
-    code, text = _run_report(_single_job(path), tmp_path, None, messages)
+    code, text = _run_report(single_job(path), tmp_path, None, messages)
     assert code != 0
     assert "wrote no summary" in text
     assert "Waiting for the subagents." in text
