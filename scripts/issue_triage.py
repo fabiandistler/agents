@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """The automated issue triage, one subcommand per stage of issue-triage.yml.
 
-- ``assess`` (read token, no model): fetch the issue and its comments, decide
-  with ``issue_triage_policy.assess`` whether the trigger may start a model
-  run, and write the context JSON.
+- ``assess`` (read token, no model): fetch the issue, its comments and its
+  label events, decide with ``issue_triage_policy.assess`` whether the
+  trigger may start a model run, and write the context JSON.
 - ``triage`` (model token, no GitHub token): ask the model through the
   read-only ``claude -p`` workspace call and write the triage artifact.
 - ``publish`` (write token, no model): re-fetch the labels, post the triage
@@ -118,12 +118,34 @@ def _fetch_issue(client, repo: str, number: int) -> dict:
 # --- assess ------------------------------------------------------------------
 
 
+def _time(entry: dict) -> str:
+    created_at = entry.get("created_at")
+    if not isinstance(created_at, str):
+        raise pr_github_client.FetchError("GitHub API returned an item without created_at")
+    return created_at
+
+
+def _label_event(entry: dict) -> dict:
+    label = entry.get("label")
+    actor = entry.get("actor")
+    if not isinstance(label, dict) or not isinstance(label.get("name"), str):
+        raise pr_github_client.FetchError("GitHub API returned a labeled event without a label")
+    if not isinstance(actor, dict) or not isinstance(actor.get("type"), str):
+        raise pr_github_client.FetchError("GitHub API returned a labeled event without an actor")
+    return {"label": label["name"], "actor_type": actor.get("type"), "created_at": _time(entry)}
+
+
 def fetch_context(client, repo: str, number: int, trigger: str) -> dict:
     """Fetch issue ``number`` and decide whether ``trigger`` may triage it."""
     issue = _fetch_issue(client, repo, number)
     comments = [
-        {"author": _login(entry), "body": entry.get("body") or ""}
+        {"author": _login(entry), "body": entry.get("body") or "", "created_at": _time(entry)}
         for entry in paginate(client, f"/repos/{repo}/issues/{number}/comments")
+    ]
+    label_events = [
+        _label_event(entry)
+        for entry in paginate(client, f"/repos/{repo}/issues/{number}/events")
+        if entry.get("event") == "labeled"
     ]
     labels = _label_names(issue)
     user = issue.get("user")
@@ -135,6 +157,7 @@ def fetch_context(client, repo: str, number: int, trigger: str) -> dict:
         "author_type": user.get("type"),
         "author_association": issue.get("author_association"),
         "labels": labels,
+        "label_events": label_events,
     }
     decision = assess(facts, comments, trigger)
     return {
