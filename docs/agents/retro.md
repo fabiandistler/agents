@@ -2,11 +2,7 @@
 
 Runbook for the Retro task: about one merged agent pull request in ten
 becomes one proposed change to the factory's own instruction texts. The
-workflow `.github/workflows/retro.yml` runs it daily, once a maintainer has
-added it to `main` by hand (ADR-0017). It is not on `main` yet, so nothing
-runs. Its text, the `implementer.yml` additions it needs and its guard tests
-are under "Workflow to add by hand" in the body of
-[#814](https://github.com/fabiandistler/agents/pull/814). Its
+workflow `.github/workflows/retro.yml` runs it daily (ADR-0017). Its
 model-free gate, `scripts/retro_gate.py`, picks the pull request and writes
 the context file; the model follows this runbook.
 
