@@ -6,7 +6,8 @@ repository's implementer.yml calls (ADR-0018). These tests pin what keeps that
 safe and what keeps it working: an empty top-level permission set, the job's
 narrow scopes and timeout, a SHA-pinned action, no `github_token` override (its
 pushes would start no checks), prompts that interpolate no event text, and a
-report step that fails the job on a failed run.
+report step that fails the job on a failed run. The foreground rule is pinned
+here for every model prompt, factory-rework.yml's and retro.yml's included.
 """
 
 import json
@@ -23,6 +24,8 @@ from agent_run_workflow_testkit import (
     FACTORY_IMPLEMENTER,
     IMPLEMENTER,
     REPO_ROOT,
+    RETRO,
+    REWORK,
     SHA_PIN,
     SKILL_AUDIT,
     checkouts,
@@ -112,9 +115,36 @@ def test_prompt_keeps_the_hard_limits(path):
     for limit in ("never push to main", "never merge", "never enable auto-merge"):
         assert limit in prompt, f"prompt lost the hard limit {limit!r}"
     assert "RUN FAILED" in prompt and "$RUNNER_TEMP/run-summary.md" in prompt
-    assert "run_in_background: false" in prompt, (
-        "a headless run ends with the model's turn and kills background subagents"
-    )
+
+
+# Issue #843: Rework run 43633307491 ended after 14 turns and 147 s, less than
+# one check round, and wrote no summary. Most likely (the transcript was hidden)
+# it left the checks running in the background: the prompts asked only for
+# subagents in the foreground, and a headless run ends with the model's turn.
+@pytest.mark.parametrize(
+    ("path", "job_name", "check_command"),
+    [
+        (FACTORY_IMPLEMENTER, "implement", '`bash "$RUNNER_TEMP/check-command.sh"`'),
+        (SKILL_AUDIT, "audit", "`scripts/check_all.sh`"),
+        (REWORK, "rework", '`bash "$RUNNER_TEMP/check-command.sh"`'),
+        (RETRO, "retro", "`scripts/check_all.sh`"),
+    ],
+    ids=["factory-implementer", "skill-audit", "rework", "retro"],
+)
+def test_prompt_runs_every_command_in_the_foreground(path, job_name, check_command):
+    prompt = model_step(workflow(path)["jobs"][job_name])["with"]["prompt"]
+    for rule in (
+        (
+            f"run every command in the foreground, {check_command} included,"
+            " and wait for its result before you end your turn"
+        ),
+        (
+            "Give every Bash call `run_in_background: false` and `timeout: 600000`,"
+            " and every subagent `run_in_background: false`"
+        ),
+        "when your turn ends, the run ends and kills anything still running in the background",
+    ):
+        assert rule in prompt, f"{path.name} lost the foreground rule {rule!r}"
 
 
 @BOTH
@@ -234,6 +264,15 @@ def test_implementer_stop_rule_counts_only_rounds_a_tool_did_not_fix():
         "only if that run is red too, push the branch, open a DRAFT PR",
     ):
         assert rule in prompt, f"prompt lost the check-round rule {rule!r}"
+
+
+def test_implementer_stop_rule_writes_the_summary_last():
+    # Issue #843: Rework's stop rule wrote the summary before it ended; this one did not.
+    prompt = model_step(single_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
+    stop_rule = prompt[prompt.index("Stop rule:") : prompt.index("6. Before pushing")]
+    assert "replace `ready-for-agent` with `ready-for-human`, write the summary and end." in (
+        stop_rule
+    )
 
 
 def test_skill_audit_keeps_its_schedule():
