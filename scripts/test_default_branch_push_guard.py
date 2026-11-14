@@ -232,7 +232,22 @@ def test_bad_input_and_usage_errors_do_not_look_like_a_block() -> None:
         check=False,
     )
     assert run.returncode == guard.EXIT_BAD_INPUT
-    assert run_guard(push("main"), "--default-branch", "").returncode == pr_merge_guard.EXIT_USAGE
+    assert run_guard(push("main"), "--bogus").returncode == pr_merge_guard.EXIT_USAGE
+
+
+@pytest.mark.parametrize("value", ["", "  ", "{{default_branch}}", "'{{default_branch}}'"])
+def test_an_empty_or_unfilled_default_branch_protects_main_and_master(value: str) -> None:
+    # A workflow that fails to fill the option must not turn the brake off.
+    assert run_guard(push("main"), "--default-branch", value).returncode == guard.EXIT_BLOCK
+    assert run_guard(push("master"), "--default-branch", value).returncode == guard.EXIT_BLOCK
+    assert run_guard(push("feature"), "--default-branch", value).returncode == guard.EXIT_ALLOW
+
+
+@pytest.mark.parametrize("value", ["refs/heads/trunk", "heads/trunk", " trunk "])
+def test_the_default_branch_option_is_read_as_git_reads_a_branch(value: str) -> None:
+    assert run_guard(push("trunk"), "--default-branch", value).returncode == guard.EXIT_BLOCK
+    assert run_guard(push("HEAD:trunk"), "--default-branch", value).returncode == guard.EXIT_BLOCK
+    assert run_guard(push("feature"), "--default-branch", value).returncode == guard.EXIT_ALLOW
 
 
 def test_help_names_exit_codes() -> None:

@@ -7,8 +7,9 @@ the run's `PreToolUse` hook, reads the pending tool call as JSON on stdin and
 blocks it when it would update the default branch on the remote. The block
 reason tells the agent to push its own branch and open a pull request.
 
-Blocked, for the branch named by `--default-branch` (without it: `main` and
-`master`):
+Blocked, for the branch named by `--default-branch` (read as git reads a
+branch, so `refs/heads/main` is `main`; without it, or with an empty value or
+an unfilled `{{...}}` placeholder: `main` and `master`):
 - `git push` with a refspec or bare branch argument that resolves to the
   default branch, also `+`-forced, `refs/heads/` and wildcard forms, and with
   `--delete`; `git push --all`, `--branches` and `--mirror`.
@@ -107,6 +108,18 @@ CURL_DATA_FLAGS = {"-d", "--data", "--data-raw", "--data-binary", "--data-urlenc
 def branch_name(ref: str) -> str:
     """A branch as git resolves a push destination: `refs/heads/x` and `heads/x` are `x`."""
     return ref.removeprefix("refs/").removeprefix("heads/")
+
+
+def protected_branches(option: str | None) -> tuple[str, ...]:
+    """The branches to protect, read from `--default-branch` as git reads a branch.
+
+    Unset, empty or an unfilled `{{...}}` placeholder protects `main` and
+    `master`: a workflow that fails to fill the option must not turn the brake off.
+    """
+    value = (option or "").strip()
+    if not value or "{{" in value or "}}" in value:
+        return FALLBACK_DEFAULT_BRANCHES
+    return (branch_name(value),)
 
 
 def names_default(ref: str, defaults: tuple[str, ...]) -> bool:
@@ -291,12 +304,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--harness", required=True, choices=HARNESSES, help="input format")
     parser.add_argument(
         "--default-branch",
-        help="the repository's default branch (default: block both main and master)",
+        help="the repository's default branch; unset, empty or an unfilled {{...}} "
+        "placeholder blocks both main and master",
     )
     args = parser.parse_args(argv)
-    if args.default_branch is not None and not args.default_branch.strip():
-        parser.error("--default-branch must not be empty")
-    defaults = (args.default_branch,) if args.default_branch else FALLBACK_DEFAULT_BRANCHES
+    defaults = protected_branches(args.default_branch)
     try:
         tool, tool_input, cwd = parse_event(args.harness, json.loads(sys.stdin.read()))
     except (ValueError, TypeError) as err:
