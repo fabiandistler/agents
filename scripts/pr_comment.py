@@ -112,17 +112,18 @@ def _render_comment(
     return "\n".join(lines)
 
 
+def is_sticky_comment(comment: dict) -> bool:
+    """Whether ``comment`` is this bot's own review comment, not a human one quoting its marker."""
+    body = comment.get("body")
+    return (
+        comment.get("author") == COMMENT_AUTHOR and isinstance(body, str) and COMMENT_MARKER in body
+    )
+
+
 def _sticky_comment(context: dict) -> dict | None:
     comments = context.get("comments")
     for comment in comments if isinstance(comments, list) else []:
-        if not isinstance(comment, dict):
-            continue
-        body = comment.get("body")
-        if (
-            comment.get("author") == COMMENT_AUTHOR
-            and isinstance(body, str)
-            and COMMENT_MARKER in body
-        ):
+        if isinstance(comment, dict) and is_sticky_comment(comment):
             return comment
     return None
 
