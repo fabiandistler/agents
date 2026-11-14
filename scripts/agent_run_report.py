@@ -4,7 +4,10 @@
 The agent-run workflows (implementer.yml, skill-audit.yml) ask the model to
 write a short summary file. This script appends it to the step summary and
 exits 1 when the summary is missing or starts with ``RUN FAILED``, so GitHub
-notifies about the failed run.
+notifies about the failed run. A failed run also prints one ``::error::``
+workflow command with the summary's first line: GitHub turns it into a check
+annotation, which the REST API serves and the step summary is not
+(scripts/factory_failure.py reads it, ADR-0016).
 
 A run that wrote no summary, or a failed one, also gets a diagnosis from the
 action's execution file: the model's last message and a count of the tools it
@@ -27,6 +30,10 @@ SUBAGENT_TOOLS = ("Agent", "Task")
 # The last message is model text from a public run page; a cap keeps one
 # runaway answer from filling the summary.
 MAX_LAST_MESSAGE = 3000
+# The annotation is one line on a public run page and a dedupe key; a cap keeps
+# a long summary line from swamping either.
+MAX_ANNOTATION = 300
+NO_SUMMARY_LINE = f"{FAILED_PREFIX}: the model step wrote no summary"
 
 EXIT_OK = 0
 EXIT_RUN_FAILED = 1
@@ -35,6 +42,7 @@ EXIT_USAGE = 2
 HELP_EPILOG = """\
 exit codes: 0 the run wrote a summary that does not start with RUN FAILED;
             1 the summary is missing or starts with RUN FAILED; 2 usage error.
+stdout: on exit 1, one ::error:: line with the summary's first line (capped).
 
 examples:
   agent_run_report.py --summary "$RUNNER_TEMP/run-summary.md" \\
@@ -112,12 +120,26 @@ def diagnosis(messages: list[dict] | None) -> str:
 def build_report(summary_text: str | None, messages: list[dict] | None) -> tuple[str, int]:
     """Return the step-summary text and the exit code for one run."""
     if summary_text is None or not summary_text.strip():
-        report = f"{FAILED_PREFIX}: the model step wrote no summary\n\n" + diagnosis(messages)
+        report = f"{NO_SUMMARY_LINE}\n\n" + diagnosis(messages)
         return report, EXIT_RUN_FAILED
     report = summary_text if summary_text.endswith("\n") else summary_text + "\n"
     if summary_text.lstrip().startswith(FAILED_PREFIX):
         return report + "\n" + diagnosis(messages), EXIT_RUN_FAILED
     return report, EXIT_OK
+
+
+def error_annotation(summary_text: str | None) -> str | None:
+    """The one ``::error::`` command for a failed run, or None for a good one."""
+    if summary_text is None or not summary_text.strip():
+        line = NO_SUMMARY_LINE
+    elif summary_text.lstrip().startswith(FAILED_PREFIX):
+        line = " ".join(summary_text.strip().splitlines()[0].split())
+    else:
+        return None
+    if len(line) > MAX_ANNOTATION:
+        line = line[:MAX_ANNOTATION] + " [truncated]"
+    # Workflow-command data escaping; the line holds no CR or LF by now.
+    return "::error::" + line.replace("%", "%25")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -140,6 +162,9 @@ def main(argv: list[str] | None = None) -> int:
     summary_text = args.summary.read_text(encoding="utf-8") if args.summary.is_file() else None
     execution_file = Path(args.execution_file) if args.execution_file else None
     report, code = build_report(summary_text, load_messages(execution_file))
+    annotation = error_annotation(summary_text)
+    if annotation is not None:
+        print(annotation)
 
     if args.output == "-":
         sys.stdout.write(report)

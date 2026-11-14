@@ -124,6 +124,29 @@ Only markers by `github-actions[bot]` count, so a quoted marker neither spends
 nor resets a round. Setup: the secrets of the implementer; the optional
 repository variable `REWORK_MODEL` (default `sonnet`).
 
+## Fix task
+
+`.github/workflows/fix-task.yml` runs `scripts/factory_failure.py` after a
+factory run (`implementer`, `skill-audit`, `issue-triage`, `pr-review`)
+concludes `failure` or `timed_out` ([ADR-0016](../adr/0016-fix-task.md)). It
+needs no model. It files issues with the label `factory-failure`, which it
+creates on first use, plus `bug` and `needs-triage`. Each issue carries the
+marker `<!-- factory-failure:<hash> -->` of one failure signature: workflow
+path, job, step and the normalized reason.
+
+| Situation | Outcome | Who acts next |
+| --- | --- | --- |
+| No issue by `github-actions[bot]` carries the signature's marker | A new issue `<workflow>: <job>/<step> failed` | The maintainer triages it |
+| An open bot issue carries the marker | One comment with the run link, attempt and date | The maintainer, on that issue |
+| That run attempt is already recorded on the issue | Nothing | Nobody |
+| Only a closed bot issue carries the marker | A new issue that names the closed one | The maintainer triages it |
+| A failed implementer run whose `run-name` names an issue labelled `factory-failure` | One comment on that issue, nothing new | The maintainer revises the brief or takes it over |
+| The run was cancelled or succeeded, or its workflow is not watched (`ci.yml`, the Fix task itself) | Nothing | Nobody |
+
+A fix attempt is a person posting an agent brief on the issue and adding
+`ready-for-agent`; the Fix task never sets it. A manual run (Actions →
+fix-task → Run workflow, with a run id) plans only unless `dry_run` is false.
+
 ## Pull request labels
 
 Pull requests use separate label families, written by the model-free `hold`
