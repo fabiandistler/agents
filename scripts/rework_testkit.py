@@ -128,6 +128,8 @@ class FakeGitHub:
     comments: list[dict] = field(default_factory=list)
     jobs: dict[int, list[dict]] = field(default_factory=lambda: {OWN_RUN: [gate_job()]})
     review_runs: list[dict] = field(default_factory=list)
+    # The artifact names each review run uploaded, by run id.
+    run_artifacts: dict[int, list[str]] = field(default_factory=dict)
     missing_label: bool = False
     failing_label_add: bool = False
     writes: list[tuple[str, str, dict | None]] = field(default_factory=list)
@@ -150,6 +152,13 @@ class FakeGitHub:
         if (match := re.fullmatch(rf"/repos/{REPO}/actions/runs/(\d+)/jobs", path)) is not None:
             jobs = self.jobs[int(match[1])]
             return json_response({"total_count": len(jobs), "jobs": jobs})
+        if (
+            match := re.fullmatch(rf"/repos/{REPO}/actions/runs/(\d+)/artifacts", path)
+        ) is not None:
+            uploaded = self.run_artifacts.get(int(match[1]), [])
+            artifacts = [{"name": name, "expired": False} for name in uploaded]
+            artifacts = [entry for entry in artifacts if entry["name"] == params["name"]]
+            return json_response({"total_count": len(artifacts), "artifacts": artifacts})
         if path == f"/repos/{REPO}/actions/workflows/pr-review.yml/runs":
             if params["head_sha"] != self.pull["head"]["sha"]:
                 raise AssertionError("runs must be listed for the live head")
