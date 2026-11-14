@@ -238,3 +238,15 @@ jobs:
             --summary "$RUNNER_TEMP/run-summary.md" \
             --execution-file "$EXECUTION_FILE" \
             --output "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the run summary
+        # The Retro gate (scripts/retro_gate.py) reads it after the merge
+        # (ADR-0017). A called job's artifact belongs to the caller's run, the
+        # one the gate finds by its run-name. Runs after a failed report too.
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: run-summary
+          path: ${{ runner.temp }}/run-summary.md
+          if-no-files-found: ignore
+          retention-days: 90

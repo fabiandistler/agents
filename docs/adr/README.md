@@ -24,8 +24,8 @@ governs; the replacement ADR or current record is named).
 | [0012](0012-pr-review-on-claude-subscription.md) | Accepted (2026-11-09) | The PR review runs `claude -p` without tools on the maintainer's Claude subscription instead of OpenCode Zen. |
 | [0013](0013-automated-issue-triage.md) | Accepted (2026-11-10) | New issues by collaborators get an automated triage comment; the bot sets only `needs-info`, the maintainer every other state. |
 | [0014](0014-agent-runs-in-github-actions.md) | Accepted (2026-11-10) | The implementer and the skill audit run in GitHub Actions through `claude-code-action` with the Claude GitHub App token, not as Claude Code scheduled tasks. |
-| [0015](0015-rework-task.md) | Proposed (2026-11-14) | A model-free gate starts at most two model rounds that fix a non-pass review's findings on an `agent/issue-<n>` pull request, then hands it to a person. |
-| [0016](0016-fix-task.md) | Proposed (2026-11-13) | A model-free Fix task files each failed factory run as one issue per failure signature; a fix attempt stays a human-started implementer run. |
+| [0015](0015-rework-task.md) | Accepted (2026-11-14) | A model-free gate starts at most two model rounds that fix a non-pass review's findings on an `agent/issue-<n>` pull request, then hands it to a person. |
+| [0016](0016-fix-task.md) | Accepted (2026-11-14) | A model-free Fix task files each failed factory run as one issue per failure signature; a fix attempt stays a human-started implementer run. |
 | [0017](0017-retro-task.md) | Proposed (2026-11-14) | A daily, throttled Retro run turns about one merged agent PR in ten into one proposed change to the factory's own instruction texts. |
 | [0018](0018-reusable-factory-workflows.md) | Accepted (2026-11-11, recorded 2026-11-14) | The factory's tasks are `workflow_call` workflows in this repository; other repositories call them through thin callers pinned to a commit SHA. |
 

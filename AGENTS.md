@@ -210,7 +210,7 @@ Adding `ready-for-agent` to an open issue starts `.github/workflows/implementer.
 
 ### Rework
 
-Once a maintainer adds `.github/workflows/rework.yml` to `main` (its pull request carries the file in its body; until then nothing runs), a `concerns` or `block` review of an `agent/issue-<n>` pull request starts it through `workflow_run`: a model-free gate (`scripts/rework_gate.py`) posts a round marker, and one model run fixes only the handed findings and pushes. After two rounds the pull request goes to a person (`docs/adr/0015-rework-task.md`; outcomes in `docs/agents/triage-labels.md`).
+A `concerns` or `block` review of an `agent/issue-<n>` pull request starts `.github/workflows/rework.yml` through `workflow_run`: a model-free gate (`scripts/rework_gate.py`) posts a round marker, and one model run fixes only the handed findings and pushes. After two rounds the pull request goes to a person (`docs/adr/0015-rework-task.md`; outcomes in `docs/agents/triage-labels.md`).
 
 ### PR review
 
@@ -232,4 +232,4 @@ issue's *Accepted* section so the audit stops reporting it.
 
 ### Retro
 
-`.github/workflows/retro.yml` is not on `main` yet, so nothing runs; its text is under "Workflow to add by hand" in [#814](https://github.com/fabiandistler/agents/pull/814). Once a maintainer adds it, it runs daily: once `RETRO_EVERY` (default 10) agent PRs have merged since the last `retro:done` label, the model-free `scripts/retro_gate.py` picks the one with the most non-pass review rounds, and the model proposes changes to the review and triage prompts, `docs/agents/` runbooks and this file in one `agent/retro-<pr>` PR, never to vendored files. Runbook and PR body format: `docs/agents/retro.md`; decision: `docs/adr/0017-retro-task.md`.
+`.github/workflows/retro.yml` runs daily: once `RETRO_EVERY` (default 10) agent PRs have merged since the last `retro:done` label, the model-free `scripts/retro_gate.py` picks the one with the most non-pass review rounds, and the model proposes changes to the review and triage prompts, `docs/agents/` runbooks and this file in one `agent/retro-<pr>` PR, never to vendored files. Runbook and PR body format: `docs/agents/retro.md`; decision: `docs/adr/0017-retro-task.md`.

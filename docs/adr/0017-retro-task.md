@@ -84,7 +84,9 @@ request. Procedure and PR body format: [`docs/agents/retro.md`](../agents/retro.
 - The workflow file is added by hand: the App token cannot write
   `.github/workflows/`. Its commit sets the floor.
 - The implementer uploads its run summary as an artifact and names its run
-  after the issue, so the gate finds the summary. Artifacts expire; a retro of
+  after the issue, so the gate finds the summary. The gate reads only runs
+  started by `issues` or `workflow_dispatch`: a pull request runs its own copy
+  of `implementer.yml` and could reuse the name. Artifacts expire; a retro of
   an old pull request runs without one.
 - The Retro pull request goes through the PR review and the human merge like
   any other.

@@ -306,9 +306,9 @@ def test_selection_names_the_implementer_run_with_a_summary():
     routes = gate_routes(ten_after_floor())
     routes[f"/repos/{REPO}/actions/workflows/implementer.yml/runs"] = {
         "workflow_runs": [
-            {"id": 7, "display_title": "implementer: issue #1009"},
-            {"id": 8, "display_title": "implementer: issue #1010"},
-            {"id": 9, "display_title": "implementer: issue #1010"},
+            {"id": 7, "event": "issues", "display_title": "implementer: issue #1009"},
+            {"id": 8, "event": "issues", "display_title": "implementer: issue #1010"},
+            {"id": 9, "event": "issues", "display_title": "implementer: issue #1010"},
         ]
     }
     routes[f"/repos/{REPO}/actions/runs/8/artifacts"] = {"artifacts": []}
@@ -323,16 +323,33 @@ def test_the_implementer_run_is_found_past_the_first_page_of_runs():
     routes = gate_routes(ten_after_floor())
     routes[f"{runs_path}?page=1"] = {
         "workflow_runs": [
-            {"id": 100 + n, "display_title": f"implementer: issue #{n}"} for n in range(100)
+            {"id": 100 + n, "event": "issues", "display_title": f"implementer: issue #{n}"}
+            for n in range(100)
         ]
     }
     routes[f"{runs_path}?page=2"] = {
-        "workflow_runs": [{"id": 9, "display_title": "implementer: issue #1010"}]
+        "workflow_runs": [{"id": 9, "event": "issues", "display_title": "implementer: issue #1010"}]
     }
     routes[f"/repos/{REPO}/actions/runs/9/artifacts"] = {
         "artifacts": [{"name": "run-summary", "expired": False}]
     }
     assert retro_gate.run_gate(RoutedClient(routes), REPO, 10).implementer_run == 9
+
+
+def test_a_pull_request_run_with_the_implementer_title_is_not_read():
+    """A fork's pull request can add a trigger to its copy of implementer.yml and
+    reuse the run-name; only issues and workflow_dispatch run the file on main."""
+    routes = gate_routes(ten_after_floor())
+    routes[f"/repos/{REPO}/actions/workflows/implementer.yml/runs"] = {
+        "workflow_runs": [
+            {"id": 9, "event": "pull_request", "display_title": "implementer: issue #1010"},
+            {"id": 8, "event": "workflow_dispatch", "display_title": "implementer: issue #1010"},
+        ]
+    }
+    summary = {"artifacts": [{"name": "run-summary", "expired": False}]}
+    routes[f"/repos/{REPO}/actions/runs/9/artifacts"] = summary
+    routes[f"/repos/{REPO}/actions/runs/8/artifacts"] = summary
+    assert retro_gate.run_gate(RoutedClient(routes), REPO, 10).implementer_run == 8
 
 
 @pytest.mark.parametrize("failing", ["runs", "artifacts"])
@@ -346,7 +363,9 @@ def test_a_failed_implementer_run_lookup_still_selects_and_labels(failing, capsy
         routes[runs_path] = error
     else:
         routes[runs_path] = {
-            "workflow_runs": [{"id": 9, "display_title": "implementer: issue #1010"}]
+            "workflow_runs": [
+                {"id": 9, "event": "issues", "display_title": "implementer: issue #1010"}
+            ]
         }
         routes[f"/repos/{REPO}/actions/runs/9/artifacts"] = error
     client = RoutedClient(routes)
