@@ -5,6 +5,10 @@ tag would run unreviewed code next to the job's token and secrets, so every
 `uses:` in every workflow names a 40-hex commit with its release tag as a
 trailing `# vX.Y.Z` comment, which keeps the pin readable and updatable.
 Local actions (`./path`) are the repo's own reviewed code and are exempt.
+
+The test is offline: it checks the comment's shape, not that the tag resolves
+to the SHA. Pins are resolved upstream when written (git ls-remote) and kept in
+step by Dependabot's github-actions updates.
 """
 
 from __future__ import annotations
