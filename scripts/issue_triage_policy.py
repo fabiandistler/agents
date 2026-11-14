@@ -16,6 +16,8 @@ scripts/test_issue_triage_policy.py keeps them in sync with that table.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 NEEDS_TRIAGE = "needs-triage"
 NEEDS_INFO = "needs-info"
 READY_FOR_AGENT = "ready-for-agent"
@@ -51,12 +53,41 @@ def state_labels(labels: list[str]) -> list[str]:
     return [label for label in STATE_LABELS if label in labels]
 
 
+def _is_bot_triage(comment: dict) -> bool:
+    return comment.get("author") == COMMENT_AUTHOR and COMMENT_MARKER in (comment.get("body") or "")
+
+
 def count_bot_triages(comments: list[dict]) -> int:
     """Count the triage comments the workflow bot posted on the issue."""
-    return sum(
-        1
-        for comment in comments
-        if comment.get("author") == COMMENT_AUTHOR and COMMENT_MARKER in (comment.get("body") or "")
+    return sum(1 for comment in comments if _is_bot_triage(comment))
+
+
+def parse_time(text: str) -> datetime:
+    """An ISO 8601 time with a UTC offset, as GitHub sends ``created_at``.
+
+    Raises ValueError for any other text, and for a time without an offset,
+    which cannot be compared with one that has it.
+    """
+    moment = datetime.fromisoformat(text)
+    if moment.tzinfo is None:
+        raise ValueError("the time has no UTC offset")
+    return moment
+
+
+def _relabeled_since_last_triage(comments: list[dict], label_events: list[dict]) -> bool:
+    """Whether a person added needs-triage after the newest bot triage.
+
+    Creating an issue with needs-triage yields a ``labeled`` event older than
+    the triage it led to, and a bot's ``labeled`` event (the reply requeue)
+    never counts: only a maintainer's later re-add asks for another run.
+    """
+    newest_triage = max(
+        parse_time(comment["created_at"]) for comment in comments if _is_bot_triage(comment)
+    )
+    return any(
+        parse_time(event["created_at"]) > newest_triage
+        for event in label_events
+        if event["label"] == NEEDS_TRIAGE and event["actor_type"] != "Bot"
     )
 
 
@@ -73,10 +104,19 @@ def assess(issue: dict, comments: list[dict], trigger: str) -> dict:
     """Decide whether ``trigger`` may start a triage run on ``issue``.
 
     ``issue`` carries ``state``, ``is_pull_request``, ``author_type``,
-    ``author_association`` and ``labels``. Returns ``eligible``, the
-    ``skip_reason`` when it is not, the current ``states`` labels, the number
-    of earlier automated triages, and ``requeue``: whether a reply moves the
-    issue back to needs-triage even without a usable triage.
+    ``author_association``, ``labels`` and ``label_events``: the issue's
+    ``labeled`` events, each with ``label``, ``actor_type`` and ``created_at``
+    (ISO 8601). Each comment carries ``author``, ``body`` and ``created_at``.
+    An ``opened`` run is only ever the first triage; a ``relabel`` run after a
+    bot triage needs a person's newer needs-triage label event. Both rules see
+    only the comments fetched before the call, so they stop a second run only
+    because the workflow's per-issue concurrency group starts it after the
+    first run has posted its triage.
+
+    Returns ``eligible``, the ``skip_reason`` when it is not, the current
+    ``states`` labels, the number of earlier automated triages, and
+    ``requeue``: whether a reply moves the issue back to needs-triage even
+    without a usable triage.
     """
     if trigger not in TRIGGERS:
         raise ValueError(f"trigger must be one of {TRIGGERS}")
@@ -105,6 +145,14 @@ def assess(issue: dict, comments: list[dict], trigger: str) -> dict:
         decision["skip_reason"] = "the issue carries conflicting state labels"
     elif frozenset(states) not in _expected_states(trigger):
         decision["skip_reason"] = "the issue is not waiting for triage"
+    elif trigger == "opened" and bot_triages > 0:
+        decision["skip_reason"] = "the issue already had its first triage"
+    elif (
+        trigger == "relabel"
+        and bot_triages > 0
+        and not _relabeled_since_last_triage(comments, issue["label_events"])
+    ):
+        decision["skip_reason"] = "no person added needs-triage since the last triage"
     elif trigger in AUTOMATIC_TRIGGERS and bot_triages >= MAX_AUTOMATIC_TRIAGES:
         decision["skip_reason"] = "the automated triage limit is reached"
     else:

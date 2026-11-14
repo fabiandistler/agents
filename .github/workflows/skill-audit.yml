@@ -2,7 +2,7 @@
 # It replaces the Claude Code scheduled task "Weekly skill audit
 # (fabiandistler/agents)" (ADR-0014).
 #
-# The model holds the Claude GitHub App token (see implementer.yml for why):
+# The model holds the Claude GitHub App token (see factory-implementer.yml for why):
 # it updates the rolling `skill-audit` issue and opens at most one fix PR,
 # which the App token lets ci.yml and pr-review.yml check. The procedure, its
 # guardrails and its outputs live in the runbook, not here; the prompt points

@@ -2,12 +2,13 @@
 """Build the read-only PR review request and run the review.
 
 The request builder receives only the context JSON that `pr_github.py` emits:
-pull request metadata, the diff, and the base content of a bounded set of
-changed text files. It never reads a checkout of the pull request head. Before
-assembly it strips HTML comments, CSS-hidden elements, zero-width characters
-and long base64 blobs from the untrusted text, then caps the diff, the base
-content and the total payload. A capped request, or one whose diff lost hidden
-markup, is marked `partial`, which the publisher uses to keep auto-merge off.
+pull request metadata, the diff, the base content of a bounded set of changed
+text files, the linked issues and the comments by people with write access. It
+never reads a checkout of the pull request head. Before assembly it strips HTML
+comments, CSS-hidden elements, zero-width characters and long base64 blobs from
+the untrusted text, then caps the diff, the base content and the total payload.
+A capped request, or one whose diff lost hidden markup, is marked `partial`,
+which the publisher uses to keep auto-merge off.
 
 The model is reached through the unmodified Claude Code CLI (`claude -p`) in
 `pr_review_claude.py`, which holds the subscription-token and tool-less call
@@ -32,9 +33,16 @@ from pathlib import Path
 import pr_cli
 from pr_github import is_line_count
 from pr_review_claude import TOKEN_ENV, ProviderError, run_claude
+from pr_review_comments import render_comments, validate_comments
 from pr_review_linked_issues import render_linked_issues, validate_linked_issues
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
-from pr_review_sanitize import sanitize_text, single_line, truncate_bytes, truncate_text
+from pr_review_sanitize import (
+    sanitize_diff,
+    sanitize_text,
+    single_line,
+    truncate_bytes,
+    truncate_text,
+)
 
 DEFAULT_MODEL = "sonnet"
 MODEL_ENV = "PR_REVIEW_MODEL"
@@ -259,7 +267,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
     )
     body, body_cut = truncate_text(sanitize_text(_as_text(context.get("body"))), MAX_BODY_BYTES)
-    sanitized_diff = sanitize_text(context["diff"])
+    sanitized_diff, diff_removed = sanitize_diff(context["diff"])
     diff, diff_cut = _cap_diff(sanitized_diff)
     if context["diff_status"] == "unavailable":
         diff = "(The diff is unavailable: GitHub did not return it. Only the file list is known.)"
@@ -269,7 +277,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
         notes.append(TRUNCATION_NOTE)
     # Removed diff lines were never reviewed, so the review is partial; markup
     # in the title or body (templates carry HTML comments) is not code.
-    if sanitized_diff != context["diff"]:
+    if diff_removed:
         notes.append(SANITIZED_NOTE)
     partial = bool(notes)
     payload = _render_payload(context, title, body, diff, base_entries, notes)
@@ -282,10 +290,12 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
         payload = (
             truncate_bytes(payload, room) + note if room > 0 else truncate_bytes(payload, budget)
         )
-    # Last, into the room left, so issue text never displaces a diff line.
+    # Last, into the room left, so issue and comment text never displaces a
+    # diff line; the issue's contract comes before the discussion.
     payload += render_linked_issues(
         context.get("linked_issues", []), budget - len(payload.encode("utf-8"))
     )
+    payload += render_comments(context["comments"], budget - len(payload.encode("utf-8")))
 
     request = {
         "model": os.environ.get(MODEL_ENV) or DEFAULT_MODEL,
@@ -327,6 +337,7 @@ def _validate_context(context: dict) -> None:
     if not isinstance(context.get("base_paths_truncated"), bool):
         raise ContextError("context field 'base_paths_truncated' is not a boolean")
     validate_linked_issues(context.get("linked_issues", []))
+    validate_comments(context.get("comments"))
 
 
 def _skipped_reason(context: dict) -> str | None:

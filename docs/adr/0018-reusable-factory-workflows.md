@@ -57,7 +57,9 @@ callers:
 | issue triage | `factory-issue-triage.yml` | `issues: opened, labeled`, `issue_comment`, `workflow_dispatch` | `contents: read`, `issues: write` |
 | triage label | `factory-triage-label.yml` | `issues: opened` | `issues: write` |
 
-The permissions are each task's minimum from #786. Because the calling job
+The permissions are each task's minimum from #786. Amended 2026-11-14 (#792):
+the PR review's calling job also needs `statuses: write`, because `publish`
+sets the `pr-review/verdict` status (#764), which #786 predates. Because the calling job
 caps the called workflow, a caller that grants less breaks the task, and one
 that grants more gives the called workflow nothing it does not ask for.
 
@@ -139,8 +141,8 @@ dedicated-App fallback is recorded.
   repositories are free on standard runners
   ([GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)).
 - **Capacity.** `MAX_WORKING_RUNS` counts per repository
-  (`scripts/implementer_capacity.py:19`; the runs it counts are listed per
-  repository at `:71`), so three repositories can run three implementers
+  (`scripts/implementer_capacity.py:18`; the runs it counts are listed per
+  repository at `scripts/agent_run_capacity.py:110`), so three repositories can run three implementers
   on one Claude subscription at once. Accepted: one implementer per
   repository keeps each repository's branch and PR queue serial, which is
   what the limit protects. Subscription limits are shared anyway with

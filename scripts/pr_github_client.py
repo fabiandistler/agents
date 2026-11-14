@@ -3,6 +3,7 @@
 ``GitHubClient`` is a small stdlib client with an injectable opener, so tests
 run without a network. ``FetchError`` is the one error every GitHub call
 raises; ``REPO_PATTERN`` is the OWNER/REPO shape every API path is built from.
+``get_json`` and ``paginate`` decode the JSON a ``ReadClient`` returns.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ USER_AGENT = "agents-pr-review"
 API_VERSION = "2022-11-28"
 
 REPO_PATTERN = re.compile(r"^[^/\s]+/[^/\s]+$")
+PER_PAGE = 100
 
 
 class FetchError(RuntimeError):
@@ -131,3 +133,31 @@ class GitHubClient:
             ) from error
         except urllib.error.URLError as error:
             raise FetchError(f"GitHub API request failed for {path}: {error.reason}") from error
+
+
+def get_json(client: ReadClient, path: str, params: dict[str, object] | None = None) -> Any:
+    """GET ``path`` and decode the JSON body; ``FetchError`` on anything else."""
+    response = client.get(path, params=params)
+    try:
+        return response.json()
+    except ValueError as error:
+        raise FetchError(f"GitHub API returned invalid JSON for {path}") from error
+
+
+def paginate(client: ReadClient, path: str, params: dict[str, object] | None = None) -> list[dict]:
+    """GET every page of the list at ``path``; each item must be a JSON object."""
+    items: list[dict] = []
+    page = 1
+    while True:
+        page_items = get_json(
+            client, path, params={**(params or {}), "per_page": PER_PAGE, "page": page}
+        )
+        if not isinstance(page_items, list):
+            raise FetchError(f"GitHub API returned an unexpected payload for {path}")
+        for item in page_items:
+            if not isinstance(item, dict):
+                raise FetchError(f"GitHub API returned a non-object item for {path}")
+            items.append(item)
+        if len(page_items) < PER_PAGE:
+            return items
+        page += 1

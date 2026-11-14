@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Claim one issue's branch for an implementer run, or say why the run must stop.
 
-implementer.yml's model runs this as its first write, with the App token it
+factory-implementer.yml's model runs this as its first write, with the App token it
 already holds: no step before the model step has a token that can create a
 ref. Creating the branch is the atomic claim. A branch that already exists is
 recovered, kept for the pull request that holds it, or handed to a person.
@@ -51,8 +51,15 @@ from implementer_setup import (
     workflow_file,
 )
 from issue_triage_policy import READY_FOR_AGENT, READY_FOR_HUMAN
-from pr_github import get_json, paginate
-from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
+from pr_github_client import (
+    REPO_PATTERN,
+    FetchError,
+    GitHubClient,
+    MissingTokenError,
+    ReadClient,
+    get_json,
+    paginate,
+)
 from ticket_blockers import declared_blockers
 
 MAIN_BRANCH = "main"
@@ -201,7 +208,7 @@ def _commits_ahead(client: GitHubClient, repo: str, main_sha: str, branch_sha: s
     return ahead_by
 
 
-def _remove_ready_label(client: GitHubClient, issue_path: str) -> None:
+def remove_ready_label(client: GitHubClient, issue_path: str) -> None:
     try:
         client.delete(f"{issue_path}/labels/{READY_FOR_AGENT}")
     except FetchError as error:
@@ -214,8 +221,13 @@ def _hand_to_person(client: GitHubClient, repo: str, issue: int, branch: str) ->
     """Comment, then swap the labels; the person is told before the state changes."""
     issue_path = f"/repos/{repo}/issues/{issue}"
     client.post(f"{issue_path}/comments", {"body": HANDOFF_COMMENT.format(branch=branch)})
+    swap_to_human(client, issue_path)
+
+
+def swap_to_human(client: GitHubClient, issue_path: str) -> None:
+    """Replace `ready-for-agent` with `ready-for-human` on the issue at ``issue_path``."""
     client.post(f"{issue_path}/labels", {"labels": [READY_FOR_HUMAN]})
-    _remove_ready_label(client, issue_path)
+    remove_ready_label(client, issue_path)
 
 
 def _release_ticket(client: GitHubClient, repo: str, issue: int, comment: str) -> None:
@@ -224,7 +236,7 @@ def _release_ticket(client: GitHubClient, repo: str, issue: int, comment: str) -
     try:
         client.post(f"{issue_path}/comments", {"body": comment})
     finally:
-        _remove_ready_label(client, issue_path)
+        remove_ready_label(client, issue_path)
 
 
 def _closed_as_completed(issue: object, path: str) -> bool:

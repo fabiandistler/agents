@@ -20,7 +20,7 @@ from issue_triage_policy import STATE_LABELS
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "factory-issue-triage.yml"
 CALLER = REPO_ROOT / ".github" / "workflows" / "issue-triage.yml"
-PR_REVIEW = REPO_ROOT / ".github" / "workflows" / "pr-review.yml"
+PR_REVIEW = REPO_ROOT / ".github" / "workflows" / "factory-pr-review.yml"
 MODEL_KEY = "CLAUDE_CODE_OAUTH_TOKEN"
 UNTRUSTED = re.compile(r"github\.event\.(?:issue\.(?:title|body)|comment\.body)")
 FACTORY = "${{ runner.temp }}/factory"
@@ -164,7 +164,7 @@ def test_the_cli_version_matches_the_pr_review_pin():
 
 def test_the_model_reads_the_default_branch_whatever_the_trigger():
     steps = _jobs()["triage"]["steps"]
-    workspace = [s for s in steps if _is_checkout(s) and "path" not in s["with"]]
+    workspace = [s for s in steps if _is_checkout(s)]
     assert len(workspace) == 1, "one checkout of the caller into the workspace"
     assert "repository" not in workspace[0]["with"], "the caller's own repository"
     assert workspace[0]["with"]["ref"] == "${{ github.event.repository.default_branch }}"
@@ -177,27 +177,36 @@ def test_the_model_reads_the_checkout_and_its_inputs_stay_outside_it():
     assert "runner.temp" in _text(_jobs()["triage"])
 
 
-def test_every_job_runs_the_scripts_from_the_factory_checkout_outside_the_workspace():
+def _pr_review_fetch() -> dict:
+    review = yaml.safe_load(PR_REVIEW.read_text(encoding="utf-8"))
+    return next(
+        step
+        for job in review["jobs"].values()
+        for step in job.get("steps", [])
+        if step.get("name") == "Fetch the factory scripts"
+    )
+
+
+def test_every_job_runs_the_scripts_from_the_factory_fetch_outside_the_workspace():
+    # One mechanism for every factory task (ADR-0018): the same anonymous fetch
+    # of the workflow's own commit into $RUNNER_TEMP/factory as the PR review.
+    reference = _pr_review_fetch()
+    assert "${{ job.workflow_sha }}" in reference["env"].values()
     for name, job in _jobs().items():
         steps = job["steps"]
-        factory = [s for s in steps if _is_checkout(s) and "repository" in s["with"]]
-        assert len(factory) == 1, f"{name}: one checkout of the factory"
-        assert factory[0]["with"] == {
-            "repository": "${{ job.workflow_repository }}",
-            "ref": "${{ job.workflow_sha }}",
-            "path": ".factory",
-            "persist-credentials": False,
-        }, name
-        # actions/checkout only writes under the workspace; the next step moves
-        # the tree to the runner's temp directory, which lies outside it.
-        move = steps[steps.index(factory[0]) + 1]
-        assert move["env"] == {"FACTORY": FACTORY}, name
-        assert move["run"].strip() == 'mv "$GITHUB_WORKSPACE/.factory" "$FACTORY"', name
+        fetches = [s for s in steps if s.get("name") == "Fetch the factory scripts"]
+        assert len(fetches) == 1, f"{name}: one factory fetch"
+        assert fetches[0]["env"] == reference["env"], name
+        assert fetches[0]["run"] == reference["run"], name
+        checkouts = [s for s in steps if _is_checkout(s)]
+        assert all("repository" not in s["with"] for s in checkouts), name
         for step in steps:
             run = step.get("run", "")
             if "python3" in run:
                 assert step["env"]["FACTORY"] == FACTORY, f"{name}: {step.get('name')}"
                 assert "scripts/" not in run.replace('"$FACTORY/scripts/', ""), name
+        python = [s for s in steps if "python3" in s.get("run", "")]
+        assert steps.index(fetches[0]) < steps.index(python[0]), name
 
 
 def test_the_model_workspace_is_never_the_factory_checkout():

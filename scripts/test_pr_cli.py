@@ -10,7 +10,14 @@ import pr_cli
 import pytest
 
 SCRIPTS = Path(__file__).resolve().parent
-CLIS = ("pr_github.py", "pr_risk.py", "pr_review.py", "pr_publish.py", "pr_apply.py")
+CLIS = (
+    "pr_github.py",
+    "pr_risk.py",
+    "pr_review.py",
+    "pr_publish.py",
+    "pr_apply.py",
+    "pr_skip.py",
+)
 
 
 def test_every_failure_class_has_its_own_code():
@@ -23,6 +30,7 @@ def test_every_failure_class_has_its_own_code():
         5: "missing GITHUB_TOKEN",
         6: "output file not writable",
         7: "--write outside GitHub Actions",
+        8: "review unavailable",
     }
 
 
@@ -44,8 +52,9 @@ def documented_exits(help_text: str) -> dict[int, str]:
         ("pr_github.py", {0, 2, 4, 5, 6}),
         ("pr_risk.py", {0, 2, 3, 4, 5, 6}),
         ("pr_review.py", {0, 2, 3, 6}),
-        ("pr_publish.py", {0, 1, 2, 3, 4, 5, 6, 7}),
+        ("pr_publish.py", {0, 1, 2, 3, 4, 5, 6, 7, 8}),
         ("pr_apply.py", {0, 1, 2, 3, 5, 7}),
+        ("pr_skip.py", {0, 2, 3}),
     ],
 )
 def test_every_cli_documents_its_codes_with_the_shared_meanings(script, codes):

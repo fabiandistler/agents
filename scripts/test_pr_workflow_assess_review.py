@@ -58,13 +58,6 @@ def test_assess_holds_the_read_scopes_it_needs(workflow: dict[Any, Any]) -> None
     )
 
 
-def test_assess_checks_out_the_base_without_a_ref(workflow: dict[Any, Any]) -> None:
-    step = step_using(job_named(workflow, "assess"), "actions/checkout@")
-    assert "ref" not in (step.get("with") or {}), (
-        "the assess checkout must not select a ref: the workflow runs from the base commit"
-    )
-
-
 def test_assess_sets_up_python_312(workflow: dict[Any, Any]) -> None:
     step = step_using(job_named(workflow, "assess"), "actions/setup-python@")
     version = (step.get("with") or {}).get("python-version")

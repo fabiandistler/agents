@@ -46,7 +46,12 @@ def test_fetch_context_maps_every_contract_field():
         ),
         comment_pages=(
             [
-                {"id": 1, "body": "first", "user": {"login": "someone"}},
+                {
+                    "id": 1,
+                    "body": "first",
+                    "user": {"login": "someone"},
+                    "author_association": "MEMBER",
+                },
                 {"id": 2, "body": None},
             ],
         ),
@@ -140,8 +145,9 @@ def test_fetch_context_maps_every_contract_field():
         "scripts/new_name.py": "old\n",
     }
     assert context["comments"] == [
-        {"id": 1, "body": "first", "author": "someone"},
-        {"id": 2, "body": "", "author": ""},
+        {"id": 1, "body": "first", "author": "someone", "author_association": "MEMBER"},
+        # A missing association is no association: the review drops the comment.
+        {"id": 2, "body": "", "author": "", "author_association": ""},
     ]
     assert context["reviews"] == {"changes_requested": True}
     # Check results are no gate (decision A): they are neither fetched nor carried.

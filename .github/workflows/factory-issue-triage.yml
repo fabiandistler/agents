@@ -19,11 +19,11 @@
 # `issues: [opened, labeled]`, `issue_comment: [created]` and
 # `workflow_dispatch`, and grants `contents: read` and `issues: write`.
 #
-# Scripts and the prompt run from a checkout of this workflow's own repository
-# and commit (job.workflow_repository at job.workflow_sha) under
-# $RUNNER_TEMP/factory, outside the workspace: the model never sees it, and the
-# scripts always match the pinned workflow file. actions/checkout only writes
-# under the workspace, so each job checks out to .factory and moves it out.
+# Scripts and the prompt run from this workflow's own repository and commit
+# (job.workflow_repository at job.workflow_sha), fetched anonymously into
+# $RUNNER_TEMP/factory as in factory-pr-review.yml: outside the workspace, so
+# the model never sees it, and the scripts always match the pinned workflow
+# file. actions/checkout cannot do that: it writes only under the workspace.
 name: factory-issue-triage
 
 on:
@@ -118,17 +118,17 @@ jobs:
       eligible: ${{ steps.decide.outputs.eligible }}
       requeue: ${{ steps.decide.outputs.requeue }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          path: .factory
-          persist-credentials: false
-
-      - name: Move the factory checkout out of the workspace
+      - name: Fetch the factory scripts
         env:
-          FACTORY: ${{ runner.temp }}/factory
-        run: mv "$GITHUB_WORKSPACE/.factory" "$FACTORY"
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          git init --quiet "$RUNNER_TEMP/factory"
+          git -C "$RUNNER_TEMP/factory" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$RUNNER_TEMP/factory" checkout --quiet --detach FETCH_HEAD
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -184,17 +184,17 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          path: .factory
-          persist-credentials: false
-
-      - name: Move the factory checkout out of the workspace
+      - name: Fetch the factory scripts
         env:
-          FACTORY: ${{ runner.temp }}/factory
-        run: mv "$GITHUB_WORKSPACE/.factory" "$FACTORY"
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          git init --quiet "$RUNNER_TEMP/factory"
+          git -C "$RUNNER_TEMP/factory" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$RUNNER_TEMP/factory" checkout --quiet --detach FETCH_HEAD
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -252,17 +252,17 @@ jobs:
     permissions:
       issues: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          path: .factory
-          persist-credentials: false
-
-      - name: Move the factory checkout out of the workspace
+      - name: Fetch the factory scripts
         env:
-          FACTORY: ${{ runner.temp }}/factory
-        run: mv "$GITHUB_WORKSPACE/.factory" "$FACTORY"
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          git init --quiet "$RUNNER_TEMP/factory"
+          git -C "$RUNNER_TEMP/factory" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$RUNNER_TEMP/factory" checkout --quiet --detach FETCH_HEAD
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
