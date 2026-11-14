@@ -211,7 +211,36 @@ def test_a_timed_out_run_is_filed():
     assert _plan(run=_run(conclusion="timed_out"))["action"]["kind"] == "create_issue"
 
 
-@pytest.mark.parametrize("path", [".github/workflows/ci.yml", ".github/workflows/fix-task.yml", ""])
+@pytest.mark.parametrize(
+    ("path", "name"),
+    [
+        (IMPLEMENTER, "implementer"),
+        (".github/workflows/skill-audit.yml", "skill-audit"),
+        (".github/workflows/issue-triage.yml", "issue-triage"),
+        (".github/workflows/pr-review.yml", "pr-review"),
+        (".github/workflows/rework.yml", "rework"),
+        (".github/workflows/retro.yml", "retro"),
+    ],
+)
+def test_a_failed_run_of_each_factory_task_is_filed(path, name):
+    planned = _plan(run=_run(path=path, name=name, display_title=name))
+    assert planned["skip_reason"] is None
+    assert planned["action"]["kind"] == "create_issue"
+    assert planned["action"]["title"].startswith(f"{name}: ")
+    assert planned["signature"]["workflow"] == path
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/ci.yml",
+        ".github/workflows/fix-task.yml",
+        # A called workflow runs inside its caller's run, which carries the
+        # caller's path; a run with this path never exists.
+        ".github/workflows/factory-pr-review.yml",
+        "",
+    ],
+)
 def test_an_unwatched_workflow_is_ignored(path):
     planned = _plan(run=_run(path=path))
     assert planned["action"] is None

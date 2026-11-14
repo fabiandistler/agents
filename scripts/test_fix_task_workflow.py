@@ -44,6 +44,20 @@ def test_it_watches_exactly_the_policy_workflows_and_not_itself():
     assert on["workflow_dispatch"]["inputs"]["dry_run"]["default"] is True
 
 
+def test_it_watches_the_rework_and_retro_tasks():
+    watched = _workflow()[True]["workflow_run"]["workflows"]
+    assert {"rework", "retro"} <= set(watched)
+
+
+def test_every_watched_workflow_starts_runs_of_its_own():
+    # A called (workflow_call) workflow runs inside its caller's run: its
+    # failure is the caller's failed run, under the caller's name and path. So
+    # the callers are watched, never the called files.
+    for path in factory_failure_policy.WATCHED_WORKFLOWS:
+        triggers = yaml.safe_load((REPO_ROOT / path).read_text(encoding="utf-8"))[True]
+        assert set(triggers) - {"workflow_call"}, path
+
+
 def test_no_model_and_no_app_token():
     text = WORKFLOW.read_text(encoding="utf-8")
     for forbidden in ("claude", "anthropic", "CLAUDE_CODE_OAUTH_TOKEN", "id-token", "app-token"):

@@ -1,10 +1,10 @@
 """The rules of the Fix task, free of I/O: one issue per factory failure signature.
 
-A failed factory run (implementer, skill-audit, issue-triage, pr-review) is
-reduced to a signature: the workflow path, the job and step of the first
-failure, and a normalized reason. The reason is the first annotation starting
-with ``RUN FAILED`` (``agent_run_report.py`` prints it), otherwise the job's
-first error annotation. Numbers, SHAs, URLs and ``#<n>`` become placeholders,
+A failed factory run (implementer, skill-audit, issue-triage, pr-review,
+rework, retro) is reduced to a signature: the workflow path, the job and step
+of the first failure, and a normalized reason. The reason is the first
+annotation starting with ``RUN FAILED`` (``agent_run_report.py`` prints it),
+otherwise the job's first error annotation. Numbers, SHAs, URLs and ``#<n>`` become placeholders,
 so two runs failing the same way share a signature and one issue.
 
 ``plan`` decides the one write for a run: a comment on the open issue with the
@@ -34,6 +34,8 @@ WATCHED_WORKFLOWS = (
     ".github/workflows/skill-audit.yml",
     ".github/workflows/issue-triage.yml",
     ".github/workflows/pr-review.yml",
+    ".github/workflows/rework.yml",
+    ".github/workflows/retro.yml",
 )
 IMPLEMENTER = ".github/workflows/implementer.yml"
 FAILED_CONCLUSIONS = ("failure", "timed_out")

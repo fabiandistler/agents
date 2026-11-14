@@ -108,6 +108,57 @@ def test_http_error_becomes_fetch_error_without_leaking_the_token():
     assert "s3cret-token" not in str(info.value)
 
 
+@pytest.mark.parametrize(
+    ("body", "reason"),
+    [
+        (
+            b'{"message": "Resource not accessible by integration"}',
+            ": Resource not accessible by integration",
+        ),
+        (b'{"message": "line one\\n  line two"}', ": line one line two"),
+        (b"<html>not json</html>", ""),
+        (b'{"errors": []}', ""),
+        (b'["a list"]', ""),
+        (b"", ""),
+    ],
+)
+def test_http_error_names_the_method_and_githubs_reason(body, reason):
+    # GET and POST on /issues/<n>/comments failed with the same text, so a 403
+    # did not tell the list from the comment; GitHub's message says why.
+    def opener(request, timeout=None):
+        raise urllib.error.HTTPError(
+            request.full_url, 403, "Forbidden", Message(), io.BytesIO(body)
+        )
+
+    client = pr_github_client.GitHubClient("token", opener=opener)
+
+    with pytest.raises(pr_github_client.FetchError) as info:
+        client.post("/repos/o/r/issues/7/comments", {"body": "x"})
+
+    assert (
+        str(info.value) == f"GitHub API returned 403 for POST /repos/o/r/issues/7/comments{reason}"
+    )
+    assert info.value.status == 403
+
+
+def test_http_error_caps_githubs_reason():
+    long_reason = "x" * 1000
+
+    def opener(request, timeout=None):
+        body = json.dumps({"message": long_reason}).encode("utf-8")
+        raise urllib.error.HTTPError(
+            request.full_url, 422, "Unprocessable", Message(), io.BytesIO(body)
+        )
+
+    client = pr_github_client.GitHubClient("token", opener=opener)
+
+    with pytest.raises(pr_github_client.FetchError) as info:
+        client.get("/repos/o/r")
+
+    capped = "x" * pr_github_client.MAX_API_REASON
+    assert str(info.value) == f"GitHub API returned 422 for GET /repos/o/r: {capped}"
+
+
 def test_network_error_becomes_fetch_error():
     def opener(request, timeout=None):
         raise urllib.error.URLError("connection refused")

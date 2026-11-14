@@ -9,9 +9,24 @@ as a file artifact, and the report step.
 
 import re
 from pathlib import Path
+from typing import cast
 
 import rework_gate
 import yaml
+from pr_github_client import GitHubClient
+from rework_testkit import (
+    OTHER_HEAD,
+    OWN_RUN,
+    PR,
+    REPO,
+    REVIEW_RUN,
+    THIRD_HEAD,
+    FakeGitHub,
+    context,
+    marker,
+    rest_comment,
+    review,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "rework.yml"
@@ -53,10 +68,40 @@ def test_permissions_are_empty_by_default_and_narrow_in_each_job():
     assert _job("gate")["permissions"] == {
         "contents": "read",
         "actions": "read",
-        "pull-requests": "read",
+        "pull-requests": "write",
         "issues": "write",
     }
     assert _job("rework")["permissions"] == {"contents": "read", "id-token": "write"}
+
+
+def _gate_write_paths(tmp_path: Path, comments: list[dict]) -> set[str]:
+    fake = FakeGitHub(comments=comments)
+    rework_gate.decide_rework(
+        cast(GitHubClient, fake),
+        REPO,
+        REVIEW_RUN,
+        review(),
+        context(),
+        own_run_id=OWN_RUN,
+        findings_path=tmp_path / "findings.json",
+        write=True,
+    )
+    return {path for _, path, _ in fake.writes}
+
+
+def test_the_gate_holds_write_scope_on_every_kind_of_target_it_writes(tmp_path):
+    # A comment on a pull request needs pull-requests: write, even through the
+    # issues API: with issues: write and pull-requests: read, GitHub refused
+    # the round marker on pull request #835 with 403 (rework run 43613599819),
+    # while pr-review's publish job, holding pull-requests: write, comments on
+    # the same pull request. issues: write covers the label swap on the issue.
+    used_up = [rest_comment(marker(1, OTHER_HEAD)), rest_comment(marker(2, THIRD_HEAD))]
+    paths = _gate_write_paths(tmp_path, []) | _gate_write_paths(tmp_path, used_up)
+    pull_request = f"/repos/{REPO}/issues/{PR}/"
+    scopes = {"pull-requests" if path.startswith(pull_request) else "issues" for path in paths}
+    assert scopes == {"pull-requests", "issues"}, "proceed and handoff write both kinds"
+    for scope in scopes:
+        assert _job("gate")["permissions"][scope] == "write", scope
 
 
 def test_job_names_match_the_capacity_check():
