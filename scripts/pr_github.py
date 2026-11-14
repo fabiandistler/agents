@@ -101,7 +101,8 @@ def _map_file(entry: dict) -> dict:
     }
 
 
-def _comment(entry: dict) -> dict:
+def comment_entry(entry: dict) -> dict:
+    """One REST issue comment as id, body, author login and author association."""
     body = entry.get("body")
     user = entry.get("user")
     login = user.get("login") if isinstance(user, dict) else None
@@ -265,7 +266,8 @@ def fetch_context(
 
     files = [_map_file(entry) for entry in paginate(client, f"{pr_path}/files")]
     comments = [
-        _comment(entry) for entry in paginate(client, f"/repos/{repo}/issues/{number}/comments")
+        comment_entry(entry)
+        for entry in paginate(client, f"/repos/{repo}/issues/{number}/comments")
     ]
     reviews = _review_state(paginate(client, f"{pr_path}/reviews"))
 

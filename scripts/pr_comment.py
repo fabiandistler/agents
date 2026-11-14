@@ -35,7 +35,8 @@ def _render_finding(finding: dict) -> str:
     return rendered
 
 
-def _fenced_block(text: str) -> list[str]:
+def fenced_block(text: str) -> list[str]:
+    """A ```text block around `text`, fenced longer than any backtick run in it."""
     longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
     fence = "`" * max(3, longest + 1)
     return [f"{fence}text", text.rstrip(), fence]
@@ -74,7 +75,7 @@ def _render_comment(
             "",
             "The model response could not be parsed, so it is shown verbatim:",
             "",
-            *_fenced_block(raw),
+            *fenced_block(raw),
         ]
     if review.get("partial") is True:
         lines += [
@@ -112,18 +113,25 @@ def _render_comment(
     return "\n".join(lines)
 
 
+def bot_comments(comments: object) -> list[dict]:
+    """The comments ``COMMENT_AUTHOR`` wrote; a marker in anyone else's comment is quoted text."""
+    return [
+        comment
+        for comment in (comments if isinstance(comments, list) else [])
+        if isinstance(comment, dict)
+        and comment.get("author") == COMMENT_AUTHOR
+        and isinstance(comment.get("body"), str)
+    ]
+
+
 def is_sticky_comment(comment: dict) -> bool:
     """Whether ``comment`` is this bot's own review comment, not a human one quoting its marker."""
-    body = comment.get("body")
-    return (
-        comment.get("author") == COMMENT_AUTHOR and isinstance(body, str) and COMMENT_MARKER in body
-    )
+    return any(COMMENT_MARKER in own["body"] for own in bot_comments([comment]))
 
 
 def _sticky_comment(context: dict) -> dict | None:
-    comments = context.get("comments")
-    for comment in comments if isinstance(comments, list) else []:
-        if isinstance(comment, dict) and is_sticky_comment(comment):
+    for comment in bot_comments(context.get("comments")):
+        if is_sticky_comment(comment):
             return comment
     return None
 

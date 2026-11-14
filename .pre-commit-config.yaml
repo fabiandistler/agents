@@ -165,5 +165,5 @@ repos:
         language: system
         entry: bash scripts/check_all.sh --only bats
         pass_filenames: false
-        files: ^(install(-wizard)?\.sh|\.gitmodules|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|(scripts|test|skills|plugins|instructions)/.*)$
+        files: ^(install(-wizard)?\.sh|\.gitmodules|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|(scripts|test|skills|plugins|instructions|\.claude/hooks)/.*)$
         stages: [pre-push]

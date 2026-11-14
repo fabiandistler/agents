@@ -22,6 +22,7 @@ product page; this page routes from a job to the page that does it.
 - [Weekly skill audit](agents/skill-audit.md) — the scheduled content review and its checklist
 - [Retro](agents/retro.md) — the throttled review of merged agent PRs that proposes instruction changes
 - [Agent runs in Actions](adr/0014-agent-runs-in-github-actions.md) — implementer and skill audit workflows, their token and brakes
+- [Fix task](adr/0016-fix-task.md) — failed factory runs filed as one deduplicated issue each
 
 ## Reference and records
 
