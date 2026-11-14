@@ -13,7 +13,10 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
 `.github/workflows/triage-label.yml` adds `needs-triage` to every new issue
-that opens without a state label. It needs no model and no secret;
+that opens without a state label. It calls the reusable workflow
+`.github/workflows/factory-triage-label.yml`
+([ADR-0018](../adr/0018-reusable-factory-workflows.md)), which holds the job
+and its state-label guard and takes no inputs. It needs no model and no secret;
 `scripts/test_triage_label_workflow.py` keeps its state labels in sync with
 this table.
 
@@ -44,6 +47,17 @@ with this table.
 Setup: the `CLAUDE_CODE_OAUTH_TOKEN` secret of the PR review; the optional
 repository variable `ISSUE_TRIAGE_MODEL` (default `sonnet`). A failed or
 off-format model answer writes nothing; the run log says why.
+
+`issue-triage.yml` is a thin caller of the reusable workflow
+`.github/workflows/factory-issue-triage.yml`
+([ADR-0018](../adr/0018-reusable-factory-workflows.md)), which holds the three
+jobs, their filter and the per-issue concurrency group. Its inputs are `issue`
+and `dry_run` (read on a manual run only) and `setup_command` (run in the
+caller's checkout before the model step, without secrets); its secret is
+`CLAUDE_CODE_OAUTH_TOKEN`, passed by name. A caller grants `contents: read` and
+`issues: write`, and `ISSUE_TRIAGE_MODEL` is read from the caller's
+repository. The scripts and the prompt run from a checkout of the workflow's
+own commit outside the workspace, so the model never reads them.
 
 ## Implementer claim
 
