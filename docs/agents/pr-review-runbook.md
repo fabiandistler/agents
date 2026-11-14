@@ -61,9 +61,10 @@ the `pull_request_target` trigger runs only with the event policy of
   Code CLI with `--tools ""`, a replaced system prompt, no settings, MCP
   servers or slash commands, and an empty working directory. Injected text can
   sway its verdict but cannot run a command or read the token. Its risk can
-  raise the path-based risk, never lower it. Title, body and diff are untrusted data: HTML comments,
-  zero-width characters and base64 blobs are stripped before the prompt is
-  built. Unparseable output becomes `concerns` and `high`.
+  raise the path-based risk, never lower it. Title, body and diff are
+  untrusted: HTML comments (in code diffs only neutralized), zero-width
+  characters and base64 blobs are stripped. Unparseable output becomes
+  `concerns` and `high`.
 - **Drafts and forks** are assessed and labeled but not reviewed; their
   review is `skipped`. A fork's diff never reaches the job that holds a
   secret, and a fork never auto-merges.
