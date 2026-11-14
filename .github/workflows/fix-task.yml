@@ -5,11 +5,13 @@
 # issue for the failure signature or files a new one. Issues and comments made
 # with GITHUB_TOKEN start no workflow, and this workflow does not watch itself,
 # so nothing here starts a fix: a person posts a brief and adds ready-for-agent.
+# A called factory-*.yml workflow runs inside its caller's run, so its failure
+# is filed under the caller's name and path; only callers are listed below.
 name: fix-task
 
 on:
   workflow_run: # zizmor: ignore[dangerous-triggers] model-free, GITHUB_TOKEN only; it reads the run by id and writes issues
-    workflows: [implementer, skill-audit, issue-triage, pr-review]
+    workflows: [implementer, skill-audit, issue-triage, pr-review, rework, retro]
     types: [completed]
   workflow_dispatch:
     inputs:

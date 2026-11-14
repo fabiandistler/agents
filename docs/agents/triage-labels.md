@@ -155,9 +155,9 @@ repository variable `REWORK_MODEL` (default `sonnet`).
 ## Fix task
 
 `.github/workflows/fix-task.yml` runs `scripts/factory_failure.py` after a
-factory run (`implementer`, `skill-audit`, `issue-triage`, `pr-review`)
-concludes `failure` or `timed_out` ([ADR-0016](../adr/0016-fix-task.md)). It
-needs no model. It files issues with the label `factory-failure`, which it
+factory run (`implementer`, `skill-audit`, `issue-triage`, `pr-review`,
+`rework`, `retro`) concludes `failure` or `timed_out`
+([ADR-0016](../adr/0016-fix-task.md)). It needs no model. It files issues with the label `factory-failure`, which it
 creates on first use, plus `bug` and `needs-triage`. Each issue carries the
 marker `<!-- factory-failure:<hash> -->` of one failure signature: workflow
 path, job, step and the normalized reason.

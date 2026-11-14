@@ -6,6 +6,14 @@ Accepted (2026-11-14) for #783; proposed 2026-11-13. The scripts, tests and
 docs landed first; the workflow `.github/workflows/fix-task.yml` was added by
 hand afterwards, because the implementer cannot write workflow files.
 
+Amended 2026-11-14: the Fix task also watches `rework`
+([ADR-0015](0015-rework-task.md)) and `retro`
+([ADR-0017](0017-retro-task.md)), which went live with it but were missing
+from its list, so the first failed Rework run (43613599819) was not filed.
+A called `factory-*.yml` workflow needs no entry
+([ADR-0018](0018-reusable-factory-workflows.md)): it runs inside its caller's
+run, which carries the caller's name and path.
+
 ## Context
 
 The factory workflows fail in two ways. The agent runs (`implementer`,
@@ -21,13 +29,14 @@ step summary is not readable through the REST API.
 model-free job.
 
 **Trigger.** `workflow_run`, type `completed`, for `implementer`,
-`skill-audit`, `issue-triage` and `pr-review`, and `workflow_dispatch` with a
-run id, which plans only unless `dry_run` is false. It acts on conclusion
-`failure` or `timed_out` only. Excluded: `cancelled` (a person or a newer run
-stopped it, nothing broke), `ci.yml` (a red check on a pull request is the
-author's to fix, and it reports itself there), and the Fix task itself, which
-does not watch its own runs. `factory_failure_policy.WATCHED_WORKFLOWS` repeats
-the list, so a dispatch for any other run plans nothing.
+`skill-audit`, `issue-triage`, `pr-review`, `rework` and `retro`, and
+`workflow_dispatch` with a run id, which plans only unless `dry_run` is false.
+It acts on conclusion `failure` or `timed_out` only. Excluded: `cancelled` (a
+person or a newer run stopped it, nothing broke), `ci.yml` (a red check on a
+pull request is the author's to fix, and it reports itself there), and the Fix
+task itself, which does not watch its own runs: a run failing for a lasting
+cause would start the next one. `factory_failure_policy.WATCHED_WORKFLOWS`
+repeats the list, so a dispatch for any other run plans nothing.
 
 **Readable reason.** `agent_run_report.py` also prints one `::error::` line
 with the failed summary's first line (or the no-summary line), capped at 300
