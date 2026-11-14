@@ -25,6 +25,10 @@ API_VERSION = "2022-11-28"
 
 REPO_PATTERN = re.compile(r"^[^/\s]+/[^/\s]+$")
 PER_PAGE = 100
+# GitHub's own error text ("Resource not accessible by integration", "API rate
+# limit exceeded ...") tells a missing scope from a limit; a cap keeps it one
+# short line.
+MAX_API_REASON = 200
 
 
 class FetchError(RuntimeError):
@@ -129,10 +133,23 @@ class GitHubClient:
                 )
         except urllib.error.HTTPError as error:
             raise FetchError(
-                f"GitHub API returned {error.code} for {path}", status=error.code
+                f"GitHub API returned {error.code} for {method} {path}{_api_reason(error)}",
+                status=error.code,
             ) from error
         except urllib.error.URLError as error:
             raise FetchError(f"GitHub API request failed for {path}: {error.reason}") from error
+
+
+def _api_reason(error: urllib.error.HTTPError) -> str:
+    """``": <message>"`` from GitHub's JSON error body, or "" when it has none."""
+    try:
+        payload = json.loads(error.read().decode("utf-8"))
+    except (OSError, ValueError):
+        return ""
+    message = payload.get("message") if isinstance(payload, dict) else None
+    if not isinstance(message, str) or not message.strip():
+        return ""
+    return ": " + " ".join(message.split())[:MAX_API_REASON]
 
 
 def get_json(client: ReadClient, path: str, params: dict[str, object] | None = None) -> Any:
