@@ -24,7 +24,7 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 # manifest check runs first.
 CHECKS=(manifest routers descriptions docs plugins instructions python-baseline project-claude
   vendor-lock instruction-unicode frontmatter evals vocab gh-graphql skill-refs reference-tocs
-  dated-claims table-width skill-paths secret-argv pytest prek compileall bats mermaid)
+  dated-claims table-width skill-paths secret-argv zizmor pytest prek compileall bats mermaid)
 
 usage() {
   cat <<'EOF'
@@ -38,7 +38,9 @@ Runs every CI check from the repo root; one PASS/FAIL/MISSING line per check.
   -h, --help     show this help
 Env: PYTHON (default python3, must be 3.11 or newer). The prek check runs ruff, ty, shellcheck, shfmt
 and the secret scan at the versions pinned in .pre-commit-config.yaml; its
-hooks may rewrite files (ruff --fix, shfmt, whitespace).
+hooks may rewrite files (ruff --fix, shfmt, whitespace). A failing prek check
+prints each hook's result, then `git diff --stat` of the work tree (up to 10
+files); run `git diff` for the full change.
 Exit: 0 all passed, 1 a check failed, 2 usage error,
       3 nothing failed but a check could not run (tool missing),
       4 PYTHON is missing or older than 3.11.
@@ -55,6 +57,7 @@ needs() {
     frontmatter) echo "$PY pyyaml" ;;
     pytest) echo "$PY pytest pyyaml" ;;
     prek) echo "prek" ;;
+    zizmor) echo "zizmor" ;;
     # The install.sh suites run quick_validate.py, which imports yaml.
     bats) echo "bash $PY pyyaml bats-submodules" ;;
     mermaid) echo "npx" ;;
@@ -140,10 +143,28 @@ run_check() {
     table-width) "$PY" scripts/check_table_width.py ;;
     skill-paths) "$PY" scripts/check_skill_paths.py ;;
     secret-argv) "$PY" scripts/check_secret_argv.py ;;
+    # Workflow security audit, offline (no GitHub API). Deliberate findings are
+    # suppressed inline, each with its reason.
+    zizmor) zizmor --offline --persona=regular --min-severity=medium .github/workflows/ ;;
     # Every test_*.py under scripts/ and skills/; naming one file left the
     # other skills' tests unrun.
     pytest) "$PY" -m pytest -q scripts skills ;;
-    prek) prek run --all-files --show-diff-on-failure ;;
+    # No --show-diff-on-failure: the full work-tree diff came last and pushed
+    # the Failed hook lines out of the --tail window (#807). A bounded
+    # `git diff --stat` after the hook results names the changed files instead.
+    prek)
+      local prek_status
+      prek run --all-files
+      prek_status=$?
+      if [ $prek_status -ne 0 ]; then
+        git diff --quiet 2>/dev/null
+        if [ $? -eq 1 ]; then
+          echo "Work tree changes (hook rewrites and your own unstaged edits); \`git diff\` shows them in full:"
+          git diff --stat --stat-count=10
+        fi
+      fi
+      return $prek_status
+      ;;
     compileall) "$PY" -m compileall -q scripts skills ;;
     # Top-level test/*.bats only: the submodules under test/bats/ carry their
     # own suites, which are not ours to run.

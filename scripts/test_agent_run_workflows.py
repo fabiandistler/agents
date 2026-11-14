@@ -15,6 +15,7 @@ import subprocess
 from pathlib import Path
 
 import implementer_claim
+import implementer_setup
 import pytest
 import yaml
 
@@ -79,8 +80,8 @@ def test_implementer_hands_the_read_only_job_token_to_the_capacity_gate():
 
 
 def test_capacity_gate_names_this_workflow_and_job():
-    assert IMPLEMENTER.name == implementer_claim.IMPLEMENTER_WORKFLOW
-    assert implementer_claim.IMPLEMENT_JOB in _workflow(IMPLEMENTER)["jobs"]
+    assert IMPLEMENTER.name == implementer_setup.IMPLEMENTER_WORKFLOW
+    assert implementer_setup.IMPLEMENT_JOB in _workflow(IMPLEMENTER)["jobs"]
     assert "name" not in _single_job(IMPLEMENTER), "a display name would rename the job in the API"
     assert "matrix" not in _single_job(IMPLEMENTER).get("strategy", {}), "a matrix renames the job"
 

@@ -8,7 +8,8 @@
 # nothing else: every other recommendation is a comment, and the maintainer
 # sets the label (which is what starts the implementer).
 #
-# Triggers: a new issue; the maintainer adding `needs-triage` again; the
+# Triggers: a new issue by a person, filed without a state label or with
+# `needs-triage`; the maintainer adding `needs-triage` again; the
 # reporter answering on a `needs-info` issue; a manual run. Only issues by
 # people with write access reach the model, and the two automatic triggers stop
 # after two bot triages per issue (scripts/issue_triage_policy.py).
@@ -17,7 +18,10 @@ name: issue-triage
 on:
   issues:
     types: [opened, labeled]
-  issue_comment:
+  # Deliberate (ADR-0013): the reporter answering a needs-info issue. Only
+  # issues by authors with write access reach the model
+  # (scripts/issue_triage_policy.py).
+  issue_comment: # zizmor: ignore[dangerous-triggers]
     types: [created]
   workflow_dispatch:
     inputs:
@@ -44,7 +48,13 @@ permissions: {}
 concurrency:
   group: >-
     issue-triage-${{ github.event.issue.number || inputs.issue }}${{ !(
-      (github.event_name == 'issues' && github.event.action == 'opened') ||
+      (github.event_name == 'issues' && github.event.action == 'opened' &&
+      github.event.sender.type != 'Bot' &&
+      !contains(github.event.issue.labels.*.name, 'needs-triage') &&
+      !contains(github.event.issue.labels.*.name, 'needs-info') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
+      !contains(github.event.issue.labels.*.name, 'wontfix')) ||
       (github.event_name == 'issues' && github.event.action == 'labeled' &&
       github.event.label.name == 'needs-triage' && github.event.sender.type != 'Bot') ||
       (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
@@ -59,9 +69,18 @@ jobs:
   assess:
     # Filter in the expression so ordinary comments and labels start no runner.
     # A label added with the workflow token starts no run at all, so `labeled`
-    # here is always a person.
+    # here is always a person. `opened` passes only a person's issue with no
+    # state label: an issue filed with `needs-triage` is triaged by its own
+    # `labeled` run, and one filed with any other state label, or by a bot, is
+    # not waiting for triage (#797). A skipped job takes no runner.
     if: >-
-      (github.event_name == 'issues' && github.event.action == 'opened') ||
+      (github.event_name == 'issues' && github.event.action == 'opened' &&
+      github.event.sender.type != 'Bot' &&
+      !contains(github.event.issue.labels.*.name, 'needs-triage') &&
+      !contains(github.event.issue.labels.*.name, 'needs-info') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
+      !contains(github.event.issue.labels.*.name, 'wontfix')) ||
       (github.event_name == 'issues' && github.event.action == 'labeled' &&
       github.event.label.name == 'needs-triage' && github.event.sender.type != 'Bot') ||
       (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&

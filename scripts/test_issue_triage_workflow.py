@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 import yaml
+from issue_triage_policy import STATE_LABELS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "issue-triage.yml"
@@ -136,3 +137,32 @@ def test_events_the_filter_drops_never_share_the_triage_concurrency_group():
     assert _workflow()["concurrency"]["cancel-in-progress"] is False
     # `a && '' || b` always yields b, so the dropped case must come first.
     assert f"!( {condition} ) && format('-ignored-{{0}}', github.run_id) || ''" in group
+
+
+def _top_level_clauses(condition: str) -> list[str]:
+    """Split an expression at the `||` operators outside any parentheses."""
+    clauses, depth, start = [], 0, 0
+    for i, char in enumerate(condition):
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        if depth == 0 and condition.startswith("||", i):
+            clauses.append(condition[start:i].strip())
+            start = i + 2
+    clauses.append(condition[start:].strip())
+    return clauses
+
+
+def _opened_clause() -> str:
+    condition = " ".join(_jobs()["assess"]["if"].split())
+    opened = [c for c in _top_level_clauses(condition) if "github.event.action == 'opened'" in c]
+    assert len(opened) == 1, "the assess `if` should have one `opened` clause"
+    return opened[0]
+
+
+def test_a_new_issue_starts_a_runner_only_without_a_state_label():
+    # An issue filed with needs-triage is triaged by its own `labeled` run; one
+    # filed with any other state label, or by a bot, would only be told it is
+    # not waiting for triage, so it must not start a runner (#797).
+    clause = _opened_clause()
+    assert "github.event.sender.type != 'Bot'" in clause
+    for label in STATE_LABELS:
+        assert f"!contains(github.event.issue.labels.*.name, '{label}')" in clause, label

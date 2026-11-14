@@ -148,7 +148,7 @@ Install the pinned check tools once, then run the whole list before opening a
 pull request. `ci.yml` calls the same script, so this is CI's whole list:
 
 ```bash
-pip install -r scripts/check_all.requirements.txt  # pinned prek, pytest, pyyaml
+pip install -r scripts/check_all.requirements.txt  # pinned prek, pytest, pyyaml, zizmor
 scripts/check_all.sh          # one PASS/FAIL/MISSING line per check
 scripts/check_all.sh --list   # the checks and the tools each needs
 scripts/check_all.sh --only docs,plugins  # the fast loop for a docs or plugin change
@@ -197,6 +197,9 @@ tests with the change they cover.
 
 The PR body names its issue with `Closes #n`. When there is no issue, write
 `No issue: <reason>`; the `issue-links` check looks for that phrase outside
-code spans. Open the PR ready for review: only the human merges. The one exception is the
+code spans. A "no issue" body must not contain a closing keyword
+(close, fix, resolve and their inflected forms) before an issue reference
+anywhere in its prose, quoted lines included: GitHub would close that issue on
+merge, so the check fails. Mention a related issue as `Refs #n` or `(#n)`. Open the PR ready for review: only the human merges. The one exception is the
 CI bot's auto-merge of gated docs-only PRs
 ([ADR-0011](adr/0011-pr-review-merge-exception.md)); an agent never merges.

@@ -33,5 +33,11 @@
   cause an `at-capacity` stop. Not verified: whether such a run holds back
   a new run in the same per-issue concurrency group (`implementer-<issue>`,
   `.github/workflows/implementer.yml:55-57`).
+- 2026-11-13 (#797, PR #805): `claude.yml` no longer triggers on
+  `issues`, and `issue-triage.yml` starts no runner for an issue filed
+  with a state label or by a bot. A new issue with two labels and one
+  comment now creates 8 runs, all skipped without a runner unless one has
+  work to do; the per-event count is in
+  [issue tracker](../../agents/issue-tracker.md) ("Create many issues").
 
 Related: [cross-repo token exchange](cross-repo-token-exchange.md).

@@ -31,6 +31,8 @@ nothing here describes the present. See [conventions](conventions.md).
 - [cross-repo `Blocked by` URLs](problems/cross-repo-blocked-by.md) — fail closed after #785 and stop the implementer until removed.
 - [closing keyword in quoted text](problems/closing-keyword-in-quotes.md) — a quoted task list in PR #795 made GitHub mark #783 completed; the implementer claim reads the same body; check gap #802.
 - [no agent consumer outside agents](problems/no-agent-consumer-outside-agents.md) — no implementer workflow and no enabled sweep in repo-maintenance and dotfiles (2026-11-13).
+- [implementer lint rounds](problems/implementer-lint-rounds.md) — 2026-11-13 retro: the stop rule spent three rounds on prek lint; follow-ups #806–#808.
+- [shared usage limit](problems/shared-usage-limit.md) — implementer, chief-of-staff subagents and cloud sessions share one 5-hour budget; #782 run lost on 2026-11-13.
 
 ## Snapshots
 
