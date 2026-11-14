@@ -61,6 +61,10 @@ APP_AUTHOR = "claude[bot]"
 DEFAULT_EVERY = 10
 IMPLEMENTER_WORKFLOW = "implementer.yml"
 SUMMARY_ARTIFACT = "run-summary"
+# The events that run implementer.yml as it is on the default branch. A pull
+# request runs its own copy of the file, which can reuse the run-name and upload
+# a summary of its choosing.
+IMPLEMENTER_EVENTS = ("issues", "workflow_dispatch")
 
 EXIT_OK = 0
 EXIT_USAGE = 2
@@ -259,7 +263,11 @@ def implementer_run(client: ReadClient, repo: str, issue: int) -> int | None:
         if not isinstance(runs, list):
             raise FetchError(f"GitHub API returned no runs for {IMPLEMENTER_WORKFLOW}")
         for run in runs:
-            if not isinstance(run, dict) or run.get("display_title") != title:
+            if (
+                not isinstance(run, dict)
+                or run.get("display_title") != title
+                or run.get("event") not in IMPLEMENTER_EVENTS
+            ):
                 continue
             run_id = run.get("id")
             if isinstance(run_id, bool) or not isinstance(run_id, int):
