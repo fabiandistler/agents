@@ -38,8 +38,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from agent_brief import is_trusted
 from implementer_contract import contract_text, read_ticket
-from issue_triage_policy import TRUSTED_ASSOCIATIONS
 from pr_actions import Operation
 from pr_apply import WriteClient
 from pr_apply import _send as send_operation
@@ -334,10 +334,6 @@ def run_gate(client: GateClient, repo: str, every: int) -> Selection:
 # --- Context -----------------------------------------------------------------
 
 
-def _is_trusted(item: dict) -> bool:
-    return item.get("author_association") in TRUSTED_ASSOCIATIONS
-
-
 def _section(title: str, parts: list[str]) -> str:
     text = "\n\n---\n\n".join(part.strip() for part in parts if part.strip())
     return f"## {title}\n\n{text or '(none)'}\n"
@@ -388,7 +384,7 @@ def build_context(
             ("Review comment", review_comments),
         )
         for item in items
-        if _is_trusted(item) and _body(item).strip()
+        if is_trusted(item) and _body(item).strip()
     ]
 
     header = (
