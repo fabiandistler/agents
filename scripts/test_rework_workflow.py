@@ -201,10 +201,11 @@ def test_prompt_ends_with_the_summary_also_when_every_finding_is_declined():
     # comment step was tied to a green push, so declining every finding had no ending.
     prompt = _model_step()["with"]["prompt"]
     assert "Every ending writes the summary last" in prompt
-    on_green = prompt.index("6. On green:")
-    declined = prompt.index("7. If no finding needs a change")
-    assert on_green < declined < prompt.index("Hard limits:")
-    last_step = prompt[declined : prompt.index("Hard limits:")]
+    on_green_at = prompt.index("6. On green:")
+    declined_at = prompt.index("7. If no finding needs a change")
+    hard_limits_at = prompt.index("Hard limits:")
+    assert on_green_at < declined_at < hard_limits_at
+    last_step = prompt[declined_at:hard_limits_at]
     for rule in (
         "push nothing",
         (
