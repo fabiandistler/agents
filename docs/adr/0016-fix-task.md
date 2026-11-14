@@ -90,6 +90,15 @@ and a human merge.
   third failure of the same workflow arriving while one runs and one waits
   replaces the waiting one; that run is lost, not misfiled. A manual dispatch
   for its run id files it.
+- A manual run with `dry_run: false` runs in the group `fix-task-dispatch`,
+  not in the group of the run it names, so it can overlap the `workflow_run`
+  run for the same failure. The re-read before the write narrows that window
+  but does not close it, so both may comment or file. Dispatch a run only when
+  its own Fix task run was lost or failed.
+- A step whose only error annotation is GitHub's generic "Process completed
+  with exit code `<n>`." gets one signature for every such failure, so
+  unrelated failures of that step share an issue. The agent runs avoid this
+  with their `RUN FAILED` line; the signature fields stay as decided above.
 - A job or step rename gives a new signature and a new issue.
 - An implementer run started before the `run-name` handover lands has the
   issue title as its display title and is filed by signature only.

@@ -123,6 +123,8 @@ def _run(client, repo: str, run_id: int) -> dict:
 
 def _failure(client, repo: str, run: dict) -> dict:
     path = f"/repos/{repo}/actions/runs/{run['id']}/attempts/{run['attempt']}/jobs"
+    # One page of PER_PAGE (100) jobs: the watched workflows have at most four
+    # jobs and no matrix. A watched workflow past 100 jobs needs pagination here.
     jobs = _object(client, path, {"per_page": PER_PAGE}).get("jobs")
     if not isinstance(jobs, list):
         raise pr_github_client.FetchError(f"GitHub API returned no job list for {path}")
