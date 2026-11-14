@@ -25,6 +25,7 @@ governs; the replacement ADR or current record is named).
 | [0013](0013-automated-issue-triage.md) | Accepted (2026-11-10) | New issues by collaborators get an automated triage comment; the bot sets only `needs-info`, the maintainer every other state. |
 | [0014](0014-agent-runs-in-github-actions.md) | Accepted (2026-11-10) | The implementer and the skill audit run in GitHub Actions through `claude-code-action` with the Claude GitHub App token, not as Claude Code scheduled tasks. |
 | [0016](0016-fix-task.md) | Proposed (2026-11-13) | A model-free Fix task files each failed factory run as one issue per failure signature; a fix attempt stays a human-started implementer run. |
+| [0018](0018-reusable-factory-workflows.md) | Accepted (2026-11-11, recorded 2026-11-14) | The factory's tasks are `workflow_call` workflows in this repository; other repositories call them through thin callers pinned to a commit SHA. |
 
 ## Supersession
 

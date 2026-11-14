@@ -42,7 +42,7 @@ See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
     `fabiandistler/agents@7005ffc`. #763 stays open: the Actions event
     policy is a manual repository setting, due before the brownout of
     2026-11-16 16:00 UTC.
-  - #785 (closes #770) open, labelled `risk:high` and `review:pass`.
+  - #785 (closing #770) open, labelled `risk:high` and `review:pass`.
   - #791 (refs #764) open; GitHub reported it as not mergeable
     (`mergeable_state` dirty) after #781 merged, so it needs updating
     against main first.
@@ -72,10 +72,61 @@ See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
     after "Update branch" (`7c0353b`).
 - 2026-11-12: #796 (token probe, "do not merge") closed without merging
   at 11:36 UTC. dotfiles#62 (probe caller) merged at 11:31 UTC;
-  dotfiles#63 (probe removal) open. Result: see
+  dotfiles#63 (probe removal) open (*superseded 2026-11-13, see below*).
+  Result: see
   [cross-repo token exchange](problems/cross-repo-token-exchange.md).
 - 2026-11-12: still manual:
   - the Actions event policy for `pr-review.yml` (#763, #781's manual
     step), due before the brownout of 2026-11-16 16:00 UTC;
   - once a PR shows the `pr-review/verdict` status, adding `bats` and
     `pr-review/verdict` to the `default` ruleset (steps 3–4 above).
+
+## 2026-11-13 triage: agent queue and manual steps
+
+See [2026-11-13 triage](snapshots/2026-11-13-triage.md) and
+[triage decisions](decisions/2026-11-13-triage-decisions.md).
+
+- 2026-11-13: agent queue, one implementer run at a time
+  (`MAX_WORKING_RUNS=1`), order set by the chief-of-staff session:
+  1. #783: labelled `ready-for-agent` 20:20 UTC; run 43500665465 in
+     progress when read.
+  2. #782
+  3. #787
+  4. #784
+  5. #769 (script-only scope)
+  6. #789 and #788, after #787 is closed.
+
+  The session sets the next label when a run ends, until the queue from
+  #801 exists.
+- 2026-11-13: not in the agent queue: #797, #793, #790 and #767 go to
+  interactive sessions; sessions for #797 and #767 started 20:33 UTC.
+- 2026-11-13 (supersedes the 2026-11-12 "open" for dotfiles#63): dotfiles#63
+  merged 2026-11-12 at 11:40 UTC.
+- 2026-11-13: manual steps still open, with deadlines (extends the
+  2026-11-12 list):
+  1. Actions event policy for `pr-review.yml` (#763), before the brownout
+     of 2026-11-16 16:00 UTC; default block from 2026-12-02.
+  2. Add `bats` and `pr-review/verdict` to ruleset 18264711 (#764), after
+     step 1. On 2026-11-13 the ruleset required only `checks`, `mermaid`
+     and `secrets`. `pr-review/verdict` last reported 2026-11-12 11:46 UTC
+     on #799's head, so the picker offers it until about 2026-11-19
+     11:46 UTC unless the status reports again.
+  3. Dependabot runner-type setting (repo-maintenance#142, dotfiles#52);
+     a scheduled check runs 2026-11-15 09:07 UTC.
+  4. Decisions without a fixed date: #765 before `PR_AUTO_MERGE=true`;
+     repo-maintenance#151 before its review on 2026-12-01.
+
+## 2026-11-14 queue progress
+
+- 2026-11-13: #783 → #800 (draft after the stop rule; marked ready by the
+  maintainer 20:40 UTC; `review:concerns`). See
+  [implementer lint rounds](problems/implementer-lint-rounds.md).
+- 2026-11-13: first #782 run failed; see
+  [shared usage limit](problems/shared-usage-limit.md). 2026-11-14: rerun
+  opened #809 at 05:32 UTC.
+- 2026-11-14: interactive-session PRs: #804 (#767; publish failed on a
+  GitHub 502 and was re-run) and #805 (#797; main merged in, `review:pass`).
+- 2026-11-14 (supersedes the 2026-11-13 order after #782): the
+  chief-of-staff session moved the retro tickets ahead, because they make
+  every later run cheaper: #807 (run 43562087089 started 05:33 UTC), #806,
+  #787, #784, #769, then #789 and #788 after #787 is closed.

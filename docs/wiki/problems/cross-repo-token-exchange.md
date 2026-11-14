@@ -32,6 +32,13 @@
   call), so the run shows nothing about what the token may do there. The
   first implementer run in dotfiles checks this (#790, dotfiles#61).
 - 2026-11-12: dotfiles#63 (open) removes the probe caller, which pins a
-  commit of the closed, unmerged #796.
+  commit of the closed, unmerged #796. *Superseded 2026-11-13, see below.*
+- 2026-11-13 (supersedes the 2026-11-12 "open"): dotfiles#63 merged on
+  2026-11-12 at 11:40 UTC (read 2026-11-13 with the PR API), so the probe
+  caller is gone from dotfiles.
+- 2026-11-13: the replaced Agent Brief on #787 (comment 6864121557) makes
+  an explicit `github_token` the ADR-0018 fallback, following #786 comment
+  6806728845, records the 2026-11-12 probe and the default-branch rule,
+  and keeps the App token's rights in a target as unverified.
 
 Related: [rollout](../decisions/2026-11-11-factory-rollout.md).
