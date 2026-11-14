@@ -57,7 +57,9 @@ callers:
 | issue triage | `factory-issue-triage.yml` | `issues: opened, labeled`, `issue_comment`, `workflow_dispatch` | `contents: read`, `issues: write` |
 | triage label | `factory-triage-label.yml` | `issues: opened` | `issues: write` |
 
-The permissions are each task's minimum from #786. Because the calling job
+The permissions are each task's minimum from #786. Amended 2026-11-14 (#792):
+the PR review's calling job also needs `statuses: write`, because `publish`
+sets the `pr-review/verdict` status (#764), which #786 predates. Because the calling job
 caps the called workflow, a caller that grants less breaks the task, and one
 that grants more gives the called workflow nothing it does not ask for.
 

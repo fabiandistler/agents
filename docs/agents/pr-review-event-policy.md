@@ -28,7 +28,12 @@ In the repository: *Settings → Actions → Policies* (a page of its own, not
 1. Name: `pr-review: allow pull_request_target`.
 2. Enforcement status: **Active**. **Evaluate** is GitHub Enterprise Cloud
    only.
-3. Target: the workflow file `.github/workflows/pr-review.yml` only.
+3. Target: the workflow file `.github/workflows/pr-review.yml` only. It is
+   the caller that carries the trigger; the jobs run from the reusable
+   `factory-pr-review.yml` it calls. Keep that file name: renaming the caller
+   breaks the policy's match. Whether a policy matches the caller's path or
+   the called workflow's path is not documented (ADR-0018, open question 2);
+   the first run after the extraction settles it in *Policy insights*.
 4. Rule **Restrict events**: allow `pull_request_target` and
    `workflow_dispatch`. The rule is an allowlist for the targeted workflow,
    so without `workflow_dispatch` the [dry run](pr-review-runbook.md#dry-run)

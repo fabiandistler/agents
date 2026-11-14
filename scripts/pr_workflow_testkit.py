@@ -1,7 +1,9 @@
 """Shared loaders and accessors for the PR review workflow structure tests.
 
-The tests in test_pr_workflow*.py read .github/workflows/pr-review.yml through
-these helpers, so each safety property can be asserted on its own.
+The tests in test_pr_workflow*.py read the reusable pipeline,
+.github/workflows/factory-pr-review.yml, through these helpers, so each safety
+property can be asserted on its own. test_pr_review_caller.py reads this
+repository's caller, .github/workflows/pr-review.yml.
 """
 
 from __future__ import annotations
@@ -12,7 +14,8 @@ from typing import Any
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "pr-review.yml"
+WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "factory-pr-review.yml"
+CALLER_PATH = REPO_ROOT / ".github" / "workflows" / "pr-review.yml"
 
 REVIEW_EVENTS = ["opened", "synchronize", "reopened", "ready_for_review"]
 # Adding a label starts a run too, but only the hold acts on it (do-not-merge).
@@ -29,7 +32,14 @@ HOLD_CONDITION = (
 AUTO_MERGE_SCOPES = {"contents": "write", "pull-requests": "write", "issues": "write"}
 # Publish also sets the pr-review/verdict commit status; no other job may.
 PUBLISH_SCOPES = {**AUTO_MERGE_SCOPES, "statuses": "write"}
-PIPELINE_CLIS = {"pr_github.py", "pr_risk.py", "pr_review.py", "pr_publish.py"}
+PIPELINE_CLIS = {"pr_github.py", "pr_risk.py", "pr_review.py", "pr_publish.py", "pr_skip.py"}
+# Every job runs the scripts from the factory checkout, never from the workspace.
+FACTORY_SCRIPTS = '"$RUNNER_TEMP/factory/scripts/'
+# The factory checkout: this workflow file's own repository and commit.
+FACTORY_ENV = {
+    "FACTORY_REPOSITORY": "${{ job.workflow_repository }}",
+    "FACTORY_SHA": "${{ job.workflow_sha }}",
+}
 MODEL_KEY = "CLAUDE_CODE_OAUTH_TOKEN"
 # The review step hands the token to this package, so its version stays exact.
 CLAUDE_PACKAGE = "@anthropic-ai/claude-code"
@@ -43,6 +53,7 @@ REVIEW_ARTIFACT = "pr-review"
 # from the fetched context through the assess output.
 REVIEW_SKIP_CONDITION = (
     "needs.assess.outputs.same_repo == 'true' && "
+    "needs.assess.outputs.skip != 'true' && "
     "(github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && "
     "github.event.pull_request.head.repo.full_name == github.repository))"
 )
@@ -154,7 +165,11 @@ def load_workflow_text() -> str:
     return WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
+def load_caller_text() -> str:
+    return CALLER_PATH.read_text(encoding="utf-8")
+
+
 def parse_workflow(workflow_text: str) -> dict[Any, Any]:
     parsed = yaml.safe_load(workflow_text)
-    assert isinstance(parsed, dict), f"{WORKFLOW_PATH} is not a YAML mapping"
+    assert isinstance(parsed, dict), "the workflow is not a YAML mapping"
     return parsed
