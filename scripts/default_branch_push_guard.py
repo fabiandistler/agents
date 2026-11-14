@@ -14,7 +14,10 @@ an unfilled `{{...}}` placeholder: `main` and `master`):
   default branch, also `+`-forced, `refs/heads/` and wildcard forms, and with
   `--delete`; `git push --all`, `--branches` and `--mirror`.
 - `git push` with an argument the parser cannot read (a shell variable, a
-  command substitution, unbalanced quotes): it fails closed.
+  command substitution, unbalanced quotes): it fails closed. So does a
+  command the parser cannot split at all (bash accepts `$'it\\'s'`, shlex
+  does not) when it holds `git push`, or `gh` or `curl` with one of the
+  endpoints below, read or write.
 - `gh api` or `curl` writes (POST, PATCH, PUT, DELETE) to
   `repos/<o>/<r>/git/refs/heads/<default>`, to `repos/<o>/<r>/contents/<path>`
   without a `branch` field naming another branch, and to `repos/<o>/<r>/merges`
@@ -88,6 +91,8 @@ REF_PATH = re.compile(REPO + r"/git/refs/heads/(.+)$")
 CONTENTS_PATH = re.compile(REPO + r"/contents(?:/.*)?$")
 MERGES_PATH = re.compile(REPO + r"/merges$")
 READ_METHODS = {"GET", "HEAD"}
+# The endpoints above, matched in raw text when the command cannot be parsed.
+UNPARSED_BRANCH_WRITE = re.compile(r"repos/[^/\s]+/[^/\s]+/(?:git/refs|contents|merges)\b")
 
 # git options before the subcommand that take a separate value (`git -C dir push`).
 GIT_VALUE_OPTIONS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env"}
@@ -267,8 +272,11 @@ def check_shell(command: str, cwd: Path, defaults: tuple[str, ...], depth: int =
     try:
         simple_commands = split_simple_commands(text, keep_expansions=True)
     except ValueError:
+        # shlex rejects some text bash runs (`$'it\'s'`), so fail closed coarsely.
         if re.search(r"\bgit\b.*\bpush\b", text, re.DOTALL):
             return "`git push` in a command the guard cannot parse"
+        if re.search(r"\b(?:gh|curl)\b", text) and UNPARSED_BRANCH_WRITE.search(text):
+            return "a `gh api` or `curl` call to a branch-writing endpoint the guard cannot parse"
         return None
     for argv in simple_commands:
         if reason := check_argv(argv, command, cwd, defaults, depth):

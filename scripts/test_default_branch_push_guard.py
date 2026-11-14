@@ -167,6 +167,25 @@ def test_unreadable_refspec_blocks(command: str) -> None:
     assert "cannot" in reason
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        # Bash reads `$'it\'s'` (ANSI-C quoting); shlex cannot, so the parse fails.
+        "gh api -X PUT repos/o/r/contents/x -f message=$'it\\'s'",
+        "gh api -X PATCH repos/o/r/git/refs/heads/main -f sha=$'a\\'b'",
+        "curl -X POST https://api.github.com/repos/o/r/merges -d $'{\\'base\\':1}'",
+    ],
+)
+def test_an_unparsed_rest_write_to_a_branch_endpoint_blocks(command: str) -> None:
+    reason = bash(command)
+    assert reason
+    assert "cannot parse" in reason
+
+
+def test_an_unparsed_command_without_a_branch_write_passes() -> None:
+    assert bash("gh api repos/o/r/pulls -f title=$'it\\'s'") is None
+
+
 def test_contents_branch_from_input_file(tmp_path: Path) -> None:
     (tmp_path / "body.json").write_text('{"message": "m", "branch": "feature"}')
     (tmp_path / "main.json").write_text('{"message": "m", "branch": "main"}')
