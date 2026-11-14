@@ -4,7 +4,7 @@ name: Claude Code
 # `issues` trigger: a mention in an issue title or body never started a job
 # here, and the trigger created one skipped run per new issue (#797).
 on:
-  issue_comment:
+  issue_comment: # zizmor: ignore[dangerous-triggers] claude-code-action stops actors without write access
     types: [created]
   pull_request_review_comment:
     types: [created]
@@ -26,13 +26,14 @@ jobs:
       actions: read # Required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
