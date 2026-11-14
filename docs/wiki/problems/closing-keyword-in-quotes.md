@@ -24,7 +24,10 @@
   "No issue:" line and a closing keyword. `check_pr_issue_links` accepts
   that combination; the links check passed on #795's head in run
   43184409003, and `issue-links` is not a required check. Filed as #802
-  (`bug`, `needs-triage`).
+  (`bug`, `needs-triage`). Fixed for #802: a body that states "no issue"
+  and declares any closing now fails the check, naming each issue GitHub
+  would close. A closing keyword quoted behind a real `Closes` line still
+  passes (option 2 of #802, not adopted).
 - Practice (2026-11-13): in PR bodies, and in wiki text that may be quoted
   into one, put an issue number after a task name in parentheses, and do not
   let close/fix/resolve or their inflected forms stand directly before an
