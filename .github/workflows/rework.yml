@@ -51,12 +51,14 @@ jobs:
       group: rework-gate-${{ github.event.workflow_run.head_branch || format('pr-{0}', inputs.pr) }}
       cancel-in-progress: false
     # actions: read for the review run, its artifacts and the capacity check;
-    # pull-requests: read for the live pull request; issues: write for the
-    # round marker, the handoff comment and the issue's state label.
+    # pull-requests: write for the round marker and the handoff comment, which
+    # land on the pull request: through the issues API too, a comment on a
+    # pull request needs it, and with read GitHub answers 403 (run
+    # 43613599819). issues: write for the issue's state label.
     permissions:
       contents: read
       actions: read
-      pull-requests: read
+      pull-requests: write
       issues: write
     outputs:
       action: ${{ steps.decide.outputs.action }}

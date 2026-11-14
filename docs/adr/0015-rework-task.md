@@ -9,6 +9,13 @@ Actions with the Claude GitHub App token) and leaves
 [ADR-0011](0011-pr-review-merge-exception.md) untouched: the Rework task never
 merges and never enables auto-merge.
 
+Amended 2026-11-14: the gate holds `pull-requests: write`, not `read`. The
+first live run (rework run 43613599819, pull request #835) failed with 403 on
+`/issues/835/comments`. pr-review's `assess` job had listed those comments a
+minute earlier with read scopes only, so the refused call was the round
+marker: a comment on a pull request needs `pull-requests: write`, which
+pr-review's `publish` job holds, even through the issues API.
+
 ## Context
 
 The implementer (`implementer.yml`) turns an issue into a pull request on
@@ -79,9 +86,10 @@ check rounds it pushes nothing, comments and hands the issue to a person. The
 prompt interpolates only validated numbers and the repository name and keeps
 the implementer's hard limits.
 
-**Security posture.** The gate holds `GITHUB_TOKEN` with `issues: write`,
-`pull-requests: read`, `actions: read` and `contents: read`, and no model
-token. The model job holds the App token because only its push starts
+**Security posture.** The gate holds `GITHUB_TOKEN` with `issues: write` (the
+issue's state label), `pull-requests: write` (the round marker and the handoff
+comment on the pull request), `actions: read` and `contents: read`, and no
+model token. The model job holds the App token because only its push starts
 `ci.yml` and the next review; its job token is `contents: read` and
 `id-token: write`. The action stops runs started by bots unless they are listed
 in `allowed_bots`; the review run is often started by the App's own push, so
