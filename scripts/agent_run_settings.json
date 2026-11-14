@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 {{factory_dir}}/scripts/pr_merge_guard.py --harness claude"
+          }
+        ]
+      },
+      {
+        "matcher": "^(Bash|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 {{factory_dir}}/scripts/default_branch_push_guard.py --harness claude --default-branch {{default_branch}}"
+          }
+        ]
+      }
+    ]
+  }
+}

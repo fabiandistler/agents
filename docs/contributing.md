@@ -197,6 +197,9 @@ tests with the change they cover.
 
 The PR body names its issue with `Closes #n`. When there is no issue, write
 `No issue: <reason>`; the `issue-links` check looks for that phrase outside
-code spans. Open the PR ready for review: only the human merges. The one exception is the
+code spans. A "no issue" body must not contain a closing keyword
+(close, fix, resolve and their inflected forms) before an issue reference
+anywhere in its prose, quoted lines included: GitHub would close that issue on
+merge, so the check fails. Mention a related issue as `Refs #n` or `(#n)`. Open the PR ready for review: only the human merges. The one exception is the
 CI bot's auto-merge of gated docs-only PRs
 ([ADR-0011](adr/0011-pr-review-merge-exception.md)); an agent never merges.

@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from check_pr_issue_links import markdown_prose
 from issue_triage_policy import TRUSTED_ASSOCIATIONS
 from pr_github import get_json, paginate
-from pr_github_client import FetchError, GitHubClient
+from pr_github_client import FetchError, ReadClient
 
 # Code blocks, inline code and HTML comments hold no heading: markdown_prose drops them.
 AGENT_BRIEF_HEADING = re.compile(r"^ {0,3}## Agent Brief\b", re.MULTILINE)
@@ -60,7 +60,7 @@ def is_agent_brief(text: str) -> bool:
     return AGENT_BRIEF_HEADING.search(markdown_prose(text)) is not None
 
 
-def read_ticket(client: GitHubClient, repo: str, issue: int) -> Ticket:
+def read_ticket(client: ReadClient, repo: str, issue: int) -> Ticket:
     """The issue body, the latest trusted Agent Brief and the other trusted comments."""
     issue_path = f"/repos/{repo}/issues/{issue}"
     ticket = get_json(client, issue_path)
