@@ -178,8 +178,17 @@ def shell_script(args: list[str]) -> str | None:
     return args[i] if takes_script and i < len(args) else None
 
 
-def split_simple_commands(command: str) -> list[list[str]]:
-    """Tokenize shell text and split it at control operators and substitutions."""
+# Stands in for a command substitution in a word list built with keep_expansions.
+SUBSTITUTION = "$(...)"
+
+
+def split_simple_commands(command: str, keep_expansions: bool = False) -> list[list[str]]:
+    """Tokenize shell text and split it at control operators and substitutions.
+
+    By default a leading `$` is dropped from each word. With keep_expansions,
+    words keep it and a command substitution leaves SUBSTITUTION in the command
+    it cuts, so a caller can tell which words the shell would expand.
+    """
     lexer = shlex.shlex(
         strip_comments_and_continuations(command),
         posix=True,
@@ -189,11 +198,16 @@ def split_simple_commands(command: str) -> list[list[str]]:
     lexer.commenters = ""
     lexer.whitespace_split = True
     commands: list[list[str]] = [[]]
-    for token in lexer:
-        if token in SEPARATORS or (token and set(token) <= set("();|&\n`")):
+    in_backticks = False
+    for word in lexer:
+        if word in SEPARATORS or (word and set(word) <= set("();|&\n`")):
+            opens_backticks = "`" in word and not in_backticks
+            if keep_expansions and (word == "$" or opens_backticks):
+                commands[-1].append(SUBSTITUTION)
+            in_backticks ^= word.count("`") % 2 == 1
             commands.append([])
         else:
-            commands[-1].append(token.removeprefix("$"))
+            commands[-1].append(word if keep_expansions else word.removeprefix("$"))
     return [argv for argv in commands if argv]
 
 
