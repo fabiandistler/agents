@@ -58,7 +58,11 @@ off-format model answer writes nothing; the run log says why.
 Adding `ready-for-agent` starts `.github/workflows/implementer.yml`
 ([ADR-0014](../adr/0014-agent-runs-in-github-actions.md)). Its first write is
 `scripts/implementer_claim.py`, which decides what happens to branch
-`agent/issue-<n>`:
+`agent/issue-<n>`. Called as a reusable workflow from another repository, it
+takes the workflow file whose runs it counts from `--workflow-file` or
+`GITHUB_WORKFLOW_REF`, matches the job by `--job-name` also as
+`<caller job> / <name>`, and names the branch with `--branch-prefix`; the
+defaults are `implementer.yml`, `implement` and `agent/issue-`. The outcomes:
 
 | Situation | Outcome | What the run does | Who acts next |
 | --- | --- | --- | --- |
@@ -107,6 +111,49 @@ An issue stopped as `no-contract`, `blocked` or `at-capacity` carries no state l
 person adds `ready-for-agent` again. Nothing restarts it on its own: a blocker
 closing fires no run. The triage workflows do not act on it either; they ignore
 the bot's comment, and their state check accepts an issue without a state.
+
+## Rework
+
+When the automated review of an implementer pull request ends with
+`concerns` or `block`, `.github/workflows/rework.yml` may run one model round
+that fixes only those findings ([ADR-0015](../adr/0015-rework-task.md)). The
+workflow is added to `main` by hand; until it is there, nothing below runs. Its
+model-free gate, `scripts/rework_gate.py` over `scripts/rework_policy.py`,
+decides from the review run's artifacts and the live pull request:
+
+| Situation | Outcome | What the run does | Who acts next |
+| --- | --- | --- | --- |
+| Non-pass review with findings of the live head, fewer than two round markers, no other rework run working | `proceed` | Posts `<!-- rework-round:<k> head:<sha> -->`, hands the findings to the model job as a file; it fixes them, pushes, comments fixed or declined | The next review of the pushed commit |
+| Two round markers and a new non-pass verdict | `handoff` | Comments once per head on the pull request, replaces `ready-for-agent` with `ready-for-human` on the issue; no model runs | A person, on the pull request |
+| The model job's checks stay red after two rounds | (model job) | Pushes nothing, comments, replaces `ready-for-agent` with `ready-for-human` | A person, on the pull request |
+| Anything else: a pass or unavailable review, no findings, a draft, `do-not-merge`, a head that moved, a marker for this head, an issue with `ready-for-human`, another rework run working, a pull request not opened by `claude[bot]` from `agent/issue-<n>` | `stop` | Writes nothing | Nobody; a manual run (Actions → rework → Run workflow) retries |
+
+Only markers by `github-actions[bot]` count, so a quoted marker neither spends
+nor resets a round. Setup: the secrets of the implementer; the optional
+repository variable `REWORK_MODEL` (default `sonnet`).
+
+## Fix task
+
+`.github/workflows/fix-task.yml` runs `scripts/factory_failure.py` after a
+factory run (`implementer`, `skill-audit`, `issue-triage`, `pr-review`)
+concludes `failure` or `timed_out` ([ADR-0016](../adr/0016-fix-task.md)). It
+needs no model. It files issues with the label `factory-failure`, which it
+creates on first use, plus `bug` and `needs-triage`. Each issue carries the
+marker `<!-- factory-failure:<hash> -->` of one failure signature: workflow
+path, job, step and the normalized reason.
+
+| Situation | Outcome | Who acts next |
+| --- | --- | --- |
+| No issue by `github-actions[bot]` carries the signature's marker | A new issue `<workflow>: <job>/<step> failed` | The maintainer triages it |
+| An open bot issue carries the marker | One comment with the run link, attempt and date | The maintainer, on that issue |
+| That run attempt is already recorded on the issue | Nothing | Nobody |
+| Only a closed bot issue carries the marker | A new issue that names the closed one | The maintainer triages it |
+| A failed implementer run whose `run-name` names an issue labelled `factory-failure` | One comment on that issue, nothing new | The maintainer revises the brief or takes it over |
+| The run was cancelled or succeeded, or its workflow is not watched (`ci.yml`, the Fix task itself) | Nothing | Nobody |
+
+A fix attempt is a person posting an agent brief on the issue and adding
+`ready-for-agent`; the Fix task never sets it. A manual run (Actions →
+fix-task → Run workflow, with a run id) plans only unless `dry_run` is false.
 
 ## Pull request labels
 

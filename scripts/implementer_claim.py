@@ -19,6 +19,9 @@ it is. The script writes it to --contract, so the run works from a file fixed
 at claim time.
 The capacity gate reads the Actions API with the job token (ACTIONS_READ_TOKEN),
 because the App token cannot be shown to have Actions read (ADR-0014).
+--workflow-file, --job-name and --branch-prefix let a run called as a reusable
+workflow from another repository find its runs and name its branch
+(implementer_setup.py).
 
 Standard library only. Prints one JSON object; errors name the API call and
 status, never issue or pull request text.
@@ -31,14 +34,24 @@ import json
 import os
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime
 from pathlib import Path
 
 from agent_run_report import FAILED_PREFIX
 from check_pr_issue_links import closing_references
+from implementer_capacity import MAX_WORKING_RUNS, runs_working_ahead
 from implementer_contract import NO_CONTRACT_COMMENT, Ticket, contract_text, read_ticket
+from implementer_setup import (
+    BRANCH_PREFIX,
+    DEFAULT_SETUP,
+    IMPLEMENT_JOB,
+    IMPLEMENTER_WORKFLOW,
+    WORKFLOW_REF_VARIABLE,
+    ImplementerSetup,
+    branch_prefix,
+    workflow_file,
+)
 from issue_triage_policy import READY_FOR_AGENT, READY_FOR_HUMAN
-from pr_github import PER_PAGE, get_json, paginate
+from pr_github import get_json, paginate
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
 from ticket_blockers import declared_blockers
 
@@ -48,9 +61,6 @@ HTTP_GONE = 410
 HTTP_UNPROCESSABLE = 422
 
 ACTIONS_TOKEN_VARIABLE = "ACTIONS_READ_TOKEN"  # noqa: S105 -- a variable name, not a value.
-IMPLEMENTER_WORKFLOW = "implementer.yml"
-IMPLEMENT_JOB = "implement"
-MAX_WORKING_RUNS = 1
 
 CLAIMED = "claimed"
 RECLAIMED = "reclaimed"
@@ -122,11 +132,15 @@ outcomes and exit codes:
   7 no-contract  no contract by a person with write access; commented, removed the label
   1 failed       any other API error; wrote "RUN FAILED: claim (<reason>)" to --summary
   2              usage error
-env: GH_TOKEN (the App token inside claude-code-action), ACTIONS_READ_TOKEN, GITHUB_RUN_ID.
+An invalid --workflow-file, --branch-prefix or GITHUB_WORKFLOW_REF fails (1) before any call.
+env: GH_TOKEN (the App token inside claude-code-action), ACTIONS_READ_TOKEN, GITHUB_RUN_ID,
+     GITHUB_WORKFLOW_REF (names the caller's workflow file when run as a reusable workflow).
 
 examples:
   implementer_claim.py --repo owner/repo --issue 42 --summary "$RUNNER_TEMP/run-summary.md" \\
       --contract "$RUNNER_TEMP/contract.md"
+  implementer_claim.py --repo owner/repo --issue 42 --summary s.md --contract c.md \\
+      --workflow-file agent.yml --job-name implement --branch-prefix factory/issue-
   implementer_claim.py --help
 """
 
@@ -187,7 +201,7 @@ def _commits_ahead(client: GitHubClient, repo: str, main_sha: str, branch_sha: s
     return ahead_by
 
 
-def _remove_ready_label(client: GitHubClient, issue_path: str) -> None:
+def remove_ready_label(client: GitHubClient, issue_path: str) -> None:
     try:
         client.delete(f"{issue_path}/labels/{READY_FOR_AGENT}")
     except FetchError as error:
@@ -200,8 +214,13 @@ def _hand_to_person(client: GitHubClient, repo: str, issue: int, branch: str) ->
     """Comment, then swap the labels; the person is told before the state changes."""
     issue_path = f"/repos/{repo}/issues/{issue}"
     client.post(f"{issue_path}/comments", {"body": HANDOFF_COMMENT.format(branch=branch)})
+    swap_to_human(client, issue_path)
+
+
+def swap_to_human(client: GitHubClient, issue_path: str) -> None:
+    """Replace `ready-for-agent` with `ready-for-human` on the issue at ``issue_path``."""
     client.post(f"{issue_path}/labels", {"labels": [READY_FOR_HUMAN]})
-    _remove_ready_label(client, issue_path)
+    remove_ready_label(client, issue_path)
 
 
 def _release_ticket(client: GitHubClient, repo: str, issue: int, comment: str) -> None:
@@ -210,7 +229,7 @@ def _release_ticket(client: GitHubClient, repo: str, issue: int, comment: str) -
     try:
         client.post(f"{issue_path}/comments", {"body": comment})
     finally:
-        _remove_ready_label(client, issue_path)
+        remove_ready_label(client, issue_path)
 
 
 def _closed_as_completed(issue: object, path: str) -> bool:
@@ -291,72 +310,16 @@ def _blocked_comment(blockers: tuple[int, ...], unresolved: int) -> str:
     return BLOCKED_COMMENT.format(reason=" ".join(reasons))
 
 
-def _single_page(
-    client: ReadClient, path: str, items_key: str, params: dict[str, object] | None = None
-) -> list:
-    """The list under ``items_key``; more than one page would undercount, so it fails."""
-    listing = get_json(client, path, params={**(params or {}), "per_page": PER_PAGE})
-    items = listing.get(items_key) if isinstance(listing, dict) else None
-    total_count = listing.get("total_count") if isinstance(listing, dict) else None
-    if not isinstance(items, list) or not isinstance(total_count, int):
-        raise FetchError(f"GitHub API returned an unexpected payload for {path}")
-    if total_count > len(items):
-        raise FetchError(f"GitHub API listed more items than one page holds for {path}")
-    return items
-
-
-def _implement_job_start(client: ReadClient, repo: str, run_id: int) -> datetime | None:
-    """When the run's latest attempt started working, or None while it is not working.
-
-    The job's status tells a working run from one whose job the workflow's `if`
-    skipped, or one still queued.
-    """
-    path = f"/repos/{repo}/actions/runs/{run_id}/jobs"
-    for job in _single_page(client, path, "jobs"):
-        try:
-            if job["name"] != IMPLEMENT_JOB:
-                continue
-            if job["status"] != "in_progress":
-                return None
-            started_at = datetime.fromisoformat(job["started_at"])
-        except (KeyError, TypeError, ValueError) as error:
-            raise FetchError(f"GitHub API returned a malformed job for {path}") from error
-        if started_at.tzinfo is None:
-            raise FetchError(f"GitHub API returned a malformed job for {path}")
-        return started_at
-    return None
-
-
-def _runs_working_ahead(client: ReadClient, repo: str, run_id: int) -> int:
-    """How many other working runs come before this one.
-
-    Runs are ordered by (job start, run id), and only earlier runs count, so of
-    two simultaneous starts exactly one sees the other and stops. The job start
-    comes first because a re-run keeps its old run id: ordering by id alone would
-    let a re-run ignore every newer run already working.
-    """
-    own_start = _implement_job_start(client, repo, run_id)
-    if own_start is None:
-        raise FetchError(f"GitHub API lists no working {IMPLEMENT_JOB} job for this run")
-    runs_path = f"/repos/{repo}/actions/workflows/{IMPLEMENTER_WORKFLOW}/runs"
-    runs_ahead = 0
-    for run in _single_page(client, runs_path, "workflow_runs", {"status": "in_progress"}):
-        other_id = run.get("id") if isinstance(run, dict) else None
-        if not isinstance(other_id, int):
-            raise FetchError(f"GitHub API returned a malformed run for {runs_path}")
-        if other_id == run_id:
-            continue
-        other_start = _implement_job_start(client, repo, other_id)
-        if other_start is not None and (other_start, other_id) < (own_start, run_id):
-            runs_ahead += 1
-    return runs_ahead
-
-
 def claim_branch(
-    client: GitHubClient, actions_client: ReadClient, repo: str, issue: int, run_id: int
+    client: GitHubClient,
+    actions_client: ReadClient,
+    repo: str,
+    issue: int,
+    run_id: int,
+    setup: ImplementerSetup = DEFAULT_SETUP,
 ) -> ClaimOutcome:
-    """Decide this run's claim on ``agent/issue-<issue>`` and make the writes it needs."""
-    branch = f"agent/issue-{issue}"
+    """Decide this run's claim on the issue's branch and make the writes it needs."""
+    branch = setup.branch(issue)
     holding_pull_request = _pull_request_holding_issue(client, repo, issue, branch)
     if holding_pull_request is not None:
         return ClaimOutcome(PR_EXISTS, branch, holding_pull_request)
@@ -370,7 +333,7 @@ def claim_branch(
     if blockers or unresolved:
         _release_ticket(client, repo, issue, _blocked_comment(blockers, unresolved))
         return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
-    if _runs_working_ahead(actions_client, repo, run_id) >= MAX_WORKING_RUNS:
+    if runs_working_ahead(actions_client, repo, run_id, setup) >= MAX_WORKING_RUNS:
         _release_ticket(client, repo, issue, CAPACITY_COMMENT)
         return ClaimOutcome(AT_CAPACITY, branch)
 
@@ -427,7 +390,7 @@ def _issue_argument(value: str) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Claim agent/issue-<n> for one implementer run, or say why it must stop.",
+        description="Claim the issue's branch for one implementer run, or say why it must stop.",
         epilog=HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -439,12 +402,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--contract", required=True, type=Path, help="contract file; written when the run continues"
     )
+    parser.add_argument(
+        "--workflow-file",
+        help=f"the run's workflow file name (default: from {WORKFLOW_REF_VARIABLE}, "
+        f"else {IMPLEMENTER_WORKFLOW})",
+    )
+    parser.add_argument(
+        "--job-name",
+        default=IMPLEMENT_JOB,
+        help="the implementer job; also matches '<caller job> / <name>' (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--branch-prefix",
+        default=BRANCH_PREFIX,
+        help="branch name before the issue number; ends in / or - (default: %(default)s)",
+    )
     args = parser.parse_args(argv)
 
     try:
+        setup = ImplementerSetup(
+            workflow_file(args.workflow_file), args.job_name, branch_prefix(args.branch_prefix)
+        )
         client = GitHubClient(_required_token("GH_TOKEN"))
         actions_client = GitHubClient(_required_token(ACTIONS_TOKEN_VARIABLE))
-        claim = claim_branch(client, actions_client, args.repo, args.issue, _workflow_run_id())
+        claim = claim_branch(
+            client, actions_client, args.repo, args.issue, _workflow_run_id(), setup
+        )
     except FetchError as error:
         reason = str(error)
         args.summary.write_text(f"{FAILED_PREFIX}: claim ({reason})\n", encoding="utf-8")

@@ -57,8 +57,15 @@ def issue_link_errors(body: str, repo: str, linked: set[str], *, default_base: b
                 f"use 'Closes {_display(first, repo)}, closes {_display(reference, repo)}'"
             )
     errors = list(dict.fromkeys(malformed))
-    if not declared and not re.search(r"\bno[ -]issue\b", prose, re.IGNORECASE):
+    states_no_issue = bool(re.search(r"\bno[ -]issue\b", prose, re.IGNORECASE))
+    if not declared and not states_no_issue:
         errors.append("Add a closing issue declaration or an explicit 'no issue' statement")
+    if declared and states_no_issue:
+        errors.append(
+            "A 'no issue' body must not declare a closing; GitHub would close "
+            + ", ".join(_display(x, repo) for x in sorted(declared))
+            + ". Write 'Refs #n' or '(#n)' instead"
+        )
     if default_base:
         missing = declared - linked
         extra = linked - declared
