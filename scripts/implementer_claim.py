@@ -175,7 +175,7 @@ def _read_ref_sha(client: GitHubClient, repo: str, branch: str) -> str:
     return sha
 
 
-def _pull_request_holding_issue(
+def pull_request_holding_issue(
     client: GitHubClient, repo: str, issue: int, branch: str
 ) -> int | None:
     """The first open or merged PR that closes the issue, or an open PR on its branch."""
@@ -269,7 +269,7 @@ def _declared_blocker_blocks(client: GitHubClient, repo: str, number: int) -> bo
     return not (_closed_as_completed(blocker, path) and _belongs_to_repo(blocker, repo, path))
 
 
-def _find_blockers(
+def find_blockers(
     client: GitHubClient, repo: str, issue: int, ticket: Ticket
 ) -> tuple[tuple[int, ...], int]:
     """Blocking issue numbers, and the blockers that cannot be named as one here.
@@ -327,7 +327,7 @@ def claim_branch(
 ) -> ClaimOutcome:
     """Decide this run's claim on the issue's branch and make the writes it needs."""
     branch = setup.branch(issue)
-    holding_pull_request = _pull_request_holding_issue(client, repo, issue, branch)
+    holding_pull_request = pull_request_holding_issue(client, repo, issue, branch)
     if holding_pull_request is not None:
         return ClaimOutcome(PR_EXISTS, branch, holding_pull_request)
 
@@ -336,7 +336,7 @@ def claim_branch(
     if contract is None:
         _release_ticket(client, repo, issue, NO_CONTRACT_COMMENT)
         return ClaimOutcome(NO_CONTRACT, branch)
-    blockers, unresolved = _find_blockers(client, repo, issue, ticket)
+    blockers, unresolved = find_blockers(client, repo, issue, ticket)
     if blockers or unresolved:
         _release_ticket(client, repo, issue, _blocked_comment(blockers, unresolved))
         return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
