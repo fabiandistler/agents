@@ -4,11 +4,15 @@ For the repository maintainer, who operates the PR review workflow with admin
 access to the repository settings.
 
 `.github/workflows/pr-review.yml` assesses, reviews and labels every pull
-request, keeps one sticky comment up to date and requests the maintainer's
-review. For a gated docs-only pull request it may also enable GitHub's native
-auto-merge, once `PR_AUTO_MERGE` is `true`. It never approves, never requests
-changes and never merges directly: the merge happens when GitHub's auto-merge
-sees the required checks pass. Why this exception exists, and its limits:
+request. It is a thin caller: the jobs live in the reusable workflow
+`.github/workflows/factory-pr-review.yml`, which other repositories call at a
+pinned commit ([ADR-0018](../adr/0018-reusable-factory-workflows.md);
+[reusable workflow and inputs](pr-review-reusable-workflow.md)). The review
+keeps one sticky comment up to date and requests the maintainer's review. For
+a gated docs-only pull request it may also enable GitHub's native auto-merge,
+once `PR_AUTO_MERGE` is `true`. It never approves, never requests changes and
+never merges directly: the merge happens when GitHub's auto-merge sees the
+required checks pass. Why this exception exists, and its limits:
 [ADR-0011](../adr/0011-pr-review-merge-exception.md).
 
 Related pages:
@@ -19,6 +23,7 @@ Related pages:
 - In the review payload: [linked issues](pr-review-linked-issues.md), [PR comments](pr-review-comments.md)
 - [Verdict status](pr-review-verdict-status.md)
 - [Event policy for `pull_request_target`](pr-review-event-policy.md)
+- [Reusable workflow and inputs](pr-review-reusable-workflow.md)
 
 ## Contents
 
@@ -27,7 +32,6 @@ Related pages:
 - [Setup](#setup)
 - [Rollout](#rollout)
 - [Dry run](#dry-run)
-- [Standards for another repository](#standards-for-another-repository)
 - [Linked issues](#linked-issues)
 - [Manual re-run](#manual-re-run)
 - [Model change](#model-change)
@@ -55,8 +59,9 @@ the `pull_request_target` trigger runs only with the event policy of
   head; the diff, file list and base files arrive through the REST API. A
   pull request that edits the pipeline is reviewed by the version on `main`.
 - **Credential split.** Only `review` holds the model token, and it has no
-  write scope. The jobs that write hold no model token and check out with
-  `persist-credentials: false`. The workflow default is `permissions: {}`.
+  write scope. The jobs that write hold no model token and check out nothing;
+  `review` checks out the caller's base with `persist-credentials: false`. The
+  default of both workflow files is `permissions: {}`.
 - **The model only advises, and holds no tool.** It runs inside the Claude
   Code CLI with `--tools ""`, a replaced system prompt, no settings, MCP
   servers or slash commands, and an empty working directory. Injected text can
@@ -81,7 +86,9 @@ the `pull_request_target` trigger runs only with the event policy of
   request nor the assignment; the `ready_for_review` run asks for them.
 - **Concurrency.** One group per pull request; a new push cancels the run for
   the old head. Each label event has its own group, so it never cancels a
-  review run.
+  review run. The group is defined in `factory-pr-review.yml` only; a caller
+  defines none, because a group shared with the called workflow would cancel
+  the caller.
 
 Risk rules are `PATH_RULES` in `scripts/pr_risk.py`; the prompt is
 `scripts/pr_review_prompt.md`.
@@ -140,7 +147,8 @@ All settings live under the repository's **Settings** tab.
    `CLAUDE_CODE_OAUTH_TOKEN`, created locally with `claude setup-token` from
    the maintainer's Claude subscription. It is valid for one year; see
    [token renewal](#token-renewal). `claude.yml` reads the same secret. Only
-   the `review` step of `pr-review.yml` sees it. Without it every review is
+   the `review` step of `factory-pr-review.yml` sees it; the caller passes it
+   by name. Without it every review is
    `review:unavailable` with `needs-review`. Why a subscription and not an
    API key: [ADR-0012](../adr/0012-pr-review-on-claude-subscription.md).
 2. **Model (optional).** *Variables*: `PR_REVIEW_MODEL`, a Claude Code model
@@ -167,7 +175,8 @@ All settings live under the repository's **Settings** tab.
    commit SHAs).
 8. **Event policy (one-time, manual).** *Actions → Policies*: an active
    policy that allows `pull_request_target` and `workflow_dispatch` for
-   `.github/workflows/pr-review.yml` only. From 2026-12-02 GitHub blocks
+   `.github/workflows/pr-review.yml` only: the caller, which carries the
+   trigger, not `factory-pr-review.yml`. From 2026-12-02 GitHub blocks
    `pull_request_target` in public repositories without one. Steps, check
    and sources: [pr-review-event-policy.md](pr-review-event-policy.md).
 
@@ -236,46 +245,6 @@ fresh data and plans exactly what a write run would, then writes nothing.
   the auto-merge state and the planned labels;
 - the pull request has no new labels or comments.
 
-## Standards for another repository
-
-An operator who runs the review scripts for another repository can pass that
-repository's coding standards with `pr_review.py --standards FILE`. The bundled
-prompt describes no kind of repository; the file can. Its text goes verbatim
-into the system prompt, after the bundled prompt, under the heading
-`## Repository standards` and one fixed sentence that keeps the untrusted-input
-rules and the output format in force. It never enters the payload, and its
-bytes come out of the 300,000-byte total budget, so a long file can cut the
-payload (the review is then marked partial). This repository's own workflow
-passes no standards file.
-
-- **One file, from the runner.** The file must come from the runner: a base
-  checkout or an installed copy, never from the pull request head, which the
-  pull request author controls. The script reads only the path given on the
-  command line; nothing in the context names a file.
-- **Pointers are not resolved.** The review call has no tools, so a line in
-  the file that only points to another file (such as
-  `instructions/70-code-review-conventions.md`, which points to
-  `~/.agents/instructions/70-code-review-conventions.md`) cannot be followed.
-  Concatenate the always-on and on-demand fragments you want, the code-review
-  conventions in particular, into the one file.
-- **Cap and failures.** The file must be valid UTF-8 without NUL bytes, not
-  empty or whitespace-only, and at most 65,536 bytes. Any other file (or a
-  missing or unreadable one) stops the run with exit 3 and one stderr line
-  naming `--standards` and the reason, before any model call and without an
-  artifact. A larger file is refused, not truncated: silently dropped rules
-  would read as a clean review.
-- **The model-free reconstruction needs no `--standards`.** When the review
-  job was skipped, the publish job runs `pr_review.py --context` without the
-  model token. That yields `skipped` for a draft or fork and `unavailable`
-  otherwise; standards cannot change either outcome.
-
-```bash
-python3 "$scripts/pr_review.py" --context context.json \
-  --standards standards.md --dry-run --output request.json
-```
-
-`--dry-run` reports `system_bytes` including the standards text.
-
 ## Linked issues
 
 `pr_github.py --linked-issues` adds up to three same-repository issues the
@@ -314,7 +283,7 @@ is high risk and needs a human review.
 ### CLI update
 
 The review job installs `@anthropic-ai/claude-code` at the exact version
-pinned in `.github/workflows/pr-review.yml`; the next step hands that binary
+pinned in `.github/workflows/factory-pr-review.yml`; the next step hands that binary
 the token. Dependabot does not update it. To update, check the release notes,
 change the version, and dispatch a dry run before merging. A test fails if the
 pin loses its exact version.

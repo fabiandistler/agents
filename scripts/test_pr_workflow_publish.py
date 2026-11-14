@@ -23,7 +23,6 @@ from pr_workflow_testkit import (
     normalize,
     parse_workflow,
     run_containing,
-    step_using,
 )
 
 
@@ -81,14 +80,6 @@ def test_publish_links_the_verdict_status_to_its_run(workflow: dict[Any, Any]) -
     assert command.count('--status-url "$RUN_URL"') == 2, (
         "the write and the dry-run branch must plan the same status"
     )
-
-
-def test_write_jobs_do_not_persist_the_token_in_the_checkout(workflow: dict[Any, Any]) -> None:
-    for name in ("publish", "hold"):
-        checkout = step_using(job_named(workflow, name), "actions/checkout@")
-        assert (checkout.get("with") or {}).get("persist-credentials") is False, (
-            f"{name} holds contents: write; its checkout must not keep the token in .git"
-        )
 
 
 def test_publish_holds_no_model_key(workflow: dict[Any, Any]) -> None:

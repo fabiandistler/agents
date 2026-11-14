@@ -19,6 +19,7 @@ import pr_cli
 import pr_github
 import pr_github_client
 import pr_plan
+import pr_skip
 import pr_summary
 
 AUTO_MERGE_ENV = "PR_AUTO_MERGE"
@@ -56,6 +57,7 @@ def publish_live(
         review,
         auto_merge=os.environ.get(AUTO_MERGE_ENV),
         status_url=status_url,
+        skip_prefixes=pr_skip.prefixes_from_env(),
     )
     if not write or plan["status"] == "aborted":
         return plan
@@ -67,6 +69,7 @@ def publish_live(
         review,
         auto_merge=os.environ.get(AUTO_MERGE_ENV),
         status_url=status_url,
+        skip_prefixes=pr_skip.prefixes_from_env(),
     )
     if plan["status"] == "aborted":
         return plan
@@ -82,6 +85,7 @@ def publish_live(
         auto_merge=os.environ.get(AUTO_MERGE_ENV),
         auto_merge_refused=True,
         status_url=status_url,
+        skip_prefixes=pr_skip.prefixes_from_env(),
     )
     if follow_up["status"] == "aborted":
         return {**applied, "follow_up": {"plan": follow_up, "results": []}}
@@ -100,7 +104,10 @@ def hold_live(repo: str, number: int, write: bool = False, client=None):
     ``do-not-merge`` is added. Return values follow ``publish_live``.
     """
     token = _token(write, client)
-    plan = pr_plan.plan_hold(pr_github.fetch_context(repo, number, token=token, client=client))
+    plan = pr_plan.plan_hold(
+        pr_github.fetch_context(repo, number, token=token, client=client),
+        skip_prefixes=pr_skip.prefixes_from_env(),
+    )
     if not write or plan["status"] == "aborted":
         return plan
     return _apply(plan, token, client)
@@ -142,16 +149,16 @@ the pr-review/verdict status of one pull request. Prints JSON; --write applies i
   --repo O/R --pr N   repository as OWNER/REPO and pull request number (with --live)
   --hold              without a review: only disable the bot's auto-merge (any under do-not-merge)
   --write             apply the plan; needs --live and GITHUB_ACTIONS=true
-  --summary FILE      either form: also append a Markdown summary to FILE (not --hold)
-  --status-url URL    either form: https link for the pr-review/verdict status (not --hold)
-  -h, --help          show this message
-env: PR_AUTO_MERGE=true enables auto-merge planning; any other value keeps it off.
+  --summary FILE      append a Markdown summary to FILE; --quiet omits its JSON (not --hold)
+  --status-url URL    https link for the pr-review/verdict status (not --hold)
+  --fail-on-unavailable  exit 8 after publishing an unavailable review (not --hold)
+env: PR_AUTO_MERGE=true plans auto-merge; PR_SKIP_HEAD_PREFIXES=a/,b/ aborts those heads
 examples:
   python3 scripts/pr_publish.py --context c.json --assessment a.json --review r.json
   python3 scripts/pr_publish.py --live --repo fabiandistler/agents --pr 42 \\
       --assessment a.json --review r.json --write
 
-{pr_cli.exit_help(0, 1, 2, 3, 4, 5, 6, 7)}
+{pr_cli.exit_help(0, 1, 2, 3, 4, 5, 6, 7, 8)}
 """
 
 VALUE_FLAGS = (
@@ -166,16 +173,19 @@ VALUE_FLAGS = (
 
 
 def _parse_arguments(argv: list[str]) -> dict | None:
-    options = pr_cli.parse_flags(argv, VALUE_FLAGS, ("--live", "--write", "--hold"))
+    options = pr_cli.parse_flags(
+        argv, VALUE_FLAGS, ("--live", "--write", "--hold", "--quiet", "--fail-on-unavailable")
+    )
     if options is None:
         return None
     if options["hold"] is True:
         if any(
             options[name] is not None
             for name in ("context", "assessment", "review", "summary", "status_url")
-        ):
+        ) or any(options[name] is True for name in ("quiet", "fail_on_unavailable")):
             raise pr_cli.UsageError(
-                "--hold takes no --context, --assessment, --review, --summary or --status-url"
+                "--hold takes no --context, --assessment, --review, --summary, --status-url,"
+                " --quiet or --fail-on-unavailable"
             )
         if options["live"] is not True:
             raise pr_cli.UsageError("--hold requires --live")
@@ -270,16 +280,37 @@ def main(argv: list[str] | None = None, client=None) -> int:
                 review,
                 auto_merge=os.environ.get(AUTO_MERGE_ENV),
                 status_url=options["status_url"],
+                skip_prefixes=pr_skip.prefixes_from_env(),
             )
     except (pr_cli.InputError, pr_plan.ArtifactError, pr_apply.PlanError) as error:
         print(f"pr_publish.py: {error}", file=sys.stderr)
         return pr_cli.EXIT_BAD_INPUT
 
     status = _emit(payload, options["write"] is True)
-    summary = pr_summary.render_summary(payload, review)
+    summary = pr_summary.render_summary(payload, review, quiet=options["quiet"] is True)
     if not _append_summary(options["summary"], summary) and status == pr_cli.EXIT_OK:
         return pr_cli.EXIT_OUTPUT_FAILED
+    if (
+        options["fail_on_unavailable"] is True
+        and status == pr_cli.EXIT_OK
+        and _review_unavailable(payload, review)
+    ):
+        print("pr_publish.py: the review is unavailable (--fail-on-unavailable)", file=sys.stderr)
+        return pr_cli.EXIT_REVIEW_UNAVAILABLE
     return status
+
+
+def _review_unavailable(payload: dict, review: dict) -> bool:
+    """True when a failed model call left this pull request without a review.
+
+    A plan aborted with head_skipped is not this run's pull request to review,
+    so it never fails the run. A draft or fork review is `skipped`, not
+    unavailable: no model call was due.
+    """
+    plan = payload.get("plan", payload)
+    if plan.get("abort_reason") == pr_skip.ABORT_REASON:
+        return False
+    return review.get("status") == "unavailable"
 
 
 def _emit(payload: dict, write: bool) -> int:

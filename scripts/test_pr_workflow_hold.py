@@ -22,7 +22,6 @@ from pr_workflow_testkit import (
     normalize,
     parse_workflow,
     run_containing,
-    step_using,
 )
 
 
@@ -54,7 +53,8 @@ def test_the_hold_runs_the_review_free_publisher(workflow: dict[Any, Any]) -> No
     command = run_containing(job_named(workflow, "hold"), "scripts/pr_publish.py")
     command = normalize(command.replace("\\\n", " "))
     assert command == (
-        'python3 scripts/pr_publish.py --hold --live --repo "${{ github.repository }}" '
+        'python3 "$RUNNER_TEMP/factory/scripts/pr_publish.py" --hold --live '
+        '--repo "${{ github.repository }}" '
         '--pr "$PR" --write'
     )
 
@@ -67,6 +67,6 @@ def test_the_hold_holds_the_workflow_token_and_nothing_else(workflow: dict[Any, 
     assert "PR_AUTO_MERGE" not in env, "the hold never enables auto-merge"
 
 
-def test_the_hold_checks_out_the_base(workflow: dict[Any, Any]) -> None:
-    checkout = step_using(job_named(workflow, "hold"), "actions/checkout@")
-    assert "ref" not in (checkout.get("with") or {})
+def test_the_hold_honours_the_skip_prefixes(workflow: dict[Any, Any]) -> None:
+    env = job_env(workflow, "hold")
+    assert env.get("PR_SKIP_HEAD_PREFIXES") == "${{ inputs.skip_head_prefixes }}"

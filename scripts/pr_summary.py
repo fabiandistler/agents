@@ -4,7 +4,7 @@
 decision, what the review covered, the verdict status and the labels. A dry
 run lists the labels it planned; a write lists only the labels it actually
 wrote, which a failed write leaves short of the plan. The full JSON follows
-for the details.
+for the details, unless the caller asked for quiet logs (`--quiet`).
 """
 
 from __future__ import annotations
@@ -61,8 +61,12 @@ def _action_lines(results: list[dict]) -> list[str]:
     ]
 
 
-def render_summary(payload: dict, review: dict) -> str:
-    """Return the Markdown summary of a plan or of a write's results wrapper."""
+def render_summary(payload: dict, review: dict, quiet: bool = False) -> str:
+    """Return the Markdown summary of a plan or of a write's results wrapper.
+
+    ``quiet`` leaves out the JSON, whose sticky comment carries the model's
+    text; the lines above it hold only labels, states and action details.
+    """
     follow_up = payload.get("follow_up") or {}
     plan = follow_up.get("plan") or payload.get("plan", payload)
     lines = ["### PR review decision", ""]
@@ -86,5 +90,6 @@ def render_summary(payload: dict, review: dict) -> str:
         lines.append(
             f"- labels planned (dry run, nothing written): {_labels(*_planned_labels(plan))}"
         )
-    lines += ["", "```json", json.dumps(payload, indent=2), "```"]
+    if not quiet:
+        lines += ["", "```json", json.dumps(payload, indent=2), "```"]
     return "\n".join(lines) + "\n"
