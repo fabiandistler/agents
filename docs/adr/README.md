@@ -24,6 +24,7 @@ governs; the replacement ADR or current record is named).
 | [0012](0012-pr-review-on-claude-subscription.md) | Accepted (2026-11-09) | The PR review runs `claude -p` without tools on the maintainer's Claude subscription instead of OpenCode Zen. |
 | [0013](0013-automated-issue-triage.md) | Accepted (2026-11-10) | New issues by collaborators get an automated triage comment; the bot sets only `needs-info`, the maintainer every other state. |
 | [0014](0014-agent-runs-in-github-actions.md) | Accepted (2026-11-10) | The implementer and the skill audit run in GitHub Actions through `claude-code-action` with the Claude GitHub App token, not as Claude Code scheduled tasks. |
+| [0017](0017-retro-task.md) | Proposed (2026-11-14) | A daily, throttled Retro run turns about one merged agent PR in ten into one proposed change to the factory's own instruction texts. |
 
 ## Supersession
 

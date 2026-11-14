@@ -225,3 +225,7 @@ most-changed ones) against `docs/agents/skill-audit-checklist.md`. Findings
 land in one rolling `skill-audit` issue; mechanical fixes in one
 `claude/skill-audit-<date>` PR. Record a finding you decide to keep under the
 issue's *Accepted* section so the audit stops reporting it.
+
+### Retro
+
+`.github/workflows/retro.yml` runs daily: once `RETRO_EVERY` (default 10) agent PRs have merged since the last `retro:done` label, the model-free `scripts/retro_gate.py` picks the one with the most non-pass review rounds, and the model proposes changes to the review and triage prompts, `docs/agents/` runbooks and this file in one `agent/retro-<pr>` PR, never to vendored files. Runbook and PR body format: `docs/agents/retro.md`; decision: `docs/adr/0017-retro-task.md`.
