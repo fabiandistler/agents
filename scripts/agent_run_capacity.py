@@ -11,6 +11,10 @@ after it, while a later working job has not completed. Every status but
 job held back by its concurrency group keeps the capacity until it ends. A job
 the workflow's ``if`` skipped is completed.
 
+The jobs API names a job of a called workflow `<caller job> / <called job>`
+(python/cpython run 43566160543 lists `Docs / Doctest`, read 2026-11-14), so a
+working job matches by its plain or its composed name.
+
 Standard library only. Errors name the API call, never run or job payloads.
 """
 
@@ -20,6 +24,8 @@ from datetime import datetime
 
 from pr_github import PER_PAGE, get_json
 from pr_github_client import FetchError, ReadClient
+
+CALLED_JOB_SEPARATOR = " / "
 
 
 def _single_page(
@@ -45,9 +51,17 @@ def _job_statuses(client: ReadClient, path: str, jobs: tuple[str, ...]) -> dict[
             status = job["status"]
         except (KeyError, TypeError) as error:
             raise FetchError(f"GitHub API returned a malformed job for {path}") from error
-        if name in jobs and isinstance(status, str):
-            found[name] = job
+        working = next((wanted for wanted in jobs if is_job(name, wanted)), None)
+        if working is not None and isinstance(status, str):
+            found[working] = job
     return found
+
+
+def is_job(listed_name: object, job: str) -> bool:
+    """Whether the jobs API's ``listed_name`` is ``job``, plain or inside a called workflow."""
+    return isinstance(listed_name, str) and (
+        listed_name == job or listed_name.endswith(f"{CALLED_JOB_SEPARATOR}{job}")
+    )
 
 
 def _work_start(

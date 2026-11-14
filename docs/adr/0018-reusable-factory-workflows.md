@@ -139,8 +139,8 @@ dedicated-App fallback is recorded.
   repositories are free on standard runners
   ([GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)).
 - **Capacity.** `MAX_WORKING_RUNS` counts per repository
-  (`scripts/implementer_capacity.py:19`; the runs it counts are listed per
-  repository at `:71`), so three repositories can run three implementers
+  (`scripts/implementer_capacity.py:18`; the runs it counts are listed per
+  repository at `scripts/agent_run_capacity.py:110`), so three repositories can run three implementers
   on one Claude subscription at once. Accepted: one implementer per
   repository keeps each repository's branch and PR queue serial, which is
   what the limit protects. Subscription limits are shared anyway with
