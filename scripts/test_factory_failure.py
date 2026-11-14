@@ -95,6 +95,12 @@ class FakeClient:
             raise pr_github_client.FetchError("exists", status=422)
         return json_response({}, status=201)
 
+    def patch(self, path, payload=None):
+        raise AssertionError(f"unexpected PATCH {path}")
+
+    def delete(self, path, payload=None):
+        raise AssertionError(f"unexpected DELETE {path}")
+
 
 def run_main(client, *extra) -> int:
     argv = ["--repo", REPO, "--run-id", str(RUN_ID), *extra]

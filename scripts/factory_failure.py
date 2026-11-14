@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime
 import os
 import sys
+from typing import Protocol
 
 import pr_cli
 import pr_github_client
@@ -32,9 +33,9 @@ from factory_failure_policy import (
     skip_reason,
 )
 from pr_actions import Operation
-from pr_apply import send
+from pr_apply import WriteClient, send
 from pr_github import PER_PAGE, get_json, paginate
-from pr_github_client import GitHubClient
+from pr_github_client import GitHubClient, ReadClient
 
 SCRIPT = "factory_failure.py"
 
@@ -64,7 +65,11 @@ class ApplyError(RuntimeError):
     """A write to GitHub failed after the plan was made."""
 
 
-def _client(client: object | None) -> object:
+class FixTaskClient(ReadClient, WriteClient, Protocol):
+    """Reads the failed run and writes the issue; ``GitHubClient`` and fakes implement it."""
+
+
+def _client(client: FixTaskClient | None) -> FixTaskClient:
     if client is not None:
         return client
     token = os.environ.get("GITHUB_TOKEN")
@@ -73,7 +78,7 @@ def _client(client: object | None) -> object:
     return GitHubClient(token)
 
 
-def _object(client, path: str, params: dict | None = None) -> dict:
+def _object(client: ReadClient, path: str, params: dict | None = None) -> dict:
     payload = get_json(client, path, params)
     if not isinstance(payload, dict):
         raise pr_github_client.FetchError(f"GitHub API returned an unexpected payload for {path}")
@@ -100,7 +105,7 @@ def _issue(entry: dict) -> dict:
     }
 
 
-def _with_comments(client, repo: str, issue: dict) -> dict:
+def _with_comments(client: ReadClient, repo: str, issue: dict) -> dict:
     comments = paginate(client, f"/repos/{repo}/issues/{issue['number']}/comments")
     return {
         **issue,
@@ -108,7 +113,7 @@ def _with_comments(client, repo: str, issue: dict) -> dict:
     }
 
 
-def _run(client, repo: str, run_id: int) -> dict:
+def _run(client: ReadClient, repo: str, run_id: int) -> dict:
     run = _object(client, f"/repos/{repo}/actions/runs/{run_id}")
     return {
         "id": run_id,
@@ -121,7 +126,7 @@ def _run(client, repo: str, run_id: int) -> dict:
     }
 
 
-def _failure(client, repo: str, run: dict) -> dict:
+def _failure(client: ReadClient, repo: str, run: dict) -> dict:
     path = f"/repos/{repo}/actions/runs/{run['id']}/attempts/{run['attempt']}/jobs"
     # One page of PER_PAGE (100) jobs: the watched workflows have at most four
     # jobs and no matrix. A watched workflow past 100 jobs needs pagination here.
@@ -135,7 +140,7 @@ def _failure(client, repo: str, run: dict) -> dict:
     return {"job": failure["job"], "step": failure["step"], "reason": failure_reason(annotations)}
 
 
-def make_plan(client, repo: str, run_id: int, date: str) -> dict:
+def make_plan(client: ReadClient, repo: str, run_id: int, date: str) -> dict:
     """Fetch every fact the planner needs for one run and plan its write."""
     run = _run(client, repo, run_id)
     if skip_reason(run) is not None:
@@ -164,7 +169,7 @@ def make_plan(client, repo: str, run_id: int, date: str) -> dict:
     return plan(run, failure, open_issue, closed_issue, fix_issue, date)
 
 
-def apply(client, repo: str, planned: dict) -> None:
+def apply(client: WriteClient, repo: str, planned: dict) -> None:
     action = planned["action"]
     if action is None:
         return
@@ -212,7 +217,9 @@ def _parse(argv: list[str]) -> dict | None:
     return options
 
 
-def main(argv: list[str] | None = None, client=None, today: str | None = None) -> int:
+def main(
+    argv: list[str] | None = None, client: FixTaskClient | None = None, today: str | None = None
+) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
         options = _parse(arguments)
