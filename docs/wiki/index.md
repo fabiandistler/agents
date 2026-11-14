@@ -17,6 +17,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-11 factory expansion order](decisions/2026-11-11-factory-expansion-order.md) — brakes (#763, #764, #770) first, then new tasks, then rollout.
 - [2026-11-11 new factory tasks](decisions/2026-11-11-new-factory-tasks.md) — Rework (#782), Fix (#783), Retro (#784) filed `ready-for-human`.
 - [2026-11-11 factory rollout](decisions/2026-11-11-factory-rollout.md) — dotfiles and repo-maintenance via reusable workflows, spec #786.
+- [2026-11-14 decisions](decisions/2026-11-14-decisions.md) — #802, #822, #823 option 1; repo-maintenance#150; YAML tickets stay interactive; #764 done.
 - [2026-11-13 triage decisions](decisions/2026-11-13-triage-decisions.md) — reopen #783, queue issue #801, #769 script-only, YAML tickets in interactive sessions.
 
 ## Recurring problems
@@ -33,6 +34,9 @@ nothing here describes the present. See [conventions](conventions.md).
 - [no agent consumer outside agents](problems/no-agent-consumer-outside-agents.md) — no implementer workflow and no enabled sweep in repo-maintenance and dotfiles (2026-11-13).
 - [implementer lint rounds](problems/implementer-lint-rounds.md) — 2026-11-13 retro: the stop rule spent three rounds on prek lint; follow-ups #806–#808.
 - [shared usage limit](problems/shared-usage-limit.md) — implementer, chief-of-staff subagents and cloud sessions share one 5-hour budget; #782 run lost on 2026-11-13.
+- [implementer write limits](problems/implementer-write-limits.md) — no writes to `.github/workflows/`, `.claude/`, `.pre-commit-config.yaml`; Rework/Retro inactive until YAML is committed.
+- [missing pull_request runs](problems/missing-pull-request-runs.md) — #826: no `pull_request` run, so required `secrets` never reported (2026-11-14).
+- [review model inputs](problems/review-model-inputs.md) — review saw no rebuttals or briefs and stripped HTML comments; #822/#823.
 
 ## Snapshots
 
