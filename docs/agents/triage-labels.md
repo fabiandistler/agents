@@ -136,7 +136,9 @@ the bot's comment, and their state check accepts an issue without a state.
 
 When the automated review of an implementer pull request ends with
 `concerns` or `block`, `.github/workflows/rework.yml` may run one model round
-that fixes only those findings ([ADR-0015](../adr/0015-rework-task.md)). The
+that fixes only those findings ([ADR-0015](../adr/0015-rework-task.md)). It
+calls the reusable `.github/workflows/factory-rework.yml`, which other
+repositories call too ([factory onboarding](factory-onboarding.md)). The
 workflow is added to `main` by hand; until it is there, nothing below runs. Its
 model-free gate, `scripts/rework_gate.py` over `scripts/rework_policy.py`,
 decides from the review run's artifacts and the live pull request:
@@ -154,7 +156,8 @@ repository variable `REWORK_MODEL` (default `sonnet`).
 
 ## Fix task
 
-`.github/workflows/fix-task.yml` runs `scripts/factory_failure.py` after a
+`.github/workflows/fix-task.yml`, through the reusable
+`.github/workflows/factory-fix-task.yml`, runs `scripts/factory_failure.py` after a
 factory run (`implementer`, `skill-audit`, `issue-triage`, `pr-review`,
 `rework`, `retro`) concludes `failure` or `timed_out`
 ([ADR-0016](../adr/0016-fix-task.md)). It needs no model. It files issues with the label `factory-failure`, which it

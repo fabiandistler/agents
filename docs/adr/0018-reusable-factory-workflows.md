@@ -56,8 +56,12 @@ callers:
 | PR review | `factory-pr-review.yml` | `pull_request_target`, `workflow_dispatch` | `contents: write`, `pull-requests: write`, `issues: write` |
 | issue triage | `factory-issue-triage.yml` | `issues: opened, labeled`, `issue_comment`, `workflow_dispatch` | `contents: read`, `issues: write` |
 | triage label | `factory-triage-label.yml` | `issues: opened` | `issues: write` |
+| Rework | `factory-rework.yml` | `workflow_run` on `pr-review`, `workflow_dispatch` | `contents: read`, `actions: read`, `pull-requests: write`, `issues: write`, `id-token: write` |
+| Fix | `factory-fix-task.yml` | `workflow_run` on the repository's callers, `workflow_dispatch` | `issues: write`, `actions: read`, `checks: read` |
 
-The permissions are each task's minimum from #786. Amended 2026-11-14 (#792):
+The permissions are each task's minimum from #786. Amended 2026-11-14 (#846):
+the Rework and Fix rows were added when both tasks were extracted for the
+first targets; Retro stays this repository's own. Amended 2026-11-14 (#792):
 the PR review's calling job also needs `statuses: write`, because `publish`
 sets the `pr-review/verdict` status (#764), which #786 predates. Because the calling job
 caps the called workflow, a caller that grants less breaks the task, and one

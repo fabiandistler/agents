@@ -1,4 +1,8 @@
-"""Guardrails for fix-task.yml: the model-free Fix task (ADR-0016)."""
+"""Guardrails for the model-free Fix task (ADR-0016, ADR-0018).
+
+The reusable factory-fix-task.yml holds the job; this repository's fix-task.yml
+is its thin caller with the watch list.
+"""
 
 import re
 from pathlib import Path
@@ -7,26 +11,30 @@ import factory_failure_policy
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKFLOW = REPO_ROOT / ".github" / "workflows" / "fix-task.yml"
+WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+WORKFLOW = WORKFLOWS / "fix-task.yml"
+FACTORY = WORKFLOWS / "factory-fix-task.yml"
+SCOPES = {"issues": "write", "actions": "read", "checks": "read"}
 
 
-def _workflow() -> dict:
-    return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+def _workflow(path: Path = WORKFLOW) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def _job() -> dict:
-    jobs = _workflow()["jobs"]
+def _job(path: Path = WORKFLOW) -> dict:
+    jobs = _workflow(path)["jobs"]
     assert len(jobs) == 1, "the Fix task is one job"
     return next(iter(jobs.values()))
 
 
 def test_permissions_are_empty_by_default_and_three_scopes_in_the_job():
-    assert _workflow()["permissions"] == {}
-    assert _job()["permissions"] == {"issues": "write", "actions": "read", "checks": "read"}
+    for path in (WORKFLOW, FACTORY):
+        assert _workflow(path)["permissions"] == {}
+        assert _job(path)["permissions"] == SCOPES
 
 
 def test_concurrency_is_per_watched_workflow_and_never_cancels():
-    concurrency = _workflow()["concurrency"]
+    concurrency = _job(FACTORY)["concurrency"]
     assert "github.event.workflow_run.name" in concurrency["group"]
     assert concurrency["cancel-in-progress"] is False
 
@@ -59,11 +67,12 @@ def test_every_watched_workflow_starts_runs_of_its_own():
 
 
 def test_no_model_and_no_app_token():
-    text = WORKFLOW.read_text(encoding="utf-8")
+    text = WORKFLOW.read_text(encoding="utf-8") + FACTORY.read_text(encoding="utf-8")
     for forbidden in ("claude", "anthropic", "CLAUDE_CODE_OAUTH_TOKEN", "id-token", "app-token"):
         assert forbidden.lower() not in text.lower().replace("claude-code", "")
     secrets = set(re.findall(r"secrets\.([A-Z_]+)", text))
     assert secrets == {"GITHUB_TOKEN"}
+    assert "secrets" not in _job(), "the caller passes no secret"
 
 
 def test_the_implementer_run_name_matches_the_policy():
@@ -72,3 +81,62 @@ def test_the_implementer_run_name_matches_the_policy():
     )["run-name"]
     assert run_name == "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
     assert factory_failure_policy.IMPLEMENTER_RUN_NAME.fullmatch("implementer: issue #783")
+
+
+def test_caller_calls_the_local_factory_workflow_and_stays_thin():
+    job = _job()
+    assert job["uses"] == "./.github/workflows/factory-fix-task.yml"
+    assert set(job) == {"permissions", "uses", "with"}, "no if, concurrency or steps of its own"
+    assert job["with"] == {
+        "run_id": "${{ inputs.run_id }}",
+        "dry_run": "${{ inputs.dry_run != false }}",
+    }
+    assert "concurrency" not in _workflow()
+
+
+def test_factory_declares_its_inputs_and_no_secret():
+    triggers = _workflow(FACTORY)[True]
+    assert set(triggers) == {"workflow_call"}
+    call = triggers["workflow_call"]
+    assert {name: spec.get("default") for name, spec in call["inputs"].items()} == {
+        "run_id": "",
+        "dry_run": True,
+    }
+    assert "secrets" not in call
+
+
+def test_factory_writes_only_for_an_event_or_an_explicit_manual_write():
+    step = next(s for s in _job(FACTORY)["steps"] if s.get("name") == "File the failure")
+    assert step["env"]["WRITE"] == (
+        "${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}"
+    )
+    assert step["env"]["RUN_ID"] == "${{ github.event.workflow_run.id || inputs.run_id }}"
+    assert '"$FACTORY_DIR/scripts/factory_failure.py"' in step["run"]
+    assert "${{" not in step["run"]
+
+
+def test_factory_runs_the_script_from_the_fetched_factory_without_a_checkout():
+    steps = _job(FACTORY)["steps"]
+    assert not [s for s in steps if "actions/checkout@" in s.get("uses", "")]
+    fetch = next(s for s in steps if s.get("id") == "factory")
+    review = _workflow(WORKFLOWS / "factory-pr-review.yml")
+    reference = next(
+        step
+        for job in review["jobs"].values()
+        for step in job.get("steps", [])
+        if step.get("name") == "Fetch the factory scripts"
+    )
+    assert fetch["name"] == reference["name"]
+    assert fetch["env"] == reference["env"], "no token reaches the fetch"
+
+    def lines(run: str) -> list[str]:
+        return [
+            line.strip().replace('"$RUNNER_TEMP/factory"', '"$dir"')
+            for line in run.splitlines()
+            if line.strip().startswith(("git", '"$SERVER_URL'))
+        ]
+
+    assert lines(fetch["run"]) == lines(reference["run"])
+    for step in steps:
+        if "uses" in step:
+            assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", step["uses"]), step["uses"]

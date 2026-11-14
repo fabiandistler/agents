@@ -210,7 +210,7 @@ Adding `ready-for-agent` to an open issue starts `.github/workflows/implementer.
 
 ### Rework
 
-A `concerns` or `block` review of an `agent/issue-<n>` pull request starts `.github/workflows/rework.yml` through `workflow_run`: a model-free gate (`scripts/rework_gate.py`) posts a round marker, and one model run fixes only the handed findings and pushes. After two rounds the pull request goes to a person (`docs/adr/0015-rework-task.md`; outcomes in `docs/agents/triage-labels.md`).
+A `concerns` or `block` review of an `agent/issue-<n>` pull request starts `.github/workflows/rework.yml` through `workflow_run`, a thin caller of the reusable `.github/workflows/factory-rework.yml` (`docs/adr/0018-reusable-factory-workflows.md`): a model-free gate (`scripts/rework_gate.py`) posts a round marker, and one model run fixes only the handed findings and pushes. After two rounds the pull request goes to a person (`docs/adr/0015-rework-task.md`; outcomes in `docs/agents/triage-labels.md`).
 
 ### PR review
 

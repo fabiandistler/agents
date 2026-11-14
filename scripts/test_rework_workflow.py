@@ -1,13 +1,17 @@
-"""Guardrails for rework.yml, the Rework task (ADR-0015).
+"""Guardrails for the Rework task (ADR-0015, ADR-0018).
 
-The model-free gate writes with GITHUB_TOKEN; the model job runs
-claude-code-action with the Claude GitHub App token. These tests pin what keeps
-that safe: empty top-level permissions, narrow job scopes, a SHA-pinned action,
-no `github_token` override, no event text in the prompt, findings handed over
-as a file artifact, and the report step.
+The reusable factory-rework.yml holds both jobs; this repository's rework.yml
+is its thin caller. The model-free gate writes with GITHUB_TOKEN; the model job
+runs claude-code-action with the Claude GitHub App token. These tests pin what
+keeps that safe: empty top-level permissions, narrow job scopes, a SHA-pinned
+action, no `github_token` override, no event text in the prompt, findings
+handed over as a file artifact, validated caller inputs, the factory scripts
+fetched at the workflow's own commit, and the report step.
 """
 
+import os
 import re
+import subprocess
 from pathlib import Path
 from typing import cast
 
@@ -29,7 +33,9 @@ from rework_testkit import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKFLOW = REPO_ROOT / ".github" / "workflows" / "rework.yml"
+WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+CALLER = WORKFLOWS / "rework.yml"
+WORKFLOW = WORKFLOWS / "factory-rework.yml"
 
 ACTION = "anthropics/claude-code-action@"
 SHA_PIN = re.compile(r"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$")
@@ -42,8 +48,8 @@ PROMPT_EXPRESSIONS = {
 }
 
 
-def _workflow() -> dict:
-    return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+def _workflow(path: Path = WORKFLOW) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def _job(name: str) -> dict:
@@ -57,7 +63,7 @@ def _model_step() -> dict:
 
 
 def test_triggers_on_a_completed_review_or_a_manual_run_never_a_label():
-    triggers = _workflow()[True]
+    triggers = _workflow(CALLER)[True]
     assert triggers["workflow_run"] == {"workflows": ["pr-review"], "types": ["completed"]}
     assert triggers["workflow_dispatch"]["inputs"]["pr"]["required"] is True
     assert set(triggers) == {"workflow_run", "workflow_dispatch"}
@@ -65,6 +71,7 @@ def test_triggers_on_a_completed_review_or_a_manual_run_never_a_label():
 
 def test_permissions_are_empty_by_default_and_narrow_in_each_job():
     assert _workflow()["permissions"] == {}
+    assert _workflow(CALLER)["permissions"] == {}
     assert _job("gate")["permissions"] == {
         "contents": "read",
         "actions": "read",
@@ -105,8 +112,10 @@ def test_the_gate_holds_write_scope_on_every_kind_of_target_it_writes(tmp_path):
 
 
 def test_job_names_match_the_capacity_check():
+    # The capacity check lists the caller's runs and matches the called jobs
+    # by their composed names, `<caller job> / gate` (agent_run_capacity.is_job).
     jobs = _workflow()["jobs"]
-    assert WORKFLOW.name == rework_gate.REWORK_WORKFLOW
+    assert CALLER.name == rework_gate.REWORK_WORKFLOW
     assert set(jobs) == {rework_gate.GATE_JOB, rework_gate.REWORK_JOB}
     for job in jobs.values():
         assert "name" not in job and "matrix" not in job.get("strategy", {})
@@ -138,7 +147,8 @@ def test_the_model_job_runs_only_after_the_gate_proceeds():
 
 def test_the_gate_writes_the_marker_before_the_model_job():
     decide = next(step for step in _job("gate")["steps"] if step.get("id") == "decide")
-    assert "scripts/rework_gate.py decide" in decide["run"] and "--write" in decide["run"]
+    assert '"$FACTORY_DIR/scripts/rework_gate.py" decide' in decide["run"]
+    assert "--write" in decide["run"]
     assert "${{" not in decide["run"], "values reach the shell through env only"
 
 
@@ -163,7 +173,8 @@ def test_action_uses_the_app_token_and_allows_only_the_app_bot():
     secret_ref = "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"  # noqa: S105 -- a reference, not a value.
     assert inputs["claude_code_oauth_token"] == secret_ref
     assert inputs["allowed_bots"] == "claude"
-    assert "--model ${{ vars.REWORK_MODEL || 'sonnet' }}" in inputs["claude_args"]
+    assert "--model ${{ steps.setup.outputs.model }}" in inputs["claude_args"]
+    assert "inputs." not in inputs["claude_args"]
 
 
 def test_prompt_interpolates_only_validated_numbers_and_the_repository():
@@ -185,10 +196,11 @@ def test_prompt_keeps_the_hard_limits_and_the_stop_rule():
         "never touch other branches",
         "never edit files under .github/workflows/",
         "never set labels other than ready-for-human",
-        "stage your own edits (`git add -A`) before each run of `scripts/check_all.sh`",
+        'run the checks with `bash "$RUNNER_TEMP/check-command.sh"`',
+        "stage your own edits (`git add -A`) before each run of the checks",
         "that rerun belongs to the same round",
         "A round is red only if its last run is red",
-        "after 2 red check rounds, fix the last failure and run `scripts/check_all.sh` once more",
+        "after 2 red check rounds, fix the last failure and run the checks once more",
         "only if that run is red too, push nothing",
         "run_in_background: false",
         "RUN FAILED",
@@ -207,6 +219,142 @@ def test_checkouts_keep_no_credentials():
 def test_the_report_step_runs_always():
     report = next(step for step in _job("rework")["steps"] if step.get("name") == "Report the run")
     assert report["if"] == "always()"
-    assert "scripts/agent_run_report.py" in report["run"]
-    assert report["env"] == {"EXECUTION_FILE": "${{ steps.claude.outputs.execution_file }}"}
+    assert '"$FACTORY_DIR/scripts/agent_run_report.py"' in report["run"]
+    assert report["env"] == {
+        "EXECUTION_FILE": "${{ steps.claude.outputs.execution_file }}",
+        "FACTORY_DIR": "${{ steps.factory.outputs.dir }}",
+    }
     assert _model_step()["id"] == "claude"
+
+
+def _fetch_lines(run: str) -> list[str]:
+    return [
+        line.strip().replace('"$RUNNER_TEMP/factory"', '"$dir"')
+        for line in run.splitlines()
+        if line.strip().startswith(("git", '"$SERVER_URL'))
+    ]
+
+
+def test_both_jobs_fetch_the_factory_as_the_pr_review_does():
+    """One mechanism for every factory task (ADR-0018): same env, same git commands."""
+    review = _workflow(WORKFLOWS / "factory-pr-review.yml")
+    (reference, *_) = [
+        step
+        for job in review["jobs"].values()
+        for step in job.get("steps", [])
+        if step.get("name") == "Fetch the factory scripts"
+    ]
+    for name in (rework_gate.GATE_JOB, rework_gate.REWORK_JOB):
+        (fetch,) = [step for step in _job(name)["steps"] if step.get("id") == "factory"]
+        assert fetch["name"] == "Fetch the factory scripts"
+        assert fetch["env"] == reference["env"], "no token reaches the fetch"
+        assert _fetch_lines(fetch["run"]) == _fetch_lines(reference["run"])
+
+
+def test_the_factory_scripts_run_from_the_factory_checkout():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "python3 scripts/" not in text
+    assert [s for s in _job("gate")["steps"] if "actions/checkout@" in s.get("uses", "")] == []
+    for step in _job("gate")["steps"]:
+        if "rework_gate.py" in step.get("run", ""):
+            assert step["env"]["FACTORY_DIR"] == "${{ steps.factory.outputs.dir }}"
+
+
+def test_run_steps_take_values_through_env_only():
+    for job in _workflow()["jobs"].values():
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", ""), f"{step.get('name')}: interpolate through env"
+
+
+def test_factory_declares_its_inputs_and_the_one_secret():
+    call = _workflow()[True]["workflow_call"]
+    assert set(_workflow()[True]) == {"workflow_call"}
+    inputs = call["inputs"]
+    assert {name: spec.get("default") for name, spec in inputs.items()} == {
+        "pr": "",
+        "check_command": None,
+        "setup_command": "",
+        "submodules": False,
+        "python_version": "3.12",
+        "model": "sonnet",
+    }
+    assert inputs["check_command"]["required"] is True
+    assert call["secrets"] == {"CLAUDE_CODE_OAUTH_TOKEN": {"required": True}}
+
+
+def test_the_target_checkout_takes_the_callers_submodules():
+    (checkout,) = [s for s in _job("rework")["steps"] if "actions/checkout@" in s.get("uses", "")]
+    assert checkout["with"]["submodules"] == "${{ inputs.submodules }}"
+    assert checkout["with"]["ref"] == "agent/issue-${{ steps.gate.outputs.issue }}"
+    assert "repository" not in checkout["with"]
+
+
+def test_the_check_command_and_the_guards_are_prepared_before_the_model_step():
+    steps = _job("rework")["steps"]
+    prepare = next(s for s in steps if s.get("name") == "Prepare the check command and the guards")
+    implementer = yaml.safe_load(
+        (WORKFLOWS / "factory-implementer.yml").read_text(encoding="utf-8")
+    )["jobs"]["implement"]["steps"]
+    same = next(s for s in implementer if s.get("name") == prepare["name"])
+    assert prepare["env"] == same["env"] and prepare["run"] == same["run"]
+    setup = next(s for s in steps if s.get("name") == "Run the caller's setup command")
+    assert setup["env"] == {"SETUP_COMMAND": "${{ inputs.setup_command }}"}
+    assert setup["run"] == 'bash -e -c "$SETUP_COMMAND"'
+    model = _model_step()
+    assert model["with"]["settings"] == "${{ runner.temp }}/agent-run-settings.json"
+    assert steps.index(prepare) < steps.index(model)
+
+
+def _run_validation(**values: str) -> subprocess.CompletedProcess:
+    step = next(s for s in _job("rework")["steps"] if s.get("id") == "setup")
+    env = {"MODEL": "sonnet", "CHECK_COMMAND": "make check"}
+    assert set(step["env"]) == set(env)
+    env.update(values)
+    return subprocess.run(  # noqa: S603 -- runs the workflow's own validation step.
+        ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
+        env={**env, "GITHUB_OUTPUT": os.devnull, "PATH": os.environ["PATH"]},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_validation_accepts_good_inputs():
+    for values in ({}, {"MODEL": "claude-opus-4-8[1m]"}, {"MODEL": "opus"}):
+        assert _run_validation(**values).returncode == 0, values
+
+
+def test_validation_rejects_bad_inputs():
+    for values in (
+        {"MODEL": "sonnet --dangerously-skip-permissions"},
+        {"MODEL": ""},
+        {"CHECK_COMMAND": "  "},
+    ):
+        assert _run_validation(**values).returncode != 0, values
+
+
+def test_caller_calls_the_local_factory_workflow_with_this_repositorys_inputs():
+    jobs = _workflow(CALLER)["jobs"]
+    assert list(jobs) == ["rework"]
+    job = jobs["rework"]
+    assert job["uses"] == "./.github/workflows/factory-rework.yml"
+    assert set(job) == {"permissions", "uses", "with", "secrets"}, (
+        "the caller stays thin: no if, concurrency or steps of its own"
+    )
+    assert job["with"] == {
+        "pr": "${{ inputs.pr }}",
+        "check_command": "scripts/check_all.sh",
+        "setup_command": "pip install -r scripts/check_all.requirements.txt && prek install",
+        "submodules": True,
+        "model": "${{ vars.REWORK_MODEL || 'sonnet' }}",
+    }
+    secret_ref = "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"  # noqa: S105 -- a reference, not a value.
+    assert job["secrets"] == {"CLAUDE_CODE_OAUTH_TOKEN": secret_ref}
+
+
+def test_caller_permissions_are_the_union_of_the_called_jobs():
+    union: dict[str, str] = {}
+    for job in _workflow()["jobs"].values():
+        for scope, level in job["permissions"].items():
+            union[scope] = "write" if "write" in (level, union.get(scope)) else level
+    assert _workflow(CALLER)["jobs"]["rework"]["permissions"] == union

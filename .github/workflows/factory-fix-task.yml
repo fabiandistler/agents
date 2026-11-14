@@ -1,0 +1,92 @@
+# factory-fix-task - the software factory's Fix task as a reusable workflow
+# (ADR-0016, ADR-0018): files each failed factory run as one deduplicated
+# issue. This repository's fix-task.yml calls it with `./`; another repository
+# calls it pinned to a full commit SHA.
+#
+# Model-free: scripts/factory_failure.py reads the failed run, its jobs and the
+# first failed job's annotations, and comments on the open `factory-failure`
+# issue for the failure signature or files a new one. Issues and comments made
+# with GITHUB_TOKEN start no workflow, and a caller does not watch itself, so
+# nothing here starts a fix: a person posts a brief and adds ready-for-agent.
+#
+# The `github` context, the event included, is the caller's. The caller's
+# `workflow_run` list names the caller workflows of its own repository; a
+# called factory-*.yml workflow runs inside its caller's run, so its failure is
+# filed under the caller's name and path. scripts/factory_failure_policy.py
+# files a run only if that path is in its WATCHED_WORKFLOWS.
+name: factory-fix-task
+
+on:
+  workflow_call:
+    inputs:
+      run_id:
+        description: Workflow run id, for a manual run; empty for a `workflow_run` event
+        type: string
+        default: ""
+      dry_run:
+        description: For a manual run, print the plan instead of applying it
+        type: boolean
+        default: true
+
+# No scope by default; the job below opts in to exactly what it needs. The
+# calling job's permissions cap these.
+permissions: {}
+
+jobs:
+  file:
+    # Filter in the expression so green and cancelled runs start no runner.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'timed_out'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # One run per watched workflow at a time; a later failure waits instead of
+    # cancelling a run between its re-read and its write. The caller sets no
+    # concurrency of its own.
+    concurrency:
+      group: fix-task-${{ github.event.workflow_run.name || 'dispatch' }}
+      cancel-in-progress: false
+    permissions:
+      issues: write
+      actions: read
+      checks: read
+    steps:
+      # The factory's scripts at the commit of this workflow file, so they match
+      # it exactly (ADR-0018). Fetched as in factory-pr-review.yml: anonymously,
+      # so no token is involved, and into $RUNNER_TEMP/factory. The job needs
+      # no checkout of the caller: it reads the run from the API.
+      - name: Fetch the factory scripts
+        id: factory
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/factory"
+          git init --quiet "$dir"
+          git -C "$dir" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$dir" checkout --quiet --detach FETCH_HEAD
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: File the failure
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FACTORY_DIR: ${{ steps.factory.outputs.dir }}
+          # Event and dispatch values reach the script through env, never as
+          # shell source.
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          WRITE: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(--repo "$GITHUB_REPOSITORY" --run-id "$RUN_ID")
+          if [ "$WRITE" = "true" ]; then
+            args+=(--write)
+          fi
+          python3 "$FACTORY_DIR/scripts/factory_failure.py" "${args[@]}"
