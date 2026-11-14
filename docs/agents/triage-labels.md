@@ -12,6 +12,10 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
+The [factory user guide](../factory/README.md) shows where each label falls in
+an issue's life; the [architecture](../factory/architecture.md#label-state-machine)
+draws the state labels as a state machine.
+
 `.github/workflows/triage-label.yml` adds `needs-triage` to every new issue
 that opens without a state label. It calls the reusable workflow
 `.github/workflows/factory-triage-label.yml`

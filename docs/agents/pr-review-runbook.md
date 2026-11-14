@@ -17,6 +17,8 @@ required checks pass. Why this exception exists, and its limits:
 
 Related pages:
 
+- [Software factory user guide](../factory/README.md) and
+  [architecture](../factory/architecture.md): where the review sits among the factory's tasks
 - [Labels and thresholds](triage-labels.md#pull-request-labels)
 - [Troubleshooting and reading a run](pr-review-troubleshooting.md)
 - [Acceptance record](pr-review-acceptance.md)
