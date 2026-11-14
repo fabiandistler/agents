@@ -155,6 +155,8 @@ class FakeGitHub:
                 raise AssertionError("runs must be listed for the live head")
             if params["event"] != "pull_request_target":
                 raise AssertionError("only pull request reviews count")
+            if params["status"] != "success":
+                raise AssertionError("only successful reviews count")
             return json_response({"total_count": 1, "workflow_runs": self.review_runs})
         raise AssertionError(f"unexpected GET {path}")
 

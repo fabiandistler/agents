@@ -167,9 +167,24 @@ def test_a_second_run_for_the_same_head_writes_nothing(tmp_path):
     assert fake.writes == []
 
 
-def test_locate_takes_the_latest_completed_review_of_the_live_head():
-    fake = FakeGitHub(review_runs=[{"id": 5}, {"id": 8}, {"id": 6}])
+def test_locate_takes_the_latest_successful_review_of_the_live_head():
+    runs = [
+        {"id": 5, "conclusion": "success"},
+        {"id": 8, "conclusion": "success"},
+        {"id": 6, "conclusion": "success"},
+    ]
+    fake = FakeGitHub(review_runs=runs)
     assert rework_gate.locate_run(cast(GitHubClient, fake), REPO, PR) == 8
+
+
+def test_locate_skips_a_newer_failed_or_cancelled_review():
+    runs = [
+        {"id": 5, "conclusion": "success"},
+        {"id": 8, "conclusion": "failure"},
+        {"id": 9, "conclusion": "cancelled"},
+    ]
+    fake = FakeGitHub(review_runs=runs)
+    assert rework_gate.locate_run(cast(GitHubClient, fake), REPO, PR) == 5
 
 
 def test_cli_decide_reports_and_writes_outputs(monkeypatch, tmp_path, capsys):

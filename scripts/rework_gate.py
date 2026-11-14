@@ -3,7 +3,7 @@
 
 `locate` names the pr-review run whose artifacts the gate reads: the
 triggering run of a `workflow_run` event, or for a manual run the latest
-completed review of the pull request's live head. `decide` reads that run,
+successful review of the pull request's live head. `decide` reads that run,
 its `pr-review` and `pr-context` artifacts, the live pull request, its linked
 issue and its comments, and applies ``rework_policy.decide``. On `proceed` it
 also checks that no other rework run is working, then posts the round marker
@@ -58,7 +58,11 @@ examples:
 
 
 def locate_run(client: ReadClient, repo: str, pr: int) -> int:
-    """The latest completed pull request review run for the pull request's live head."""
+    """The latest successful pull request review run for the pull request's live head.
+
+    A newer failed or cancelled review would only make the gate stop, so it
+    never shadows an earlier successful one.
+    """
     pull = get_json(client, f"/repos/{repo}/pulls/{pr}")
     head = pull.get("head") if isinstance(pull, dict) else None
     head_sha = head.get("sha") if isinstance(head, dict) else None
@@ -68,15 +72,19 @@ def locate_run(client: ReadClient, repo: str, pr: int) -> int:
     listing = get_json(
         client,
         path,
-        params={"head_sha": head_sha, "event": rework_policy.REVIEW_EVENT, "status": "completed"},
+        params={"head_sha": head_sha, "event": rework_policy.REVIEW_EVENT, "status": "success"},
     )
     runs = listing.get("workflow_runs") if isinstance(listing, dict) else None
     if not isinstance(runs, list):
         raise FetchError(f"GitHub API returned an unexpected payload for {path}")
-    ids = [run.get("id") for run in runs if isinstance(run, dict)]
+    ids = [
+        run.get("id")
+        for run in runs
+        if isinstance(run, dict) and run.get("conclusion") == "success"
+    ]
     ids = [run_id for run_id in ids if isinstance(run_id, int)]
     if not ids:
-        raise FetchError(f"GitHub API lists no completed review run for the head in {path}")
+        raise FetchError(f"GitHub API lists no successful review run for the head in {path}")
     return max(ids)
 
 
