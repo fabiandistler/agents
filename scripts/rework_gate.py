@@ -32,7 +32,7 @@ from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingToke
 REWORK_WORKFLOW = "rework.yml"
 GATE_JOB = "gate"
 REWORK_JOB = "rework"
-MAX_WORKING_RUNS = 1
+MAX_WORKING_REWORK_RUNS = 1
 REVIEW_WORKFLOW = "pr-review.yml"
 
 NO_REVIEW = rework_policy.Decision(rework_policy.STOP, "the review job did not run")
@@ -136,7 +136,7 @@ def decide_rework(
     if decision.action != rework_policy.PROCEED:
         return decision
     working = runs_working_ahead(client, repo, own_run_id, REWORK_WORKFLOW, (GATE_JOB, REWORK_JOB))
-    if working >= MAX_WORKING_RUNS:
+    if working >= MAX_WORKING_REWORK_RUNS:
         return rework_policy.Decision(rework_policy.STOP, "another rework run is working")
     round_number = decision.round or 0
     head_sha = decision.head_sha or ""
