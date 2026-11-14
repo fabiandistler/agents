@@ -115,3 +115,18 @@ See [2026-11-13 triage](snapshots/2026-11-13-triage.md) and
      a scheduled check runs 2026-11-15 09:07 UTC.
   4. Decisions without a fixed date: #765 before `PR_AUTO_MERGE=true`;
      repo-maintenance#151 before its review on 2026-12-01.
+
+## 2026-11-14 queue progress
+
+- 2026-11-13: #783 → #800 (draft after the stop rule; marked ready by the
+  maintainer 20:40 UTC; `review:concerns`). See
+  [implementer lint rounds](problems/implementer-lint-rounds.md).
+- 2026-11-13: first #782 run failed; see
+  [shared usage limit](problems/shared-usage-limit.md). 2026-11-14: rerun
+  opened #809 at 05:32 UTC.
+- 2026-11-14: interactive-session PRs: #804 (#767; publish failed on a
+  GitHub 502 and was re-run) and #805 (#797; main merged in, `review:pass`).
+- 2026-11-14 (supersedes the 2026-11-13 order after #782): the
+  chief-of-staff session moved the retro tickets ahead, because they make
+  every later run cheaper: #807 (run 43562087089 started 05:33 UTC), #806,
+  #787, #784, #769, then #789 and #788 after #787 is closed.
