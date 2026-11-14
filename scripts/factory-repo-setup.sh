@@ -345,15 +345,21 @@ if dry_run; then
 elif [[ "$secret_exists" == yes ]] && ! confirm "CLAUDE_CODE_OAUTH_TOKEN is already set. Replace it?"; then
   note "Kept the existing secret."
 else
-  local CLAUDE_CODE_OAUTH_TOKEN=""
+  local CLAUDE_CODE_OAUTH_TOKEN="" blank
   if [[ -n "$token_file" ]]; then
     CLAUDE_CODE_OAUTH_TOKEN="$(<"$token_file")"
-    CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN%$'\r'}"
   else
     step "Run \`claude setup-token\` in another terminal and copy the token."
     ask_secret CLAUDE_CODE_OAUTH_TOKEN "Paste the token (hidden):" || die 2 "no token entered"
   fi
+  # Drop surrounding blanks and a CRLF. A token has none inside, so a second
+  # word or line is refused rather than guessed at.
+  blank="${CLAUDE_CODE_OAUTH_TOKEN%%[![:space:]]*}"
+  CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN#"$blank"}"
+  blank="${CLAUDE_CODE_OAUTH_TOKEN##*[![:space:]]}"
+  CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN%"$blank"}"
   [[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]] || die 2 "the token is empty"
+  [[ "$CLAUDE_CODE_OAUTH_TOKEN" != *[[:space:]]* ]] || die 2 "the token has a blank or a second line in it"
   # On stdin, never in argv. set_secret would hide a failure as "skipped".
   printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo "$repo" >/dev/null ||
     die 4 "could not set secret CLAUDE_CODE_OAUTH_TOKEN"

@@ -210,6 +210,26 @@ assert_no_token_anywhere() {
   assert_no_token_anywhere
 }
 
+@test "--token-file drops surrounding blanks and a CRLF line end" {
+  printf '  %s \r\n\n' "$TOKEN_VALUE" >"$BATS_TEST_TMPDIR/token"
+  extra_args=(--token-file "$BATS_TEST_TMPDIR/token")
+  apply "" y y
+  assert_success
+  assert_equal "$(od -An -c "$GH_SECRET_STDIN")" "$(printf '%s' "$TOKEN_VALUE" | od -An -c)"
+  assert_no_token_anywhere
+}
+
+@test "a --token-file with a second line exits 2, sets nothing and prints neither line" {
+  printf '%s\nsecond-line-of-file\n' "$TOKEN_VALUE" >"$BATS_TEST_TMPDIR/token"
+  extra_args=(--token-file "$BATS_TEST_TMPDIR/token")
+  apply "" y y
+  assert_failure 2
+  [[ "$stderr" == *"a blank or a second line"* ]] || fail "stderr: $stderr"
+  [[ "$output$stderr" != *second-line-of-file* ]] || fail "the file's content appeared in the output"
+  [[ ! -e "$GH_SECRET_STDIN" ]] || fail "the secret was set"
+  assert_no_token_anywhere
+}
+
 @test "a failed gh secret set exits 4 without printing the token" {
   export GH_SECRET_SET_STATUS=1
   apply "" "$TOKEN_VALUE" y y
