@@ -9,12 +9,14 @@ exception ([ADR-0011](../adr/0011-pr-review-merge-exception.md)).
 
 This page is for the maintainer who works with the factory day to day. It
 assumes you know GitHub and Claude Code. How the parts fit together, for
-whoever changes them: [architecture](architecture.md).
+whoever changes them: [architecture](architecture.md), with the checklist in
+[changing a task](changing-a-task.md).
 
-As of 2026-11-14 the factory runs every task in `fabiandistler/agents`;
-`fabiandistler/dotfiles` and `fabiandistler/repo-maintenance` are being
-onboarded (dotfiles#61, repo-maintenance#153). The commands below name
-agents; in a target, use its name.
+As of 2026-11-14 the factory runs every task in `fabiandistler/agents`, and
+`fabiandistler/dotfiles` and `fabiandistler/repo-maintenance` call its
+triage label, triage, PR review and implementer (onboarded in dotfiles#61
+and repo-maintenance#153). The commands below name agents; in a target,
+use its name.
 
 ## Contents
 
@@ -38,7 +40,9 @@ flowchart TD
     triage --> decide{"You decide"}
     decide -->|"brief posted,<br/>ready-for-agent added"| claim["implementer claims agent/issue-n"]
     decide -->|"ready-for-human or wontfix"| person([A person takes it])
-    claim -->|"no-contract, blocked, at-capacity"| stopped["Label removed;<br/>you add it again"]
+    claim -->|"blocked or at-capacity"| queue["Keeps ready-for-agent;<br/>waits in the queue"]
+    queue --> claim
+    claim -->|"no-contract"| stopped["Label removed;<br/>you add it again"]
     stopped --> claim
     claim -->|"claimed or reclaimed"| pr["Ready-for-review PR<br/>that closes the issue"]
     pr --> review["pr-review: risk and review labels,<br/>sticky comment, pr-review/verdict"]
@@ -56,10 +60,12 @@ Text equivalent: a new issue gets `needs-triage` from the triage label task.
 The issue triage task comments with a category and a recommended state; it
 sets `needs-info` itself and nothing else, and the reporter's answer sends the
 issue back to triage. You post an agent brief and add `ready-for-agent`, which
-starts the implementer. Its claim either stops the run (`no-contract`,
-`blocked`, `at-capacity`: the label is removed and you add it again later) or
-creates branch `agent/issue-<n>` and builds a ready-for-review pull request
-that closes the issue. The PR review labels the risk and the verdict, keeps
+starts the implementer. Its claim either stops the run or creates branch
+`agent/issue-<n>` and builds a ready-for-review pull request that closes
+the issue. A run stopped as `blocked` or `at-capacity` keeps
+`ready-for-agent` and waits in the implementer queue, which starts it once
+no run works and its blockers are done; one stopped as `no-contract` loses
+the label until you add it again. The PR review labels the risk and the verdict, keeps
 one sticky comment and sets the `pr-review/verdict` status. A `concerns` or
 `block` verdict on an `agent/issue-<n>` pull request starts up to two Rework
 rounds, each pushing a fix that is reviewed again; after the second, the issue
@@ -149,10 +155,15 @@ Read the bot comment on the issue, then the outcome tables in
 [triage labels](../agents/triage-labels.md#implementer-claim); they say who
 acts next. The cases that need you:
 
-- **`at-capacity`, `blocked`, `no-contract`.** The label is gone. Fix the
-  cause (wait for the implementer run in progress under Actions, close the
-  blocker as completed, post the brief), then add `ready-for-agent` again.
-  Nothing restarts on its own.
+- **`at-capacity`, `blocked`.** The issue keeps `ready-for-agent` and waits
+  in the [implementer queue](../agents/triage-labels.md#implementer-queue)
+  (#847), lowest issue number first. Close a blocker as completed, not as
+  not planned. As of 2026-11-14 the queue's two workflows are not on `main`
+  yet, so nothing starts a waiting issue on its own: when the other run has
+  ended, start it by hand as for a red run below. Remove the label to take
+  an issue out of the queue.
+- **`no-contract`.** The label is gone. Post the brief, then add
+  `ready-for-agent` again.
 - **`needs-human`.** Branch `agent/issue-<n>` has commits and no open pull
   request. Open a pull request from it, or delete it and add
   `ready-for-agent` again.
@@ -215,7 +226,7 @@ draws the issue states as a state machine.
 
 | Symptom | Cause | What to do |
 | --- | --- | --- |
-| `ready-for-agent` removed; the comment says another run is working | `at-capacity`: one implementer run at a time, and as of 2026-11-14 no queue ([#801](https://github.com/fabiandistler/agents/issues/801)) | Add the label again when that run has ended |
+| The comment says another run is working; the issue keeps `ready-for-agent` | `at-capacity`: one implementer run at a time; the issue waits in the queue, whose workflows are not on `main` as of 2026-11-14 (#847) | When that run has ended, [start it by hand](#handle-a-stopped-or-failed-run) |
 | Implementer run red, issue still `ready-for-agent`, nothing happens | A failed run leaves the label; the Fix task files or comments on a `factory-failure` issue ([ADR-0016](../adr/0016-fix-task.md)) | Read the run summary, then [start it again](#handle-a-stopped-or-failed-run) |
 | A required check, such as `secrets`, shows *Expected — Waiting* and never started | GitHub started no `pull_request` runs for that push ([wiki](../wiki/problems/missing-pull-request-runs.md)) | *Update branch*, or merge `main` into it, so a new push starts them |
 | `pr-review/verdict` *Expected — Waiting* | No review published for this head | [Dispatch the review](../agents/pr-review-verdict-status.md#escape-a-head-without-a-verdict) with `"dry_run": "false"` |
@@ -234,7 +245,7 @@ Runbooks: [PR review](../agents/pr-review-runbook.md),
 
 ## Keeping this page current
 
-The dated lines (targets, #801, the wizard) and the troubleshooting rows go
-stale first; the wiki pages they link are dated history. Labels, outcomes and
+The dated lines (targets, the queue's workflows, the wizard) and the
+troubleshooting rows go stale first; the wiki pages they link are dated history. Labels, outcomes and
 inputs are linked, not copied, so their source pages stay authoritative. No
 check reads this page's prose: the `mermaid` check parses the diagram only.

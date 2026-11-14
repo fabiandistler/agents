@@ -2,10 +2,11 @@
 
 For a developer, usually an agent session, about to change a factory task:
 how the tasks, their gates and the reusable workflows fit together, and which
-brake each part holds. Day-to-day use is in the [user guide](README.md); the
+brake each part holds. Day-to-day use is in the [user guide](README.md), the
+checklist for a change in [changing a task](changing-a-task.md); the
 vocabulary (task, run, trigger, brake) is the
 [software-factory skill's](../../.claude/skills/software-factory/SKILL.md).
-Line numbers are at `fabiandistler/agents@3076881`; scripts are under
+Line numbers are at `fabiandistler/agents@33f9445`; scripts are under
 `scripts/` and workflows under `.github/workflows/`.
 
 ## Context and goals
@@ -58,9 +59,9 @@ point from the initiator.
 
 Text equivalent: the maintainer works in three repositories, whose issue,
 pull request and schedule events start the factory's runs on Actions
-runners. A run that must push or open a pull request has
-`claude-code-action` trade the job's OIDC token for a Claude GitHub App
-installation token, scoped to the calling repository. Every model call uses
+runners. A run that pushes has `claude-code-action` trade the job's OIDC
+token for a Claude GitHub App installation token for the calling
+repository. Every model call uses
 the maintainer's Claude subscription through `CLAUDE_CODE_OAUTH_TOKEN`. Runs
 write back with that App token or with the job's `GITHUB_TOKEN`.
 
@@ -109,8 +110,9 @@ model and no write scope, `publish` with write scopes and no model token) and
 `fix-task.yml`, `retro.yml` and `skill-audit.yml`** run in agents only and
 read `scripts/` from their own checkout; Fix watches six workflows by name
 (`fix-task.yml:14`). **`scripts/`** holds the model-free logic: the claim,
-`pr_risk.py`, `pr_publish.py`, the gates and the two guards. `claude.yml`
-(`@claude` mentions) is no factory task.
+`pr_risk.py`, `pr_publish.py`, the gates and the two guards.
+`implementer_queue.py` (#847) dispatches the next waiting issue; its
+workflows are not on `main` as of 2026-11-14, so the diagram omits them.
 
 ## Dynamic view: claim to verdict
 
@@ -142,13 +144,13 @@ sequenceDiagram
 Text equivalent: a person's label starts the implement job
 (`factory-implementer.yml:68-74`). It fetches the scripts at the workflow's
 own commit, renders both guards, and starts `claude-code-action`, which
-trades the OIDC token for the App token. The
-model's first write is `implementer_claim.py`, which stops with `pr-exists`,
+trades the OIDC token for the App token. The model's first write is
+`implementer_claim.py`, which stops with `pr-exists`,
 `no-contract`, `blocked` or `at-capacity`, in that order, before any branch
-exists (`implementer_claim.py:330-345`). Otherwise it creates the branch at
-`main`. If the branch exists (422), a branch with no commits of its own is
-fast-forwarded to `main` (`reclaimed`); one with commits is handed to a person
-(`needs-human`, `:346-369`). The model builds, runs the caller's
+exists (`implementer_claim.py:339-356`). Otherwise it creates the branch at
+`main`. An existing branch (422) without commits of its own is
+fast-forwarded to `main` (`reclaimed`); one with commits goes to a person
+(`needs-human`, `:357-380`). The model builds, runs the caller's
 `check_command` and opens a ready-for-review pull request. In the PR review,
 `assess` fetches the context and classifies the risk, `review` asks the
 model without tools, and `publish` re-fetches, aborts on a moved head
@@ -167,7 +169,7 @@ issue would become a merged change. Each brake stops one path:
 | Brake | What it stops | Where |
 | --- | --- | --- |
 | Trigger filter | A bot, or the run itself, starting a run | `factory-implementer.yml:68-74`; the action checks the actor's write access |
-| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:320-369`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
+| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:329-380`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
 | Merge guard | An agent merging or enabling auto-merge | `pr_merge_guard.py`, loaded by `agent_run_settings.json` and `.claude/settings.json` |
 | Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:202`) |
 | Prompt hard limits | Labels, branches and files outside the task | the `prompt:` of each model step |
@@ -207,7 +209,8 @@ stateDiagram-v2
     triage --> agent: maintainer, with a brief
     triage --> human: maintainer
     triage --> wontfix: maintainer, closes
-    agent --> none: no-contract, blocked, at-capacity
+    agent --> none: no-contract
+    agent --> agent: blocked, at-capacity (waits)
     none --> agent: a person adds it again
     agent --> human: needs-human, red stop rule, Rework handoff
     agent --> info: implementer cannot read the contract
@@ -217,15 +220,15 @@ stateDiagram-v2
 Text equivalent: an issue holds at most one of the five state labels
 (`STATE_LABELS`, `issue_triage_policy.py:26`). The triage label task, and the
 Fix task for its own issues, start it in `needs-triage`. The triage bot may
-move it to `needs-info`, and the reporter's answer moves it back (a target's
-caller does not subscribe to comments, so there a person re-adds
-`needs-triage`). From `needs-triage`, only the maintainer sets
-`ready-for-agent`, `ready-for-human` or `wontfix`. From `ready-for-agent`,
-three claim outcomes comment and remove the label, leaving no state until a
-person adds it again; `pr-exists` changes nothing; `needs-human`, the
-implementer's red stop rule, the Rework handoff and the Rework model's red
-checks set `ready-for-human`. Pull requests carry separate families, written
-only by `hold` and `publish`
+move it to `needs-info`, and the reporter's answer moves it back (in a
+target, a person re-adds `needs-triage`). From `needs-triage`, only the
+maintainer sets `ready-for-agent`, `ready-for-human` or `wontfix`. From
+`ready-for-agent`, `no-contract` comments and removes the label, leaving no
+state until a person adds it again; `blocked` and `at-capacity` comment and
+keep it, so the issue waits in the implementer queue (#847); `pr-exists`
+changes nothing; `needs-human`, the implementer's red stop rule, the Rework
+handoff and the Rework model's red checks set `ready-for-human`. Pull
+requests carry separate families, written only by `hold` and `publish`
 ([labels](../agents/triage-labels.md#pull-request-labels)).
 
 ## Data flow
@@ -257,8 +260,7 @@ replaces the waiting one, which is never filed ([ADR-0016](../adr/0016-fix-task.
 ## Cross-repo specifics
 
 - **Pins.** A target's four callers pin `fabiandistler/agents/.github/workflows/factory-*.yml`
-  to one full commit SHA (`gh api repos/fabiandistler/agents/commits/main --jq .sha`)
-  with the comment `# agents main, <date>`. A change reaches a target when a
+  to one full commit SHA with the comment `# agents main, <date>`. A change reaches a target when a
   pull request bumping all four merges on its default branch; the App token
   exchange also checks the caller there
   ([onboarding](../agents/factory-onboarding.md#one-sha-for-all-callers)).
@@ -275,6 +277,11 @@ replaces the waiting one, which is never filed ([ADR-0016](../adr/0016-fix-task.
   merges only on green ([wiki](../wiki/problems/private-repos-no-rulesets.md)).
 - **Capacity.** One implementer per repository, one subscription for all
   (ADR-0018, "Billing and capacity").
+- **Proven in the targets, 2026-11-14.** The implementer claimed, pushed
+  and opened a pull request in both: dotfiles run 43634268109 (dotfiles#67)
+  and repo-maintenance run 43634321706 (repo-maintenance#160), both merged.
+  The model review ran on repo-maintenance#157 (run 43628269770, attempt
+  2); #786 closed on it (comment 6883412967).
 
 ## Trade-offs and limits
 
@@ -289,62 +296,24 @@ model-free Fix task that never starts a fix ([0016](../adr/0016-fix-task.md));
 Retro on a clock, Proposed as of 2026-11-14 ([0017](../adr/0017-retro-task.md));
 reusable workflows over copies ([0018](../adr/0018-reusable-factory-workflows.md)).
 
-Known weaknesses, as of 2026-11-14: `at-capacity` has no queue (#801); a
-failed run leaves `ready-for-agent` and nothing retries; the App token's
-rights inside a target are unproven (ADR-0018, open question 1); the claim
+Known weaknesses, as of 2026-11-14: until the queue's workflows land, a
+waiting issue starts only by a manual dispatch; a failed run leaves
+`ready-for-agent`, and the queue skips it, so nothing retries; the claim
 branches from `main`, not the caller's default branch
-(`implementer_claim.py:65`); the Fix task watches agents' runs only.
+(`implementer_claim.py:68`); the Fix task watches agents' runs only. Still
+open (ADR-0018): whether Dependabot bumps the callers' agents pins
+(question 5), and how an event policy targets a caller, which matters only
+if a target goes public (question 2).
 
 ## How to change a task safely
 
-A change can pass its tests in agents and still break a target weeks later,
-when its pin is bumped. So check each layer before you push:
-
-1. **Tests.** Structure tests pin each workflow's scopes, triggers, pins
-   and prompt inputs (`scripts/test_*_workflow.py`, `test_pr_workflow_*.py`,
-   `test_agent_run_workflows.py`); guard tests are `test_pr_merge_guard.py`,
-   `test_default_branch_push_guard.py` and `test_agent_run_settings.py`. Run
-   `scripts/check_all.sh`, or `--only pytest,zizmor` while iterating.
-2. **zizmor** audits `.github/workflows/` offline. Suppress a deliberate
-   finding inline with its reason, as `# zizmor: ignore[dangerous-triggers]`
-   does.
-3. **Pins.** Every `uses:` names a 40-hex SHA with a `# vX.Y.Z` comment
-   (`test_workflow_action_pins.py`). The Claude Code CLI is pinned exactly
-   (`factory-pr-review.yml:275`); rerun ADR-0013's sandbox check before a bump.
-4. **Event text stays data.** Event values reach shells through `env:`, and
-   prompts only as validated values and the repository name.
-5. **Names are interfaces.** The claim counts runs by the called job's name,
-   passed as `--job-name implement` in the prompt and listed by the jobs API
-   as `<caller job> / implement`; Rework and Fix match workflow names; the
-   event policy names `pr-review.yml`; Fix and Retro read the `run-name`; a
-   renamed job or step files a new Fix issue.
-6. **A new task** gets `permissions: {}`, the narrowest job scopes, a
-   structure test, and its workflow name in `fix-task.yml` plus its path in
-   `WATCHED_WORKFLOWS` (`factory_failure_policy.py:32`). A model step that
-   pushes uses `claude-code-action` without `github_token`, writes
-   `RUN FAILED: <reason>` into its run summary, is followed by an
-   `agent_run_report.py` step, and loads both guards as the implementer does:
-   `agent_run_settings.py` renders `agent_run_settings.json` for the action's
-   `settings` input (`factory-implementer.yml:171-202`). The older
-   agents-only tasks rely on the ruleset instead of the push guard.
-7. **Roll out.** `pull_request_target` runs `main`'s pipeline, so a pull
-   request that edits the review is reviewed by the old one. After the merge,
-   bump each target's four callers to the new SHA by hand (ADR-0018, open
-   question 5) and run `scripts/factory_onboarding_check.py` for its `pin`
-   line.
-8. **Interactive session needed** for `.github/workflows/`, `.claude/` and
-   `.pre-commit-config.yaml`, or a brief that asks the implementer for that
-   YAML in its pull request body, for the maintainer to commit.
-
-`scripts/pr_*` and `.github/` are `risk:high`, so such a pull request always
-waits for the maintainer.
+The checklist is its own page: [changing a task](changing-a-task.md).
 
 ## Keeping this page current
 
-File:line citations shift with any edit to the cited file. The required
-checks, target status and ADR statuses are dated because they change by
-hand. No check reads this prose; the `mermaid` check parses the diagrams
-only. Re-read this page when a `factory-*.yml`, a caller,
-`implementer_claim.py`, `pr_plan.py` or a guard changes. The page sits
-just under the `check-file-tokens` hook's 20000 bytes: before adding much,
-move a section to its own page.
+Cited lines shift with any edit to their file; the required checks, target
+status and ADR statuses are dated because they change by hand. No check
+reads this prose (the `mermaid` check parses the diagrams only): re-read it
+when a `factory-*.yml`, a caller, `implementer_claim.py`, `pr_plan.py` or a
+guard changes. The `check-file-tokens` hook stops a file over 20000 bytes;
+split a section off before this page gets there.
