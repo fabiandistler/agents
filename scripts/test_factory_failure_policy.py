@@ -71,6 +71,18 @@ def test_a_different_workflow_job_step_or_reason_is_another_signature(changed):
     assert policy.signature(**base)["hash"] != policy.signature(**{**base, **changed})["hash"]
 
 
+def test_the_marker_and_the_run_record_are_distinct_non_empty_comments():
+    # Dedupe matches with `in`, so an empty marker or record would match every body.
+    sig = policy.signature(IMPLEMENTER, "implement", "Run", "RUN FAILED: x")
+    record = policy.run_record({"id": 111, "attempt": 2})
+    for marker in (sig["marker"], record):
+        assert marker.startswith("<!-- ") and marker.endswith(" -->")
+        assert marker[len("<!-- ") : -len(" -->")].strip()
+    assert sig["hash"] in sig["marker"]
+    assert "111" in record and "2" in record
+    assert sig["marker"] not in record and record not in sig["marker"]
+
+
 def test_plain_hex_words_survive_and_the_reason_is_capped():
     assert policy.normalize_reason("defaced cafebabe") == "defaced cafebabe"
     assert len(policy.normalize_reason("x" * 1000)) == policy.MAX_REASON
