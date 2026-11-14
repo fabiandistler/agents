@@ -141,6 +141,59 @@ def test_markup_removed_from_the_diff_marks_the_review_partial(hidden: str) -> N
     assert "hidden markup was removed from the diff" in user_payload(request).lower()
 
 
+def test_an_html_comment_in_a_code_file_reaches_the_model_visible_and_inert() -> None:
+    # A person reads a code diff raw, so the comment hides nothing from them.
+    diff = (
+        "diff --git a/scripts/rework.py b/scripts/rework.py\n"
+        '+MARKER = "<!-- rework-round:{n} -->"\n'
+    )
+    request, partial = pr_review.build_request(base_context(diff=diff))
+    payload = user_payload(request)
+    assert partial is False
+    assert '+MARKER = "<!\u2212\u2212 rework-round:{n} \u2212\u2212>"' in payload
+    assert "<!--" not in payload and "-->" not in payload
+    assert "hidden markup was removed" not in payload.lower()
+
+
+def test_an_unclosed_comment_in_a_code_file_does_not_hide_the_next_file() -> None:
+    diff = 'diff --git a/a.py b/a.py\n+OPEN = "<!--"\ndiff --git a/b.py b/b.py\n+NEXT = 1\n'
+    request, partial = pr_review.build_request(base_context(diff=diff))
+    assert partial is False
+    assert "+NEXT = 1" in user_payload(request)
+
+
+@pytest.mark.parametrize("header", ["a/README.md b/README.md", '"a/my doc.MD" "b/my doc.MD"'])
+def test_an_html_comment_in_a_markdown_file_is_still_removed(header: str) -> None:
+    # Markdown renders the comment invisible, so the text stays out of review.
+    diff = f"diff --git {header}\n+Visible <!-- SECRET -->\n"
+    request, partial = pr_review.build_request(base_context(diff=diff))
+    payload = user_payload(request)
+    assert partial is True
+    assert "SECRET" not in payload
+    assert "hidden markup was removed from the diff" in payload.lower()
+
+
+def test_other_hidden_markup_in_a_code_file_is_still_removed() -> None:
+    diff = "diff --git a/page.html b/page.html\n+<div hidden>SECRET</div>\n"
+    request, partial = pr_review.build_request(base_context(diff=diff))
+    assert partial is True
+    assert "SECRET" not in user_payload(request)
+
+
+def test_an_html_comment_in_a_code_file_neither_hides_a_markdown_file() -> None:
+    diff = (
+        "diff --git a/a.py b/a.py\n"
+        '+X = "<!-- open"\n'
+        "diff --git a/doc.md b/doc.md\n"
+        "+Shown --> Hidden <!-- SECRET -->\n"
+    )
+    request, partial = pr_review.build_request(base_context(diff=diff))
+    payload = user_payload(request)
+    assert partial is True
+    assert "+Shown --> Hidden" in payload
+    assert "SECRET" not in payload
+
+
 def test_markup_removed_from_the_body_alone_keeps_the_review_complete() -> None:
     # Pull request templates carry HTML comments; the body is not reviewed code.
     request, partial = pr_review.build_request(base_context(body="Intro <!-- template -->"))

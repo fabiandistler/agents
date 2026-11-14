@@ -36,7 +36,13 @@ from pr_review_claude import TOKEN_ENV, ProviderError, run_claude
 from pr_review_comments import render_comments, validate_comments
 from pr_review_linked_issues import render_linked_issues, validate_linked_issues
 from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
-from pr_review_sanitize import sanitize_text, single_line, truncate_bytes, truncate_text
+from pr_review_sanitize import (
+    sanitize_diff,
+    sanitize_text,
+    single_line,
+    truncate_bytes,
+    truncate_text,
+)
 
 DEFAULT_MODEL = "sonnet"
 MODEL_ENV = "PR_REVIEW_MODEL"
@@ -261,7 +267,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
     )
     body, body_cut = truncate_text(sanitize_text(_as_text(context.get("body"))), MAX_BODY_BYTES)
-    sanitized_diff = sanitize_text(context["diff"])
+    sanitized_diff, diff_removed = sanitize_diff(context["diff"])
     diff, diff_cut = _cap_diff(sanitized_diff)
     if context["diff_status"] == "unavailable":
         diff = "(The diff is unavailable: GitHub did not return it. Only the file list is known.)"
@@ -271,7 +277,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
         notes.append(TRUNCATION_NOTE)
     # Removed diff lines were never reviewed, so the review is partial; markup
     # in the title or body (templates carry HTML comments) is not code.
-    if sanitized_diff != context["diff"]:
+    if diff_removed:
         notes.append(SANITIZED_NOTE)
     partial = bool(notes)
     payload = _render_payload(context, title, body, diff, base_entries, notes)
