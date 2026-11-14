@@ -90,3 +90,42 @@ def test_committed_settings_disable_synced_copy_of_each_mirrored_plugin():
 
     assert len(skill_plugins) >= 6
     assert {name for name in mirrored if plugins.get(f"{name}@synced") is not False} == set()
+
+
+LINT_ON_EDIT_ENTRY = {
+    "matcher": "Edit|Write|MultiEdit",
+    "hooks": [
+        {
+            "type": "command",
+            "command": '"$CLAUDE_PROJECT_DIR"/.claude/hooks/lint-on-edit.sh',
+            "timeout": 60,
+        }
+    ],
+}
+
+
+def test_committed_settings_run_lint_on_edit_once_after_file_edits():
+    """One hand-written PostToolUse entry runs the ruff hooks after each file edit (#806)."""
+    hooks = json.loads(project_claude.SETTINGS_PATH.read_text(encoding="utf-8"))["hooks"]
+
+    (entry,) = hooks["PostToolUse"]
+    assert entry["matcher"] == "Edit|Write|MultiEdit"
+    (hook,) = entry["hooks"]
+    assert hook["command"] == '"$CLAUDE_PROJECT_DIR"/.claude/hooks/lint-on-edit.sh'
+    assert 0 < hook["timeout"] < 600
+
+
+def test_regenerated_settings_keep_the_hand_written_post_tool_use_entry(tmp_path, monkeypatch):
+    settings_path = tmp_path / "settings.json"
+    settings_path.write_text(
+        json.dumps({"hooks": {"PostToolUse": [LINT_ON_EDIT_ENTRY]}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(project_claude, "SETTINGS_PATH", settings_path)
+
+    once = json.loads(project_claude.wanted_settings())
+    settings_path.write_text(json.dumps(once), encoding="utf-8")
+    twice = json.loads(project_claude.wanted_settings())
+
+    assert once["hooks"]["PostToolUse"] == [LINT_ON_EDIT_ENTRY]
+    assert twice == once

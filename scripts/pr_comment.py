@@ -113,17 +113,20 @@ def _render_comment(
     return "\n".join(lines)
 
 
+def bot_comments(comments: object) -> list[dict]:
+    """The comments ``COMMENT_AUTHOR`` wrote; a marker in anyone else's comment is quoted text."""
+    return [
+        comment
+        for comment in (comments if isinstance(comments, list) else [])
+        if isinstance(comment, dict)
+        and comment.get("author") == COMMENT_AUTHOR
+        and isinstance(comment.get("body"), str)
+    ]
+
+
 def _sticky_comment(context: dict) -> dict | None:
-    comments = context.get("comments")
-    for comment in comments if isinstance(comments, list) else []:
-        if not isinstance(comment, dict):
-            continue
-        body = comment.get("body")
-        if (
-            comment.get("author") == COMMENT_AUTHOR
-            and isinstance(body, str)
-            and COMMENT_MARKER in body
-        ):
+    for comment in bot_comments(context.get("comments")):
+        if COMMENT_MARKER in comment["body"]:
             return comment
     return None
 

@@ -5,9 +5,8 @@ workflow from another repository, a run is a run of the caller's workflow file,
 because "the github context is always associated with the caller workflow"
 (GitHub docs, "Reusing workflow configurations"). That file is the target
 repository's choice, so it comes from --workflow-file or GITHUB_WORKFLOW_REF.
-The jobs API names a job of a called workflow `<caller job> / <called job>`
-(python/cpython run 43566160543 lists `Docs / Doctest`, read 2026-11-14), so
-the job matches by its plain or its composed name.
+The job matches by its plain name or, inside a called workflow, by its
+composed name (`agent_run_capacity.is_job`).
 
 Every value here goes into an API path or a branch name, so each is checked
 before the first call; a bad one is a FetchError, which fails the claim.
@@ -33,7 +32,6 @@ WORKFLOW_FILE_PATTERN = re.compile(r"[A-Za-z0-9._-]+\.ya?ml")
 # GITHUB_WORKFLOW_REF: owner/repo/.github/workflows/<file>@<ref>.
 WORKFLOW_REF_PATTERN = re.compile(r"[^/@]+/[^/@]+/\.github/workflows/(?P<file>[^/@]+)@.+")
 BRANCH_PREFIX_PATTERN = re.compile(r"[A-Za-z0-9._/-]+/|[A-Za-z0-9._/-]+-")
-CALLED_JOB_SEPARATOR = " / "
 
 
 @dataclass(frozen=True)
@@ -44,10 +42,6 @@ class ImplementerSetup:
 
     def branch(self, issue: int) -> str:
         return f"{self.branch_prefix}{issue}"
-
-    def is_implement_job(self, name: str) -> bool:
-        """The plain job name, or the job inside a called workflow."""
-        return name == self.job_name or name.endswith(f"{CALLED_JOB_SEPARATOR}{self.job_name}")
 
 
 DEFAULT_SETUP = ImplementerSetup()

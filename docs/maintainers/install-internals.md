@@ -23,8 +23,9 @@ synced copies of the mirrored plugins off:
 | `.claude/skills/<name>` (real dirs) | [mattpocock/skills](https://github.com/mattpocock/skills), its released plugin set plus `chief-of-staff` and `software-factory` from `in-progress/`, pinned in `.claude/vendor/mattpocock-skills/lock.json` | `scripts/vendor_mattpocock_skills.py` |
 | `.claude/settings.json` `PreToolUse` entries | the PR merge guard (`scripts/pr_merge_guard.py`) and the Python `Bash(uv init*)` context hook (`scripts/python_init_context.py`) | `scripts/build_project_claude.py` |
 | `.claude/settings.json` `enabledPlugins` `<name>@synced: false` | one per plugin the file disables by marketplace id, so an account-synced copy does not list each mirrored skill a second time (#768) | `scripts/build_project_claude.py` |
-| rest of `.claude/settings.json` | the `<name>@<marketplace>: false` entries and the SessionStart hook | by hand |
+| rest of `.claude/settings.json` | the `<name>@<marketplace>: false` entries, the SessionStart hook and the `PostToolUse` entry for `Edit\|Write\|MultiEdit` that runs `lint-on-edit.sh` | by hand |
 | `.claude/hooks/session-start.sh` | SessionStart hook (cloud only): installs the pinned check tools into a venv put first on `PATH`, fetches Go via `proxy.golang.org` for the gitleaks hook (the proxy blocks `go.dev`), runs `prek install` and `prek install-hooks` | by hand |
+| `.claude/hooks/lint-on-edit.sh` | PostToolUse hook: after each Edit, Write or MultiEdit of a Python file in the project, runs the pinned `ruff-check` (`--fix`) and `ruff-format` hooks through prek twice on that file and shows what the second run still reports; a missing prek is reported, never skipped (#806). Tested in `test/lint_on_edit.bats` | by hand |
 
 ## Regenerating the mirror
 

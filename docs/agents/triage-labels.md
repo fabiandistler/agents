@@ -104,6 +104,26 @@ person adds `ready-for-agent` again. Nothing restarts it on its own: a blocker
 closing fires no run. The triage workflows do not act on it either; they ignore
 the bot's comment, and their state check accepts an issue without a state.
 
+## Rework
+
+When the automated review of an implementer pull request ends with
+`concerns` or `block`, `.github/workflows/rework.yml` may run one model round
+that fixes only those findings ([ADR-0015](../adr/0015-rework-task.md)). The
+workflow is added to `main` by hand; until it is there, nothing below runs. Its
+model-free gate, `scripts/rework_gate.py` over `scripts/rework_policy.py`,
+decides from the review run's artifacts and the live pull request:
+
+| Situation | Outcome | What the run does | Who acts next |
+| --- | --- | --- | --- |
+| Non-pass review with findings of the live head, fewer than two round markers, no other rework run working | `proceed` | Posts `<!-- rework-round:<k> head:<sha> -->`, hands the findings to the model job as a file; it fixes them, pushes, comments fixed or declined | The next review of the pushed commit |
+| Two round markers and a new non-pass verdict | `handoff` | Comments once per head on the pull request, replaces `ready-for-agent` with `ready-for-human` on the issue; no model runs | A person, on the pull request |
+| The model job's checks stay red after two rounds | (model job) | Pushes nothing, comments, replaces `ready-for-agent` with `ready-for-human` | A person, on the pull request |
+| Anything else: a pass or unavailable review, no findings, a draft, `do-not-merge`, a head that moved, a marker for this head, an issue with `ready-for-human`, another rework run working, a pull request not opened by `claude[bot]` from `agent/issue-<n>` | `stop` | Writes nothing | Nobody; a manual run (Actions → rework → Run workflow) retries |
+
+Only markers by `github-actions[bot]` count, so a quoted marker neither spends
+nor resets a round. Setup: the secrets of the implementer; the optional
+repository variable `REWORK_MODEL` (default `sonnet`).
+
 ## Fix task
 
 `.github/workflows/fix-task.yml` runs `scripts/factory_failure.py` after a
