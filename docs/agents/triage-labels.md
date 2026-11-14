@@ -34,7 +34,10 @@ Runs start on a new issue, on the reporter's reply to `needs-info`, when the
 maintainer adds `needs-triage` again, and from a manual run (Actions →
 issue-triage → Run workflow, dry run by default). The two automatic triggers
 stop after two bot triages per issue. Issues by people without write access,
-bot issues and issues filed with a state label are not sent to the model.
+bot issues and issues filed with a state label are not sent to the model. The
+workflow filter already drops a bot's issue and an issue filed with a state
+label other than `needs-triage`, so neither starts a runner; an issue filed
+with `needs-triage` is triaged from its `labeled` event, not from `opened`.
 `scripts/test_issue_triage_policy.py` keeps the bot's state labels in sync
 with this table.
 

@@ -51,7 +51,9 @@ jobs:
     # run between its push and its pull request. scripts/implementer_claim.py
     # relies on this to reclaim a branch. Both triggers form the same group; a
     # manual input that is not a canonical number fails the first step before
-    # any write.
+    # any write. A job skipped by the `if` above neither waits in this group nor
+    # takes a runner: on 2026-11-13 a skipped run for an issue (43503003356)
+    # ended while that issue's implementer job (43500665465) was still running.
     concurrency:
       group: implementer-${{ github.event.issue.number || inputs.issue }}
       cancel-in-progress: false
