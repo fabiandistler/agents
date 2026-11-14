@@ -108,7 +108,10 @@ def assess(issue: dict, comments: list[dict], trigger: str) -> dict:
     ``labeled`` events, each with ``label``, ``actor_type`` and ``created_at``
     (ISO 8601). Each comment carries ``author``, ``body`` and ``created_at``.
     An ``opened`` run is only ever the first triage; a ``relabel`` run after a
-    bot triage needs a person's newer needs-triage label event.
+    bot triage needs a person's newer needs-triage label event. Both rules see
+    only the comments fetched before the call, so they stop a second run only
+    because the workflow's per-issue concurrency group starts it after the
+    first run has posted its triage.
 
     Returns ``eligible``, the ``skip_reason`` when it is not, the current
     ``states`` labels, the number of earlier automated triages, and
