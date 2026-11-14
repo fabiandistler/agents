@@ -1,11 +1,9 @@
 name: Triage label
 
-# Every new issue gets `needs-triage`, so nothing skips the triage queue.
-# Model-free on purpose, adapted from mattpocock/skills. An issue opened with a
-# state label already (to-tickets sets `ready-for-agent`) keeps it: a second
-# state label would break "exactly one state role". The guard's labels follow
-# docs/agents/triage-labels.md; scripts/test_triage_label_workflow.py keeps
-# them in sync. The automated triage (issue-triage.yml) runs on the same event.
+# Calls the reusable triage label (factory-triage-label.yml, ADR-0018): every
+# new issue without a state label gets `needs-triage`. The state-label guard
+# lives there. A local `./` call runs the called workflow from the same commit
+# as this file, so it needs no SHA pin; a caller in another repository pins one.
 
 on:
   issues:
@@ -15,30 +13,6 @@ permissions: {}
 
 jobs:
   label:
-    if: >-
-      !contains(github.event.issue.labels.*.name, 'needs-triage') &&
-      !contains(github.event.issue.labels.*.name, 'needs-info') &&
-      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
-      !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
-      !contains(github.event.issue.labels.*.name, 'wontfix')
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    uses: ./.github/workflows/factory-triage-label.yml
     permissions:
       issues: write
-    steps:
-      - name: Add needs-triage
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NUMBER: ${{ github.event.issue.number }}
-        # issue-triage.yml may have set needs-info since the event, so the
-        # labels are read fresh: an issue never carries two state labels.
-        run: |
-          set -euo pipefail
-          states=$(gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER" --jq '[.labels[].name
-            | select(IN("needs-triage", "needs-info", "ready-for-agent", "ready-for-human",
-            "wontfix"))] | length')
-          if [ "$states" -gt 0 ]; then
-            exit 0
-          fi
-          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels" \
-            -f "labels[]=needs-triage"

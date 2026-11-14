@@ -1,0 +1,298 @@
+# factory-issue-triage - the automated triage of new issues as a reusable
+# workflow (ADR-0018): assess (model-free, read token), triage (Claude
+# subscription token, no GitHub token) and publish (write token, no model
+# token). Built like pr-review.yml; see ADR-0013. issue-triage.yml calls it
+# here; another repository calls it with a thin caller pinned to a SHA.
+#
+# The model reads the issue and a checkout of the caller's default branch with
+# Read, Grep and Glob only, confined to the checkout by `claude --restricted`.
+# It recommends a category and a state. The bot applies `needs-info` itself and
+# nothing else: every other recommendation is a comment, and the maintainer
+# sets the label (which is what starts the implementer).
+#
+# Triggers are the caller's (`github` is the caller's context): a new issue by
+# a person, filed without a state label or with `needs-triage`; the
+# maintainer adding `needs-triage` again; the reporter answering on a
+# `needs-info` issue; a manual run. Only issues by people with write access
+# reach the model, and the two automatic triggers stop after two bot triages
+# per issue (scripts/issue_triage_policy.py). The caller subscribes to
+# `issues: [opened, labeled]`, `issue_comment: [created]` and
+# `workflow_dispatch`, and grants `contents: read` and `issues: write`.
+#
+# Scripts and the prompt run from this workflow's own repository and commit
+# (job.workflow_repository at job.workflow_sha), fetched anonymously into
+# $RUNNER_TEMP/factory as in factory-pr-review.yml: outside the workspace, so
+# the model never sees it, and the scripts always match the pinned workflow
+# file. actions/checkout cannot do that: it writes only under the workspace.
+name: factory-issue-triage
+
+on:
+  workflow_call:
+    inputs:
+      issue:
+        description: Issue number for a manual run; empty on issue events
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        # Read on a manual run only: issue events always write.
+        description: On a manual run, print the planned actions instead of applying them
+        required: false
+        type: boolean
+        default: true
+      setup_command:
+        description: >-
+          Shell command run in the caller's checkout before the model step of
+          the triage job; a non-zero exit fails the job. No secret reaches it.
+        required: false
+        type: string
+        default: ""
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+# No scope by default; each job below opts in to exactly what it needs.
+permissions: {}
+
+# One run per issue at a time. A newer trigger waits for the run in flight
+# instead of cancelling it, so no run stops between its comment and its label
+# write; of several waiting triggers the newest one runs. Workflow concurrency
+# applies before any job `if`, so an event the assess filter drops (an ordinary
+# comment or label) gets a group of its own. The condition repeats the assess
+# `if` verbatim; test_issue_triage_workflow.py keeps them equal.
+#
+# The group lives here, not in the caller, so callers stay thin; callers set no
+# concurrency, and the name differs from any caller group (GitHub warns that a
+# shared name cancels the caller). `inputs.issue` is this workflow's input. The
+# GitHub docs list `concurrency` on a calling job but do not say whether a
+# called workflow's top-level group is honored (read 2026-11-14); the first
+# runs after #793 check it (two dispatches on one issue: the second waits).
+concurrency:
+  group: >-
+    issue-triage-${{ github.event.issue.number || inputs.issue }}${{ !(
+      (github.event_name == 'issues' && github.event.action == 'opened' &&
+      github.event.sender.type != 'Bot' &&
+      !contains(github.event.issue.labels.*.name, 'needs-triage') &&
+      !contains(github.event.issue.labels.*.name, 'needs-info') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
+      !contains(github.event.issue.labels.*.name, 'wontfix')) ||
+      (github.event_name == 'issues' && github.event.action == 'labeled' &&
+      github.event.label.name == 'needs-triage' && github.event.sender.type != 'Bot') ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
+      github.event.comment.user.login == github.event.issue.user.login &&
+      github.event.comment.user.type != 'Bot' &&
+      contains(github.event.issue.labels.*.name, 'needs-info')) ||
+      github.event_name == 'workflow_dispatch'
+    ) && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: false
+
+jobs:
+  assess:
+    # Filter in the expression so ordinary comments and labels start no runner.
+    # A label added with the workflow token starts no run at all, so `labeled`
+    # here is always a person. `opened` passes only a person's issue with no
+    # state label: an issue filed with `needs-triage` is triaged by its own
+    # `labeled` run, and one filed with any other state label, or by a bot, is
+    # not waiting for triage (#797). A skipped job takes no runner.
+    if: >-
+      (github.event_name == 'issues' && github.event.action == 'opened' &&
+      github.event.sender.type != 'Bot' &&
+      !contains(github.event.issue.labels.*.name, 'needs-triage') &&
+      !contains(github.event.issue.labels.*.name, 'needs-info') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
+      !contains(github.event.issue.labels.*.name, 'wontfix')) ||
+      (github.event_name == 'issues' && github.event.action == 'labeled' &&
+      github.event.label.name == 'needs-triage' && github.event.sender.type != 'Bot') ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
+      github.event.comment.user.login == github.event.issue.user.login &&
+      github.event.comment.user.type != 'Bot' &&
+      contains(github.event.issue.labels.*.name, 'needs-info')) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: read
+    outputs:
+      eligible: ${{ steps.decide.outputs.eligible }}
+      requeue: ${{ steps.decide.outputs.requeue }}
+    steps:
+      - name: Fetch the factory scripts
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          git init --quiet "$RUNNER_TEMP/factory"
+          git -C "$RUNNER_TEMP/factory" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$RUNNER_TEMP/factory" checkout --quiet --detach FETCH_HEAD
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Fetch the issue and decide
+        id: decide
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FACTORY: ${{ runner.temp }}/factory
+          # Event and dispatch values reach the script through env, never as
+          # shell source.
+          ISSUE: ${{ github.event.issue.number || inputs.issue }}
+          TRIGGER: >-
+            ${{ github.event_name == 'workflow_dispatch' && 'dispatch' ||
+            github.event_name == 'issue_comment' && 'reply' ||
+            github.event.action == 'labeled' && 'relabel' || 'opened' }}
+        run: |
+          set -euo pipefail
+          python3 "$FACTORY/scripts/issue_triage.py" assess --repo "$GITHUB_REPOSITORY" \
+            --issue "$ISSUE" --trigger "$TRIGGER" --output context.json
+          python3 - >> "$GITHUB_OUTPUT" <<'PY'
+          import json
+
+          with open("context.json", encoding="utf-8") as handle:
+              context = json.load(handle)
+          print("eligible=" + ("true" if context["eligible"] is True else "false"))
+          print("requeue=" + ("true" if context["requeue"] is True else "false"))
+          PY
+
+      - name: Upload the context
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: issue-context
+          path: context.json
+          if-no-files-found: error
+
+  triage:
+    needs: assess
+    if: needs.assess.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The model reads the caller's default-branch checkout; its answer leaves
+    # the job as an artifact, never as a GitHub write. No GitHub token reaches
+    # this job.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The model reads this tree next to the token: always the caller's
+          # default branch, whatever ref a trigger or a manual run carries.
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Fetch the factory scripts
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          git init --quiet "$RUNNER_TEMP/factory"
+          git -C "$RUNNER_TEMP/factory" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$RUNNER_TEMP/factory" checkout --quiet --detach FETCH_HEAD
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Download the context
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: issue-context
+          path: ${{ runner.temp }}/triage
+
+      - name: Install Claude Code
+        # Pinned like the pr-review job: the next step hands this binary the
+        # token, and --restricted needs a version that confines the file tools.
+        # Before bumping it, re-run the sandbox check in ADR-0013 with the new
+        # version: reads and symlinks outside the checkout must be refused.
+        run: npm install --global @anthropic-ai/claude-code@2.1.321
+
+      - name: Run the caller's setup command
+        if: inputs.setup_command != ''
+        env:
+          SETUP_COMMAND: ${{ inputs.setup_command }}
+        run: bash -euo pipefail -c "$SETUP_COMMAND"
+
+      - name: Triage the issue
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # A repository variable of the caller.
+          ISSUE_TRIAGE_MODEL: ${{ vars.ISSUE_TRIAGE_MODEL }}
+          # The context and the artifact live outside the checkout, so the
+          # model cannot read them through its tools and they cannot shadow a
+          # repository file.
+          WORK: ${{ runner.temp }}/triage
+          FACTORY: ${{ runner.temp }}/factory
+        run: |
+          python3 "$FACTORY/scripts/issue_triage.py" triage --context "$WORK/context.json" \
+            --workspace "$GITHUB_WORKSPACE" > "$WORK/triage.json"
+
+      - name: Upload the triage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: issue-triage
+          path: ${{ runner.temp }}/triage/triage.json
+          if-no-files-found: error
+
+  publish:
+    needs: [assess, triage]
+    # A skipped or failed triage still publishes a reply's move from
+    # needs-info back to needs-triage.
+    if: >-
+      always() && needs.assess.result == 'success' &&
+      (needs.assess.outputs.eligible == 'true' || needs.assess.outputs.requeue == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Fetch the factory scripts
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          git init --quiet "$RUNNER_TEMP/factory"
+          git -C "$RUNNER_TEMP/factory" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$RUNNER_TEMP/factory" checkout --quiet --detach FETCH_HEAD
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Download the context
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: issue-context
+
+      - name: Download the triage
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: issue-triage
+        # Absent when the triage job was skipped or failed.
+        continue-on-error: true
+
+      - name: Publish the triage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FACTORY: ${{ runner.temp }}/factory
+        run: |
+          set -euo pipefail
+          args=(publish --repo "$GITHUB_REPOSITORY" --context context.json --run-url "$RUN_URL")
+          if [ -s triage.json ]; then
+            args+=(--triage triage.json)
+          fi
+          if [ "$WRITE" = "true" ]; then
+            args+=(--write)
+          fi
+          python3 "$FACTORY/scripts/issue_triage.py" "${args[@]}"
