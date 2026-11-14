@@ -5,7 +5,7 @@ from __future__ import annotations
 import implementer_claim
 import pytest
 from test_implementer_claim import ISSUE, REPO, FakeGitHub, claim
-from test_implementer_intake_gates import assert_stopped_before_any_branch, blocker
+from test_implementer_intake_gates import assert_waits_before_any_branch, blocker
 
 # The format the triage skill posts (#768): the AI disclaimer, a blank line, then
 # the heading. `text` stands where the brief's fields are, e.g. `**Blocked by:** #3`.
@@ -50,7 +50,7 @@ def test_a_real_format_brief_naming_an_open_blocker_stops_the_run():
     outcome = claim(fake)
     assert outcome.outcome == implementer_claim.BLOCKED
     assert outcome.blockers == (3,)
-    assert "Blocked by #3." in assert_stopped_before_any_branch(fake)
+    assert "Blocked by #3." in assert_waits_before_any_branch(fake)
 
 
 def test_a_real_format_brief_naming_a_completed_blocker_lets_the_claim_proceed():
@@ -100,7 +100,7 @@ def test_a_blocked_by_url_that_cannot_be_checked_fails_closed(line):
     assert outcome.outcome == implementer_claim.BLOCKED
     assert outcome.blockers == ()
     assert outcome.unresolved_blockers == 1
-    comment = assert_stopped_before_any_branch(fake).replace("\n", " ")
+    comment = assert_waits_before_any_branch(fake).replace("\n", " ")
     assert "pull request" in comment
     assert "remove it once it is done" in comment
 

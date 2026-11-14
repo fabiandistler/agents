@@ -104,15 +104,26 @@ def runs_working_ahead(
     own_start = _work_start(client, repo, run_id, jobs)
     if own_start is None:
         raise FetchError(f"GitHub API lists no working {jobs[0]} job for this run")
+    return sum(
+        1
+        for other_id, other_start in working_runs(client, repo, workflow, jobs, skip=run_id).items()
+        if (other_start, other_id) < (own_start, run_id)
+    )
+
+
+def working_runs(
+    client: ReadClient, repo: str, workflow: str, jobs: tuple[str, ...], skip: int | None = None
+) -> dict[int, datetime]:
+    """Every working run of ``workflow`` but run ``skip``, by run id, with its work start."""
     runs_path = f"/repos/{repo}/actions/workflows/{workflow}/runs"
-    runs_ahead = 0
+    working: dict[int, datetime] = {}
     for run in _single_page(client, runs_path, "workflow_runs", {"status": "in_progress"}):
-        other_id = run.get("id") if isinstance(run, dict) else None
-        if not isinstance(other_id, int):
+        run_id = run.get("id") if isinstance(run, dict) else None
+        if not isinstance(run_id, int):
             raise FetchError(f"GitHub API returned a malformed run for {runs_path}")
-        if other_id == run_id:
+        if run_id == skip:
             continue
-        other_start = _work_start(client, repo, other_id, jobs)
-        if other_start is not None and (other_start, other_id) < (own_start, run_id):
-            runs_ahead += 1
-    return runs_ahead
+        start = _work_start(client, repo, run_id, jobs)
+        if start is not None:
+            working[run_id] = start
+    return working
