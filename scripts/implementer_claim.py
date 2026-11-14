@@ -19,6 +19,9 @@ it is. The script writes it to --contract, so the run works from a file fixed
 at claim time.
 The capacity gate reads the Actions API with the job token (ACTIONS_READ_TOKEN),
 because the App token cannot be shown to have Actions read (ADR-0014).
+--workflow-file, --job-name and --branch-prefix let a run called as a reusable
+workflow from another repository find its runs and name its branch
+(implementer_setup.py).
 
 Standard library only. Prints one JSON object; errors name the API call and
 status, never issue or pull request text.
@@ -37,6 +40,16 @@ from agent_run_report import FAILED_PREFIX
 from check_pr_issue_links import closing_references
 from implementer_capacity import MAX_WORKING_RUNS, runs_working_ahead
 from implementer_contract import NO_CONTRACT_COMMENT, Ticket, contract_text, read_ticket
+from implementer_setup import (
+    BRANCH_PREFIX,
+    DEFAULT_SETUP,
+    IMPLEMENT_JOB,
+    IMPLEMENTER_WORKFLOW,
+    WORKFLOW_REF_VARIABLE,
+    ImplementerSetup,
+    branch_prefix,
+    workflow_file,
+)
 from issue_triage_policy import READY_FOR_AGENT, READY_FOR_HUMAN
 from pr_github import get_json, paginate
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
@@ -119,11 +132,15 @@ outcomes and exit codes:
   7 no-contract  no contract by a person with write access; commented, removed the label
   1 failed       any other API error; wrote "RUN FAILED: claim (<reason>)" to --summary
   2              usage error
-env: GH_TOKEN (the App token inside claude-code-action), ACTIONS_READ_TOKEN, GITHUB_RUN_ID.
+An invalid --workflow-file, --branch-prefix or GITHUB_WORKFLOW_REF fails (1) before any call.
+env: GH_TOKEN (the App token inside claude-code-action), ACTIONS_READ_TOKEN, GITHUB_RUN_ID,
+     GITHUB_WORKFLOW_REF (names the caller's workflow file when run as a reusable workflow).
 
 examples:
   implementer_claim.py --repo owner/repo --issue 42 --summary "$RUNNER_TEMP/run-summary.md" \\
       --contract "$RUNNER_TEMP/contract.md"
+  implementer_claim.py --repo owner/repo --issue 42 --summary s.md --contract c.md \\
+      --workflow-file agent.yml --job-name implement --branch-prefix factory/issue-
   implementer_claim.py --help
 """
 
@@ -289,10 +306,15 @@ def _blocked_comment(blockers: tuple[int, ...], unresolved: int) -> str:
 
 
 def claim_branch(
-    client: GitHubClient, actions_client: ReadClient, repo: str, issue: int, run_id: int
+    client: GitHubClient,
+    actions_client: ReadClient,
+    repo: str,
+    issue: int,
+    run_id: int,
+    setup: ImplementerSetup = DEFAULT_SETUP,
 ) -> ClaimOutcome:
-    """Decide this run's claim on ``agent/issue-<issue>`` and make the writes it needs."""
-    branch = f"agent/issue-{issue}"
+    """Decide this run's claim on the issue's branch and make the writes it needs."""
+    branch = setup.branch(issue)
     holding_pull_request = _pull_request_holding_issue(client, repo, issue, branch)
     if holding_pull_request is not None:
         return ClaimOutcome(PR_EXISTS, branch, holding_pull_request)
@@ -306,7 +328,7 @@ def claim_branch(
     if blockers or unresolved:
         _release_ticket(client, repo, issue, _blocked_comment(blockers, unresolved))
         return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
-    if runs_working_ahead(actions_client, repo, run_id) >= MAX_WORKING_RUNS:
+    if runs_working_ahead(actions_client, repo, run_id, setup) >= MAX_WORKING_RUNS:
         _release_ticket(client, repo, issue, CAPACITY_COMMENT)
         return ClaimOutcome(AT_CAPACITY, branch)
 
@@ -363,7 +385,7 @@ def _issue_argument(value: str) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Claim agent/issue-<n> for one implementer run, or say why it must stop.",
+        description="Claim the issue's branch for one implementer run, or say why it must stop.",
         epilog=HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -375,12 +397,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--contract", required=True, type=Path, help="contract file; written when the run continues"
     )
+    parser.add_argument(
+        "--workflow-file",
+        help=f"the run's workflow file name (default: from {WORKFLOW_REF_VARIABLE}, "
+        f"else {IMPLEMENTER_WORKFLOW})",
+    )
+    parser.add_argument(
+        "--job-name",
+        default=IMPLEMENT_JOB,
+        help="the implementer job; also matches '<caller job> / <name>' (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--branch-prefix",
+        default=BRANCH_PREFIX,
+        help="branch name before the issue number; ends in / or - (default: %(default)s)",
+    )
     args = parser.parse_args(argv)
 
     try:
+        setup = ImplementerSetup(
+            workflow_file(args.workflow_file), args.job_name, branch_prefix(args.branch_prefix)
+        )
         client = GitHubClient(_required_token("GH_TOKEN"))
         actions_client = GitHubClient(_required_token(ACTIONS_TOKEN_VARIABLE))
-        claim = claim_branch(client, actions_client, args.repo, args.issue, _workflow_run_id())
+        claim = claim_branch(
+            client, actions_client, args.repo, args.issue, _workflow_run_id(), setup
+        )
     except FetchError as error:
         reason = str(error)
         args.summary.write_text(f"{FAILED_PREFIX}: claim ({reason})\n", encoding="utf-8")

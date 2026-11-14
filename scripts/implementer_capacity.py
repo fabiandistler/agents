@@ -12,11 +12,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from implementer_setup import ImplementerSetup
 from pr_github import PER_PAGE, get_json
 from pr_github_client import FetchError, ReadClient
 
-IMPLEMENTER_WORKFLOW = "implementer.yml"
-IMPLEMENT_JOB = "implement"
 MAX_WORKING_RUNS = 1
 
 
@@ -34,7 +33,9 @@ def _single_page(
     return items
 
 
-def _implement_job_start(client: ReadClient, repo: str, run_id: int) -> datetime | None:
+def _implement_job_start(
+    client: ReadClient, repo: str, run_id: int, setup: ImplementerSetup
+) -> datetime | None:
     """When the run's latest attempt started working, or None while it is not working.
 
     The job's status tells a working run from one whose job the workflow's `if`
@@ -43,7 +44,7 @@ def _implement_job_start(client: ReadClient, repo: str, run_id: int) -> datetime
     path = f"/repos/{repo}/actions/runs/{run_id}/jobs"
     for job in _single_page(client, path, "jobs"):
         try:
-            if job["name"] != IMPLEMENT_JOB:
+            if not isinstance(job["name"], str) or not setup.is_implement_job(job["name"]):
                 continue
             if job["status"] != "in_progress":
                 return None
@@ -56,7 +57,7 @@ def _implement_job_start(client: ReadClient, repo: str, run_id: int) -> datetime
     return None
 
 
-def runs_working_ahead(client: ReadClient, repo: str, run_id: int) -> int:
+def runs_working_ahead(client: ReadClient, repo: str, run_id: int, setup: ImplementerSetup) -> int:
     """How many other working runs come before this one.
 
     Runs are ordered by (job start, run id), and only earlier runs count, so of
@@ -64,10 +65,10 @@ def runs_working_ahead(client: ReadClient, repo: str, run_id: int) -> int:
     comes first because a re-run keeps its old run id: ordering by id alone would
     let a re-run ignore every newer run already working.
     """
-    own_start = _implement_job_start(client, repo, run_id)
+    own_start = _implement_job_start(client, repo, run_id, setup)
     if own_start is None:
-        raise FetchError(f"GitHub API lists no working {IMPLEMENT_JOB} job for this run")
-    runs_path = f"/repos/{repo}/actions/workflows/{IMPLEMENTER_WORKFLOW}/runs"
+        raise FetchError(f"GitHub API lists no working {setup.job_name} job for this run")
+    runs_path = f"/repos/{repo}/actions/workflows/{setup.workflow_file}/runs"
     runs_ahead = 0
     for run in _single_page(client, runs_path, "workflow_runs", {"status": "in_progress"}):
         other_id = run.get("id") if isinstance(run, dict) else None
@@ -75,7 +76,7 @@ def runs_working_ahead(client: ReadClient, repo: str, run_id: int) -> int:
             raise FetchError(f"GitHub API returned a malformed run for {runs_path}")
         if other_id == run_id:
             continue
-        other_start = _implement_job_start(client, repo, other_id)
+        other_start = _implement_job_start(client, repo, other_id, setup)
         if other_start is not None and (other_start, other_id) < (own_start, run_id):
             runs_ahead += 1
     return runs_ahead

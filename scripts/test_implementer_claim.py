@@ -33,6 +33,7 @@ ISSUE_PATH = f"/repos/{REPO}/issues/{ISSUE}"
 DEPENDENCIES = f"{ISSUE_PATH}/dependencies/blocked_by"
 RUNS = f"/repos/{REPO}/actions/workflows/implementer.yml/runs"
 RUN_ID = 5000
+MAIN = "refs/heads/main"
 JOB_START = "2026-11-10T10:00:00Z"
 
 
@@ -70,6 +71,7 @@ class FakeGitHub:
 
     ``errors`` maps (method, path) to an error, ``canned_payloads`` a GET path to its answer.
     ``jobs`` maps a run id to its jobs; by default only this run works.
+    ``branch`` and ``workflow_file`` are the names the routes expect.
     """
 
     pulls: list[dict] = field(default_factory=list)
@@ -85,6 +87,8 @@ class FakeGitHub:
     canned_payloads: dict[str, object] = field(default_factory=dict)
     writes: list[tuple[str, str, dict]] = field(default_factory=list)
     compared: list[str] = field(default_factory=list)
+    branch: str = BRANCH
+    workflow_file: str = "implementer.yml"
 
     def _fail_if_routed(self, method: str, path: str) -> None:
         if (method, path) in self.errors:
@@ -102,7 +106,7 @@ class FakeGitHub:
             return json_response(self.pulls if (params or {}).get("page") == 1 else [])
         if path == MAIN_REF:
             return json_response({"object": {"sha": MAIN_SHA}})
-        if path == BRANCH_REF:
+        if path == f"/repos/{REPO}/git/ref/heads/{self.branch}":
             if self.branch_sha is None:
                 raise http_error(404, path)
             return json_response({"object": {"sha": self.branch_sha}})
@@ -122,7 +126,7 @@ class FakeGitHub:
             return json_response(self.issue_comments if first_page else [])
         if path == DEPENDENCIES:
             return json_response(self.native_blockers if first_page else [])
-        if path == RUNS:
+        if path == f"/repos/{REPO}/actions/workflows/{self.workflow_file}/runs":
             assert params.get("status") == "in_progress", "only working runs may be counted"
             runs = [{"id": run_id} for run_id in self.jobs]
             return json_response({"total_count": len(runs), "workflow_runs": runs})
@@ -339,16 +343,27 @@ def test_a_malformed_comparison_is_an_api_error():
 # The command line: exit codes, JSON on stdout, and the RUN FAILED line.
 
 
-def run_cli(monkeypatch, tmp_path, fake) -> tuple[int, Path]:
+OWN_WORKFLOW_REF = f"{REPO}/.github/workflows/implementer.yml@{MAIN}"
+
+
+def run_cli(
+    monkeypatch, tmp_path, fake, *options: str, workflow_ref: str | None = OWN_WORKFLOW_REF
+) -> tuple[int, Path]:
+    """Run main() against the fake; ``workflow_ref=None`` leaves GITHUB_WORKFLOW_REF unset."""
     monkeypatch.setattr(implementer_claim, "GitHubClient", lambda token: fake)
     monkeypatch.setenv("GH_TOKEN", "app-token")
     monkeypatch.setenv("ACTIONS_READ_TOKEN", "job-token")
     monkeypatch.setenv("GITHUB_RUN_ID", str(RUN_ID))
+    if workflow_ref is None:
+        monkeypatch.delenv("GITHUB_WORKFLOW_REF", raising=False)
+    else:
+        monkeypatch.setenv("GITHUB_WORKFLOW_REF", workflow_ref)
     summary = tmp_path / "run-summary.md"
     code = implementer_claim.main(
         [
             *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
             *("--contract", str(tmp_path / "contract.md")),
+            *options,
         ]
     )
     return code, summary

@@ -139,8 +139,8 @@ dedicated-App fallback is recorded.
   repositories are free on standard runners
   ([GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)).
 - **Capacity.** `MAX_WORKING_RUNS` counts per repository
-  (`scripts/implementer_claim.py:53`; the runs it counts are listed per
-  repository at `:341`), so three repositories can run three implementers
+  (`scripts/implementer_capacity.py:19`; the runs it counts are listed per
+  repository at `:71`), so three repositories can run three implementers
   on one Claude subscription at once. Accepted: one implementer per
   repository keeps each repository's branch and PR queue serial, which is
   what the limit protects. Subscription limits are shared anyway with
@@ -166,9 +166,10 @@ dedicated-App fallback is recorded.
 - The risk path rules in `scripts/pr_risk.py` are written for this
   repository. In targets they are advisory, because auto-merge
   (ADR-0011) stays off there.
-- The implementer's working-run count matches its job by exact name
-  (`scripts/implementer_claim.py:52`, `:317`); a called job's name differs
-  (open question 4, handled in #788).
+- The implementer's working-run count matches its job by its plain name or
+  as `<caller job> / <name>` (`scripts/implementer_setup.py:48`), and lists
+  the runs of the caller's workflow file from `--workflow-file` or
+  `GITHUB_WORKFLOW_REF` (#788).
 - The second checkout makes every job depend on reading this public
   repository from a private caller (open question 3).
 
@@ -188,11 +189,11 @@ Numbered as in #786's "Not verified" list.
    a private caller's `GITHUB_TOKEN`.** Open: the probe checked out only the
    caller. The first reusable-workflow run in a target that makes the second
    checkout settles it.
-4. **The job name a reusable job shows in the Actions jobs API** (expected
-   `<caller job> / <called job>`). Partly answered: run 43209973289's jobs
-   API lists `probe / probe` (read 2026-11-13), but caller and called job
-   are both named `probe`, so the order is not shown. Settled by the first
-   run whose caller and called job have different names; #788 adapts
+4. **The job name a reusable job shows in the Actions jobs API.** Settled
+   2026-11-14: `<caller job> / <called job>`, each by its display name.
+   python/cpython run 43566160543's jobs API lists `Docs / Doctest` for
+   caller job `Docs` and called job `Doctest` (read 2026-11-14); run
+   43209973289 listed `probe / probe` (read 2026-11-13). #788 adapted
    `implementer_claim.py`.
 5. **Whether Dependabot (`github-actions`) bumps
    `uses: owner/repo/.github/workflows/<file>@<sha>` in callers.** Open,
