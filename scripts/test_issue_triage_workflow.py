@@ -139,10 +139,23 @@ def test_events_the_filter_drops_never_share_the_triage_concurrency_group():
     assert f"!( {condition} ) && format('-ignored-{{0}}', github.run_id) || ''" in group
 
 
+def _top_level_clauses(condition: str) -> list[str]:
+    """Split an expression at the `||` operators outside any parentheses."""
+    clauses, depth, start = [], 0, 0
+    for i, char in enumerate(condition):
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        if depth == 0 and condition.startswith("||", i):
+            clauses.append(condition[start:i].strip())
+            start = i + 2
+    clauses.append(condition[start:].strip())
+    return clauses
+
+
 def _opened_clause() -> str:
     condition = " ".join(_jobs()["assess"]["if"].split())
-    start = condition.index("(github.event_name == 'issues' && github.event.action == 'opened'")
-    return condition[start : condition.index(") ||", start)]
+    opened = [c for c in _top_level_clauses(condition) if "github.event.action == 'opened'" in c]
+    assert len(opened) == 1, "the assess `if` should have one `opened` clause"
+    return opened[0]
 
 
 def test_a_new_issue_starts_a_runner_only_without_a_state_label():
