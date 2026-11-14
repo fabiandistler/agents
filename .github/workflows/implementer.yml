@@ -11,6 +11,9 @@
 # Triggers: a person adds `ready-for-agent` to an open issue; a manual run for
 # one issue.
 name: implementer
+# scripts/factory_failure_policy.py reads the issue number from this run-name
+# (ADR-0016); a called workflow cannot set it, so it stays in the caller.
+run-name: "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
 
 on:
   issues:

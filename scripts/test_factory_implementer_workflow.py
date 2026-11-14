@@ -190,6 +190,10 @@ def test_the_check_command_and_the_guards_are_prepared_from_the_factory(tmp_path
 
 def test_caller_calls_the_local_factory_workflow_with_this_repositorys_inputs():
     assert list(workflow(IMPLEMENTER)["jobs"]) == [implementer_setup.IMPLEMENT_JOB]
+    # The Fix task reads the issue from the caller's run-name (ADR-0016).
+    assert workflow(IMPLEMENTER)["run-name"] == (
+        "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
+    )
     job = single_job(IMPLEMENTER)
     assert job["uses"] == "./.github/workflows/factory-implementer.yml"
     assert set(job) == {"permissions", "uses", "with", "secrets"}, (
