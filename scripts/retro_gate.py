@@ -41,8 +41,7 @@ from typing import Protocol
 from implementer_contract import contract_text, read_ticket
 from issue_triage_policy import TRUSTED_ASSOCIATIONS
 from pr_actions import Operation
-from pr_apply import WriteClient
-from pr_apply import _send as send_operation
+from pr_apply import WriteClient, send_operation
 from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
 from pr_github import PER_PAGE, get_json, paginate
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
