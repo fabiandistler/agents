@@ -61,6 +61,7 @@ class FakeClient:
         contents: dict[str, Any] | None = None,
         tree: object = None,
         issues: dict[int, object] | None = None,
+        issue_comments: dict[int, list[dict]] | None = None,
         errors: dict[str, Exception] | None = None,
     ) -> None:
         self.pr = pull_request() if pr is None else pr
@@ -71,6 +72,7 @@ class FakeClient:
         self.contents = contents or {}
         self.tree = {"sha": "base-sha", "tree": [], "truncated": False} if tree is None else tree
         self.issues = issues or {}
+        self.issue_comments = issue_comments or {}
         self.errors = errors or {}
         self.calls: list[Call] = []
 
@@ -112,6 +114,9 @@ class FakeClient:
             if issue is None:
                 raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
             return issue if isinstance(issue, pr_github_client.Response) else json_response(issue)
+        number, _, rest = path[len(ISSUES_PREFIX) :].partition("/")
+        if path.startswith(ISSUES_PREFIX) and number.isdigit() and rest == "comments":
+            return _page((self.issue_comments.get(int(number), []),), params)
         raise AssertionError(f"unexpected GET {path}")
 
     def issue_calls(self) -> list[Call]:
@@ -202,6 +207,10 @@ def contents_response(text: str | bytes, *, encoding: str = "base64", type_: str
         "size": len(data),
         "content": base64.b64encode(data).decode("ascii"),
     }
+
+
+def api_comment(body: str, association: str | None = "OWNER", login: str = "someone") -> dict:
+    return {"id": 1, "body": body, "user": {"login": login}, "author_association": association}
 
 
 def api_issue(number: int, *, title: str = "", body: str = "", association: str = "OWNER") -> dict:

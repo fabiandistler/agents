@@ -51,9 +51,9 @@ gets a short JSON summary; the full context (diff included) only goes to FILE.
   --linked-issues   add the field "linked_issues": up to 3 same-repository
                     issues the body declares it closes ("Closes #n"), each
                     {{number, status: ok | unavailable | outside_author, title,
-                    body}}. Title and body only for an OWNER, MEMBER or
-                    COLLABORATOR author; a failed fetch is "unavailable" with
-                    one stderr line and does not fail the run
+                    body, brief}}; text only by OWNER, MEMBER or COLLABORATOR,
+                    brief their latest "## Agent Brief" comment or ""; a failed
+                    fetch is "unavailable", one stderr line, exit 0
   -h, --help        show this message
 
 examples:
@@ -105,11 +105,14 @@ def _comment(entry: dict) -> dict:
     body = entry.get("body")
     user = entry.get("user")
     login = user.get("login") if isinstance(user, dict) else None
-    # The author tells the bot's sticky comment apart from a human one quoting its marker.
+    association = entry.get("author_association")
+    # The author tells the bot's sticky comment apart from a human one quoting
+    # its marker; the association decides whether the review model sees it.
     return {
         "id": entry.get("id"),
         "body": body if isinstance(body, str) else "",
         "author": login if isinstance(login, str) else "",
+        "author_association": association if isinstance(association, str) else "",
     }
 
 
