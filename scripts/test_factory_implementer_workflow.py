@@ -27,21 +27,64 @@ from agent_run_workflow_testkit import (
 )
 
 
-def test_the_factory_checkout_is_the_workflows_own_commit_outside_the_workspace():
-    """The scripts match the pinned workflow file, and the model never takes them for the target."""
+def test_the_factory_is_fetched_at_the_workflows_own_commit_without_a_token():
+    """The scripts match the pinned workflow file, as in factory-pr-review.yml (ADR-0018)."""
     job = single_job(FACTORY_IMPLEMENTER)
-    factory, target = checkouts(job)
-    assert factory["with"]["repository"] == "${{ job.workflow_repository }}"
-    assert factory["with"]["ref"] == "${{ job.workflow_sha }}"
-    assert "repository" not in target["with"], "the second checkout is the caller's repository"
+    fetch = step_with_id(job, "factory")
+    assert fetch["env"] == {
+        "SERVER_URL": "${{ github.server_url }}",
+        "FACTORY_REPOSITORY": "${{ job.workflow_repository }}",
+        "FACTORY_SHA": "${{ job.workflow_sha }}",
+    }, "no token reaches the fetch"
+    (target,) = checkouts(job)
+    assert "repository" not in target["with"], "the only checkout is the caller's repository"
     assert target["with"]["submodules"] == "${{ inputs.submodules }}"
-    steps = job["steps"]
-    move = step_with_id(job, "factory")
-    assert steps.index(factory) < steps.index(move) < steps.index(target), (
-        "the factory leaves the workspace before the target is checked out"
+
+
+def test_the_factory_fetch_lands_outside_the_workspace_at_the_sha(tmp_path):
+    """Run the fetch step against a local repository standing in for GitHub."""
+    source = tmp_path / "server" / "owner" / "factory"
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+    subprocess.run([*git, "init", "-q", str(source)], check=True)  # noqa: S603
+    (source / "marker.txt").write_text("pinned\n", encoding="utf-8")
+    subprocess.run([*git, "-C", str(source), "add", "."], check=True)  # noqa: S603
+    subprocess.run([*git, "-C", str(source), "commit", "-qm", "pin"], check=True)  # noqa: S603
+    sha = subprocess.run(  # noqa: S603
+        ["git", "-C", str(source), "rev-parse", "HEAD"],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    # GitHub serves a commit by SHA; a local repository has to be told to.
+    subprocess.run(  # noqa: S603
+        ["git", "-C", str(source), "config", "uploadpack.allowAnySHA1InWant", "true"],  # noqa: S607
+        check=True,
     )
-    assert f'mv "$GITHUB_WORKSPACE/{factory["with"]["path"]}" "$dir"' in move["run"]
-    assert 'dir="$RUNNER_TEMP/factory"' in move["run"]
+    (source / "marker.txt").write_text("later\n", encoding="utf-8")
+    subprocess.run([*git, "-C", str(source), "commit", "-qam", "later"], check=True)  # noqa: S603
+    runner_temp = tmp_path / "runner"
+    runner_temp.mkdir()
+    output = tmp_path / "output"
+    step = step_with_id(single_job(FACTORY_IMPLEMENTER), "factory")
+    result = subprocess.run(  # noqa: S603 -- runs the workflow's own fetch step.
+        ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
+        env={
+            "SERVER_URL": f"file://{tmp_path / 'server'}",
+            "FACTORY_REPOSITORY": "owner/factory",
+            "FACTORY_SHA": sha,
+            "RUNNER_TEMP": str(runner_temp),
+            "GITHUB_OUTPUT": str(output),
+            "PATH": os.environ["PATH"],
+            "HOME": str(tmp_path),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    factory = runner_temp / "factory"
+    assert output.read_text(encoding="utf-8") == f"dir={factory}\n"
+    assert (factory / "marker.txt").read_text(encoding="utf-8") == "pinned\n"
 
 
 def test_the_factory_scripts_run_from_the_factory_checkout():
