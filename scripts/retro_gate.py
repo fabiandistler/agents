@@ -41,8 +41,7 @@ from typing import Protocol
 from implementer_contract import contract_text, read_ticket
 from issue_triage_policy import TRUSTED_ASSOCIATIONS
 from pr_actions import Operation
-from pr_apply import WriteClient
-from pr_apply import send as send_operation
+from pr_apply import WriteClient, send_operation
 from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
 from pr_github import PER_PAGE, get_json, paginate
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, MissingTokenError, ReadClient
@@ -323,7 +322,14 @@ def run_gate(client: GateClient, repo: str, every: int) -> Selection:
         for pull in pending
     }
     selected = choose(pending, rounds)
-    run_id = implementer_run(client, repo, selected.issue)
+    try:
+        run_id = implementer_run(client, repo, selected.issue)
+    except FetchError as error:
+        # The run listing stops at 1,000 results and artifact lists can fail. The
+        # retro still runs, without the summary (ADR-0017); failing here would
+        # leave the pull request unlabelled and select it again every day.
+        print(f"retro_gate.py: going on without a run summary: {error}", file=sys.stderr)
+        run_id = None
     label_done(client, repo, selected.number)
     reason = f"{rounds[selected.number]} non-pass review round(s), the most of {len(pending)}"
     return Selection(

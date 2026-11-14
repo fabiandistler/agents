@@ -33,7 +33,7 @@ from factory_failure_policy import (
     skip_reason,
 )
 from pr_actions import Operation
-from pr_apply import WriteClient, send
+from pr_apply import WriteClient, send_operation
 from pr_github import PER_PAGE, get_json, paginate
 from pr_github_client import GitHubClient, ReadClient
 
@@ -177,7 +177,7 @@ def create_label(client: WriteClient, repo: str) -> None:
         "description": LABEL_DESCRIPTION,
     }
     try:
-        send(
+        send_operation(
             client,
             Operation(
                 kind="create_label",
