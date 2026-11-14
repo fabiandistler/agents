@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Claim one issue's branch for an implementer run, or say why the run must stop.
 
-implementer.yml's model runs this as its first write, with the App token it
+factory-implementer.yml's model runs this as its first write, with the App token it
 already holds: no step before the model step has a token that can create a
 ref. Creating the branch is the atomic claim. A branch that already exists is
 recovered, kept for the pull request that holds it, or handed to a person.

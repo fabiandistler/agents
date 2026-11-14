@@ -34,8 +34,10 @@ Actions token cannot reach without a personal access token.
 
 ## Decision
 
-`.github/workflows/implementer.yml` and `.github/workflows/skill-audit.yml`
-run the pinned `anthropics/claude-code-action` on the maintainer's Claude
+`.github/workflows/implementer.yml` (whose job, since #790, is the reusable
+`.github/workflows/factory-implementer.yml` of
+[ADR-0018](0018-reusable-factory-workflows.md)) and
+`.github/workflows/skill-audit.yml` run the pinned `anthropics/claude-code-action` on the maintainer's Claude
 subscription (`CLAUDE_CODE_OAUTH_TOKEN`, as in ADR-0012). The action
 exchanges the job's OIDC token for a **Claude GitHub App** installation token
 and gives it to the model as `GH_TOKEN`:
@@ -74,7 +76,10 @@ only points at its runbook, as the scheduled task's did.
   a fetched page can make it push a branch, open a pull request or comment.
   The brakes: the prompts' hard limits; the PR merge guard
   (`scripts/pr_merge_guard.py`), which loads from `.claude/settings.json`
-  because the action reads project settings; branch protection with the
+  because the action reads project settings (since #790 the implementer loads
+  it, with the default-branch push guard, through the action's `settings`
+  input: `scripts/agent_run_settings.json`, rendered by
+  `scripts/agent_run_settings.py`); branch protection with the
   required checks; the automated PR review; and the human merge.
 - Only a person starts the implementer: the job skips labels added by a bot,
   and claude-code-action checks that the actor has write access.
