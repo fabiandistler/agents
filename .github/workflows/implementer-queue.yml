@@ -1,0 +1,45 @@
+# implementer-queue - this repository's caller of the factory's implementer
+# queue, .github/workflows/factory-implementer-queue.yml (#801): when capacity
+# may have freed up, dispatch implementer.yml for the next issue that waits
+# with `ready-for-agent`.
+#
+# Triggers: an implementer run completed (its job not skipped); an issue
+# closed, which may be a blocker; a schedule, in case a `workflow_run` chain
+# stops or a closing starts no run (an issue a GITHUB_TOKEN merge closes may
+# not); a manual run, dry by default.
+name: implementer-queue
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] model-free; it reads no payload of the run, only the API, and checks out no code of it
+    workflows: [implementer]
+    types: [completed]
+  issues:
+    types: [closed]
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the pick and dispatch nothing
+        type: boolean
+        default: true
+
+# No scope by default; the job below opts in to exactly what it needs.
+permissions: {}
+
+jobs:
+  start-next:
+    # A run whose implement job was skipped (any other label) frees nothing.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion != 'skipped'
+    # These cap the called job's permissions, which asks for exactly these.
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+    uses: ./.github/workflows/factory-implementer-queue.yml
+    with:
+      workflow_file: implementer.yml
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}

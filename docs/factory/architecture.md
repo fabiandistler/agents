@@ -111,8 +111,9 @@ model and no write scope, `publish` with write scopes and no model token) and
 read `scripts/` from their own checkout; Fix watches six workflows by name
 (`fix-task.yml:14`). **`scripts/`** holds the model-free logic: the claim,
 `pr_risk.py`, `pr_publish.py`, the gates and the two guards.
-`implementer_queue.py` (#847) dispatches the next waiting issue; its
-workflows are not on `main` as of 2026-11-14, so the diagram omits them.
+`implementer_queue.py` (#847) dispatches the next waiting issue from
+`implementer-queue.yml`, which calls the reusable
+`factory-implementer-queue.yml`; the diagram omits them.
 
 ## Dynamic view: claim to verdict
 
@@ -296,8 +297,7 @@ model-free Fix task that never starts a fix ([0016](../adr/0016-fix-task.md));
 Retro on a clock, Proposed as of 2026-11-14 ([0017](../adr/0017-retro-task.md));
 reusable workflows over copies ([0018](../adr/0018-reusable-factory-workflows.md)).
 
-Known weaknesses, as of 2026-11-14: until the queue's workflows land, a
-waiting issue starts only by a manual dispatch; a failed run leaves
+Known weaknesses, as of 2026-11-14: a failed run leaves
 `ready-for-agent`, and the queue skips it, so nothing retries; the claim
 branches from `main`, not the caller's default branch
 (`implementer_claim.py:68`); the Fix task watches agents' runs only. Still

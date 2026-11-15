@@ -1,17 +1,14 @@
 """Guardrails for the implementer queue's workflows (#801).
 
 implementer-queue.yml calls the reusable factory-implementer-queue.yml, whose
-one model-free job runs scripts/implementer_queue.py. The maintainer adds both
-files by hand, because the implementer's App token cannot write workflows;
-until they are on the branch, these tests skip. They pin an empty top-level
-permission set, `actions: write` on the starter job only, SHA-pinned actions,
+one model-free job runs scripts/implementer_queue.py. The tests pin an empty
+top-level permission set, `actions: write` on the starter job only, SHA-pinned actions,
 the agreed triggers, and a dispatch target that is the implementer.
 """
 
 from __future__ import annotations
 
 import implementer_setup
-import pytest
 from agent_run_workflow_testkit import (
     EXPRESSION,
     FACTORY_IMPLEMENTER,
@@ -31,11 +28,6 @@ STARTER_SCOPES = {
     "issues": "read",
     "pull-requests": "read",
 }
-
-pytestmark = pytest.mark.skipif(
-    not (QUEUE.exists() and FACTORY_QUEUE.exists()),
-    reason="the queue workflows are added by hand (#801)",
-)
 
 
 def starter_step(job: dict) -> dict:
