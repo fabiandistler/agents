@@ -106,14 +106,17 @@ They call four reusable workflows: **`factory-triage-label.yml`** (adds
 issues, `triage` holds the model token and no GitHub token, `publish` writes
 issues), **`factory-pr-review.yml`** (`hold`, `assess`, `review` with the
 model and no write scope, `publish` with write scopes and no model token) and
-**`factory-implementer.yml`** (one model step with the App token). **`rework.yml`,
+**`factory-implementer.yml`** (one model step with the App token, then a
+model-free `follow-up` job). **`rework.yml`,
 `fix-task.yml`, `retro.yml` and `skill-audit.yml`** run in agents only and
 read `scripts/` from their own checkout; Fix watches six workflows by name
 (`fix-task.yml:14`). **`scripts/`** holds the model-free logic: the claim,
 `pr_risk.py`, `pr_publish.py`, the gates and the two guards.
 `implementer_queue.py` (#847) dispatches the next waiting issue from
 `implementer-queue.yml`, which calls the reusable
-`factory-implementer-queue.yml`; the diagram omits them.
+`factory-implementer-queue.yml`; after a run it dispatched, the `follow-up`
+job's `implementer_follow_up.py` starts the queue and the Fix task (#863),
+because such a run starts no `workflow_run`. The diagram omits them.
 
 ## Dynamic view: claim to verdict
 
@@ -143,7 +146,7 @@ sequenceDiagram
 ```
 
 Text equivalent: a person's label starts the implement job
-(`factory-implementer.yml:68-74`). It fetches the scripts at the workflow's
+(`factory-implementer.yml:76-82`). It fetches the scripts at the workflow's
 own commit, renders both guards, and starts `claude-code-action`, which
 trades the OIDC token for the App token. The model's first write is
 `implementer_claim.py`, which stops with `pr-exists`,
@@ -169,10 +172,10 @@ issue would become a merged change. Each brake stops one path:
 
 | Brake | What it stops | Where |
 | --- | --- | --- |
-| Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml:68-74`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
+| Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml:76-82`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
 | Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:329-380`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
 | Merge guard | An agent merging or enabling auto-merge | `pr_merge_guard.py`, loaded by `agent_run_settings.json` and `.claude/settings.json` |
-| Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:202`) |
+| Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:219`) |
 | Prompt hard limits | Labels, branches and files outside the task | the `prompt:` of each model step |
 | App token | Writes to `.github/workflows/` | the App's permissions (ADR-0014) |
 | Headless Claude Code | Writes to `.claude/` and `.pre-commit-config.yaml` | observed, cause inferred ([wiki](../wiki/problems/implementer-write-limits.md)) |
@@ -267,7 +270,7 @@ replaces the waiting one, which is never filed ([ADR-0016](../adr/0016-fix-task.
   ([onboarding](../agents/factory-onboarding.md#one-sha-for-all-callers)).
 - **Anonymous fetch.** Every reusable job but the triage label's fetches
   `job.workflow_repository` at `job.workflow_sha` into `$RUNNER_TEMP/factory`
-  without a credential (`factory-implementer.yml:141-154`), even when agents
+  without a credential (`factory-implementer.yml:149-162`), even when agents
   calls with `./`. agents must stay public: private, all those fetches fail,
   and on the owner's plan agents would lose its ruleset too.
 - **Caller's context.** `github` and `vars` are the caller's, so
@@ -298,9 +301,7 @@ Retro on a clock, Proposed as of 2026-11-14 ([0017](../adr/0017-retro-task.md));
 reusable workflows over copies ([0018](../adr/0018-reusable-factory-workflows.md)).
 
 Known weaknesses, as of 2026-11-15: a failed run leaves
-`ready-for-agent`, and the queue skips it, so nothing retries; a run the
-queue dispatches with `GITHUB_TOKEN` starts no `workflow_run` workflow, so
-neither the queue nor the Fix task follows it up (#858); the claim
+`ready-for-agent`, and the queue skips it, so nothing retries; the claim
 branches from `main`, not the caller's default branch
 (`implementer_claim.py:68`); the Fix task watches agents' runs only. Still
 open (ADR-0018): whether Dependabot bumps the callers' agents pins

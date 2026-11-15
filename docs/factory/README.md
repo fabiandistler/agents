@@ -158,10 +158,10 @@ acts next. The cases that need you:
 - **`at-capacity`, `blocked`.** The issue keeps `ready-for-agent` and waits
   in the [implementer queue](../agents/triage-labels.md#implementer-queue)
   (#847), lowest issue number first. Close a blocker as completed, not as
-  not planned. The queue runs hourly, after a run a person or a label
-  started, and when an issue closes; a run it dispatched itself triggers no
-  follow-up, so the next one can wait up to an hour (#858). Remove the label
-  to take an issue out of the queue.
+  not planned. The queue runs after every implementer run, when an issue
+  closes, and hourly as a fallback; after a run it dispatched itself, the
+  implementer's `follow-up` job starts it (#863). Remove the label to take an
+  issue out of the queue.
 - **`no-contract`.** The label is gone. Post the brief, then add
   `ready-for-agent` again.
 - **`needs-human`.** Branch `agent/issue-<n>` has commits and no open pull
@@ -227,7 +227,7 @@ draws the issue states as a state machine.
 | Symptom | Cause | What to do |
 | --- | --- | --- |
 | The comment says another run is working; the issue keeps `ready-for-agent` | `at-capacity`: one implementer run at a time; the issue waits in the [queue](../agents/triage-labels.md#implementer-queue), which checks at least hourly | Wait, or once that run has ended, [start it by hand](#handle-a-stopped-or-failed-run) |
-| Implementer run red, issue still `ready-for-agent`, nothing happens | A failed run leaves the label; the Fix task files or comments on a `factory-failure` issue ([ADR-0016](../adr/0016-fix-task.md)), but not for a run the queue dispatched (#858) | Read the run summary, then [start it again](#handle-a-stopped-or-failed-run) |
+| Implementer run red, issue still `ready-for-agent`, nothing happens | A failed run leaves the label; the Fix task files or comments on a `factory-failure` issue ([ADR-0016](../adr/0016-fix-task.md)); for a run the queue dispatched, the implementer's `follow-up` job starts it (#863) | Read the run summary, then [start it again](#handle-a-stopped-or-failed-run) |
 | A required check, such as `secrets`, shows *Expected — Waiting* and never started | GitHub started no `pull_request` runs for that push ([wiki](../wiki/problems/missing-pull-request-runs.md)) | *Update branch*, or merge `main` into it, so a new push starts them |
 | `pr-review/verdict` *Expected — Waiting* | No review published for this head | [Dispatch the review](../agents/pr-review-verdict-status.md#escape-a-head-without-a-verdict) with `"dry_run": "false"` |
 | `review:unavailable` on every pull request, `pr-review/verdict` `error` | Missing or expired `CLAUDE_CODE_OAUTH_TOKEN`, an unknown `PR_REVIEW_MODEL` (both under *Settings, Secrets and variables, Actions*), a usage limit | [PR review troubleshooting](../agents/pr-review-troubleshooting.md#symptoms); after the fix, [re-run](../agents/pr-review-runbook.md#manual-re-run) each open pull request |

@@ -51,7 +51,8 @@ BOTH = pytest.mark.parametrize("path", [FACTORY_IMPLEMENTER, SKILL_AUDIT], ids=l
 @pytest.mark.parametrize(
     ("path", "job_scopes"),
     [
-        (IMPLEMENTER, {"contents": "read", "actions": "read", "id-token": "write"}),
+        # The caller's cap; the follow-up job needs actions: write (#863).
+        (IMPLEMENTER, {"contents": "read", "actions": "write", "id-token": "write"}),
         (FACTORY_IMPLEMENTER, {"contents": "read", "actions": "read", "id-token": "write"}),
         (SKILL_AUDIT, {"contents": "read", "id-token": "write"}),
     ],

@@ -44,8 +44,9 @@ def test_permissions_are_empty_by_default_and_only_the_starter_job_writes_action
         assert single_job(path)["permissions"] == STARTER_SCOPES, path.name
 
 
-def test_the_implementer_keeps_actions_read_only():
-    assert single_job(IMPLEMENTER)["permissions"]["actions"] == "read"
+def test_the_implementers_model_job_keeps_actions_read_only():
+    # Only its model-free follow-up job dispatches (#863).
+    assert agent_job(FACTORY_IMPLEMENTER)["permissions"]["actions"] == "read"
 
 
 def test_every_action_is_sha_pinned_and_no_model_runs():

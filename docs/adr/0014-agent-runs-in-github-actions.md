@@ -15,6 +15,13 @@ implementer too, by a `workflow_dispatch` with `GITHUB_TOKEN`, whose actor is
 `workflow_dispatch`. "Only a person starts the implementer" below now holds
 for the label path only.
 
+Amended 2026-11-15 (#863): a run the queue dispatched starts no
+`workflow_run` workflow, so the reusable implementer has a second, model-free
+job, `follow-up`, which dispatches the caller's queue and Fix task after such a
+run. That job alone holds `actions: write`; the model job keeps the read-only
+token below. The caller's cap therefore grants `actions: write`: GitHub refuses
+to start a run whose called job asks for more than the caller allows.
+
 ## Context
 
 Two agent runs of this repository ran as Claude Code scheduled tasks in the

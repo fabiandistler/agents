@@ -18,6 +18,14 @@ Amended 2026-11-15 (#858): an implementer run the queue dispatches with
 `GITHUB_TOKEN` starts no `workflow_run` workflow, so the Fix task does not
 file it when it fails. Runs a person or a label starts are filed as before.
 
+Amended 2026-11-15 (#863), closing the gap above: after a run the queue
+dispatched whose implement job did not succeed, the implementer's model-free
+`follow-up` job dispatches the caller's Fix task with the run's id and
+`dry_run: false`. That job runs inside the run it reports, so
+`factory_failure.py` re-reads a run that has not completed every 10 seconds,
+for up to 180 seconds, and fails past that. What is filed is still decided by
+the policy here alone (conclusion `failure` or `timed_out`).
+
 ## Context
 
 The factory workflows fail in two ways. The agent runs (`implementer`,

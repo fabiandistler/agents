@@ -9,7 +9,7 @@
 # scripts/implementer_claim.py's `--job-name implement` matches.
 #
 # Triggers: a person adds `ready-for-agent` to an open issue; a manual run for
-# one issue.
+# one issue, which is how implementer-queue.yml starts the next waiting issue.
 name: implementer
 # The Fix task (scripts/factory_failure_policy.py, ADR-0016) and the Retro gate
 # (scripts/retro_gate.py, ADR-0017) find this issue's run by this title; a
@@ -31,10 +31,12 @@ permissions: {}
 
 jobs:
   implement:
-    # These cap the called job's permissions, which asks for exactly these.
+    # These cap the called jobs' permissions. The model job asks for actions:
+    # read; only the follow-up job, which dispatches the two workflows below,
+    # gets actions: write (#863).
     permissions:
       contents: read
-      actions: read
+      actions: write
       id-token: write
     uses: ./.github/workflows/factory-implementer.yml
     with:
@@ -44,5 +46,8 @@ jobs:
       setup_command: pip install -r scripts/check_all.requirements.txt && prek install
       # The bats check needs the pinned submodules under test/bats/.
       submodules: true
+      # Started after a run the queue dispatched, which starts no workflow_run.
+      queue_workflow: implementer-queue.yml
+      fix_task_workflow: fix-task.yml
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

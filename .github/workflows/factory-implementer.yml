@@ -52,11 +52,19 @@ on:
         description: The claimed branch is <prefix><issue>; ends in / or -
         type: string
         default: agent/issue-
+      queue_workflow:
+        description: The caller's queue workflow file, for the follow-up job; empty for none
+        type: string
+        default: ""
+      fix_task_workflow:
+        description: The caller's Fix-task workflow file, for the follow-up job; empty for none
+        type: string
+        default: ""
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
 
-# No scope by default; the job below opts in to exactly what it needs. The
+# No scope by default; each job below opts in to exactly what it needs. The
 # calling job's permissions cap these.
 permissions: {}
 
@@ -259,3 +267,55 @@ jobs:
           path: ${{ runner.temp }}/run-summary.md
           if-no-files-found: ignore
           retention-days: 90
+
+  follow-up:
+    # A run the queue dispatched starts no workflow_run workflow, so this
+    # model-free job dispatches the caller's queue and Fix task after it
+    # (#863; scripts/implementer_follow_up.py). The actor is no trust gate: a
+    # wrong match only starts a follow-up twice or not at all.
+    needs: implement
+    if: >- # zizmor: ignore[bot-conditions] only routes follow-ups, see above
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'github-actions[bot]' &&
+      (inputs.queue_workflow != '' || inputs.fix_task_workflow != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Only this job writes Actions. The jobs API lists it as
+    # `<caller job> / follow-up`, which the capacity gate does not count.
+    permissions:
+      actions: write
+    steps:
+      - name: Fetch the factory scripts
+        id: factory
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/factory"
+          git init --quiet "$dir"
+          git -C "$dir" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$dir" checkout --quiet --detach FETCH_HEAD
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Start the queue and the Fix task
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FACTORY_DIR: ${{ steps.factory.outputs.dir }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          IMPLEMENT_RESULT: ${{ needs.implement.result }}
+          QUEUE_WORKFLOW: ${{ inputs.queue_workflow }}
+          FIX_TASK_WORKFLOW: ${{ inputs.fix_task_workflow }}
+        run: |
+          python3 "$FACTORY_DIR/scripts/implementer_follow_up.py" --repo "$REPO" \
+            --run-id "$RUN_ID" --ref "$DEFAULT_BRANCH" --implement-result "$IMPLEMENT_RESULT" \
+            --queue-workflow "$QUEUE_WORKFLOW" --fix-task-workflow "$FIX_TASK_WORKFLOW"

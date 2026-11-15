@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 
+import agent_run_capacity
 import implementer_setup
 import pytest
 from agent_run_workflow_testkit import (
@@ -106,6 +107,8 @@ def test_factory_declares_its_inputs_and_the_one_secret():
         "python_version": "3.12",
         "model": "opus",
         "branch_prefix": implementer_setup.BRANCH_PREFIX,
+        "queue_workflow": "",
+        "fix_task_workflow": "",
     }
     assert inputs["check_command"]["required"] is True
     assert call["secrets"] == {"CLAUDE_CODE_OAUTH_TOKEN": {"required": True}}
@@ -254,6 +257,8 @@ def test_caller_calls_the_local_factory_workflow_with_this_repositorys_inputs():
         "check_command": "scripts/check_all.sh",
         "setup_command": "pip install -r scripts/check_all.requirements.txt && prek install",
         "submodules": True,
+        "queue_workflow": "implementer-queue.yml",
+        "fix_task_workflow": "fix-task.yml",
     }
 
 
@@ -287,3 +292,123 @@ def test_the_factory_fetch_matches_the_pr_reviews():
         if line.strip().startswith("git") or line.strip().startswith('"$SERVER_URL')
     ]
     assert actual == expected
+
+
+# --- The follow-up job (#863) ---------------------------------------------
+#
+# A run the queue dispatched with GITHUB_TOKEN starts no workflow_run workflow,
+# so the factory's own model-free job starts the caller's queue and Fix task by
+# workflow_dispatch, which GITHUB_TOKEN may do.
+
+FOLLOW_UP = "follow-up"
+QUEUE = FACTORY_IMPLEMENTER.parent / "implementer-queue.yml"
+FIX_TASK = FACTORY_IMPLEMENTER.parent / "fix-task.yml"
+
+
+def follow_up_job() -> dict:
+    return workflow(FACTORY_IMPLEMENTER)["jobs"][FOLLOW_UP]
+
+
+def test_the_follow_up_job_runs_after_the_model_job_whatever_its_result():
+    jobs = workflow(FACTORY_IMPLEMENTER)["jobs"]
+    assert list(jobs) == [implementer_setup.IMPLEMENT_JOB, FOLLOW_UP], "the model job stays first"
+    job = follow_up_job()
+    assert job["needs"] == implementer_setup.IMPLEMENT_JOB
+    guard = job["if"]
+    assert guard.startswith("always() &&"), "a failed or cancelled model job still follows up"
+
+
+def test_the_follow_up_job_acts_only_for_a_run_the_queue_dispatched():
+    # Only such a run starts no workflow_run; a person's run follows up through
+    # it already, so its follow-ups must not start twice.
+    guard = follow_up_job()["if"]
+    assert "github.event_name == 'workflow_dispatch'" in guard
+    assert "github.actor == 'github-actions[bot]'" in guard
+    # A caller that names neither workflow starts no runner for it.
+    assert "(inputs.queue_workflow != '' || inputs.fix_task_workflow != '')" in guard
+
+
+def test_only_the_follow_up_job_writes_actions():
+    assert follow_up_job()["permissions"] == {"actions": "write"}
+    assert agent_job(FACTORY_IMPLEMENTER)["permissions"]["actions"] == "read"
+    # The caller's cap must allow the follow-up job's write.
+    assert agent_job(IMPLEMENTER)["permissions"]["actions"] == "write"
+
+
+def test_the_follow_up_job_is_model_free_checks_out_nothing_and_is_bounded():
+    job = follow_up_job()
+    uses = [step["uses"] for step in job["steps"] if "uses" in step]
+    assert [ref.split("@")[0] for ref in uses] == ["actions/setup-python"]
+    assert all(re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", ref) for ref in uses)
+    assert job["timeout-minutes"] <= 5
+    assert "concurrency" not in job, "the run's own implement concurrency is enough"
+
+
+def test_the_follow_up_job_is_not_counted_as_working_by_the_capacity_gate():
+    # The jobs API lists it as `implement / follow-up`; a run whose implement job
+    # has ended must not hold the capacity, or the queue it starts finds it busy.
+    listed = f"{implementer_setup.IMPLEMENT_JOB} / {FOLLOW_UP}"
+    assert not agent_run_capacity.is_job(listed, implementer_setup.IMPLEMENT_JOB)
+
+
+def test_the_follow_up_job_fetches_the_factory_as_the_model_job_does():
+    fetch = step_with_id(follow_up_job(), "factory")
+    model_fetch = step_with_id(agent_job(FACTORY_IMPLEMENTER), "factory")
+    assert fetch == model_fetch
+
+
+def follow_up_step() -> dict:
+    return named_step(follow_up_job(), "Start the queue and the Fix task")
+
+
+def test_the_follow_up_step_takes_values_through_env_and_uses_the_job_token():
+    step = follow_up_step()
+    assert "${{" not in step["run"]
+    assert step["env"] == {
+        "GH_TOKEN": "${{ github.token }}",
+        "FACTORY_DIR": "${{ steps.factory.outputs.dir }}",
+        "REPO": "${{ github.repository }}",
+        "RUN_ID": "${{ github.run_id }}",
+        "DEFAULT_BRANCH": "${{ github.event.repository.default_branch }}",
+        "IMPLEMENT_RESULT": "${{ needs.implement.result }}",
+        "QUEUE_WORKFLOW": "${{ inputs.queue_workflow }}",
+        "FIX_TASK_WORKFLOW": "${{ inputs.fix_task_workflow }}",
+    }
+    assert '"$FACTORY_DIR/scripts/implementer_follow_up.py"' in step["run"]
+
+
+@pytest.mark.parametrize("queue_workflow", [QUEUE.name, ""])
+def test_the_follow_up_command_line_is_accepted_by_the_script(tmp_path, queue_workflow):
+    """Run the step against this checkout's script; without a token it stops before any call."""
+    result = subprocess.run(  # noqa: S603 -- runs the workflow's own follow-up step.
+        ["bash", "-e", "-c", follow_up_step()["run"]],  # noqa: S607 -- bash from PATH.
+        env={
+            "GH_TOKEN": "",
+            "FACTORY_DIR": str(REPO_ROOT),
+            "REPO": "owner/repo",
+            "RUN_ID": "4242",
+            "DEFAULT_BRANCH": "main",
+            "IMPLEMENT_RESULT": "failure",
+            "QUEUE_WORKFLOW": queue_workflow,
+            "FIX_TASK_WORKFLOW": FIX_TASK.name,
+            "PATH": os.environ["PATH"],
+            "HOME": str(tmp_path),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stderr
+    assert json.loads(result.stdout)["failed"] == [
+        {"workflow": "", "reason": "GH_TOKEN is not set"}
+    ]
+
+
+def test_the_caller_names_its_queue_and_fix_task_which_accept_the_dispatch():
+    inputs = agent_job(IMPLEMENTER)["with"]
+    assert inputs["queue_workflow"] == QUEUE.name
+    assert inputs["fix_task_workflow"] == FIX_TASK.name
+    queue_inputs = workflow(QUEUE)[True]["workflow_dispatch"]["inputs"]
+    assert set(queue_inputs) == {"dry_run"}
+    fix_inputs = workflow(FIX_TASK)[True]["workflow_dispatch"]["inputs"]
+    assert set(fix_inputs) == {"run_id", "dry_run"}
