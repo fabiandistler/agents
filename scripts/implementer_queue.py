@@ -27,7 +27,11 @@ it is skipped when:
 The dispatch goes to the implementer's workflow file on the default branch,
 with `inputs.issue`. GITHUB_TOKEN may do that: a workflow_dispatch "always
 creates a workflow run" (GitHub docs, "Triggering a workflow", read
-2026-11-13), and the implementer job admits any workflow_dispatch.
+2026-11-13). The run's actor is github-actions[bot]: the implementer job's `if`
+admits any workflow_dispatch, and its claude-code-action step admits that bot
+only because it lists it in `allowed_bots` (#858). A run started this way
+starts no `workflow_run` workflow, so this script runs again only on its
+schedule or when an issue closes, and the Fix task does not see the run fail.
 
 Standard library only. Prints one JSON object; errors name the API call and
 status, never issue text.

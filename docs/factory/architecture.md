@@ -297,8 +297,10 @@ model-free Fix task that never starts a fix ([0016](../adr/0016-fix-task.md));
 Retro on a clock, Proposed as of 2026-11-14 ([0017](../adr/0017-retro-task.md));
 reusable workflows over copies ([0018](../adr/0018-reusable-factory-workflows.md)).
 
-Known weaknesses, as of 2026-11-14: a failed run leaves
-`ready-for-agent`, and the queue skips it, so nothing retries; the claim
+Known weaknesses, as of 2026-11-15: a failed run leaves
+`ready-for-agent`, and the queue skips it, so nothing retries; a run the
+queue dispatches with `GITHUB_TOKEN` starts no `workflow_run` workflow, so
+neither the queue nor the Fix task follows it up (#858); the claim
 branches from `main`, not the caller's default branch
 (`implementer_claim.py:68`); the Fix task watches agents' runs only. Still
 open (ADR-0018): whether Dependabot bumps the callers' agents pins
