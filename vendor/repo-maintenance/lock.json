@@ -1,9 +1,9 @@
 {
   "upstream": "https://github.com/fabiandistler/repo-maintenance",
-  "commit": "4d851e08d4056a440c1688732195f748a0c2ba9a",
+  "commit": "884a17956daa1684c640545dac42948b6ef6b235",
   "files": {
     "scripts/maintenance-scan.sh": {
-      "sha256": "7d91fe96f4bab623e3417848889091afae9649cd3c13006f762a69d527462217",
+      "sha256": "3c836836318166d69b31cc36e718fac0a2d7c5a1d36469c4d395d8461f6a7dda",
       "mode": "100755"
     },
     "scripts/maintenance-r-advisories.py": {

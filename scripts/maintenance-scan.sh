@@ -12,7 +12,7 @@
 # Part of: plugin `repo-maintenance`, skill `maintenance-run`, catalog MAINTENANCE.md.
 #
 # bats-exempt: vendored copy, copied into target repos by maintenance-assets.py; its tests
-# are test/maintenance-scan.bats in the repo-maintenance plugin repo.
+# are test/maintenance-scan*.bats in the repo-maintenance plugin repo.
 #
 # Invocation, flags and exit codes: usage() below, or --help.
 
@@ -25,7 +25,8 @@ Deterministic scanner for the catalog jobs that have tool support. Produces
 raw findings so the agent answers only the open question (breaking-change
 risk, export really dead, nondeterminism intentional?). Works in any
 directory inside the target repo.
-  deps-audit      vulnerable or outdated dependencies (renv::vulns, OSV CRAN, uv, pip-audit)
+  deps-audit      vulnerable or outdated dependencies (renv::vulns, OSV CRAN, uv, pip-audit),
+                  Dependabot update runs that never ran (gh)
   dead-exports    exports with no reference outside the package (NAMESPACE, __all__)
   test-flakiness  time, randomness, network candidates in tests/ or test/
   -h, --help      this text
@@ -77,14 +78,16 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 cd "$ROOT" || exit 3
 
 has() { command -v "$1" >/dev/null 2>&1; }
+# Both Dependabot file extensions (#102).
+has_dependabot_config() { [ -f .github/dependabot.yml ] || [ -f .github/dependabot.yaml ]; }
 # has_update_automation - true if Renovate or Dependabot is configured: every
 # repository config location Renovate reads (docs.renovatebot.com,
 # configuration-options; checked 2026-11-06), the "renovate" key in
-# package.json, and both Dependabot file extensions (#102).
+# package.json, and Dependabot's config.
 has_update_automation() {
+  has_dependabot_config && return 0
   local f
-  for f in .github/dependabot.yml .github/dependabot.yaml \
-    renovate.json renovate.jsonc renovate.json5 \
+  for f in renovate.json renovate.jsonc renovate.json5 \
     .github/renovate.json .github/renovate.jsonc .github/renovate.json5 \
     .gitlab/renovate.json .gitlab/renovate.jsonc .gitlab/renovate.json5 \
     .renovaterc .renovaterc.json .renovaterc.jsonc .renovaterc.json5; do
@@ -116,19 +119,67 @@ not_checked() {
   NOT_CHECKED+=("$1: $2")
 }
 
-# uvx_ready TOOL CHECK - true if uvx can provide TOOL. Otherwise CHECK is [blocked], with
-# uv's error above the line: the tool's own exit code cannot tell a fetch failure from a
-# finding, and a run on nothing must not read as a clean scan (#124).
-uvx_ready() {
-  local err
-  if ! has uvx; then
-    blocked "$2" "tool missing - uvx"
+# github_origin - print OWNER/REPO if the origin remote is on github.com (HTTPS or SSH).
+github_origin() {
+  local url re='^(https://([^/@]+@)?github\.com/|(ssh://)?git@github\.com[:/])([^/]+)/([^/]+)$'
+  url="$(git remote get-url origin 2>/dev/null)" || return 1
+  [[ ${url%/} =~ $re ]] || return 1
+  printf '%s/%s\n' "${BASH_REMATCH[4]}" "${BASH_REMATCH[5]%.git}"
+}
+
+# dependabot_check OWNER/REPO - a config does not prove Dependabot runs: its jobs can wait
+# for a runner label nothing serves and end cancelled, silently (#146). Returns 0 after a
+# [finding]: the newest DEPENDABOT_RUNS runs all cancelled, or the newest run's job got no
+# runner for a label that is not GitHub-hosted. The runner list (admin rights) only adds
+# detail, so it is [not checked] when unreadable.
+DEPENDABOT_RUNS=3
+dependabot_check() {
+  local repo="$1" out id conclusion ids=() cancelled=0 found=1 labels runners runners_read=1 label detail
+  if ! has gh; then
+    blocked "Dependabot update runs" "tool missing - gh"
     return 1
   fi
-  err="$(uvx "$1" --version 2>&1)" && return 0
-  printf '%s\n' "$err"
-  blocked "$2" "unreachable - PyPI via uvx (uvx error above)"
-  return 1
+  if ! out="$(gh api "repos/$repo/actions/runs?event=dynamic&status=completed&per_page=100" --jq \
+    '[.workflow_runs[] | select(.status == "completed" and (.path | startswith("dynamic/dependabot/")))][:'"$DEPENDABOT_RUNS"'][] | "\(.id) \(.conclusion)"' 2>&1)"; then
+    printf '%s\n' "$out"
+    blocked "Dependabot update runs" "unreachable - GitHub Actions API via gh (gh error above)"
+    return 1
+  fi
+  while read -r id conclusion; do
+    [ -n "$id" ] || continue
+    ids+=("$id")
+    [ "$conclusion" = cancelled ] && cancelled=$((cancelled + 1))
+  done <<<"$out"
+  [ "${#ids[@]}" -gt 0 ] || return 1
+  if [ "$cancelled" -ge "$DEPENDABOT_RUNS" ]; then
+    printf '[finding] Dependabot: the newest %s update runs all ended cancelled (runs %s)\n' \
+      "$DEPENDABOT_RUNS" "${ids[*]}"
+    found=0
+  fi
+  if ! labels="$(gh api "repos/$repo/actions/runs/${ids[0]}/jobs" --jq \
+    '[.jobs[] | select(.runner_id == 0) | .labels[] | select(test("^(ubuntu|windows|macos)-") | not)] | unique[]' 2>&1)"; then
+    printf '%s\n' "$labels"
+    blocked "Dependabot runner label" "unreachable - GitHub Actions API via gh (gh error above)"
+    return "$found"
+  fi
+  [ -n "$labels" ] || return "$found"
+  if ! runners="$(gh api --paginate "repos/$repo/actions/runners" --jq '.runners[].labels[].name' 2>&1)"; then
+    printf '%s\n' "$runners"
+    not_checked "Dependabot runners list" "unreadable (gh error above; needs admin rights) - the label finding stands without it"
+    runners_read=0
+  fi
+  while read -r label; do
+    if [ "$runners_read" = 0 ]; then
+      detail=""
+    elif [[ $'\n'"$runners"$'\n' == *$'\n'"$label"$'\n'* ]]; then
+      detail="; a registered runner has it but took no job"
+    else
+      detail="; no registered runner serves it (actions/runners lists none with that label)"
+    fi
+    printf "[finding] Dependabot: run %s requested the runner label '%s', which is not GitHub-hosted, and no runner took it (runner_id 0)%s\n" \
+      "${ids[0]}" "$label" "$detail"
+  done <<<"$labels"
+  return 0
 }
 
 case "$JOB" in
@@ -192,7 +243,18 @@ case "$JOB" in
 
     if is_python; then
       hdr "Python: outdated packages (uv)"
-      if has uv; then uv pip list --outdated 2>&1 || skip "uv pip list --outdated"; else blocked "uv pip list --outdated" "tool missing - uv"; fi
+      # Without a project environment uv pip list reads the system Python (#149); the lock needs none.
+      if [ -f uv.lock ] && has uv; then
+        uv tree --outdated --depth 1 --frozen 2>&1 || skip "uv tree --outdated"
+      elif [ -f uv.lock ]; then
+        blocked "uv tree --outdated" "tool missing - uv"
+      elif ! has uv; then
+        blocked "uv pip list --outdated" "tool missing - uv"
+      elif [ -d .venv ] || [ -n "${VIRTUAL_ENV:-}" ]; then
+        uv pip list --outdated 2>&1 || skip "uv pip list --outdated"
+      else
+        blocked "uv pip list --outdated" "no project environment - no .venv, VIRTUAL_ENV unset"
+      fi
 
       hdr "Python: Vulnerabilities"
       if [ -f uv.lock ] && [ -f .github/workflows/maintenance-deps-audit.yml ]; then
@@ -224,7 +286,9 @@ case "$JOB" in
     echo "Find call sites in the repo: git grep -n <package-name>"
 
     hdr "Automation"
-    if has_update_automation; then
+    if has_dependabot_config && repo="$(github_origin)" && dependabot_check "$repo"; then
+      echo "Dependabot is configured but not working ([finding] above): the update work it should do is not covered."
+    elif has_update_automation; then
       echo "Renovate/Dependabot is configured - the update work belongs there."
     else
       echo "Neither Renovate nor Dependabot is configured. Add a recommendation to the report:"
@@ -257,13 +321,52 @@ case "$JOB" in
     fi
     if is_r_pkg && ! has Rscript; then blocked "R exports" "tool missing - Rscript"; fi
 
-    if is_python; then
-      hdr "Python: vulture (min-confidence 80, CANDIDATES)"
-      # Findings never fail the scan; only a tool uvx cannot provide is blocked.
-      if uvx_ready vulture "vulture"; then uvx vulture . --min-confidence 80 2>&1 || true; fi
+    if is_python && has python3; then
+      hdr "Python: __all__ entries with no reference outside their package (CANDIDATES, not proof)"
+      # Not vulture or ruff F822: neither flags a dead __all__ name (#148). Tracked files only
+      # (no .venv), hits outside the top-level package; -I: no repo module shadows the stdlib.
+      python3 -I - <<'PY' 2>&1
+import ast, os, subprocess, warnings
+from pathlib import Path
 
-      hdr "Python: __all__ entries with no reference outside the module"
-      if uvx_ready ruff "ruff F822"; then uvx ruff check --select F822 . 2>&1 || true; fi
+warnings.simplefilter("ignore", SyntaxWarning)
+ls = subprocess.run(["git", "ls-files", "-z", "--", "*.py"], capture_output=True, check=True)
+found, unparsed, candidates = False, [], []
+for name in map(os.fsdecode, filter(None, ls.stdout.split(b"\0"))):
+    try:
+        tree = ast.parse(Path(name).read_bytes(), filename=name)
+    except SyntaxError:
+        unparsed.append(name)
+        continue
+    package = Path(name)
+    while package.parent != Path(".") and (package.parent / "__init__.py").is_file():
+        package = package.parent
+    for node in tree.body:
+        target = node.targets[0] if isinstance(node, ast.Assign) else getattr(node, "target", None)
+        if not (isinstance(target, ast.Name) and target.id == "__all__"):
+            continue
+        found = True
+        for item in getattr(node.value, "elts", []):
+            if not (isinstance(item, ast.Constant) and isinstance(item.value, str)):
+                continue
+            grep = ["git", "grep", "-q", "-w", "-F", "-e", item.value, "--", ".", f":(exclude){package}"]
+            hit = subprocess.run(grep)
+            if hit.returncode > 1:
+                hit.check_returncode()
+            if hit.returncode == 1:
+                candidates.append(f"- {item.value}  ({name})")
+print("\n".join(candidates) or ("none" if found else "no __all__ in any tracked *.py file"))
+for name in unparsed:
+    print(f"cannot parse as Python 3: {name}")
+raise SystemExit(3 if unparsed else 0)
+PY
+      case $? in
+        0) ;;
+        3) not_checked "Python __all__ exports" "files Python cannot parse (listed above)" ;;
+        *) not_checked "Python __all__ exports" "the check failed (traceback above)" ;;
+      esac
+    elif is_python; then
+      blocked "Python __all__ exports" "tool missing - python3"
     fi
 
     hdr "Required evidence per removal"
