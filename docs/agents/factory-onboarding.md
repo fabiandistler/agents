@@ -8,7 +8,9 @@ repository
 to add, what to set by hand and in which order, and how to check the result
 with `scripts/factory_onboarding_check.py`. For a new repository, start with
 the [setup wizard](#setup-wizard); the [manual steps](#manual-steps-in-order)
-are the fallback.
+are the fallback. The factory's day-to-day use is in the
+[user guide](../factory/README.md), its design in the
+[architecture](../factory/architecture.md).
 
 ## Contents
 
@@ -67,10 +69,15 @@ six stages:
    created if missing; an existing label keeps its colour and description.
 3. Secret: `CLAUDE_CODE_OAUTH_TOKEN` from hidden entry or `--token-file`,
    created with `claude setup-token`. The value is never printed or logged; an
-   existing secret is replaced only after a confirmation.
+   existing secret is replaced only after a confirmation. The token must be
+   one word on one line (surrounding whitespace is dropped); one that does not
+   start with `sk-ant-oat` is set only after a confirmation.
 4. Actions allow-list: if the repository allows only selected actions, adds
    `fabiandistler/agents/.github/workflows/*` and the actions the factory
-   workflows use. An unrestricted policy is left unchanged.
+   workflows use. An unrestricted policy is left unchanged. GitHub's REST docs
+   say `patterns_allowed` applies only to public repositories, so on a private
+   one the wizard asks you to check the list in the repository's Actions
+   settings.
 5. Clicks without an API: opens the page for the Claude GitHub App and for the
    Dependabot runner type, with the path to click.
 6. Verify: runs `scripts/factory_onboarding_check.py` with the `gh` login's

@@ -199,12 +199,9 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 # factory-repo-setup.sh puts a new repository on the factory with the
-# maintainer's own gh login: state and category labels, the
-# CLAUDE_CODE_OAUTH_TOKEN secret, the Actions allow-list, the clicks GitHub has
-# no API for, then scripts/factory_onboarding_check.py. The labels and the
-# allow-list patterns come from scripts/factory_repo_setup.py. Runbook:
-# docs/agents/factory-onboarding.md. Tests: test/factory_repo_setup.bats.
-# It writes no file: the caller workflows come from the template repo or runbook.
+# maintainer's gh login; usage() lists the stages. Labels and patterns:
+# scripts/factory_repo_setup.py. Runbook: docs/agents/factory-onboarding.md.
+# Tests: test/factory_repo_setup.bats. It writes no file into the target.
 
 run_wizard() {
 
@@ -285,7 +282,7 @@ else
   banner "Factory setup for $repo"
 fi
 
-# ── Stage 1 ───────────────────────────────────────────────────────────────
+# ── Stage 1 ────────────────────
 stage "Preconditions"
 command -v gh >/dev/null 2>&1 || die 3 "gh is not installed: https://cli.github.com"
 command -v python3 >/dev/null 2>&1 || die 3 "python3 is not installed"
@@ -302,7 +299,7 @@ else
   warn "need Pro). Brakes: the push guard and merging only on green."
 fi
 
-# ── Stage 2 ───────────────────────────────────────────────────────────────
+# ── Stage 2 ────────────────────
 stage "Labels"
 local wanted existing label
 local -a missing_labels=()
@@ -328,7 +325,7 @@ for label in "${missing_labels[@]}"; do
 done
 ((${#missing_labels[@]})) || say "All labels exist; nothing to create."
 
-# ── Stage 3 ───────────────────────────────────────────────────────────────
+# ── Stage 3 ────────────────────
 stage "Secret CLAUDE_CODE_OAUTH_TOKEN"
 note "The token comes from \`claude setup-token\` (valid one year; pr-review-runbook.md, Setup)."
 local secret_names secret_exists=no source_name="hidden entry"
@@ -345,15 +342,25 @@ if dry_run; then
 elif [[ "$secret_exists" == yes ]] && ! confirm "CLAUDE_CODE_OAUTH_TOKEN is already set. Replace it?"; then
   note "Kept the existing secret."
 else
-  local CLAUDE_CODE_OAUTH_TOKEN=""
+  local CLAUDE_CODE_OAUTH_TOKEN="" blank
   if [[ -n "$token_file" ]]; then
     CLAUDE_CODE_OAUTH_TOKEN="$(<"$token_file")"
-    CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN%$'\r'}"
   else
     step "Run \`claude setup-token\` in another terminal and copy the token."
     ask_secret CLAUDE_CODE_OAUTH_TOKEN "Paste the token (hidden):" || die 2 "no token entered"
   fi
+  # Drop surrounding blanks and a CRLF; refuse a blank or line left inside.
+  blank="${CLAUDE_CODE_OAUTH_TOKEN%%[![:space:]]*}"
+  CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN#"$blank"}"
+  blank="${CLAUDE_CODE_OAUTH_TOKEN##*[![:space:]]}"
+  CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN%"$blank"}"
   [[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]] || die 2 "the token is empty"
+  [[ "$CLAUDE_CODE_OAUTH_TOKEN" != *[[:space:]]* ]] || die 2 "the token has a blank or a second line in it"
+  # The prefix claude setup-token prints; not a documented format, so it asks.
+  [[ "$CLAUDE_CODE_OAUTH_TOKEN" == sk-ant-oat* ]] || {
+    warn "The token does not start with sk-ant-oat, as claude setup-token tokens do."
+    confirm "Set it anyway?" || die 2 "the secret was not set"
+  }
   # On stdin, never in argv. set_secret would hide a failure as "skipped".
   printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo "$repo" >/dev/null ||
     die 4 "could not set secret CLAUDE_CODE_OAUTH_TOKEN"
@@ -362,7 +369,7 @@ else
   say "${GREEN}✓ set${RESET} GitHub secret CLAUDE_CODE_OAUTH_TOKEN"
 fi
 
-# ── Stage 4 ───────────────────────────────────────────────────────────────
+# ── Stage 4 ────────────────────
 stage "Actions allow-list"
 local allowed_actions selected_actions pattern
 local -a missing_patterns=()
@@ -387,9 +394,13 @@ else
       die 4 "could not update the selected actions of $repo"
     for pattern in "${missing_patterns[@]}"; do say "${GREEN}✓ allowed${RESET} $pattern"; done
   fi
+  [[ "$visibility" == public ]] || {
+    warn "GitHub's REST docs: patterns_allowed applies to public repositories only."
+    warn "Check that the list holds: https://github.com/$repo/settings/actions"
+  }
 fi
 
-# ── Stage 5 ───────────────────────────────────────────────────────────────
+# ── Stage 5 ────────────────────
 stage "Clicks without an API"
 local app_url="https://github.com/$repo/settings/installations"
 local dependabot_url="https://github.com/$repo/settings/security_analysis"
@@ -412,7 +423,7 @@ if ! dry_run && ! confirm "After the reload, is Standard GitHub runner selected?
   SKIPPED+=("Dependabot runner type on $repo: $dependabot_url")
 fi
 
-# ── Stage 6 ───────────────────────────────────────────────────────────────
+# ── Stage 6 ────────────────────
 stage "Verify"
 local gh_token check_status=0
 gh_token="$(gh auth token)" || die 3 "gh auth token printed no token"

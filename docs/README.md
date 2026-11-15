@@ -10,6 +10,7 @@ product page; this page routes from a job to the page that does it.
 - [Skill catalogue](../README.md#skill-catalogue) — every skill and when it fires
 - [`skills.json`](../skills.json) — generated manifest; query it instead of crawling `skills/`
 - [Glossary](../GLOSSARY.md) — the repo's canonical vocabulary
+- [Software factory](factory/README.md) — write an issue, start a run, read a review, merge, recover a stopped run, onboard a repository
 
 ## Develop it
 
@@ -19,6 +20,8 @@ product page; this page routes from a job to the page that does it.
 - [Checks and CI gates](contributing.md#run-checks) — `scripts/check_all.sh` and the prek hooks
 - [Install internals](maintainers/install-internals.md) — Claude cloud mirror, vendored skills, regeneration order
 - [Homepage](maintainers/homepage.md) — local preview and GitHub Pages deployment
+- [Factory architecture](factory/architecture.md) — how the factory's tasks, gates and reusable workflows fit together
+- [Changing a factory task](factory/changing-a-task.md) — the checklist: tests, zizmor, pins, names, a new task, rollout to the targets
 - [Weekly skill audit](agents/skill-audit.md) — the scheduled content review and its checklist
 - [Retro](agents/retro.md) — the throttled review of merged agent PRs that proposes instruction changes
 - [Agent runs in Actions](adr/0014-agent-runs-in-github-actions.md) — implementer and skill audit workflows, their token and brakes

@@ -210,6 +210,40 @@ assert_no_token_anywhere() {
   assert_no_token_anywhere
 }
 
+@test "--token-file drops surrounding blanks and a CRLF line end" {
+  printf '  %s \r\n\n' "$TOKEN_VALUE" >"$BATS_TEST_TMPDIR/token"
+  extra_args=(--token-file "$BATS_TEST_TMPDIR/token")
+  apply "" y y
+  assert_success
+  assert_equal "$(od -An -c "$GH_SECRET_STDIN")" "$(printf '%s' "$TOKEN_VALUE" | od -An -c)"
+  assert_no_token_anywhere
+}
+
+@test "a --token-file with a second line exits 2, sets nothing and prints neither line" {
+  printf '%s\nsecond-line-of-file\n' "$TOKEN_VALUE" >"$BATS_TEST_TMPDIR/token"
+  extra_args=(--token-file "$BATS_TEST_TMPDIR/token")
+  apply "" y y
+  assert_failure 2
+  [[ "$stderr" == *"a blank or a second line"* ]] || fail "stderr: $stderr"
+  [[ "$output$stderr" != *second-line-of-file* ]] || fail "the file's content appeared in the output"
+  [[ ! -e "$GH_SECRET_STDIN" ]] || fail "the secret was set"
+  assert_no_token_anywhere
+}
+
+@test "a token without the sk-ant-oat prefix is set only after a confirmation" {
+  local junk=not-a-claude-token
+  # banner, token, set anyway? no
+  apply "" "$junk" n
+  assert_failure 2
+  assert_line --partial 'does not start with sk-ant-oat'
+  [[ ! -e "$GH_SECRET_STDIN" ]] || fail "the secret was set"
+  [[ "$output$stderr" != *"$junk"* ]] || fail "the token appeared in the output"
+  # banner, token, set anyway? yes, App, Dependabot
+  apply "" "$junk" y y y
+  assert_success
+  assert_equal "$(cat "$GH_SECRET_STDIN")" "$junk"
+}
+
 @test "a failed gh secret set exits 4 without printing the token" {
   export GH_SECRET_SET_STATUS=1
   apply "" "$TOKEN_VALUE" y y
@@ -276,6 +310,20 @@ actions/setup-python@*
 actions/upload-artifact@*
 actions/download-artifact@*
 anthropics/claude-code-action@*"
+}
+
+@test "on a private repo the allowed patterns carry the patterns_allowed caveat" {
+  export GH_SECRETS=CLAUDE_CODE_OAUTH_TOKEN GH_ALLOWED_ACTIONS=selected
+  export GH_SELECTED='{"github_owned_allowed":true,"verified_allowed":false,"patterns_allowed":[]}'
+  apply "" n y y
+  assert_success
+  assert_line --partial 'allowed anthropics/claude-code-action@*'
+  assert_line --partial 'patterns_allowed applies to public repositories only'
+  assert_line --partial "https://github.com/$REPO/settings/actions"
+  export GH_VISIBILITY=public
+  apply "" n y y
+  assert_success
+  refute_line --partial 'patterns_allowed'
 }
 
 @test "dry run lists only the missing patterns of a selected list" {

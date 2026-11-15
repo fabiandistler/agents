@@ -3,7 +3,8 @@
 For the repository maintainer, when a run of `.github/workflows/pr-review.yml`
 is red or a pull request carries labels you did not expect. Setup and the
 security model are in the [runbook](pr-review-runbook.md); the label meanings
-in [triage-labels.md](triage-labels.md#pull-request-labels).
+in [triage-labels.md](triage-labels.md#pull-request-labels). Failures of the
+other factory tasks: the [user guide's troubleshooting](../factory/README.md#troubleshooting).
 
 ## Read a run
 
