@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -36,6 +37,7 @@ def clone_at(upstream: str, ref: str, dest: Path) -> str:
 UPSTREAM_CURRENT = 0
 UPSTREAM_NOT_CHECKED = 1
 UPSTREAM_BEHIND = 5
+UPSTREAM_AHEAD = 6
 RELEASE_TAG = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 
 
@@ -82,18 +84,60 @@ def upstream_target(upstream: str, branch: str | None) -> tuple[str, str]:
     return releases[max(releases)]
 
 
+def _target_is_ancestor(upstream: str, target_commit: str, locked_commit: str) -> bool:
+    """Whether `target_commit` is an ancestor of `locked_commit` upstream.
+
+    Fetches both commits' history without trees or blobs into a throwaway
+    repository. Raises UpstreamError when git fails, e.g. when upstream no
+    longer has the locked commit.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        probe = Path(tmp)
+        try:
+            git("init", "--quiet", cwd=probe)
+            git(
+                "fetch",
+                "--quiet",
+                "--filter=tree:0",
+                upstream,
+                target_commit,
+                locked_commit,
+                cwd=probe,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise UpstreamError(f"git fetch failed: {exc.stderr.strip()}") from exc
+        ancestry = subprocess.run(  # noqa: S603 -- fixed git argv; no shell.
+            ["git", "merge-base", "--is-ancestor", target_commit, locked_commit],  # noqa: S607
+            cwd=probe,
+            check=False,  # exit 1 means "not an ancestor", not an error.
+            capture_output=True,
+            text=True,
+        )
+    if ancestry.returncode not in (0, 1):
+        raise UpstreamError(f"git merge-base failed: {ancestry.stderr.strip()}")
+    return ancestry.returncode == 0
+
+
 def check_upstream(upstream: str, locked_commit: str, branch: str | None) -> int:
     """Compare a lock's commit with the upstream target; print the result, return an exit code.
 
     Read-only and networked. `branch` as in upstream_target(). Prints one line to
-    stdout (`current` or `behind`); an unreachable upstream or unknown ref prints
-    "not checked" and git's error to stderr and never reads as current.
+    stdout: `current` (lock at the target), `ahead` (the target is an ancestor of
+    the locked commit, so re-vendoring at it would be a downgrade) or `behind`
+    (anything else). An unreachable upstream, an unknown ref or a locked commit
+    upstream no longer has prints "not checked" and git's error to stderr and
+    never reads as current.
     """
     try:
         target, target_commit = upstream_target(upstream, branch)
+        if target_commit == locked_commit:
+            status, code = "current", UPSTREAM_CURRENT
+        elif _target_is_ancestor(upstream, target_commit, locked_commit):
+            status, code = "ahead", UPSTREAM_AHEAD
+        else:
+            status, code = "behind", UPSTREAM_BEHIND
     except UpstreamError as exc:
         sys.stderr.write(f"{upstream}: not checked: {exc}\n")
         return UPSTREAM_NOT_CHECKED
-    status = "current" if target_commit == locked_commit else "behind"
     print(f"{upstream} ({target}): locked {locked_commit}, upstream {target_commit}: {status}")
-    return UPSTREAM_CURRENT if status == "current" else UPSTREAM_BEHIND
+    return code

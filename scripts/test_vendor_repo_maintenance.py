@@ -260,9 +260,9 @@ def test_check_rejects_ref(repo, monkeypatch):
     assert exc.value.code == 2
 
 
-def _upstream_main(upstream: Path) -> str:
-    return subprocess.run(
-        ["git", "rev-parse", "main"],  # noqa: S607 -- Git intentionally resolves from PATH.
+def _upstream_main(upstream: Path, ref: str = "main") -> str:
+    return subprocess.run(  # noqa: S603 -- test reads a local fixture repository with argv.
+        ["git", "rev-parse", ref],  # noqa: S607 -- Git intentionally resolves from PATH.
         cwd=upstream,
         check=True,
         capture_output=True,
@@ -291,6 +291,19 @@ def test_check_upstream_reports_behind_with_both_commits(repo, tmp_path, monkeyp
     capsys.readouterr()
     assert _main(monkeypatch, "--check-upstream") == 5
     assert f"locked {locked}, upstream {newer}: behind" in capsys.readouterr().out
+
+
+def test_check_upstream_reports_ahead_of_upstream_main(repo, tmp_path, monkeypatch, capsys):
+    upstream = _fake_upstream(tmp_path)
+    released = _upstream_main(upstream)
+    _git(upstream, "checkout", "-q", "-b", "fix")
+    _git(upstream, "commit", "-q", "--allow-empty", "-m", "fix not on main yet")
+    monkeypatch.setattr(vendor, "UPSTREAM", str(upstream))
+    assert _main(monkeypatch, "--ref", "fix") == 0
+    locked = _upstream_main(upstream, "fix")
+    capsys.readouterr()
+    assert _main(monkeypatch, "--check-upstream") == 6
+    assert f"locked {locked}, upstream {released}: ahead" in capsys.readouterr().out
 
 
 def test_check_upstream_unreachable_is_not_current(repo, tmp_path, monkeypatch, capsys):
