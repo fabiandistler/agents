@@ -28,7 +28,7 @@ flipped executable bit or a hand-edited lock fails the check.
 
 `--check-upstream` is the networked counterpart for the `deps-audit` job: it
 compares the lock's commit with upstream `main` (`git ls-remote`, read-only) and
-reports `current` or `behind`. It never runs in CI.
+reports `current`, `behind` or `ahead`. It never runs in CI.
 
 Exit codes are in EPILOG below. Needs git (except --check); stdlib-only.
 """
@@ -90,7 +90,8 @@ exit: 0 ok (--check-upstream: lock is at upstream main)
       3 a vendored file or LICENSE is missing upstream at REF (nothing written)
       4 --check: the lock is missing or malformed or lists other files than
         VENDORED, or a vendored file is missing or differs in content or mode
-      5 --check-upstream: the lock is behind upstream main"""
+      5 --check-upstream: the lock is behind upstream main
+      6 --check-upstream: the lock is ahead of upstream main (no action)"""
 
 
 class LockError(Exception):

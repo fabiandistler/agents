@@ -31,7 +31,9 @@ clone/checkout failed (--check-upstream: upstream unreachable or no release tag;
 not checked, never current), 2 a name collides with a directory this script does
 not own, 3 an INCLUDED_IN_PROGRESS skill is missing upstream at the requested
 ref, 4 --check-upstream: no lock, 5 --check-upstream: the lock is behind the
-newest release. Needs git; stdlib-only.
+newest release, 6 --check-upstream: the lock is ahead of the newest release (a
+newer upstream commit, e.g. for an INCLUDED_IN_PROGRESS skill the release lacks;
+no action). Needs git; stdlib-only.
 """
 
 from __future__ import annotations

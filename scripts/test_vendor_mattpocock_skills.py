@@ -134,3 +134,55 @@ def test_check_upstream_without_release_tag_is_not_current(tmp_path, monkeypatch
     capsys.readouterr()
     assert _check_upstream(monkeypatch) == 1
     assert "not checked: upstream has no release tag" in capsys.readouterr().err
+
+
+def test_check_upstream_reports_ahead_when_lock_is_past_the_release(tmp_path, monkeypatch, capsys):
+    # The lock sits on main past the newest tag, as when an in-progress skill
+    # the release lacks is needed: re-vendoring at the tag would be a downgrade.
+    upstream = _fake_upstream(tmp_path / "pre", with_in_progress=False)
+    _git(upstream, "tag", "v1.3.2")
+    released = _git(upstream, "rev-parse", "HEAD")
+    for name in vendor.INCLUDED_IN_PROGRESS:
+        _skill(upstream, f"skills/in-progress/{name}")
+    _git(upstream, "add", "-A")
+    _git(upstream, "commit", "-qm", "in-progress skills after the release")
+    locked = _git(upstream, "rev-parse", "HEAD")
+    vendor_dir = tmp_path / "vendor"
+    (tmp_path / "skills").mkdir()
+    monkeypatch.setattr(vendor, "SKILLS_DIR", tmp_path / "skills")
+    monkeypatch.setattr(vendor, "VENDOR_DIR", vendor_dir)
+    monkeypatch.setattr(vendor, "LOCK_PATH", vendor_dir / "lock.json")
+    monkeypatch.setattr(vendor, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(vendor, "UPSTREAM", str(upstream))
+    monkeypatch.setattr(sys, "argv", ["vendor_mattpocock_skills.py"])
+    assert vendor.main() == 0
+    capsys.readouterr()
+    assert _check_upstream(monkeypatch) == 6
+    assert f"(v1.3.2): locked {locked}, upstream {released}: ahead" in capsys.readouterr().out
+
+
+def test_check_upstream_reports_diverged_lock_as_behind(tmp_path, monkeypatch, capsys):
+    assert _run(tmp_path, monkeypatch) == 0
+    upstream = Path(vendor.UPSTREAM)
+    locked = _git(upstream, "rev-parse", "HEAD")
+    _git(upstream, "checkout", "-q", "--orphan", "release")
+    _git(upstream, "commit", "-q", "-m", "unrelated release history")
+    _git(upstream, "tag", "v2.0.0")
+    released = _git(upstream, "rev-parse", "HEAD")
+    capsys.readouterr()
+    assert _check_upstream(monkeypatch) == 5
+    assert f"(v2.0.0): locked {locked}, upstream {released}: behind" in capsys.readouterr().out
+
+
+def test_check_upstream_with_locked_commit_gone_is_not_current(tmp_path, monkeypatch, capsys):
+    assert _run(tmp_path, monkeypatch) == 0
+    upstream = Path(vendor.UPSTREAM)
+    _git(upstream, "tag", "v1.0.0")
+    lock = json.loads(vendor.LOCK_PATH.read_text(encoding="utf-8"))
+    lock["commit"] = "0" * 40
+    vendor.LOCK_PATH.write_text(json.dumps(lock), encoding="utf-8")
+    capsys.readouterr()
+    assert _check_upstream(monkeypatch) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "not checked: git fetch failed:" in captured.err
