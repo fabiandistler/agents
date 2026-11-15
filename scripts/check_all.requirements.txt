@@ -2,7 +2,7 @@
 # file; install it locally with `pip install -r scripts/check_all.requirements.txt`.
 # ruff, ty, shellcheck, shfmt and the secret scanner are pinned in
 # .pre-commit-config.yaml and run through prek, not installed here.
-prek==0.5.5
-pytest==9.1.1
+prek==0.5.10
+pytest==9.2.0
 pyyaml==6.0.3
 zizmor==1.32.0
