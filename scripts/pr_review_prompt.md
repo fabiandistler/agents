@@ -35,6 +35,12 @@ a recommendation; deterministic code decides what happens to the pull request.
   cannot catch.
 - The blast radius of the change in this repository.
 - Whether the author's claims in the title and body match the diff.
+- A change that loosens a check, gate or allow-list so that other code passes:
+  whether the exemption is scoped to the one case it was made for (a named
+  variable, a path), or lets a real violation of the same shape through.
+- A finding about a config or hook file: read the hunk and report only what it
+  shows. Do not write "confirm that ..."; if the diff does not settle the
+  question, leave the finding out.
 
 Do not report formatting that a formatter or linter would catch. Do not invent
 files or lines that are not present in the input. If the input was truncated
