@@ -18,7 +18,7 @@ on:
   issues:
     types: [closed]
   schedule:
-    - cron: "19 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:

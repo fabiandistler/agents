@@ -278,7 +278,7 @@ def test_implementer_stop_rule_writes_the_summary_last():
 
 def test_skill_audit_keeps_its_schedule():
     schedule = workflow(SKILL_AUDIT)[True]["schedule"]
-    assert schedule == [{"cron": "43 13 8,22 * *", "timezone": "Europe/Berlin"}]
+    assert schedule == [{"cron": "41 13 8,22 * *", "timezone": "Europe/Berlin"}]
     checkout = agent_job(SKILL_AUDIT)["steps"][0]
     assert checkout["with"]["fetch-depth"] == 0, "skill selection reads last week's commits"
 
