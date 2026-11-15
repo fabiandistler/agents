@@ -169,7 +169,7 @@ issue would become a merged change. Each brake stops one path:
 
 | Brake | What it stops | Where |
 | --- | --- | --- |
-| Trigger filter | A bot, or the run itself, starting a run | `factory-implementer.yml:68-74`; the action checks the actor's write access |
+| Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml:68-74`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
 | Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:329-380`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
 | Merge guard | An agent merging or enabling auto-merge | `pr_merge_guard.py`, loaded by `agent_run_settings.json` and `.claude/settings.json` |
 | Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:202`) |
@@ -297,8 +297,10 @@ model-free Fix task that never starts a fix ([0016](../adr/0016-fix-task.md));
 Retro on a clock, Proposed as of 2026-11-14 ([0017](../adr/0017-retro-task.md));
 reusable workflows over copies ([0018](../adr/0018-reusable-factory-workflows.md)).
 
-Known weaknesses, as of 2026-11-14: a failed run leaves
-`ready-for-agent`, and the queue skips it, so nothing retries; the claim
+Known weaknesses, as of 2026-11-15: a failed run leaves
+`ready-for-agent`, and the queue skips it, so nothing retries; a run the
+queue dispatches with `GITHUB_TOKEN` starts no `workflow_run` workflow, so
+neither the queue nor the Fix task follows it up (#858); the claim
 branches from `main`, not the caller's default branch
 (`implementer_claim.py:68`); the Fix task watches agents' runs only. Still
 open (ADR-0018): whether Dependabot bumps the callers' agents pins

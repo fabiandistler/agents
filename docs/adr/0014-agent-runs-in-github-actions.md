@@ -8,6 +8,13 @@ Accepted (2026-11-10) by the maintainer. Narrows the reasoning of
 `anthropics/claude-code-action` for jobs that only need to read; both
 decisions stand for the PR review and the issue triage.
 
+Amended 2026-11-15 (#858): the implementer queue (#801) starts the
+implementer too, by a `workflow_dispatch` with `GITHUB_TOKEN`, whose actor is
+`github-actions[bot]`. The implementer's action step lists that bot in
+`allowed_bots`, and the action runs no write-access check for a
+`workflow_dispatch`. "Only a person starts the implementer" below now holds
+for the label path only.
+
 ## Context
 
 Two agent runs of this repository ran as Claude Code scheduled tasks in the

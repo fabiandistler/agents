@@ -111,6 +111,13 @@ def test_factory_declares_its_inputs_and_the_one_secret():
     assert call["secrets"] == {"CLAUDE_CODE_OAUTH_TOKEN": {"required": True}}
 
 
+def test_action_admits_the_queues_dispatch_bot_and_no_other():
+    # The queue dispatches with GITHUB_TOKEN, so its runs have the actor
+    # github-actions[bot]; the action stops bot actors not listed here (#858).
+    inputs = model_step(single_job(FACTORY_IMPLEMENTER))["with"]
+    assert inputs["allowed_bots"] == "github-actions"
+
+
 def test_factory_pins_every_action_to_a_commit():
     for step in single_job(FACTORY_IMPLEMENTER)["steps"]:
         if "uses" in step:

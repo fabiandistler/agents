@@ -14,6 +14,10 @@ A called `factory-*.yml` workflow needs no entry
 ([ADR-0018](0018-reusable-factory-workflows.md)): it runs inside its caller's
 run, which carries the caller's name and path.
 
+Amended 2026-11-15 (#858): an implementer run the queue dispatches with
+`GITHUB_TOKEN` starts no `workflow_run` workflow, so the Fix task does not
+file it when it fails. Runs a person or a label starts are filed as before.
+
 ## Context
 
 The factory workflows fail in two ways. The agent runs (`implementer`,
