@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a deploy reaches production</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafaf7; --surface: #ffffff; --ink: #1a1a1f; --ink-soft: #555560;
+    --rule: #e7e5df; --accent: #1d4ed8; --danger: #b91c1c;
+    --serif: Charter, "Iowan Old Style", "Source Serif 4", ui-serif, Georgia, serif;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e0e12; --surface: #16161c; --ink: #f1f1f4; --ink-soft: #a8a8b3;
+            --rule: #2a2a32; --accent: #93c5fd; --danger: #f87171; }
+  }
+  html { background: var(--bg); color: var(--ink); }
+  body { font: 17px/1.55 var(--serif); margin: 3rem auto; padding: 0 1.25rem; max-width: 64rem; }
+  h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 .5rem; }
+  .tldr, .note { color: var(--ink-soft); max-width: 70ch; }
+  .note { font: .85rem var(--sans); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 1.5rem; margin-top: 2rem; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  figure { margin: 0; }
+  svg { width: 100%; height: auto; font: 13px var(--sans); }
+  .node rect, .node polygon { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+  .node { cursor: pointer; }
+  .node:focus { outline: none; }
+  .node:focus-visible rect, .node:focus-visible polygon, .node.selected rect, .node.selected polygon { stroke-width: 3; }
+  .node text { fill: currentColor; }
+  .happy { color: var(--accent); }
+  .failure { color: var(--danger); }
+  .edge { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .failure .edge { stroke-dasharray: 5 4; }
+  .legend { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; font: .85rem var(--sans); list-style: none; padding: 0; }
+  .legend svg { width: 2.5rem; vertical-align: middle; }
+  aside { border-left: 3px solid var(--accent); padding: .2rem 1rem; font: .95rem/1.5 var(--sans); }
+  aside h2 { font-size: 1.1rem; margin: 0 0 .5rem; }
+  aside dt { font-weight: 600; color: var(--ink-soft); font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+  aside dd { margin: 0 0 .8rem; }
+  code { font-family: var(--mono); font-size: .9em; }
+  button { font: .85rem var(--sans); padding: .35rem .8rem; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <p class="note">Example artifact · layout from <code>references/diagrams-and-illustrations.md</code> · fictional pipeline</p>
+  <h1>How a deploy reaches production</h1>
+  <p class="tldr">A merge to <code>main</code> passes four stages before users see it. The solid blue path is what happens almost every time; dashed red paths are the two ways a deploy stops. Click or Tab to any step for what runs there and what failure looks like.</p>
+</header>
+
+<main class="layout">
+  <figure>
+    <svg id="deploy-svg" viewBox="0 0 640 300" role="img" aria-labelledby="deploy-title deploy-desc">
+      <title id="deploy-title">Deploy pipeline</title>
+      <desc id="deploy-desc">Merge, build, test, canary and production in sequence. Failed tests stop the deploy; a failed canary rolls back.</desc>
+      <defs>
+        <marker id="deploy-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent)"/>
+        </marker>
+        <marker id="deploy-arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" style="fill: var(--danger)"/>
+        </marker>
+      </defs>
+
+      <g class="happy">
+        <line class="edge" x1="110" y1="80" x2="150" y2="80" marker-end="url(#deploy-arrow)"/>
+        <line class="edge" x1="240" y1="80" x2="280" y2="80" marker-end="url(#deploy-arrow)"/>
+        <line class="edge" x1="370" y1="80" x2="410" y2="80" marker-end="url(#deploy-arrow)"/>
+        <line class="edge" x1="500" y1="80" x2="540" y2="80" marker-end="url(#deploy-arrow)"/>
+      </g>
+      <g class="failure">
+        <line class="edge" x1="325" y1="100" x2="325" y2="200" marker-end="url(#deploy-arrow-fail)"/>
+        <text x="333" y="150" fill="currentColor">tests fail</text>
+        <path class="edge" d="M455,100 V230 H372" marker-end="url(#deploy-arrow-fail)"/>
+        <text x="463" y="170" fill="currentColor">error rate &gt; 1%</text>
+      </g>
+
+      <g class="node happy" data-step="merge" tabindex="0" role="button" aria-label="Merge step">
+        <rect x="20" y="60" width="90" height="40" rx="6"/><text x="65" y="85" text-anchor="middle">merge</text>
+      </g>
+      <g class="node happy" data-step="build" tabindex="0" role="button" aria-label="Build step">
+        <rect x="150" y="60" width="90" height="40" rx="6"/><text x="195" y="85" text-anchor="middle">build</text>
+      </g>
+      <g class="node happy" data-step="test" tabindex="0" role="button" aria-label="Test step">
+        <rect x="280" y="60" width="90" height="40" rx="6"/><text x="325" y="85" text-anchor="middle">test</text>
+      </g>
+      <g class="node happy" data-step="canary" tabindex="0" role="button" aria-label="Canary step">
+        <rect x="410" y="60" width="90" height="40" rx="6"/><text x="455" y="85" text-anchor="middle">canary 5%</text>
+      </g>
+      <g class="node happy" data-step="prod" tabindex="0" role="button" aria-label="Production step">
+        <rect x="540" y="60" width="90" height="40" rx="6"/><text x="585" y="85" text-anchor="middle">production</text>
+      </g>
+      <g class="node failure" data-step="stop" tabindex="0" role="button" aria-label="Stopped and rolled back">
+        <polygon points="325,200 372,230 325,260 278,230"/><text x="325" y="235" text-anchor="middle">stop</text>
+      </g>
+    </svg>
+    <figcaption>
+      <ul class="legend">
+        <li><svg viewBox="0 0 40 10" aria-hidden="true" class="happy"><line class="edge" x1="0" y1="5" x2="40" y2="5"/></svg> happy path (rectangles)</li>
+        <li><svg viewBox="0 0 40 10" aria-hidden="true" class="failure"><line class="edge" x1="0" y1="5" x2="40" y2="5"/></svg> failure path (dashed, diamond)</li>
+      </ul>
+      <button type="button" id="copy-svg">Copy SVG</button> <span id="status" class="note" role="status"></span>
+    </figcaption>
+  </figure>
+
+  <aside aria-live="polite">
+    <h2 id="panel-title">Pick a step</h2>
+    <dl id="panel-body"><dt>Hint</dt><dd>Click a box, or Tab to it and press Enter.</dd></dl>
+  </aside>
+</main>
+
+<script>
+  const steps = {
+    merge:  { title: 'Merge', runs: 'A squash merge to <code>main</code> triggers the pipeline.', time: 'instant', fails: 'Never; branch protection already ran the checks.', source: '.github/workflows/deploy.yml' },
+    build:  { title: 'Build', runs: 'Docker image built once, tagged with the commit SHA.', time: '≈ 3 min', fails: 'Red build; nothing is deployed.', source: 'Dockerfile' },
+    test:   { title: 'Test', runs: 'Integration tests against the built image.', time: '≈ 6 min', fails: 'Pipeline stops; author gets a Slack ping.', source: 'tests/integration/' },
+    canary: { title: 'Canary 5%', runs: '5% of traffic for 10 minutes; error rate compared with production.', time: '10 min', fails: 'Error rate above 1% rolls the canary back automatically.', source: 'deploy/canary.yaml' },
+    prod:   { title: 'Production', runs: 'Rolling update, 25% of pods at a time.', time: '≈ 4 min', fails: 'Readiness probe failures pause the rollout.', source: 'deploy/prod.yaml' },
+    stop:   { title: 'Stop / roll back', runs: 'The previous image stays live; the failing SHA is marked bad.', time: '≈ 1 min', fails: 'If rollback fails, the on-call is paged.', source: 'runbooks/rollback.md' },
+  };
+  const nodes = document.querySelectorAll('.node');
+  function show(key) {
+    const s = steps[key];
+    nodes.forEach(n => n.classList.toggle('selected', n.dataset.step === key));
+    document.getElementById('panel-title').textContent = s.title;
+    document.getElementById('panel-body').innerHTML =
+      `<dt>What runs</dt><dd>${s.runs}</dd><dt>Duration</dt><dd>${s.time}</dd>` +
+      `<dt>Failure looks like</dt><dd>${s.fails}</dd><dt>Source</dt><dd><code>${s.source}</code></dd>`;
+  }
+  nodes.forEach(n => {
+    n.addEventListener('click', () => show(n.dataset.step));
+    n.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(n.dataset.step); } });
+  });
+  document.getElementById('copy-svg').addEventListener('click', async () => {
+    const svg = new XMLSerializer().serializeToString(document.getElementById('deploy-svg'));
+    try { await navigator.clipboard.writeText(svg); document.getElementById('status').textContent = 'Copied.'; }
+    catch { document.getElementById('status').textContent = 'Clipboard blocked by the browser; use view-source.'; }
+  });
+</script>
+</body>
+</html>

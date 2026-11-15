@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post-mortem: checkout outage</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafaf7; --surface: #ffffff; --ink: #1a1a1f; --ink-soft: #555560;
+    --rule: #e7e5df; --accent: #1d4ed8; --warn: #b45309; --danger: #b91c1c; --ok: #15803d;
+    --serif: Charter, "Iowan Old Style", "Source Serif 4", ui-serif, Georgia, serif;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e0e12; --surface: #16161c; --ink: #f1f1f4; --ink-soft: #a8a8b3;
+            --rule: #2a2a32; --accent: #93c5fd; --warn: #fbbf24; --danger: #f87171; --ok: #4ade80; }
+  }
+  html { background: var(--bg); color: var(--ink); }
+  body { font: 17px/1.55 var(--serif); max-width: 70ch; margin: 3rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 2.2rem; line-height: 1.15; letter-spacing: -.01em; margin: 0 0 .5rem; }
+  h2 { font-size: 1.4rem; margin-top: 2.4em; }
+  .note { font: .85rem var(--sans); color: var(--ink-soft); }
+  code, pre { font-family: var(--mono); font-size: .85em; }
+  .impact { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1rem; border-block: 1px solid var(--rule); padding: 1rem 0; margin: 1.5rem 0; font-family: var(--sans); }
+  .impact dt { font-size: .75rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; }
+  .impact dd { margin: 0; font-size: 1.25rem; font-weight: 600; }
+  .sev1 { color: var(--danger); }
+  ol.timeline { list-style: none; padding: 0; margin: 0; border-left: 2px solid var(--rule); }
+  ol.timeline li { display: grid; grid-template-columns: 4.2rem 1fr; gap: 1rem; position: relative; padding: .35rem 0 .35rem 1rem; }
+  ol.timeline li::before { content: ""; position: absolute; left: -6px; top: .85rem; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-soft); }
+  ol.timeline li.bad::before { background: var(--danger); }
+  ol.timeline li.good::before { background: var(--ok); }
+  ol.timeline li.gap { color: var(--ink-soft); font-style: italic; padding-block: 1.4rem; }
+  time { font: 600 .9rem var(--mono); font-variant-numeric: tabular-nums; }
+  pre.log { margin: .3rem 0 0; background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--danger); padding: .6rem .8rem; overflow-x: auto; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1.5rem; }
+  .two h3 { font: 600 1rem var(--sans); }
+  .worked h3 { color: var(--ok); } .didnt h3 { color: var(--warn); }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { padding: .5rem .75rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  th { font: 600 .8rem var(--sans); color: var(--ink-soft); }
+  input[type=checkbox] { margin-right: .4rem; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <p class="note">Example artifact · layout from <code>references/reports-and-research.md</code> · fictional incident</p>
+  <h1>Checkout outage: expired payment-gateway certificate</h1>
+  <p>For 47 minutes no card payment went through. The gateway's client certificate expired at 14:02; renewal had been automated, but the renewal job had been failing silently for 30 days. Payments recovered at 14:49 after a manual renewal.</p>
+  <dl class="impact">
+    <div><dt>Severity</dt><dd class="sev1">SEV-1</dd></div>
+    <div><dt>Duration</dt><dd>47 min</dd></div>
+    <div><dt>Failed checkouts</dt><dd>≈ 3,100</dd></div>
+    <div><dt>Revenue at risk</dt><dd>≈ €180k</dd></div>
+  </dl>
+</header>
+
+<main>
+  <h2>Timeline</h2>
+  <ol class="timeline">
+    <li class="gap"><time>—</time><span>30 days earlier: the renewal job starts failing; its alert goes to an archived channel.</span></li>
+    <li class="bad"><time>14:02</time><div>Certificate expires. First payment errors.
+      <pre class="log">14:02:07 ERROR gateway  TLS handshake failed: certificate expired
+14:02:07 ERROR checkout payment_authorize status=502</pre></div></li>
+    <li class="bad"><time>14:06</time><span>Error-rate alert fires; on-call acknowledges.</span></li>
+    <li class="gap"><time>14:06</time><span>18 minutes spent on the wrong hypothesis: the 13:55 checkout deploy.</span></li>
+    <li><time>14:24</time><span>Deploy rolled back. Errors continue.</span></li>
+    <li><time>14:31</time><span>Gateway engineer reads the handshake error in the logs.</span></li>
+    <li><time>14:38</time><span>Manual renewal started; vendor portal requires a second approver.</span></li>
+    <li class="good"><time>14:49</time><span>New certificate live. Payment success rate back to 99.6%.</span></li>
+  </ol>
+
+  <h2>Root cause</h2>
+  <p>The certificate renewal job lost write access to the secrets store during a permissions clean-up in the previous month. It logged an error every night, but its alert was routed to a channel archived in the same clean-up, so nobody saw it. Nothing checked the certificate's expiry date directly.</p>
+
+  <h2>What worked, what didn't</h2>
+  <div class="two">
+    <section class="worked">
+      <h3>Worked</h3>
+      <ul><li>Error-rate alert fired within 4 minutes.</li><li>Rollback took 3 minutes and ruled out the deploy cleanly.</li></ul>
+    </section>
+    <section class="didnt">
+      <h3>Didn't</h3>
+      <ul><li>The recent deploy anchored the investigation for 18 minutes.</li><li>The renewal runbook did not mention the second approver.</li></ul>
+    </section>
+  </div>
+
+  <h2>Action items</h2>
+  <table>
+    <thead><tr><th scope="col">Action</th><th scope="col">Owner</th><th scope="col">Due</th></tr></thead>
+    <tbody>
+      <tr><td><label><input type="checkbox">Alert 14 days before any certificate expires</label></td><td>Platform team</td><td>in 1 week</td></tr>
+      <tr><td><label><input type="checkbox">Audit alert routes to archived channels</label></td><td>SRE</td><td>in 2 weeks</td></tr>
+      <tr><td><label><input type="checkbox">Add the approver step to the runbook</label></td><td>Payments team</td><td>in 3 days</td></tr>
+    </tbody>
+  </table>
+</main>
+<footer><p class="note">Blameless review. Questions to the incident channel.</p></footer>
+</body>
+</html>
