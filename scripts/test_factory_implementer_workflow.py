@@ -17,11 +17,11 @@ from agent_run_workflow_testkit import (
     FACTORY_IMPLEMENTER,
     IMPLEMENTER,
     REPO_ROOT,
+    agent_job,
     checkouts,
     model_step,
     named_step,
     report_step,
-    single_job,
     step_with_id,
     workflow,
 )
@@ -29,7 +29,7 @@ from agent_run_workflow_testkit import (
 
 def test_the_factory_is_fetched_at_the_workflows_own_commit_without_a_token():
     """The scripts match the pinned workflow file, as in factory-pr-review.yml (ADR-0018)."""
-    job = single_job(FACTORY_IMPLEMENTER)
+    job = agent_job(FACTORY_IMPLEMENTER)
     fetch = step_with_id(job, "factory")
     assert fetch["env"] == {
         "SERVER_URL": "${{ github.server_url }}",
@@ -65,7 +65,7 @@ def test_the_factory_fetch_lands_outside_the_workspace_at_the_sha(tmp_path):
     runner_temp = tmp_path / "runner"
     runner_temp.mkdir()
     output = tmp_path / "output"
-    step = step_with_id(single_job(FACTORY_IMPLEMENTER), "factory")
+    step = step_with_id(agent_job(FACTORY_IMPLEMENTER), "factory")
     result = subprocess.run(  # noqa: S603 -- runs the workflow's own fetch step.
         ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
         env={
@@ -88,7 +88,7 @@ def test_the_factory_fetch_lands_outside_the_workspace_at_the_sha(tmp_path):
 
 
 def test_the_factory_scripts_run_from_the_factory_checkout():
-    job = single_job(FACTORY_IMPLEMENTER)
+    job = agent_job(FACTORY_IMPLEMENTER)
     prompt = model_step(job)["with"]["prompt"]
     assert "python3 scripts/" not in prompt
     assert report_step(job)["env"]["FACTORY_DIR"] == "${{ steps.factory.outputs.dir }}"
@@ -114,23 +114,23 @@ def test_factory_declares_its_inputs_and_the_one_secret():
 def test_action_admits_the_queues_dispatch_bot_and_no_other():
     # The queue dispatches with GITHUB_TOKEN, so its runs have the actor
     # github-actions[bot]; the action stops bot actors not listed here (#858).
-    inputs = model_step(single_job(FACTORY_IMPLEMENTER))["with"]
+    inputs = model_step(agent_job(FACTORY_IMPLEMENTER))["with"]
     assert inputs["allowed_bots"] == "github-actions"
 
 
 def test_factory_pins_every_action_to_a_commit():
-    for step in single_job(FACTORY_IMPLEMENTER)["steps"]:
+    for step in agent_job(FACTORY_IMPLEMENTER)["steps"]:
         if "uses" in step:
             assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", step["uses"]), step["uses"]
 
 
 def test_factory_run_steps_take_values_through_env_only():
-    for step in single_job(FACTORY_IMPLEMENTER)["steps"]:
+    for step in agent_job(FACTORY_IMPLEMENTER)["steps"]:
         assert "${{" not in step.get("run", ""), f"{step.get('name')}: interpolate through env"
 
 
 def _run_validation(**values: str) -> subprocess.CompletedProcess:
-    step = step_with_id(single_job(FACTORY_IMPLEMENTER), "setup")
+    step = step_with_id(agent_job(FACTORY_IMPLEMENTER), "setup")
     env = {"BRANCH_PREFIX": "agent/issue-", "MODEL": "opus", "CHECK_COMMAND": "make check"}
     assert set(step["env"]) == set(env)
     env.update(values)
@@ -183,13 +183,13 @@ def test_validation_and_the_claim_agree_on_the_branch_prefix(prefix):
 
 
 def test_model_and_prefix_come_from_the_validation_step():
-    step = model_step(single_job(FACTORY_IMPLEMENTER))
+    step = model_step(agent_job(FACTORY_IMPLEMENTER))
     assert "--model ${{ steps.setup.outputs.model }}" in step["with"]["claude_args"]
     assert "inputs." not in step["with"]["claude_args"]
 
 
 def test_setup_command_runs_through_env_and_fails_the_job():
-    step = named_step(single_job(FACTORY_IMPLEMENTER), "Run the caller's setup command")
+    step = named_step(agent_job(FACTORY_IMPLEMENTER), "Run the caller's setup command")
     assert step["env"] == {"SETUP_COMMAND": "${{ inputs.setup_command }}"}
     assert step["if"] == "inputs.setup_command != ''"
     assert step["run"] == 'bash -e -c "$SETUP_COMMAND"'
@@ -197,7 +197,7 @@ def test_setup_command_runs_through_env_and_fails_the_job():
 
 def test_the_check_command_and_the_guards_are_prepared_from_the_factory(tmp_path):
     """The prompt names the check command's file; the guards load from the factory checkout."""
-    job = single_job(FACTORY_IMPLEMENTER)
+    job = agent_job(FACTORY_IMPLEMENTER)
     step = named_step(job, "Prepare the check command and the guards")
     assert step["env"] == {
         "CHECK_COMMAND": "${{ inputs.check_command }}",
@@ -244,7 +244,7 @@ def test_caller_calls_the_local_factory_workflow_with_this_repositorys_inputs():
     assert workflow(IMPLEMENTER)["run-name"] == (
         "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
     )
-    job = single_job(IMPLEMENTER)
+    job = agent_job(IMPLEMENTER)
     assert job["uses"] == "./.github/workflows/factory-implementer.yml"
     assert set(job) == {"permissions", "uses", "with", "secrets"}, (
         "the caller stays thin: no if, concurrency or steps of its own"
@@ -258,7 +258,7 @@ def test_caller_calls_the_local_factory_workflow_with_this_repositorys_inputs():
 
 
 def test_caller_passes_the_secret_by_name_not_inherit():
-    secrets = single_job(IMPLEMENTER)["secrets"]
+    secrets = agent_job(IMPLEMENTER)["secrets"]
     assert secrets == {"CLAUDE_CODE_OAUTH_TOKEN": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"}
 
 
@@ -272,7 +272,7 @@ def test_the_factory_fetch_matches_the_pr_reviews():
         if step.get("name") == "Fetch the factory scripts"
     ]
     assert fetches
-    implementer = step_with_id(single_job(FACTORY_IMPLEMENTER), "factory")
+    implementer = step_with_id(agent_job(FACTORY_IMPLEMENTER), "factory")
     assert implementer["name"] == "Fetch the factory scripts"
     for fetch in fetches:
         assert fetch["env"] == implementer["env"]

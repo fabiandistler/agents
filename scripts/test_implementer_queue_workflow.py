@@ -14,6 +14,7 @@ from agent_run_workflow_testkit import (
     FACTORY_IMPLEMENTER,
     IMPLEMENTER,
     WORKFLOWS,
+    agent_job,
     single_job,
     workflow,
 )
@@ -83,7 +84,7 @@ def test_the_queue_dispatches_the_implementer_which_accepts_a_dispatch():
     inputs = workflow(IMPLEMENTER)[True]["workflow_dispatch"]["inputs"]
     assert set(inputs) == {"issue"}, "the queue sends only inputs.issue"
     assert single_job(IMPLEMENTER)["uses"] == f"./.github/workflows/{FACTORY_IMPLEMENTER.name}"
-    guard = single_job(FACTORY_IMPLEMENTER)["if"]
+    guard = agent_job(FACTORY_IMPLEMENTER)["if"]
     assert "github.event_name == 'workflow_dispatch'" in guard, "a bot's dispatch must run"
     # The action admits the job token's dispatch only through allowed_bots:
     # test_factory_implementer_workflow.py pins it (#858).
