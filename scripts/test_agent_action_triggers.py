@@ -19,12 +19,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import yaml
+from agent_run_workflow_testkit import ACTION, WORKFLOWS, workflow
+from pr_workflow_testkit import triggers_of
 
-WORKFLOWS = Path(__file__).resolve().parent.parent / ".github" / "workflows"
 WORKFLOW_FILES = sorted([*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")])
-
-ACTION = "anthropics/claude-code-action@"
 LOCAL_REUSABLE = re.compile(r"^\./\.github/workflows/(?P<name>[\w.-]+\.ya?ml)$")
 THREAD_EVENTS = {
     "issue_comment",
@@ -34,15 +32,7 @@ THREAD_EVENTS = {
 }
 
 
-def _triggers(path: Path) -> set[str]:
-    # PyYAML reads the bare `on` key as boolean True.
-    on = yaml.safe_load(path.read_text(encoding="utf-8"))[True]
-    # A bare string names one event; a list or a mapping yields event names.
-    return {on} if isinstance(on, str) else set(on)
-
-
-def _uses(path: Path) -> list[str]:
-    jobs = yaml.safe_load(path.read_text(encoding="utf-8"))["jobs"]
+def _uses(jobs: dict) -> list[str]:
     refs = []
     for job in jobs.values():
         if "uses" in job:
@@ -51,13 +41,12 @@ def _uses(path: Path) -> list[str]:
     return refs
 
 
-def _runs_the_action(path: Path, seen: frozenset[Path] = frozenset()) -> bool:
-    for ref in _uses(path):
+def _runs_the_action(path: Path) -> bool:
+    for ref in _uses(workflow(path)["jobs"]):
         if ref.startswith(ACTION):
             return True
         local = LOCAL_REUSABLE.match(ref)
-        called = WORKFLOWS / local["name"] if local else None
-        if called and called not in seen and _runs_the_action(called, seen | {path}):
+        if local and _runs_the_action(WORKFLOWS / local["name"]):
             return True
     return False
 
@@ -70,9 +59,9 @@ def test_the_check_sees_the_action() -> None:
 
 
 def test_no_comment_or_review_event_starts_the_action() -> None:
-    offenders = {
-        path.name: sorted(_triggers(path) & THREAD_EVENTS)
-        for path in WORKFLOW_FILES
-        if _triggers(path) & THREAD_EVENTS and _runs_the_action(path)
-    }
+    offenders = {}
+    for path in WORKFLOW_FILES:
+        thread_events = triggers_of(workflow(path)).keys() & THREAD_EVENTS
+        if thread_events and _runs_the_action(path):
+            offenders[path.name] = sorted(thread_events)
     assert offenders == {}

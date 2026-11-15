@@ -17,7 +17,8 @@ and repo explicitly to the MCP tools.
 - **Create many issues**: create them one at a time, not in a burst. Every
   new issue starts a workflow run in `issue-triage.yml` and
   `triage-label.yml`, every label one more run in `issue-triage.yml` and
-  `implementer.yml`, and every comment one in `issue-triage.yml`; the jobs of runs that cannot act are skipped without a runner,
+  `implementer.yml`, and every comment one in `issue-triage.yml`; the jobs
+  of runs that cannot act are skipped without a runner,
   but the runs still exist. An issue filed with two labels and one comment
   creates 7 runs. On 2026-11-11 eleven such issues within about eight minutes
   were followed by about 100 queued runs that never started

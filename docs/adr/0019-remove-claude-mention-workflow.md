@@ -39,7 +39,8 @@ Checked against the pinned action (`4fa93a8`, v1.0.271) on 2026-11-15:
   and review comments (`src/github/data/fetcher.ts:342-560`), not the issue or
   PR body. An outsider's body still reaches the model.
 - **Use.** Of the last 30 completed runs (2026-11-14 to 2026-11-15), one did
-  work (run 762, 2026-11-14); the others were skipped. The factory workflows
+  work (run 762, 2026-11-14); 27 were skipped and two others (782, 783)
+  never started a job. The factory workflows
   cover implementation, rework and review.
 
 ## Decision
@@ -76,7 +77,7 @@ Comment-driven model work stays in the two patterns that hold up:
   listens to comments now).
 - `CLAUDE_CODE_OAUTH_TOKEN` stays: the factory workflows and the skill audit
   read it.
-- The Claude GitHub App stays installed: the implementer, Rework and Retro
-  exchange their OIDC tokens through it.
+- The Claude GitHub App stays installed: the implementer, Rework, Retro and
+  the skill audit exchange their OIDC tokens through it.
 - To bring mentions back, open a new ADR that addresses the body injection and
   the token exposure above; the trigger test blocks a plain revert.
