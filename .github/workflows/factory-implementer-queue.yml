@@ -7,11 +7,10 @@
 #
 # The dispatch uses the job's GITHUB_TOKEN: a workflow_dispatch made with it
 # still creates a run (GitHub docs, "Triggering a workflow"). That run's actor
-# is github-actions[bot]: the implementer job's `if` admits any
-# workflow_dispatch, and its claude-code-action step admits that bot through
-# `allowed_bots` (#858). The run it creates starts no workflow_run workflow
-# (observed 2026-11-15), so neither this queue nor the Fix task follows it up;
-# the queue's schedule and the `issues: closed` trigger move it on.
+# is github-actions[bot], which the implementer's claude-code-action step
+# admits through `allowed_bots`, and it starts no workflow_run workflow, so
+# only the caller's other triggers start the next queue run (#858; see
+# docs/agents/triage-labels.md#implementer-queue).
 name: factory-implementer-queue
 
 on:

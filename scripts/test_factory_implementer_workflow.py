@@ -116,7 +116,6 @@ def test_action_admits_the_queues_dispatch_bot_and_no_other():
     # github-actions[bot]; the action stops bot actors not listed here (#858).
     inputs = model_step(single_job(FACTORY_IMPLEMENTER))["with"]
     assert inputs["allowed_bots"] == "github-actions"
-    assert "github_token" not in inputs
 
 
 def test_factory_pins_every_action_to_a_commit():

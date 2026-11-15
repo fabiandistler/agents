@@ -14,7 +14,6 @@ from agent_run_workflow_testkit import (
     FACTORY_IMPLEMENTER,
     IMPLEMENTER,
     WORKFLOWS,
-    model_step,
     single_job,
     workflow,
 )
@@ -86,9 +85,8 @@ def test_the_queue_dispatches_the_implementer_which_accepts_a_dispatch():
     assert single_job(IMPLEMENTER)["uses"] == f"./.github/workflows/{FACTORY_IMPLEMENTER.name}"
     guard = single_job(FACTORY_IMPLEMENTER)["if"]
     assert "github.event_name == 'workflow_dispatch'" in guard, "a bot's dispatch must run"
-    # The job token's dispatch has the actor github-actions[bot], which the
-    # action stops unless it is listed (#858).
-    assert model_step(single_job(FACTORY_IMPLEMENTER))["with"]["allowed_bots"] == "github-actions"
+    # The action admits the job token's dispatch only through allowed_bots:
+    # test_factory_implementer_workflow.py pins it (#858).
 
 
 def test_starters_never_run_side_by_side():

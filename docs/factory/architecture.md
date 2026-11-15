@@ -169,7 +169,7 @@ issue would become a merged change. Each brake stops one path:
 
 | Brake | What it stops | Where |
 | --- | --- | --- |
-| Trigger filter | A bot, or the run itself, starting a run | `factory-implementer.yml:68-74`; the action checks the actor's write access |
+| Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml:68-74`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
 | Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:329-380`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
 | Merge guard | An agent merging or enabling auto-merge | `pr_merge_guard.py`, loaded by `agent_run_settings.json` and `.claude/settings.json` |
 | Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:202`) |

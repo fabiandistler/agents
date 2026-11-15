@@ -190,12 +190,13 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # The implementer queue dispatches with GITHUB_TOKEN, so its runs have
-          # the actor github-actions[bot]. The action stops bot actors unless
-          # listed here (src/github/validation/actor.ts); a workflow_dispatch
-          # gets no write-permission check (src/entrypoints/run.ts), so this is
-          # the only gate. It admits a GITHUB_TOKEN dispatch from any workflow
-          # in the calling repository with actions: write; the `issues` path
-          # still rejects bot senders in the job's `if` (#858).
+          # the actor github-actions[bot]. At the pinned SHA the action stops
+          # bot actors not listed here (src/github/validation/actor.ts) and runs
+          # no write-access check for a workflow_dispatch
+          # (src/entrypoints/run.ts), so this list is the action's only actor
+          # gate. It admits a GITHUB_TOKEN dispatch from any workflow in the
+          # calling repository with actions: write; the `issues` path still
+          # rejects bot senders in the job's `if` (#858).
           allowed_bots: github-actions
           # No github_token input: the action uses the Claude GitHub App token,
           # whose pull requests start the checks and the PR review.
