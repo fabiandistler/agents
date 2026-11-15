@@ -191,7 +191,8 @@ the file there, and `pull_request_target` reads it from there.
 1. Merge the scripts, tests, docs and workflow with `PR_AUTO_MERGE` unset.
    From then on every pull request event writes labels and the comment.
 2. Run the [Actions dry run](#dry-run) on an open docs-only pull request
-   (paths under `docs/` outside `docs/agents/` and `docs/adr/`).
+   (Markdown files under `docs/` outside `docs/agents/`, `docs/adr/` and
+   `docs/factory/`).
 3. Observe for a week: labels, verdicts and the comment on real pull
    requests. Check that no `auto-merge:bot` label appears.
 4. Make the [ruleset change](#setup) (step 6 of the setup).

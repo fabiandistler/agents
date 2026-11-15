@@ -18,7 +18,19 @@ PATH_CASES = [
     ("docs/guide.md", "low", "docs"),
     ("docs/a/b/c.md", "low", "docs"),
     ("docs/agents.md", "low", "docs"),
+    ("docs/wiki/decisions/0001-x.md", "low", "docs"),
+    ("docs/factory.md", "low", "docs"),
     ("maintenance/reports/weekly.md", "low", "maintenance-reports"),
+    # medium: agent instruction files under the low prefixes (#765)
+    ("docs/.claude/skills/x/SKILL.md", "medium", "agent-docs"),
+    ("docs/guides/SKILL.md", "medium", "agent-docs"),
+    ("docs/AGENTS.override.md", "medium", "agent-docs"),
+    ("docs/CLAUDE.local.md", "medium", "agent-docs"),
+    ("docs/GEMINI.md", "medium", "agent-docs"),
+    ("maintenance/reports/AGENTS.override.md", "medium", "agent-docs"),
+    # medium: the factory docs agent sessions read before changing a task
+    ("docs/factory/architecture.md", "medium", "agent-docs"),
+    ("docs/factory/README.md", "medium", "agent-docs"),
     # medium
     ("skills/foo/SKILL.md", "medium", "skills"),
     ("skills/foo/references/guide.md", "medium", "skills"),
@@ -123,6 +135,16 @@ PATH_CASES = [
     ("skills.md", "high", "unknown"),
     ("documentation/guide.md", "high", "unknown"),
     ("site/app.js", "high", "unknown"),
+    # high: anything under the low prefixes that is not a plain Markdown file (#765)
+    ("docs/wiki/.claude/settings.json", "high", "unknown"),
+    ("docs/.hidden/notes.md", "high", "unknown"),
+    ("docs/.notes.md", "high", "unknown"),
+    ("docs/conftest.py", "high", "unknown"),
+    ("docs/x.sh", "high", "unknown"),
+    ("docs/diagram.svg", "high", "unknown"),
+    ("docs/guide.markdown", "high", "unknown"),
+    ("maintenance/reports/.claude/settings.json", "high", "unknown"),
+    ("maintenance/reports/conftest.py", "high", "unknown"),
 ]
 
 

@@ -232,9 +232,9 @@ family, removing stale ones.
 
 | Label | Meaning | Action |
 | --- | --- | --- |
-| `risk:low` | Only `docs/**` outside `docs/agents/` and `docs/adr/`, `GLOSSARY.md`, `MAINTENANCE.md`, `maintenance/reports/**` | Auto-merge eligible when every gate holds |
-| `risk:medium` | Skills, instructions, agent docs (`AGENTS.md`, `CLAUDE.md`, `docs/agents/**`), `README.md`, ADRs, plugins, the `.claude/` mirror, tests, non-gate scripts | `needs-review`; never auto-merged |
-| `risk:high` | Workflows, installer, gate, guard, hook and build scripts, the review pipeline itself, config and pins, binary files, unknown paths, forks, unreadable diffs | `needs-review`; never auto-merged |
+| `risk:low` | Only plain Markdown (`*.md`, no dot-directory in the path) under `docs/` outside `docs/agents/`, `docs/adr/` and `docs/factory/`, or under `maintenance/reports/`; `GLOSSARY.md`, `MAINTENANCE.md`. An agent instruction file name is never low | Auto-merge eligible when every gate holds |
+| `risk:medium` | Skills, instructions, agent docs (`SKILL.md`, `AGENTS*.md`, `CLAUDE*.md` and `GEMINI.md` anywhere, `docs/agents/**`, `docs/factory/**`), `README.md`, ADRs, plugins, the `.claude/` mirror, tests, non-gate scripts | `needs-review`; never auto-merged |
+| `risk:high` | Workflows, installer, gate, guard, hook and build scripts, the review pipeline itself, config and pins, binary files, unknown paths (including anything under `docs/` or `maintenance/reports/` that is not plain Markdown), forks, unreadable diffs | `needs-review`; never auto-merged |
 
 Thresholds raise the path risk: more than 300 changed lines or 20 files makes
 it at least medium, more than 1000 lines or 50 files high. Any deletion or
