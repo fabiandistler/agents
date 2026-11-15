@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: PR #482 streaming support for /chat</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafaf7; --surface: #ffffff; --ink: #1a1a1f; --ink-soft: #555560;
+    --rule: #e7e5df; --accent: #1d4ed8; --warn: #b45309; --danger: #b91c1c; --ok: #15803d;
+    --add-bg: #e9f6ee; --del-bg: #fbeaea;
+    --serif: Charter, "Iowan Old Style", "Source Serif 4", ui-serif, Georgia, serif;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e0e12; --surface: #16161c; --ink: #f1f1f4; --ink-soft: #a8a8b3;
+            --rule: #2a2a32; --accent: #93c5fd; --warn: #fbbf24; --danger: #f87171; --ok: #4ade80;
+            --add-bg: #12261a; --del-bg: #2b1515; }
+  }
+  html { background: var(--bg); color: var(--ink); }
+  body { font: 17px/1.55 var(--serif); margin: 3rem auto; padding: 0 1.25rem; max-width: 64rem; }
+  h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 .4rem; }
+  h2 { font: 600 1rem var(--mono); margin: 0; }
+  .meta, .note { font: .9rem var(--sans); color: var(--ink-soft); }
+  .focus { border-left: 3px solid var(--accent); padding-left: 1rem; max-width: 70ch; }
+  nav ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; font: .9rem var(--sans); }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  details { border: 1px solid var(--rule); border-radius: 4px; margin: 1.5rem 0; background: var(--surface); }
+  summary { padding: .6rem .9rem; cursor: pointer; display: flex; gap: 1rem; align-items: baseline; }
+  summary .stat { font: .8rem var(--sans); color: var(--ink-soft); }
+  .file { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; border-top: 1px solid var(--rule); }
+  .diff { font: .85rem/1.6 var(--mono); overflow-x: auto; padding: .5rem 0; }
+  .line { white-space: pre; padding: 0 .9rem; }
+  .line .n { display: inline-block; width: 2.5em; color: var(--ink-soft); user-select: none; }
+  .add { background: var(--add-bg); }
+  .del { background: var(--del-bg); }
+  .line[data-annotation] { box-shadow: inset 3px 0 var(--accent); }
+  .pin { font: 600 .7rem var(--sans); color: var(--accent); margin-left: 1em; }
+  .margin { border-left: 1px solid var(--rule); padding: .5rem .9rem; font: .88rem/1.45 var(--sans); }
+  .annotation { margin-bottom: 1rem; scroll-margin-top: 1rem; }
+  .annotation:target { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .sev { font: 600 .7rem var(--sans); text-transform: uppercase; letter-spacing: .06em; padding: .05rem .4rem; border: 1px solid currentColor; border-radius: 3px; }
+  .blocking { color: var(--danger); } .nit { color: var(--ink-soft); }
+  .question { color: var(--warn); } .praise { color: var(--ok); }
+  @media (max-width: 760px) { .file { grid-template-columns: 1fr; } .margin { border-left: 0; border-top: 1px solid var(--rule); } }
+</style>
+</head>
+<body>
+<header>
+  <p class="note">Example artifact · layout from <code>references/code-review-and-pr.md</code> · fictional data</p>
+  <h1>PR #482: Streaming support for <code>/chat</code></h1>
+  <p class="meta">2 files shown of 4 · +287 −41 · review verdict: <span class="sev blocking">changes requested</span></p>
+  <p class="focus">The handler now streams tokens instead of buffering the whole answer. <strong>Where to focus:</strong> error propagation when the client disconnects mid-stream (#1). Everything else is small.</p>
+  <nav aria-label="Annotations">
+    <ul>
+      <li><a href="#ann-1">#1 backpressure errors (blocking)</a></li>
+      <li><a href="#ann-2">#2 timeout constant (question)</a></li>
+      <li><a href="#ann-3">#3 dead import (nit)</a></li>
+      <li><a href="#ann-4">#4 abort test (praise)</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <details open>
+    <summary><h2>src/chat/handler.ts</h2><span class="stat">+5 −2</span></summary>
+    <section class="file">
+      <div class="diff" role="region" aria-label="Diff of src/chat/handler.ts" tabindex="0">
+<div class="line"><span class="n">1</span>  import { createStream } from './stream';</div>
+<div class="line" data-annotation="3"><span class="n">2</span>  import { bufferAll } from './buffer';<a class="pin" href="#ann-3">#3</a></div>
+<div class="line add"><span class="n">3</span>+ import { pipeBackpressure } from './pipe';</div>
+<div class="line"><span class="n">4</span> </div>
+<div class="line add" data-annotation="2"><span class="n">5</span>+ const IDLE_TIMEOUT_MS = 30_000;<a class="pin" href="#ann-2">#2</a></div>
+<div class="line"><span class="n">6</span> </div>
+<div class="line"><span class="n">7</span>  export async function handleChat(req, res) {</div>
+<div class="line del"><span class="n">8</span>-   const answer = await bufferAll(req);</div>
+<div class="line del"><span class="n">9</span>-   res.json(answer);</div>
+<div class="line add"><span class="n">8</span>+   const stream = createStream(req, { idleTimeout: IDLE_TIMEOUT_MS });</div>
+<div class="line add" data-annotation="1"><span class="n">9</span>+   return pipeBackpressure(stream, res);<a class="pin" href="#ann-1">#1</a></div>
+<div class="line"><span class="n">10</span>  }</div>
+      </div>
+      <aside class="margin" aria-label="Annotations for src/chat/handler.ts">
+        <div class="annotation" id="ann-1">
+          <p><span class="sev blocking">blocking</span> #1 · line 9</p>
+          <p><code>pipeBackpressure</code> resolves even when the client drops, so the model call keeps running and the error never reaches the logger. Reject on <code>res.on('close')</code> and abort the upstream request.</p>
+        </div>
+        <div class="annotation" id="ann-2">
+          <p><span class="sev question">question</span> #2 · line 5</p>
+          <p>Why 30&nbsp;s? The load balancer cuts idle connections at 60&nbsp;s, so 30&nbsp;s is safe, but a comment would save the next reader the lookup.</p>
+        </div>
+        <div class="annotation" id="ann-3">
+          <p><span class="sev nit">nit</span> #3 · line 2</p>
+          <p><code>bufferAll</code> is no longer used here; drop the import.</p>
+        </div>
+      </aside>
+    </section>
+  </details>
+
+  <details open>
+    <summary><h2>src/chat/handler.test.ts</h2><span class="stat">+5 −0</span></summary>
+    <section class="file">
+      <div class="diff" role="region" aria-label="Diff of src/chat/handler.test.ts" tabindex="0">
+<div class="line add" data-annotation="4"><span class="n">40</span>+ it('aborts upstream when the client disconnects', async () =&gt; {<a class="pin" href="#ann-4">#4</a></div>
+<div class="line add"><span class="n">41</span>+   const { res, upstream } = await startChat();</div>
+<div class="line add"><span class="n">42</span>+   res.destroy();</div>
+<div class="line add"><span class="n">43</span>+   await expect(upstream.signal).toBeAborted();</div>
+<div class="line add"><span class="n">44</span>+ });</div>
+      </div>
+      <aside class="margin" aria-label="Annotations for src/chat/handler.test.ts">
+        <div class="annotation" id="ann-4">
+          <p><span class="sev praise">praise</span> #4 · line 40</p>
+          <p>Exactly the test #1 needs. It currently passes only because <code>startChat</code> mocks the pipe; run it against the real <code>pipeBackpressure</code> and it should fail until #1 is fixed.</p>
+        </div>
+      </aside>
+    </section>
+  </details>
+</main>
+</body>
+</html>

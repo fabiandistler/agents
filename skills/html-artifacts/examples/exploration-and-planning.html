@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three ways to implement debounced search</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafaf7; --surface: #ffffff; --ink: #1a1a1f; --ink-soft: #555560;
+    --rule: #e7e5df; --accent: #1d4ed8; --warn: #b45309; --danger: #b91c1c; --ok: #15803d;
+    --serif: Charter, "Iowan Old Style", "Source Serif 4", ui-serif, Georgia, serif;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e0e12; --surface: #16161c; --ink: #f1f1f4; --ink-soft: #a8a8b3;
+            --rule: #2a2a32; --accent: #93c5fd; --warn: #fbbf24; --danger: #f87171; --ok: #4ade80; }
+  }
+  html { background: var(--bg); color: var(--ink); }
+  body { font: 17px/1.55 var(--serif); margin: 3rem auto; padding: 0 1.25rem; max-width: 76rem; }
+  header, footer { max-width: 70ch; }
+  h1 { font-size: 2.2rem; line-height: 1.15; letter-spacing: -.01em; margin: 0 0 .5rem; }
+  h2 { font-size: 1.2rem; margin: 0 0 .4rem; }
+  .tldr { color: var(--ink-soft); }
+  code, pre { font-family: var(--mono); font-size: .85em; }
+  pre { background: var(--surface); border: 1px solid var(--rule); padding: .8rem; border-radius: 4px; overflow-x: auto; }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1.5rem; margin: 2.5rem 0; }
+  .option { border-top: 3px solid var(--rule); padding-top: 1rem; }
+  .option.picked { border-top-color: var(--accent); }
+  .option .num { font: 600 .8rem var(--sans); color: var(--ink-soft); letter-spacing: .08em; }
+  .option.picked .num { color: var(--accent); }
+  .summary { min-height: 3.2em; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; margin: 1rem 0; }
+  th, td { padding: .4rem .5rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; width: 50%; }
+  th { font: 600 .8rem var(--sans); color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; }
+  dl.metrics { display: grid; grid-template-columns: auto 1fr; gap: .2rem 1rem; font: .9rem var(--sans); margin: 0; }
+  dt { color: var(--ink-soft); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .good { color: var(--ok); } .bad { color: var(--danger); } .meh { color: var(--warn); }
+  footer { border-top: 1px solid var(--rule); padding-top: 1rem; }
+  .note { font: .85rem var(--sans); color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<header>
+  <p class="note">Example artifact · layout from <code>references/exploration-and-planning.md</code> · fictional data</p>
+  <h1>Three ways to implement debounced search</h1>
+  <p class="tldr">The search box fires one request per keystroke. Each option below delays the request until typing pauses for 250&nbsp;ms. Same structure in every column, so read across. Recommendation at the bottom: <strong>option 02</strong>.</p>
+</header>
+
+<main class="options">
+  <article class="option">
+    <p class="num">OPTION 01</p>
+    <h2>Inline <code>useEffect</code> + <code>setTimeout</code></h2>
+    <p class="summary">Write the timer by hand inside the search component.</p>
+<pre><code>useEffect(() =&gt; {
+  const t = setTimeout(
+    () =&gt; search(query), 250);
+  return () =&gt; clearTimeout(t);
+}, [query]);</code></pre>
+    <table>
+      <tr><th scope="col">Pro</th><th scope="col">Con</th></tr>
+      <tr><td>Zero abstraction</td><td>Copied into every search box</td></tr>
+      <tr><td>Easy to read once</td><td>Stale responses can still win the race</td></tr>
+    </table>
+    <dl class="metrics">
+      <dt>Bundle</dt><dd class="good">+0 kB</dd>
+      <dt>Reuse</dt><dd class="bad">low</dd>
+      <dt>Testability</dt><dd class="meh">fake timers per component</dd>
+      <dt>Cancels stale requests</dt><dd class="bad">no</dd>
+    </dl>
+  </article>
+
+  <article class="option picked">
+    <p class="num">OPTION 02 · RECOMMENDED</p>
+    <h2><code>useDebouncedValue</code> hook</h2>
+    <p class="summary">Extract the timer into a hook; the fetch layer aborts the previous request.</p>
+<pre><code>const debounced =
+  useDebouncedValue(query, 250);
+const results =
+  useSearch(debounced); // aborts old</code></pre>
+    <table>
+      <tr><th scope="col">Pro</th><th scope="col">Con</th></tr>
+      <tr><td>One tested place for the timer</td><td>One more hook to learn</td></tr>
+      <tr><td>Abort fixes the race</td><td>Needs <code>AbortController</code> in the client</td></tr>
+    </table>
+    <dl class="metrics">
+      <dt>Bundle</dt><dd class="good">+0.3 kB</dd>
+      <dt>Reuse</dt><dd class="good">high</dd>
+      <dt>Testability</dt><dd class="good">one hook test</dd>
+      <dt>Cancels stale requests</dt><dd class="good">yes</dd>
+    </dl>
+  </article>
+
+  <article class="option">
+    <p class="num">OPTION 03</p>
+    <h2>RxJS <code>debounceTime</code> stream</h2>
+    <p class="summary">Model the input as an observable and let operators do the work.</p>
+<pre><code>query$.pipe(
+  debounceTime(250),
+  switchMap(q =&gt; search$(q))
+).subscribe(setResults);</code></pre>
+    <table>
+      <tr><th scope="col">Pro</th><th scope="col">Con</th></tr>
+      <tr><td><code>switchMap</code> drops stale results</td><td>New paradigm for one feature</td></tr>
+      <tr><td>Composes with retries</td><td>Subscription cleanup by hand</td></tr>
+    </table>
+    <dl class="metrics">
+      <dt>Bundle</dt><dd class="bad">+11 kB</dd>
+      <dt>Reuse</dt><dd class="good">high</dd>
+      <dt>Testability</dt><dd class="meh">marble tests</dd>
+      <dt>Cancels stale requests</dt><dd class="good">yes</dd>
+    </dl>
+  </article>
+</main>
+
+<footer>
+  <h2>Recommendation: option 02</h2>
+  <p>It is the only option that fixes the stale-response race without a new dependency. Option 01 would have to be copied into the three other search boxes on the roadmap; option 03 buys the same correctness for 11&nbsp;kB and a paradigm nobody else in the codebase uses.</p>
+  <p class="note">Not doing: server-side rate limiting, search-as-you-type suggestions.</p>
+</footer>
+</body>
+</html>

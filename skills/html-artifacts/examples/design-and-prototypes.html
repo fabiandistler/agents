@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype: "Place order" confirmation animation</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafaf7; --surface: #ffffff; --ink: #1a1a1f; --ink-soft: #555560;
+    --rule: #e7e5df; --accent: #1d4ed8; --ok: #15803d;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e0e12; --surface: #16161c; --ink: #f1f1f4; --ink-soft: #a8a8b3;
+            --rule: #2a2a32; --accent: #93c5fd; --ok: #4ade80; }
+  }
+  html { background: var(--bg); color: var(--ink); }
+  body { font: 15px/1.45 var(--sans); margin: 2rem auto; padding: 0 1.25rem; max-width: 60rem; }
+  h1 { font-size: 1.7rem; margin: 0 0 .3rem; }
+  .tldr, .note { color: var(--ink-soft); max-width: 70ch; }
+  .note { font-size: .85rem; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 1.5rem; margin-top: 1.5rem; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  .stage { display: grid; place-items: center; min-height: 16rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+  .order-btn { font: 600 1.1rem var(--sans); padding: .9rem 2.2rem; border: 0; border-radius: 6px; background: #1d4ed8; color: #fff; }
+  .order-btn.done { animation: confirm var(--dur, 400ms) var(--ease, ease-out) forwards; }
+  @keyframes confirm {
+    0% { transform: scale(1); background: #1d4ed8; }
+    40% { transform: scale(var(--pop, 1.08)); }
+    100% { transform: scale(1); background: var(--end, #15803d); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .order-btn.done { animation: none; background: var(--end, #15803d); }
+  }
+  .controls { display: grid; gap: .9rem; align-content: start; }
+  label { display: grid; gap: .25rem; font-weight: 600; font-size: .85rem; }
+  output { font: .85rem var(--mono); color: var(--ink-soft); font-weight: 400; }
+  input, select, button { font: inherit; }
+  button { padding: .4rem .9rem; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); color: var(--ink); cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .curve { width: 100%; max-width: 12rem; color: var(--accent); }
+  .curve .axis { stroke: var(--rule); }
+  pre { font: .85rem/1.5 var(--mono); background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: .9rem; overflow-x: auto; }
+  .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  #status { font-size: .85rem; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<header>
+  <p class="note">Example artifact · layout from <code>references/design-and-prototypes.md</code> · fictional product</p>
+  <h1>“Place order” confirmation animation</h1>
+  <p class="tldr">Tune the pop-and-recolor the checkout button plays after a successful order. Drag the sliders, press Replay, then copy the CSS into <code>checkout.css</code>. With reduced motion on, the button only changes color.</p>
+</header>
+
+<main class="layout">
+  <section aria-label="Stage">
+    <div class="stage"><button class="order-btn" id="target" type="button">Place order</button></div>
+    <pre id="code" aria-live="polite"></pre>
+    <div class="row">
+      <button id="copy" type="button">Copy CSS</button>
+      <span id="status" role="status"></span>
+    </div>
+  </section>
+
+  <aside class="controls" aria-label="Parameters">
+    <label for="dur">Duration <output id="dur-out" for="dur"></output>
+      <input type="range" id="dur" min="100" max="1500" step="50" value="400"></label>
+    <label for="pop">Pop scale <output id="pop-out" for="pop"></output>
+      <input type="range" id="pop" min="1" max="1.3" step="0.01" value="1.08"></label>
+    <label for="ease">Easing
+      <select id="ease">
+        <option value="cubic-bezier(.2,.8,.2,1)">snappy · cubic-bezier(.2,.8,.2,1)</option>
+        <option value="cubic-bezier(.34,1.56,.64,1)">overshoot · cubic-bezier(.34,1.56,.64,1)</option>
+        <option value="cubic-bezier(.4,0,.2,1)">standard · cubic-bezier(.4,0,.2,1)</option>
+        <option value="cubic-bezier(0,0,1,1)">linear · cubic-bezier(0,0,1,1)</option>
+      </select></label>
+    <figure style="margin:0">
+      <svg class="curve" viewBox="-10 -70 120 190" role="img" aria-labelledby="ease-curve-title">
+        <title id="ease-curve-title">Easing curve: progress over time</title>
+        <line class="axis" x1="0" y1="100" x2="100" y2="100"/>
+        <line class="axis" x1="0" y1="0" x2="0" y2="100"/>
+        <path id="curve-path" fill="none" stroke="currentColor" stroke-width="2.5"/>
+      </svg>
+      <figcaption class="note">Time runs left to right; height is progress.</figcaption>
+    </figure>
+    <label for="end">End color <output id="end-out" for="end"></output>
+      <input type="color" id="end" value="#15803d"></label>
+    <button id="play" type="button">Replay</button>
+  </aside>
+</main>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const target = $('target');
+
+  function cssText() {
+    return `.order-btn.done {\n  animation: confirm ${$('dur').value}ms ${$('ease').value} forwards;\n}\n` +
+      `@keyframes confirm {\n  40%  { transform: scale(${$('pop').value}); }\n  100% { background: ${$('end').value}; }\n}`;
+  }
+
+  function drawCurve() {
+    const [x1, y1, x2, y2] = $('ease').value.match(/[\d.]+/g).map(Number);
+    $('curve-path').setAttribute('d',
+      `M0,100 C${x1 * 100},${100 - y1 * 100} ${x2 * 100},${100 - y2 * 100} 100,0`);
+  }
+
+  function update() {
+    target.style.setProperty('--dur', $('dur').value + 'ms');
+    target.style.setProperty('--ease', $('ease').value);
+    target.style.setProperty('--pop', $('pop').value);
+    target.style.setProperty('--end', $('end').value);
+    $('dur-out').textContent = $('dur').value + ' ms';
+    $('pop-out').textContent = '×' + $('pop').value;
+    $('end-out').textContent = $('end').value;
+    $('code').textContent = cssText();
+    drawCurve();
+  }
+
+  function replay() {
+    target.classList.remove('done');
+    void target.offsetWidth; // restart the CSS animation
+    target.classList.add('done');
+  }
+
+  ['dur', 'pop', 'ease', 'end'].forEach(id => $(id).addEventListener('input', () => { update(); replay(); }));
+  $('play').addEventListener('click', replay);
+  target.addEventListener('click', replay);
+  $('copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(cssText());
+      $('status').textContent = 'Copied.';
+    } catch {
+      getSelection().selectAllChildren($('code'));
+      $('status').textContent = 'Clipboard blocked: the CSS is selected, press Ctrl+C.';
+    }
+  });
+  update();
+</script>
+</body>
+</html>
