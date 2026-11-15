@@ -6,6 +6,11 @@ annotations, plans with ``factory_failure_policy.plan`` and prints the plan as
 JSON. With ``--write`` it reads everything again right before writing, then
 comments on the open issue for the failure signature or files a new one.
 
+A run that has not completed yet is read again every COMPLETION_POLL_SECONDS,
+up to COMPLETION_WAIT_SECONDS. The implementer's follow-up job dispatches the
+Fix task from inside the run it files, so that run may still be finishing its
+last job when the Fix task reads it (#863).
+
 Standard library only.
 """
 
@@ -14,6 +19,8 @@ from __future__ import annotations
 import datetime
 import os
 import sys
+import time
+from collections.abc import Callable
 from typing import Protocol
 
 import pr_cli
@@ -38,13 +45,17 @@ from pr_github_client import PER_PAGE, GitHubClient, ReadClient, get_json, pagin
 
 SCRIPT = "factory_failure.py"
 
+COMPLETION_POLL_SECONDS = 10
+COMPLETION_WAIT_SECONDS = 180
+
 USAGE = f"""\
 usage: factory_failure.py --repo O/R --run-id N [--write]
 
 File a failed factory workflow run as an issue, one per failure signature; a
 recurring failure becomes a comment on its open issue. Prints the plan as JSON
 and writes only with --write. Runs that did not fail, and workflows that are
-not watched, plan nothing.
+not watched, plan nothing. A run that has not completed is waited for, up to
+{COMPLETION_WAIT_SECONDS} seconds; past that, the fetch fails.
 
   --repo O/R     repository as OWNER/REPO
   --run-id N     the workflow run id
@@ -112,8 +123,26 @@ def _with_comments(client: ReadClient, repo: str, issue: dict) -> dict:
     }
 
 
-def _run(client: ReadClient, repo: str, run_id: int) -> dict:
-    run = _object(client, f"/repos/{repo}/actions/runs/{run_id}")
+def _completed_run(
+    client: ReadClient, repo: str, run_id: int, sleep: Callable[[float], None]
+) -> dict:
+    """The run once it has completed; a run still working is read again (#863)."""
+    path = f"/repos/{repo}/actions/runs/{run_id}"
+    waited = 0
+    while True:
+        run = _object(client, path)
+        if run.get("status") == "completed":
+            return run
+        if waited >= COMPLETION_WAIT_SECONDS:
+            raise pr_github_client.FetchError(
+                f"run {run_id} has not completed after {COMPLETION_WAIT_SECONDS} seconds"
+            )
+        sleep(COMPLETION_POLL_SECONDS)
+        waited += COMPLETION_POLL_SECONDS
+
+
+def _run(client: ReadClient, repo: str, run_id: int, sleep: Callable[[float], None]) -> dict:
+    run = _completed_run(client, repo, run_id, sleep)
     return {
         "id": run_id,
         "attempt": run.get("run_attempt") or 1,
@@ -139,9 +168,15 @@ def _failure(client: ReadClient, repo: str, run: dict) -> dict:
     return {"job": failure["job"], "step": failure["step"], "reason": failure_reason(annotations)}
 
 
-def make_plan(client: ReadClient, repo: str, run_id: int, date: str) -> dict:
-    """Fetch every fact the planner needs for one run and plan its write."""
-    run = _run(client, repo, run_id)
+def make_plan(
+    client: ReadClient,
+    repo: str,
+    run_id: int,
+    date: str,
+    sleep: Callable[[float], None],
+) -> dict:
+    """Fetch every fact the planner needs for one completed run and plan its write."""
+    run = _run(client, repo, run_id, sleep)
     if skip_reason(run) is not None:
         failure = {"job": UNKNOWN, "step": UNKNOWN, "reason": ""}
         return plan(run, failure, None, None, None, date)
@@ -225,7 +260,10 @@ def _parse(argv: list[str]) -> dict | None:
 
 
 def main(
-    argv: list[str] | None = None, client: FixTaskClient | None = None, today: str | None = None
+    argv: list[str] | None = None,
+    client: FixTaskClient | None = None,
+    today: str | None = None,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
     try:
@@ -243,7 +281,7 @@ def main(
     repo = str(options["repo"])
     try:
         github = _client(client)
-        planned = make_plan(github, repo, options["run_id"], date)
+        planned = make_plan(github, repo, options["run_id"], date, sleep)
         if write and planned["action"] is not None:
             if planned["action"]["kind"] == "create_issue":
                 # Before the re-read, so no other call sits between it and the
@@ -251,7 +289,7 @@ def main(
                 # had a labelled match a moment ago, so the label exists.
                 create_label(github, repo)
             # Re-read right before writing: a parallel run may have filed it.
-            planned = make_plan(github, repo, options["run_id"], date)
+            planned = make_plan(github, repo, options["run_id"], date, sleep)
             apply(github, repo, planned)
     except pr_github_client.MissingTokenError as error:
         print(f"{SCRIPT}: {error}", file=sys.stderr)
