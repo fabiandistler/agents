@@ -13,7 +13,7 @@ on:
   schedule:
     # The 8th and the 22nd, as the scheduled task ran. Scheduled runs start on
     # the default branch only.
-    - cron: "47 13 8,22 * *"
+    - cron: "43 13 8,22 * *"
       timezone: Europe/Berlin
   workflow_dispatch:
 
