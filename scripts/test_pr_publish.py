@@ -11,6 +11,7 @@ import pytest
 from pr_publish_testkit import (
     ACTIVE_AUTO_MERGE,
     BOT_AUTHOR,
+    BOT_LABELS,
     COMMENTS_PATH,
     FILES_PATH,
     MARKER,
@@ -19,6 +20,7 @@ from pr_publish_testkit import (
     REPO,
     FakeGitHub,
     actions_of,
+    bot_armed_pull_request,
     comment_action,
     json_response,
     label_action,
@@ -211,8 +213,6 @@ def test_a_failed_write_is_reported_in_the_results():
 
 # --- Auto-merge on the live path ----------------------------------------------
 
-BOT_LABELS = ["risk:low", "review:pass", "auto-merge:bot"]
-
 
 def test_live_plan_enables_auto_merge_on_the_fetched_node_id(monkeypatch):
     monkeypatch.setenv("PR_AUTO_MERGE", "true")
@@ -296,34 +296,30 @@ def test_live_mergeability_still_being_computed_never_disables(monkeypatch, merg
 # --- Auto-merge writes that fail half-way (#765) -------------------------------
 
 
-def bot_auto_merge(*head_shas: str) -> FakeGitHub:
-    fake = FakeGitHub(list(head_shas), labels=list(BOT_LABELS))
-    fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
-    return fake
-
-
-def first_run(kind: str, fake: FakeGitHub) -> dict:
-    if kind == "hold":
+def run(job: str, fake: FakeGitHub) -> dict:
+    """One write run of ``job`` (hold or publish); publish carries a block verdict."""
+    if job == "hold":
         return pr_publish.hold_live(REPO, NUMBER, write=True, client=fake)
     review = make_review(verdict="block", risk="high")
     return pr_publish.publish_live(REPO, NUMBER, make_assessment(), review, write=True, client=fake)
 
 
-@pytest.mark.parametrize("kind", ["hold", "publish"])
-def test_a_failed_disable_keeps_the_bot_label_so_the_next_run_disables(kind):
-    fake = bot_auto_merge(SHA, SHA, SHA)
+@pytest.mark.parametrize("retry", ["hold", "publish"])
+@pytest.mark.parametrize("failed", ["hold", "publish"])
+def test_a_failed_disable_keeps_the_bot_label_so_the_next_run_disables(failed, retry):
+    fake = bot_armed_pull_request(*[SHA] * 4)
     fake.fail_paths.add("/graphql")
 
-    failed = first_run(kind, fake)
+    first = run(failed, fake)
 
-    assert failed["ok"] is False
+    assert first["ok"] is False
     assert fake.pull_overrides["auto_merge"] == ACTIVE_AUTO_MERGE
     assert "auto-merge:bot" in fake.labels, "without it the auto-merge reads as a human's"
 
     fake.fail_paths.clear()
-    healthy = pr_publish.hold_live(REPO, NUMBER, write=True, client=fake)
+    second = run(retry, fake)
 
-    assert healthy["ok"] is True
+    assert second["ok"] is True
     assert fake.pull_overrides["auto_merge"] is None
     assert "auto-merge:bot" not in fake.labels
 

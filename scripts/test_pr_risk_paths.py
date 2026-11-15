@@ -27,6 +27,9 @@ PATH_CASES = [
     ("docs/AGENTS.override.md", "medium", "agent-docs"),
     ("docs/CLAUDE.local.md", "medium", "agent-docs"),
     ("docs/GEMINI.md", "medium", "agent-docs"),
+    # outside the known prefixes the names lower an unknown path from high
+    ("GEMINI.md", "medium", "agent-docs"),
+    ("CLAUDE.local.md", "medium", "agent-docs"),
     ("maintenance/reports/AGENTS.override.md", "medium", "agent-docs"),
     # medium: the factory docs agent sessions read before changing a task
     ("docs/factory/architecture.md", "medium", "agent-docs"),
