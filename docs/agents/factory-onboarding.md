@@ -199,7 +199,11 @@ jobs:
 ```
 
 `.github/workflows/implementer.yml`. Keep the `run-name`: the claim script
-and the Fix and Retro tasks find a run by it.
+and the Fix and Retro tasks find a run by it. `actions: write` is the cap for
+the model-free `follow-up` job (#863); the model job asks for `actions: read`
+only. GitHub refuses to start the run if the cap is lower, so a caller that
+pins a commit from before #863 with `actions: read` must raise it in the same
+pull request that bumps the pin.
 
 ```yaml
 name: implementer
@@ -218,7 +222,7 @@ jobs:
   implement:
     permissions:
       contents: read
-      actions: read
+      actions: write
       id-token: write
     uses: fabiandistler/agents/.github/workflows/factory-implementer.yml@<SHA> # agents main, <date>
     with:
@@ -320,6 +324,8 @@ fabiandistler/repo-maintenance#153).
 | `python_version` | `"3.12"` | `"3.12"` (dotfiles) |
 | `model` | `opus` | `opus` |
 | `branch_prefix` | `agent/issue-` | `agent/issue-` |
+| `queue_workflow` | `""` | `implementer-queue.yml` (agents; only with a queue caller) |
+| `fix_task_workflow` | `""` | `fix-task.yml` (agents; only with a queue caller) |
 | secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
 
 `factory-pr-review.yml`; the effect of each input is in the
@@ -377,7 +383,8 @@ All callers of a target pin the same commit of `fabiandistler/agents` `main`,
 and one pull request bumps them together. A bump takes effect once it is
 merged (default-branch rule). Whether Dependabot bumps reusable-workflow refs
 is open (ADR-0018, open question 5): bump by hand until a Dependabot run shows
-otherwise.
+otherwise. A bump past #863 also raises the implementer caller's `actions`
+cap to `write` ([template](#caller-templates)).
 
 ```bash
 gh api repos/fabiandistler/agents/commits/main --jq .sha

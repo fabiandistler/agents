@@ -37,6 +37,24 @@ def single_job(path: Path) -> dict:
     return next(iter(jobs.values()))
 
 
+def agent_job(path: Path) -> dict:
+    """The workflow's only job, or of several the one that runs the model.
+
+    factory-implementer.yml adds a model-free follow-up job after its model job
+    (#863); every other agent-run workflow has one job.
+    """
+    jobs = workflow(path)["jobs"]
+    if len(jobs) == 1:
+        return next(iter(jobs.values()))
+    with_model = [
+        job
+        for job in jobs.values()
+        if any(step.get("uses", "").startswith(ACTION) for step in job.get("steps", []))
+    ]
+    assert len(with_model) == 1, f"{path.name} should have exactly one model job"
+    return with_model[0]
+
+
 def model_step(job: dict) -> dict:
     steps = [step for step in job["steps"] if step.get("uses", "").startswith(ACTION)]
     assert len(steps) == 1, "exactly one claude-code-action step"

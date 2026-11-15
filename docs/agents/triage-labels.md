@@ -152,9 +152,12 @@ The starter dispatches with the job's `GITHUB_TOKEN`, so a dispatched run's
 actor is `github-actions[bot]`. The implementer's `claude-code-action` step
 admits it through `allowed_bots: github-actions`; without it the run fails
 seconds into the model step (#858). A run started this way starts no
-`workflow_run` workflow (observed 2026-11-15): when it ends, the queue moves on
-only at its next scheduled, issue-closing or manual run, and the Fix task does
-not file it if it fails.
+`workflow_run` workflow (observed 2026-11-15), so the reusable implementer's
+model-free `follow-up` job (`scripts/implementer_follow_up.py`) starts both
+follow-ups by `workflow_dispatch` (#863): after such a run it dispatches implementer-queue (`dry_run: false`)
+and, unless the implement job succeeded, fix-task with the run's id. The Fix
+task waits up to 180 seconds for the run to complete before it reads it. Runs a
+person or a label started skip that job and reach both through `workflow_run`.
 
 | Situation | Outcome | What the starter does |
 | --- | --- | --- |
@@ -166,7 +169,7 @@ not file it if it fails.
 latest implementer run (by the run name `implementer: issue #<n>`) has not
 completed or ended other than success or skipped (`run-active`, `run-failed`:
 a failed run waits for a person, so a failing issue is not dispatched again
-and again; the Fix task files it only if a person or a label started it), when
+and again; the Fix task files it), when
 its branch exists (`branch`: a run claimed it
 and ended without a pull request), and by the claim's own checks when a pull
 request holds it, it has no contract or a blocker is not done (`pull-request`,

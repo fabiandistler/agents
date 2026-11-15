@@ -14,6 +14,7 @@ from agent_run_workflow_testkit import (
     FACTORY_IMPLEMENTER,
     IMPLEMENTER,
     WORKFLOWS,
+    agent_job,
     single_job,
     workflow,
 )
@@ -43,8 +44,9 @@ def test_permissions_are_empty_by_default_and_only_the_starter_job_writes_action
         assert single_job(path)["permissions"] == STARTER_SCOPES, path.name
 
 
-def test_the_implementer_keeps_actions_read_only():
-    assert single_job(IMPLEMENTER)["permissions"]["actions"] == "read"
+def test_the_implementers_model_job_keeps_actions_read_only():
+    # Only its model-free follow-up job dispatches (#863).
+    assert agent_job(FACTORY_IMPLEMENTER)["permissions"]["actions"] == "read"
 
 
 def test_every_action_is_sha_pinned_and_no_model_runs():
@@ -83,7 +85,7 @@ def test_the_queue_dispatches_the_implementer_which_accepts_a_dispatch():
     inputs = workflow(IMPLEMENTER)[True]["workflow_dispatch"]["inputs"]
     assert set(inputs) == {"issue"}, "the queue sends only inputs.issue"
     assert single_job(IMPLEMENTER)["uses"] == f"./.github/workflows/{FACTORY_IMPLEMENTER.name}"
-    guard = single_job(FACTORY_IMPLEMENTER)["if"]
+    guard = agent_job(FACTORY_IMPLEMENTER)["if"]
     assert "github.event_name == 'workflow_dispatch'" in guard, "a bot's dispatch must run"
     # The action admits the job token's dispatch only through allowed_bots:
     # test_factory_implementer_workflow.py pins it (#858).

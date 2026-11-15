@@ -1,6 +1,7 @@
 """Tests for factory_failure.py: fetching a failed run and applying its plan."""
 
 import json
+import time
 
 import factory_failure
 import factory_failure_policy as policy
@@ -26,6 +27,7 @@ def api_run(**overrides) -> dict:
         "html_url": f"https://github.com/{REPO}/actions/runs/{RUN_ID}",
         "run_attempt": 1,
         "display_title": "Add a thing",
+        "status": "completed",
         "conclusion": "failure",
     }
     return {**run, **overrides}
@@ -68,7 +70,11 @@ def api_issue(number: int, state: str = "open", body: str = MARKER, **extra) -> 
 class FakeClient:
     """Routes the GETs the Fix task makes; records every write."""
 
-    def __init__(self, run=None, issues=(), comments=None, single=None, label_status=201):
+    def __init__(
+        self, run=None, issues=(), comments=None, single=None, label_status=201, earlier_runs=()
+    ):
+        # Reads of the run return ``earlier_runs`` in order, then ``run`` for good.
+        self.earlier_runs = list(earlier_runs)
         self.routes = {
             RUN_PATH: run or api_run(),
             JOBS_PATH: JOBS,
@@ -88,6 +94,8 @@ class FakeClient:
     def get(self, path, params=None, accept=None):
         self.gets.append((path, dict(params or {})))
         self.calls.append(("GET", path))
+        if path == RUN_PATH and self.earlier_runs:
+            return json_response(self.earlier_runs.pop(0))
         if path not in self.routes:
             raise AssertionError(f"unexpected GET {path}")
         return json_response(self.routes[path])
@@ -106,9 +114,9 @@ class FakeClient:
         raise AssertionError(f"unexpected DELETE {path}")
 
 
-def run_main(client, *extra) -> int:
+def run_main(client, *extra, sleep=time.sleep) -> int:
     argv = ["--repo", REPO, "--run-id", str(RUN_ID), *extra]
-    return factory_failure.main(argv, client=client, today="2026-11-13")
+    return factory_failure.main(argv, client=client, today="2026-11-13", sleep=sleep)
 
 
 def test_a_dry_run_prints_the_plan_and_writes_nothing(capsys):
@@ -199,6 +207,28 @@ def test_a_successful_run_fetches_nothing_more(capsys):
     factory_failure.main(["--repo", REPO, "--run-id", str(RUN_ID)], client=client)
     assert [path for path, _ in client.gets] == [RUN_PATH]
     assert json.loads(capsys.readouterr().out)["action"] is None
+
+
+def test_a_run_still_finishing_is_waited_for_then_filed(monkeypatch, capsys):
+    # The implementer's follow-up job dispatches the Fix task from inside the
+    # run it files, so that run may still be finishing (#863).
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    finishing = api_run(status="in_progress", conclusion=None)
+    client = FakeClient(earlier_runs=[finishing, finishing])
+    sleeps: list[float] = []
+    assert run_main(client, "--write", sleep=sleeps.append) == pr_cli.EXIT_OK
+    assert sleeps == [factory_failure.COMPLETION_POLL_SECONDS] * 2
+    assert ("POST", ISSUES_PATH) in [(method, path) for method, path, _ in client.writes]
+
+
+def test_a_run_that_never_completes_fails_without_a_write(monkeypatch, capsys):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    client = FakeClient(run=api_run(status="in_progress", conclusion=None))
+    sleeps: list[float] = []
+    assert run_main(client, "--write", sleep=sleeps.append) == pr_cli.EXIT_FETCH_FAILED
+    assert sum(sleeps) == factory_failure.COMPLETION_WAIT_SECONDS
+    assert client.writes == []
+    assert "has not completed" in capsys.readouterr().err
 
 
 def test_write_outside_actions_is_refused(monkeypatch):

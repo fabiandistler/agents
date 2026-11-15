@@ -29,8 +29,9 @@ with `inputs.issue`. GITHUB_TOKEN may do that: a workflow_dispatch "always
 creates a workflow run" (GitHub docs, "Triggering a workflow", read
 2026-11-13). The run's actor is github-actions[bot], which the implementer's
 claude-code-action step admits only because it lists it in `allowed_bots`. A
-run started this way starts no `workflow_run` workflow, so neither this script
-nor the Fix task follows it up (#858; docs/agents/triage-labels.md).
+run started this way starts no `workflow_run` workflow, so the implementer's
+model-free follow-up job dispatches this queue and, unless the run succeeded,
+the Fix task by `workflow_dispatch` (#863; docs/agents/triage-labels.md).
 
 Standard library only. Prints one JSON object; errors name the API call and
 status, never issue text.
