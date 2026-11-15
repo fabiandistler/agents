@@ -190,7 +190,7 @@ still listed here.
 | `maintenance/` | Run records (`runs/`) and reports (`reports/`) from the scheduled maintenance rotation described in [`MAINTENANCE.md`](MAINTENANCE.md) |
 | `vendor/` | Lock file and license of code vendored from other repositories: `repo-maintenance/` pins the maintenance scanner and the instruction-unicode check in `scripts/` (see [`MAINTENANCE.md`](MAINTENANCE.md)) |
 | `docs/` | Documentation beyond this README — start at [`docs/README.md`](docs/README.md) |
-| `.github/` | CI workflows (`ci.yml`, `pr-issue-links.yml`, `maintenance-gate.yml`, `claude.yml`, `pages.yml`, `triage-label.yml`) and Dependabot configuration |
+| `.github/` | CI workflows (`ci.yml`, `pr-issue-links.yml`, `maintenance-gate.yml`, `pages.yml`, `triage-label.yml`) and Dependabot configuration |
 | `.out-of-scope/` | Decision archive for mechanisms this repo deliberately does not build |
 
 ## Documentation

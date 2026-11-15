@@ -39,5 +39,8 @@
   comment now creates 8 runs, all skipped without a runner unless one has
   work to do; the per-event count is in
   [issue tracker](../../agents/issue-tracker.md) ("Create many issues").
+- 2026-11-15 (#857): `claude.yml` is removed
+  ([ADR-0019](../../adr/0019-remove-claude-mention-workflow.md)), so a
+  comment starts one run fewer; the same issue now creates 7 runs.
 
 Related: [cross-repo token exchange](cross-repo-token-exchange.md).

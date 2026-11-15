@@ -149,7 +149,8 @@ All settings live under the repository's **Settings** tab.
 1. **Model token.** *Secrets and variables → Actions → Secrets*:
    `CLAUDE_CODE_OAUTH_TOKEN`, created locally with `claude setup-token` from
    the maintainer's Claude subscription. It is valid for one year; see
-   [token renewal](#token-renewal). `claude.yml` reads the same secret. Only
+   [token renewal](#token-renewal). The implementer, Rework, Retro and the skill audit read the same
+   secret. Only
    the `review` step of `factory-pr-review.yml` sees it; the caller passes it
    by name. Without it every review is
    `review:unavailable` with `needs-review`. Why a subscription and not an
@@ -295,7 +296,7 @@ pin loses its exact version.
 
 `claude setup-token` tokens last one year. An expired token makes every review
 `review:unavailable`. Run `claude setup-token` locally and replace the secret
-`CLAUDE_CODE_OAUTH_TOKEN`; `claude.yml` picks up the same value.
+`CLAUDE_CODE_OAUTH_TOKEN`; the other model workflows pick up the same value.
 
 ## Quota and cost
 
@@ -322,7 +323,7 @@ ruleset, or merges wait.
   run per pull request disables the bot's own auto-merge. To stop one pull
   request at once, add `do-not-merge`.
 - **Stop model calls:** delete `CLAUDE_CODE_OAUTH_TOKEN` (this also stops
-  `claude.yml`), or pause the workflow as below. Pull requests keep their
+  the implementer, Rework, Retro, the issue triage and the skill audit), or pause the workflow as below. Pull requests keep their
   risk labels and comment, with `review:unavailable`.
 - **Pause everything:**
   `gh api --method PUT repos/fabiandistler/agents/actions/workflows/pr-review.yml/disable`

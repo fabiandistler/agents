@@ -28,6 +28,7 @@ governs; the replacement ADR or current record is named).
 | [0016](0016-fix-task.md) | Accepted (2026-11-14); amended the same day (Rework and Retro watched) | A model-free Fix task files each failed factory run as one issue per failure signature; a fix attempt stays a human-started implementer run. |
 | [0017](0017-retro-task.md) | Proposed (2026-11-14) | A daily, throttled Retro run turns about one merged agent PR in ten into one proposed change to the factory's own instruction texts. |
 | [0018](0018-reusable-factory-workflows.md) | Accepted (2026-11-11, recorded 2026-11-14) | The factory's tasks are `workflow_call` workflows in this repository; other repositories call them through thin callers pinned to a commit SHA. |
+| [0019](0019-remove-claude-mention-workflow.md) | Accepted (2026-11-15) | The `@claude` mention workflow is removed: its App token could write and its thread input came from anyone; no workflow starts `claude-code-action` from a comment or review. |
 
 ## Supersession
 
