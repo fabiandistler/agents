@@ -3,18 +3,23 @@
 The exit-code table: one code per failure class, the same number in every
 script, so a caller can branch on the code without knowing which script
 failed; each script's ``--help`` ends with ``exit_help`` for its codes. The
-flag parser, the --pr/--repo check, and the JSON readers and writers keep the
-scripts' argument and file handling identical.
+flag parser, the --pr/--repo check, the argparse types, and the JSON readers
+and writers keep the scripts' argument and file handling identical.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import re
 import sys
 import textwrap
 from pathlib import Path
 
 from pr_github_client import REPO_PATTERN
+
+# ASCII digits only: str.isdigit() also accepts other scripts' digits.
+POSITIVE_INT_PATTERN = re.compile(r"[1-9][0-9]*")
 
 EXIT_OK = 0
 EXIT_ACTION_FAILED = 1
@@ -49,6 +54,20 @@ def exit_help(*codes: int) -> str:
         break_on_hyphens=False,
         break_long_words=False,
     )
+
+
+def repo_argument(value: str) -> str:
+    """An argparse type for OWNER/REPO."""
+    if not REPO_PATTERN.fullmatch(value):
+        raise argparse.ArgumentTypeError("must be OWNER/REPO")
+    return value
+
+
+def positive_int_argument(value: str) -> int:
+    """An argparse type for a positive decimal integer, such as an issue or run id."""
+    if not POSITIVE_INT_PATTERN.fullmatch(value):
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return int(value)
 
 
 class UsageError(Exception):

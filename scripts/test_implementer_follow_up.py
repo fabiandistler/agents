@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import implementer_follow_up
+import pr_cli
 import pr_github_client
 import pytest
 from pr_github_fake import json_response
@@ -37,15 +38,13 @@ class FakeClient:
 
 
 def run(client, result="success", queue=QUEUE, fix_task=FIX_TASK):
-    return implementer_follow_up.follow_up(
-        client,
-        REPO,
+    dispatches = implementer_follow_up.plan(
         run_id=RUN_ID,
-        ref="main",
         implement_result=result,
         queue_workflow=queue,
         fix_task_workflow=fix_task,
     )
+    return implementer_follow_up.send(client, REPO, "main", dispatches)
 
 
 def test_a_successful_run_starts_only_the_queue():
@@ -102,11 +101,12 @@ ARGV = [
 def test_main_prints_the_dispatches_and_exits_zero(monkeypatch, capsys):
     client = FakeClient()
     monkeypatch.setattr(implementer_follow_up, "GitHubClient", lambda token: client)
-    monkeypatch.setenv("GH_TOKEN", "dummy")
-    assert implementer_follow_up.main(ARGV) == implementer_follow_up.EXIT_OK
+    monkeypatch.setenv("GITHUB_TOKEN", "dummy")
+    assert implementer_follow_up.main(ARGV) == pr_cli.EXIT_OK
     assert json.loads(capsys.readouterr().out) == {
         "dispatched": [FIX_TASK, QUEUE],
         "failed": [],
+        "dry_run": False,
     }
     assert client.posts == [FIX_TASK_DISPATCH, QUEUE_DISPATCH]
 
@@ -114,8 +114,8 @@ def test_main_prints_the_dispatches_and_exits_zero(monkeypatch, capsys):
 def test_main_exits_one_when_a_dispatch_failed(monkeypatch, capsys):
     client = FakeClient(failing=(QUEUE_PATH,))
     monkeypatch.setattr(implementer_follow_up, "GitHubClient", lambda token: client)
-    monkeypatch.setenv("GH_TOKEN", "dummy")
-    assert implementer_follow_up.main(ARGV) == implementer_follow_up.EXIT_FAILED
+    monkeypatch.setenv("GITHUB_TOKEN", "dummy")
+    assert implementer_follow_up.main(ARGV) == pr_cli.EXIT_ACTION_FAILED
     printed = json.loads(capsys.readouterr().out)
     assert printed["dispatched"] == [FIX_TASK]
     assert [entry["workflow"] for entry in printed["failed"]] == [QUEUE]
@@ -125,16 +125,29 @@ def test_an_empty_workflow_argument_names_none(monkeypatch, capsys):
     # The reusable workflow passes its inputs as they are; "" is its default.
     client = FakeClient()
     monkeypatch.setattr(implementer_follow_up, "GitHubClient", lambda token: client)
-    monkeypatch.setenv("GH_TOKEN", "dummy")
+    monkeypatch.setenv("GITHUB_TOKEN", "dummy")
     argv = [*ARGV[:-4], "--queue-workflow", "", "--fix-task-workflow", ""]
-    assert implementer_follow_up.main(argv) == implementer_follow_up.EXIT_OK
+    assert implementer_follow_up.main(argv) == pr_cli.EXIT_OK
     assert client.posts == []
 
 
-def test_main_without_a_token_dispatches_nothing(monkeypatch, capsys):
-    monkeypatch.delenv("GH_TOKEN", raising=False)
-    assert implementer_follow_up.main(ARGV) == implementer_follow_up.EXIT_FAILED
-    assert "GH_TOKEN" in capsys.readouterr().out
+def test_main_without_a_token_exits_five_on_stderr(monkeypatch, capsys):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    assert implementer_follow_up.main(ARGV) == pr_cli.EXIT_MISSING_TOKEN
+    printed = capsys.readouterr()
+    assert printed.out == ""
+    assert "GITHUB_TOKEN is not set" in printed.err
+
+
+def test_a_dry_run_prints_the_plan_and_needs_no_token(monkeypatch, capsys):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(implementer_follow_up, "GitHubClient", pytest.fail)
+    assert implementer_follow_up.main([*ARGV, "--dry-run"]) == pr_cli.EXIT_OK
+    assert json.loads(capsys.readouterr().out) == {
+        "dispatched": [FIX_TASK, QUEUE],
+        "failed": [],
+        "dry_run": True,
+    }
 
 
 @pytest.mark.parametrize(
@@ -160,14 +173,16 @@ def test_bad_arguments_are_usage_errors(flag, value, capsys):
 @pytest.mark.parametrize("name", ["implementer-queue.yml", "fix-task.yaml", "a_b.c-d.yml"])
 def test_file_names_follow_the_queues_pattern(name, monkeypatch, capsys):
     monkeypatch.setattr(implementer_follow_up, "GitHubClient", lambda token: FakeClient())
-    monkeypatch.setenv("GH_TOKEN", "dummy")
+    monkeypatch.setenv("GITHUB_TOKEN", "dummy")
     argv = list(ARGV)
     argv[argv.index("--queue-workflow") + 1] = name
-    assert implementer_follow_up.main(argv) == implementer_follow_up.EXIT_OK
+    assert implementer_follow_up.main(argv) == pr_cli.EXIT_OK
 
 
 def test_help_exits_zero(capsys):
     with pytest.raises(SystemExit) as stopped:
         implementer_follow_up.main(["--help"])
     assert stopped.value.code == 0
-    assert "--implement-result" in capsys.readouterr().out
+    text = capsys.readouterr().out
+    assert "--implement-result" in text
+    assert pr_cli.exit_help(0, 1, 2, 5) in text

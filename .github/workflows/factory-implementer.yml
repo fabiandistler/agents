@@ -307,7 +307,7 @@ jobs:
 
       - name: Start the queue and the Fix task
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           FACTORY_DIR: ${{ steps.factory.outputs.dir }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}

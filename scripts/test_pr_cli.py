@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -68,3 +69,24 @@ def test_every_cli_documents_its_codes_with_the_shared_meanings(script, codes):
     assert run.returncode == 0
     assert len(run.stdout.splitlines()) <= 25
     assert documented_exits(run.stdout) == {code: pr_cli.EXIT_CODES[code] for code in codes}
+
+
+@pytest.mark.parametrize("value", ["owner/repo", "o-1/r.e_po"])
+def test_repo_argument_accepts_owner_slash_repo(value):
+    assert pr_cli.repo_argument(value) == value
+
+
+@pytest.mark.parametrize("value", ["", "owner", "owner/repo/extra", "owner/re po"])
+def test_repo_argument_rejects_anything_else(value):
+    with pytest.raises(argparse.ArgumentTypeError):
+        pr_cli.repo_argument(value)
+
+
+def test_positive_int_argument_accepts_a_positive_integer():
+    assert pr_cli.positive_int_argument("4242") == 4242
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "12; true", "1.5", "", "٣"])
+def test_positive_int_argument_rejects_anything_else(value):
+    with pytest.raises(argparse.ArgumentTypeError):
+        pr_cli.positive_int_argument(value)

@@ -19,12 +19,13 @@ It dispatches, on ``--ref``:
   keep the queue busy.
 
 An empty workflow argument dispatches nothing for it. Both dispatches are
-tried; a failed one fails the script after the other. Starting either twice
+tried; a failed one fails the script after the other. ``--dry-run`` prints
+the planned dispatches and sends none. Starting either twice
 changes nothing: the queue runs one at a time and the Fix task records each
 run attempt.
 
 Standard library only. Prints one JSON object; errors name the API call and
-status, never payload text.
+status, never payload text, and a missing token goes to stderr.
 """
 
 from __future__ import annotations
@@ -32,29 +33,36 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass, field
 from typing import Protocol
 
+import pr_cli
 from implementer_setup import WORKFLOW_FILE_PATTERN
-from pr_github_client import REPO_PATTERN, FetchError, GitHubClient
+from pr_github_client import FetchError, GitHubClient
 
-EXIT_OK = 0
-EXIT_FAILED = 1
+SCRIPT = "implementer_follow_up.py"
 
 SUCCESS = "success"
 # The values of `needs.<job>.result` (GitHub docs, "Contexts reference").
 JOB_RESULTS = (SUCCESS, "failure", "cancelled", "skipped")
 
-HELP_EPILOG = """\
-stdout: JSON with "dispatched" (workflow files) and "failed" ({"workflow", "reason"} each).
-exit: 0 every named dispatch was sent; 1 one failed, or no GH_TOKEN; 2 usage.
-env: GH_TOKEN (needs Actions write).
+HELP_EPILOG = f"""\
+stdout: JSON with "dispatched" (workflow files; with --dry-run: would be), "failed"
+        ({{"workflow", "reason"}} each) and "dry_run".
+env: GITHUB_TOKEN (needs Actions write; not read with --dry-run).
 
 examples:
   implementer_follow_up.py --repo owner/repo --run-id 123 --ref main \\
       --implement-result failure --queue-workflow implementer-queue.yml \\
-      --fix-task-workflow fix-task.yml
+      --fix-task-workflow fix-task.yml --dry-run
   implementer_follow_up.py --help
+
+{
+    pr_cli.exit_help(
+        pr_cli.EXIT_OK, pr_cli.EXIT_ACTION_FAILED, pr_cli.EXIT_USAGE, pr_cli.EXIT_MISSING_TOKEN
+    )
+}
 """
 
 
@@ -62,6 +70,12 @@ class Dispatcher(Protocol):
     """The one call this script makes; ``GitHubClient`` and test fakes implement it."""
 
     def post(self, path: str, payload: dict[str, object] | None = None) -> object: ...
+
+
+@dataclass(frozen=True)
+class Dispatch:
+    workflow: str
+    inputs: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -74,46 +88,37 @@ class Failure:
 class FollowUp:
     dispatched: list[str] = field(default_factory=list)
     failed: list[Failure] = field(default_factory=list)
+    dry_run: bool = False
 
 
-def follow_up(
-    client: Dispatcher,
-    repo: str,
+def plan(
     *,
     run_id: int,
-    ref: str,
     implement_result: str,
     queue_workflow: str | None,
     fix_task_workflow: str | None,
-) -> FollowUp:
-    """Dispatch the Fix task (unless the implement job succeeded), then the queue."""
-    dispatches: list[tuple[str, dict[str, str]]] = []
+) -> list[Dispatch]:
+    """The Fix task (unless the implement job succeeded), then the queue."""
+    dispatches = []
     if fix_task_workflow is not None and implement_result != SUCCESS:
-        dispatches.append((fix_task_workflow, {"run_id": str(run_id), "dry_run": "false"}))
+        dispatches.append(Dispatch(fix_task_workflow, {"run_id": str(run_id), "dry_run": "false"}))
     if queue_workflow is not None:
-        dispatches.append((queue_workflow, {"dry_run": "false"}))
+        dispatches.append(Dispatch(queue_workflow, {"dry_run": "false"}))
+    return dispatches
+
+
+def send(client: Dispatcher, repo: str, ref: str, dispatches: list[Dispatch]) -> FollowUp:
+    """Send every dispatch on ``ref``; a failed one does not stop the next."""
     outcome = FollowUp()
-    for workflow, inputs in dispatches:
-        path = f"/repos/{repo}/actions/workflows/{workflow}/dispatches"
+    for dispatch in dispatches:
+        path = f"/repos/{repo}/actions/workflows/{dispatch.workflow}/dispatches"
         try:
-            client.post(path, {"ref": ref, "inputs": inputs})
+            client.post(path, {"ref": ref, "inputs": dispatch.inputs})
         except FetchError as error:
-            outcome.failed.append(Failure(workflow, str(error)))
+            outcome.failed.append(Failure(dispatch.workflow, str(error)))
             continue
-        outcome.dispatched.append(workflow)
+        outcome.dispatched.append(dispatch.workflow)
     return outcome
-
-
-def _repo(value: str) -> str:
-    if not REPO_PATTERN.fullmatch(value):
-        raise argparse.ArgumentTypeError("must be OWNER/REPO")
-    return value
-
-
-def _run_id(value: str) -> int:
-    if not value.isdigit() or int(value) <= 0:
-        raise argparse.ArgumentTypeError("must be a positive integer")
-    return int(value)
 
 
 def _workflow(value: str) -> str | None:
@@ -131,8 +136,10 @@ def main(argv: list[str] | None = None) -> int:
         epilog=HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--repo", required=True, type=_repo, help="OWNER/REPO")
-    parser.add_argument("--run-id", required=True, type=_run_id, help="this implementer run")
+    parser.add_argument("--repo", required=True, type=pr_cli.repo_argument, help="OWNER/REPO")
+    parser.add_argument(
+        "--run-id", required=True, type=pr_cli.positive_int_argument, help="this implementer run"
+    )
     parser.add_argument("--ref", required=True, help="the branch to dispatch on")
     parser.add_argument(
         "--implement-result",
@@ -146,27 +153,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--fix-task-workflow", required=True, type=_workflow, help="Fix-task workflow file, or ''"
     )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="print the planned dispatches and send none"
+    )
     args = parser.parse_args(argv)
 
-    token = os.environ.get("GH_TOKEN")
-    if not token:
-        print(
-            json.dumps(
-                {"dispatched": [], "failed": [{"workflow": "", "reason": "GH_TOKEN is not set"}]}
-            )
-        )
-        return EXIT_FAILED
-    outcome = follow_up(
-        GitHubClient(token),
-        args.repo,
+    dispatches = plan(
         run_id=args.run_id,
-        ref=args.ref,
         implement_result=args.implement_result,
         queue_workflow=args.queue_workflow,
         fix_task_workflow=args.fix_task_workflow,
     )
+    if args.dry_run:
+        outcome = FollowUp(dispatched=[dispatch.workflow for dispatch in dispatches], dry_run=True)
+        print(json.dumps(asdict(outcome)))
+        return pr_cli.EXIT_OK
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        print(f"{SCRIPT}: GITHUB_TOKEN is not set", file=sys.stderr)
+        return pr_cli.EXIT_MISSING_TOKEN
+    outcome = send(GitHubClient(token), args.repo, args.ref, dispatches)
     print(json.dumps(asdict(outcome)))
-    return EXIT_FAILED if outcome.failed else EXIT_OK
+    return pr_cli.EXIT_ACTION_FAILED if outcome.failed else pr_cli.EXIT_OK
 
 
 if __name__ == "__main__":

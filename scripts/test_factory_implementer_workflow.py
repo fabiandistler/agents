@@ -13,6 +13,7 @@ import subprocess
 
 import agent_run_capacity
 import implementer_setup
+import pr_cli
 import pytest
 from agent_run_workflow_testkit import (
     FACTORY_IMPLEMENTER,
@@ -365,7 +366,7 @@ def test_the_follow_up_step_takes_values_through_env_and_uses_the_job_token():
     step = follow_up_step()
     assert "${{" not in step["run"]
     assert step["env"] == {
-        "GH_TOKEN": "${{ github.token }}",
+        "GITHUB_TOKEN": "${{ github.token }}",
         "FACTORY_DIR": "${{ steps.factory.outputs.dir }}",
         "REPO": "${{ github.repository }}",
         "RUN_ID": "${{ github.run_id }}",
@@ -383,7 +384,7 @@ def test_the_follow_up_command_line_is_accepted_by_the_script(tmp_path, queue_wo
     result = subprocess.run(  # noqa: S603 -- runs the workflow's own follow-up step.
         ["bash", "-e", "-c", follow_up_step()["run"]],  # noqa: S607 -- bash from PATH.
         env={
-            "GH_TOKEN": "",
+            "GITHUB_TOKEN": "",
             "FACTORY_DIR": str(REPO_ROOT),
             "REPO": "owner/repo",
             "RUN_ID": "4242",
@@ -398,10 +399,8 @@ def test_the_follow_up_command_line_is_accepted_by_the_script(tmp_path, queue_wo
         text=True,
         check=False,
     )
-    assert result.returncode == 1, result.stderr
-    assert json.loads(result.stdout)["failed"] == [
-        {"workflow": "", "reason": "GH_TOKEN is not set"}
-    ]
+    assert result.returncode == pr_cli.EXIT_MISSING_TOKEN, result.stderr
+    assert "GITHUB_TOKEN is not set" in result.stderr
 
 
 def test_the_caller_names_its_queue_and_fix_task_which_accept_the_dispatch():
