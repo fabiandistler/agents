@@ -1,12 +1,14 @@
-# fix-task - files each failed factory run as one deduplicated issue (ADR-0016).
+# fix-task - this repository's caller of the factory's Fix task,
+# .github/workflows/factory-fix-task.yml (ADR-0016, ADR-0018): files each
+# failed factory run as one deduplicated issue.
 #
-# Model-free: scripts/factory_failure.py reads the failed run, its jobs and the
-# first failed job's annotations, and comments on the open `factory-failure`
-# issue for the failure signature or files a new one. Issues and comments made
-# with GITHUB_TOKEN start no workflow, and this workflow does not watch itself,
-# so nothing here starts a fix: a person posts a brief and adds ready-for-agent.
-# A called factory-*.yml workflow runs inside its caller's run, so its failure
-# is filed under the caller's name and path; only callers are listed below.
+# A local `./` call runs the called workflow from the same commit as this file.
+# The called job holds the trigger filter, the concurrency, the timeout and the
+# script call; this file sets only the watch list and the manual inputs.
+#
+# Watch list: the caller workflows of this repository, never this file and
+# never a called factory-*.yml file, whose failure is its caller's failed run.
+# It equals scripts/factory_failure_policy.py's WATCHED_WORKFLOWS.
 name: fix-task
 
 on:
@@ -29,45 +31,14 @@ on:
 # No scope by default; the job below opts in to exactly what it needs.
 permissions: {}
 
-# One run per watched workflow at a time; a later failure waits instead of
-# cancelling a run between its re-read and its write.
-concurrency:
-  group: fix-task-${{ github.event.workflow_run.name || 'dispatch' }}
-  cancel-in-progress: false
-
 jobs:
   file:
-    # Filter in the expression so green and cancelled runs start no runner.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'failure' ||
-      github.event.workflow_run.conclusion == 'timed_out'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # These cap the called job's permissions, which asks for exactly these.
     permissions:
       issues: write
       actions: read
       checks: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-
-      - name: File the failure
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Event and dispatch values reach the script through env, never as
-          # shell source.
-          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
-          WRITE: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
-        run: |
-          set -euo pipefail
-          args=(--repo "$GITHUB_REPOSITORY" --run-id "$RUN_ID")
-          if [ "$WRITE" = "true" ]; then
-            args+=(--write)
-          fi
-          python3 scripts/factory_failure.py "${args[@]}"
+    uses: ./.github/workflows/factory-fix-task.yml
+    with:
+      run_id: ${{ inputs.run_id }}
+      dry_run: ${{ inputs.dry_run != false }}

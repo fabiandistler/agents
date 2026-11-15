@@ -16,6 +16,8 @@ FACTORY_FILES = (
     "factory-pr-review.yml",
     "factory-issue-triage.yml",
     "factory-triage-label.yml",
+    "factory-rework.yml",
+    "factory-fix-task.yml",
 )
 
 
@@ -137,3 +139,55 @@ def test_reusable_workflow_doc_links_the_runbook():
     text = (ROOT / "docs" / "agents" / "pr-review-reusable-workflow.md").read_text(encoding="utf-8")
 
     assert "(factory-onboarding.md)" in text
+
+
+def template_for(name: str) -> dict:
+    (block,) = [b for b in template_blocks() if f"/{name}@" in b]
+    return yaml.safe_load(block)
+
+
+def local_caller(name: str) -> dict:
+    return yaml.safe_load((WORKFLOWS / name).read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    ("factory_file", "caller_file"),
+    [
+        ("factory-implementer.yml", "implementer.yml"),
+        ("factory-pr-review.yml", "pr-review.yml"),
+        ("factory-issue-triage.yml", "issue-triage.yml"),
+        ("factory-rework.yml", "rework.yml"),
+        ("factory-fix-task.yml", "fix-task.yml"),
+    ],
+)
+def test_template_matches_this_repositorys_caller(factory_file, caller_file):
+    template, local = template_for(factory_file), local_caller(caller_file)
+    assert template["name"] == local["name"]
+    (template_job,) = template["jobs"].values()
+    (local_job,) = local["jobs"].values()
+    assert template_job["permissions"] == local_job["permissions"]
+    # The triage template drops `issue_comment` on purpose (see the runbook).
+    assert set(template[True]) <= set(local[True])
+    if factory_file != "factory-fix-task.yml":
+        assert template[True].get("workflow_run") == local[True].get("workflow_run")
+
+
+def test_rework_template_follows_the_pr_review_template():
+    review = template_for("factory-pr-review.yml")
+    assert template_for("factory-rework.yml")[True]["workflow_run"]["workflows"] == [review["name"]]
+
+
+def test_fix_template_watches_only_the_targets_callers_that_the_policy_files():
+    import factory_failure_policy
+
+    watched = template_for("factory-fix-task.yml")[True]["workflow_run"]["workflows"]
+    templates = {
+        template_for(name)["name"]: name
+        for name in FACTORY_FILES
+        if name not in ("factory-fix-task.yml", "factory-triage-label.yml")
+    }
+    assert sorted(watched) == sorted(templates), "every watched caller has a template"
+    for name in watched:
+        path = f".github/workflows/{name}.yml"
+        assert path in factory_failure_policy.WATCHED_WORKFLOWS, path
+    assert "fix-task" not in watched

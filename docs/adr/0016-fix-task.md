@@ -26,7 +26,9 @@ step summary is not readable through the REST API.
 ## Decision
 
 `.github/workflows/fix-task.yml` runs `scripts/factory_failure.py` in one
-model-free job.
+model-free job. Amended 2026-11-14 (#846): the job lives in the reusable
+`.github/workflows/factory-fix-task.yml` (ADR-0018); each repository's caller
+names its own caller workflows in its `workflow_run` list.
 
 **Trigger.** `workflow_run`, type `completed`, for `implementer`,
 `skill-audit`, `issue-triage`, `pr-review`, `rework` and `retro`, and

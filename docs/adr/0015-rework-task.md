@@ -30,6 +30,10 @@ every finding waits for the maintainer, even one a model run could fix.
 
 `.github/workflows/rework.yml` runs one rework round per non-pass review of an
 implementer pull request, at most `MAX_REWORK_ROUNDS = 2` per pull request.
+Amended 2026-11-14 (#846): the jobs live in the reusable
+`.github/workflows/factory-rework.yml` (ADR-0018), which `rework.yml` and the
+target repositories' callers call; the check command, setup, submodules,
+Python version and model are caller inputs.
 
 **Trigger.** `workflow_run` on `pr-review`, type `completed`, plus
 `workflow_dispatch` with a pull request number. Not a label event: the verdict

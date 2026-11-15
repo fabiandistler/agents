@@ -7,7 +7,7 @@ safe and what keeps it working: an empty top-level permission set, the job's
 narrow scopes and timeout, a SHA-pinned action, no `github_token` override (its
 pushes would start no checks), prompts that interpolate no event text, and a
 report step that fails the job on a failed run. The foreground rule is pinned
-here for every model prompt, rework.yml's and retro.yml's included.
+here for every model prompt, factory-rework.yml's and retro.yml's included.
 """
 
 import json
@@ -126,7 +126,7 @@ def test_prompt_keeps_the_hard_limits(path):
     [
         (FACTORY_IMPLEMENTER, "implement", '`bash "$RUNNER_TEMP/check-command.sh"`'),
         (SKILL_AUDIT, "audit", "`scripts/check_all.sh`"),
-        (REWORK, "rework", "`scripts/check_all.sh`"),
+        (REWORK, "rework", '`bash "$RUNNER_TEMP/check-command.sh"`'),
         (RETRO, "retro", "`scripts/check_all.sh`"),
     ],
     ids=["factory-implementer", "skill-audit", "rework", "retro"],

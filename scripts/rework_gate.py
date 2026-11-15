@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The model-free gate of the Rework task (rework.yml, ADR-0015).
+"""The model-free gate of the Rework task (factory-rework.yml, ADR-0015, ADR-0018).
 
 `locate` names the pr-review run whose artifacts the gate reads: the
 triggering run of a `workflow_run` event, or for a manual run the latest
@@ -38,6 +38,8 @@ from pr_github_client import (
     paginate,
 )
 
+# The caller's file, whose runs the capacity check lists; the jobs live in the
+# called factory-rework.yml and match by their composed names, `rework / gate`.
 REWORK_WORKFLOW = "rework.yml"
 GATE_JOB = "gate"
 REWORK_JOB = "rework"
