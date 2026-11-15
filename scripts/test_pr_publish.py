@@ -291,3 +291,59 @@ def test_live_mergeability_still_being_computed_never_disables(monkeypatch, merg
     plan = pr_publish.publish_live(REPO, NUMBER, make_assessment(), make_review(), client=fake)
 
     assert plan["decision"]["auto_merge"] == expected
+
+
+# --- Auto-merge writes that fail half-way (#765) -------------------------------
+
+
+def bot_auto_merge(*head_shas: str) -> FakeGitHub:
+    fake = FakeGitHub(list(head_shas), labels=list(BOT_LABELS))
+    fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
+    return fake
+
+
+def first_run(kind: str, fake: FakeGitHub) -> dict:
+    if kind == "hold":
+        return pr_publish.hold_live(REPO, NUMBER, write=True, client=fake)
+    review = make_review(verdict="block", risk="high")
+    return pr_publish.publish_live(REPO, NUMBER, make_assessment(), review, write=True, client=fake)
+
+
+@pytest.mark.parametrize("kind", ["hold", "publish"])
+def test_a_failed_disable_keeps_the_bot_label_so_the_next_run_disables(kind):
+    fake = bot_auto_merge(SHA, SHA, SHA)
+    fake.fail_paths.add("/graphql")
+
+    failed = first_run(kind, fake)
+
+    assert failed["ok"] is False
+    assert fake.pull_overrides["auto_merge"] == ACTIVE_AUTO_MERGE
+    assert "auto-merge:bot" in fake.labels, "without it the auto-merge reads as a human's"
+
+    fake.fail_paths.clear()
+    healthy = pr_publish.hold_live(REPO, NUMBER, write=True, client=fake)
+
+    assert healthy["ok"] is True
+    assert fake.pull_overrides["auto_merge"] is None
+    assert "auto-merge:bot" not in fake.labels
+
+
+def test_a_failed_label_write_withholds_the_enable(monkeypatch):
+    monkeypatch.setenv("PR_AUTO_MERGE", "true")
+    fake = FakeGitHub([SHA, SHA])
+    fake.fail_paths.add(f"/repos/{REPO}/issues/{NUMBER}/labels")
+
+    payload = pr_publish.publish_live(
+        REPO,
+        NUMBER,
+        make_assessment(head_sha=SHA),
+        make_review(head_sha=SHA),
+        write=True,
+        client=fake,
+    )
+
+    assert payload["ok"] is False
+    assert not any(call["path"] == "/graphql" for call in write_calls(fake)), (
+        "an auto-merge without auto-merge:bot would read as a human's"
+    )
+    assert fake.pull_overrides.get("auto_merge") is None

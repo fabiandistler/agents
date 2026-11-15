@@ -20,6 +20,7 @@ import pr_cli
 import pr_github_client
 import pr_verdict_status
 from pr_actions import Operation, PlanError
+from pr_labels import AUTO_MERGE_BOT
 
 
 class ApplyError(RuntimeError):
@@ -186,23 +187,43 @@ def _send_all(
     return result
 
 
+def _withheld(action: dict, results: list[dict]) -> str | None:
+    """Why an action that depends on the earlier ones is not sent, or None.
+
+    A green ``set_status`` and an auto-merge enable each let the merge go
+    ahead, so a run that failed to publish its verdict sends neither; the red
+    job is the signal, and re-running it sends them. Removing
+    ``auto-merge:bot`` after a failed disable would leave an armed auto-merge
+    that every later run takes for a human's, so the label stays for the next
+    run to retry the disable.
+    """
+    failed = {result["kind"] for result in results if not result["ok"]}
+    kind = action["kind"]
+    if failed and kind == "set_status" and action.get("state") == "success":
+        return "not set: an earlier action failed, so the verdict is not published"
+    if failed and kind == "enable_auto_merge":
+        return "not sent: an earlier action failed, so auto-merge stays off"
+    if (
+        "disable_auto_merge" in failed
+        and kind == "set_labels"
+        and AUTO_MERGE_BOT in action.get("remove", [])
+    ):
+        return f"not sent: the disable failed, so {AUTO_MERGE_BOT} stays for the next run"
+    return None
+
+
 def apply_plan(plan: dict, client: WriteClient) -> list[dict]:
     """Apply every action in ``plan`` and return one result per action.
 
-    A green ``set_status`` is sent only when every earlier action succeeded:
-    a run that failed to publish its verdict must not let the merge go ahead.
-    The red job is the signal, and re-running it sets the status.
+    A failed action does not stop the next one, except for the actions
+    ``_withheld`` names; each of those yields a failed result instead.
     """
     resolved = pr_actions.resolve_plan(plan)
     results: list[dict] = []
     for action, operations in resolved:
-        if (
-            action["kind"] == "set_status"
-            and action.get("state") == "success"
-            and not all(result["ok"] for result in results)
-        ):
-            detail = "not set: an earlier action failed, so the verdict is not published"
-            results.append({"kind": "set_status", "ok": False, "detail": detail})
+        detail = _withheld(action, results)
+        if detail is not None:
+            results.append({"kind": action["kind"], "ok": False, "detail": detail})
             continue
         results.append(_apply_action(client, action["kind"], operations))
     return results

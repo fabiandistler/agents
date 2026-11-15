@@ -211,9 +211,9 @@ class FakeGitHub:
         self.calls.append({"method": method, "path": path, "payload": payload})
         if path in self.fail_paths:
             raise pr_github_client.FetchError("server error", status=500)
-        self._track(method, path, payload or {})
         if path == "/graphql" and self.graphql_errors:
             return json_response({"data": None, "errors": self.graphql_errors})
+        self._track(method, path, payload or {})
         return pr_github_client.Response(status=200, body=b"{}")
 
     def _track(self, method: str, path: str, payload: dict) -> None:
@@ -229,6 +229,10 @@ class FakeGitHub:
             for comment in self.comments:
                 if comment["id"] == comment_id:
                     comment["body"] = payload["body"]
+        elif path == "/graphql":
+            # A mutation GitHub accepted arms or disarms auto-merge.
+            armed = payload["query"] == pr_actions.ENABLE_AUTO_MERGE
+            self.pull_overrides["auto_merge"] = ACTIVE_AUTO_MERGE if armed else None
 
     def post(self, path: str, payload: dict | None = None):
         return self._write("POST", path, payload)
