@@ -244,6 +244,19 @@ class FakeGitHub:
         return self._write("DELETE", path, payload)
 
 
+# The labels of a pull request whose auto-merge the bot armed.
+BOT_LABELS = ["risk:low", "review:pass", "auto-merge:bot"]
+# The action that takes the bot's label off; plans place it after the disable.
+REMOVE_BOT_LABEL = {"kind": "set_labels", "add": [], "remove": ["auto-merge:bot"]}
+
+
+def bot_armed_pull_request(*head_shas: str) -> FakeGitHub:
+    """A pull request with the bot's armed auto-merge, served once per head SHA."""
+    fake = FakeGitHub(list(head_shas), labels=list(BOT_LABELS))
+    fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
+    return fake
+
+
 def write_calls(fake: FakeGitHub) -> list[dict]:
     return [call for call in fake.calls if call["method"] != "GET"]
 

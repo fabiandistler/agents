@@ -11,12 +11,10 @@ from __future__ import annotations
 
 import pr_plan
 import pytest
-from pr_publish_testkit import actions_of, make_context
+from pr_publish_testkit import REMOVE_BOT_LABEL, actions_of, make_context
 
 NODE_ID = "PR_kwDOtest42"
 DISABLE = {"kind": "disable_auto_merge", "pull_request_id": NODE_ID}
-# After the disable: a failed disable must leave the label for the next run.
-REMOVE_BOT_LABEL = {"kind": "set_labels", "add": [], "remove": ["auto-merge:bot"]}
 
 
 @pytest.mark.parametrize(

@@ -11,6 +11,7 @@ from typing import Any
 import pr_plan
 import pytest
 from pr_publish_testkit import (
+    REMOVE_BOT_LABEL,
     actions_of,
     file_entry,
     label_action,
@@ -88,9 +89,6 @@ FAILED_GATES = [case for case in AUTO_MERGE_BLOCKERS if case[0] != "mergeability
 
 def bot_auto_merge_context(labels: list[str] | None = None, **overrides: Any) -> dict:
     return make_context(labels=[*BOT_LABELS, *(labels or [])], auto_merge_active=True, **overrides)
-
-
-REMOVE_BOT_LABEL = {"kind": "set_labels", "add": [], "remove": ["auto-merge:bot"]}
 
 
 def auto_merge_actions(plan: dict) -> list[dict]:

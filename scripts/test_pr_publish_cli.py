@@ -8,11 +8,11 @@ import pr_github_client
 import pr_publish
 import pytest
 from pr_publish_testkit import (
-    ACTIVE_AUTO_MERGE,
     COMMENTS_PATH,
     NUMBER,
     REPO,
     FakeGitHub,
+    bot_armed_pull_request,
     live_args,
     make_assessment,
     make_context,
@@ -299,9 +299,7 @@ def hold_args() -> list[str]:
 
 
 def held_pull_request() -> FakeGitHub:
-    fake = FakeGitHub(["abc1234"], labels=["risk:low", "review:pass", "auto-merge:bot"])
-    fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
-    return fake
+    return bot_armed_pull_request("abc1234")
 
 
 def test_cli_hold_prints_the_hold_plan_without_writing(capsys):
