@@ -146,8 +146,7 @@ one waiting issue. It runs from `.github/workflows/implementer-queue.yml`, which
 calls the reusable `.github/workflows/factory-implementer-queue.yml`: after an
 implementer run completes (unless its job was skipped), when an issue closes, on
 an hourly schedule, and by hand (Actions → implementer-queue → Run workflow, a
-dry run by default). The maintainer adds both files by hand; until they are on
-`main`, waiting issues start only from a manual dispatch of `implementer.yml`.
+dry run by default).
 
 | Situation | Outcome | What the starter does |
 | --- | --- | --- |

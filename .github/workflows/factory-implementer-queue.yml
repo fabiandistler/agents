@@ -1,0 +1,91 @@
+# factory-implementer-queue - the software factory's implementer queue as a
+# reusable workflow (ADR-0018). Model-free: scripts/implementer_queue.py
+# dispatches the caller's implementer workflow for the next issue that waits
+# with `ready-for-agent`, and dispatches nothing while an implementer run is
+# working (#801). This repository's implementer-queue.yml calls it with `./`;
+# another repository calls it pinned to a full commit SHA.
+#
+# The dispatch uses the job's GITHUB_TOKEN: a workflow_dispatch made with it
+# still creates a run (GitHub docs, "Triggering a workflow"), and the
+# implementer job admits any workflow_dispatch.
+name: factory-implementer-queue
+
+on:
+  workflow_call:
+    inputs:
+      workflow_file:
+        description: The caller's implementer workflow file, which is dispatched
+        type: string
+        default: implementer.yml
+      branch_prefix:
+        description: The implementer's branch is <prefix><issue>; ends in / or -
+        type: string
+        default: agent/issue-
+      python_version:
+        description: Python for the factory scripts
+        type: string
+        default: "3.12"
+      dry_run:
+        description: Print the pick and dispatch nothing
+        type: boolean
+        default: false
+
+# No scope by default; the job below opts in to exactly what it needs. The
+# calling job's permissions cap these.
+permissions: {}
+
+jobs:
+  start-next:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # One starter at a time, so two cannot both see no working run and
+    # dispatch twice. A newer pending starter replaces an older pending one,
+    # which would have done the same work.
+    concurrency:
+      group: implementer-queue
+      cancel-in-progress: false
+    # actions: write to read the implementer's runs and dispatch it; the rest
+    # to read the waiting issues, their pull requests and branches.
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      # The factory's scripts at the commit of this workflow file, fetched as in
+      # factory-implementer.yml: anonymously, outside the workspace.
+      - name: Fetch the factory scripts
+        id: factory
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/factory"
+          git init --quiet "$dir"
+          git -C "$dir" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$dir" checkout --quiet --detach FETCH_HEAD
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Start the next waiting issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          FACTORY_DIR: ${{ steps.factory.outputs.dir }}
+          WORKFLOW_FILE: ${{ inputs.workflow_file }}
+          BRANCH_PREFIX: ${{ inputs.branch_prefix }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(--repo "$REPO" --workflow-file "$WORKFLOW_FILE" --job-name implement \
+            --branch-prefix "$BRANCH_PREFIX")
+          if [[ "$DRY_RUN" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          python3 "$FACTORY_DIR/scripts/implementer_queue.py" "${args[@]}"
