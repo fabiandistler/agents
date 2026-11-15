@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pr_plan
 import pytest
-from pr_publish_testkit import actions_of, make_context
+from pr_publish_testkit import REMOVE_BOT_LABEL, actions_of, make_context
 
 NODE_ID = "PR_kwDOtest42"
 DISABLE = {"kind": "disable_auto_merge", "pull_request_id": NODE_ID}
@@ -20,26 +20,11 @@ DISABLE = {"kind": "disable_auto_merge", "pull_request_id": NODE_ID}
 @pytest.mark.parametrize(
     ("labels", "active", "actions", "state"),
     [
-        (
-            ["risk:low", "auto-merge:bot"],
-            True,
-            [{"kind": "set_labels", "add": [], "remove": ["auto-merge:bot"]}, DISABLE],
-            "disabled",
-        ),
+        (["risk:low", "auto-merge:bot"], True, [DISABLE, REMOVE_BOT_LABEL], "disabled"),
         (["do-not-merge"], True, [DISABLE], "disabled"),
-        (
-            ["do-not-merge", "auto-merge:bot"],
-            True,
-            [{"kind": "set_labels", "add": [], "remove": ["auto-merge:bot"]}, DISABLE],
-            "disabled",
-        ),
+        (["do-not-merge", "auto-merge:bot"], True, [DISABLE, REMOVE_BOT_LABEL], "disabled"),
         (["risk:low"], True, [], "human"),
-        (
-            ["auto-merge:bot"],
-            False,
-            [{"kind": "set_labels", "add": [], "remove": ["auto-merge:bot"]}],
-            "off",
-        ),
+        (["auto-merge:bot"], False, [REMOVE_BOT_LABEL], "off"),
         (["do-not-merge"], False, [], "off"),
         ([], False, [], "off"),
     ],

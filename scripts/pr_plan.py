@@ -164,14 +164,25 @@ def _plan_labels(
     elif NEEDS_REVIEW in existing:
         remove.append(NEEDS_REVIEW)
 
-    bot_label = AUTO_MERGE_BOT
-    bot_auto_merge = auto_merge_state in pr_auto_merge.BOT_STATES
-    if bot_auto_merge and bot_label not in existing:
-        add.append(bot_label)
-    if not bot_auto_merge and bot_label in existing:
-        remove.append(bot_label)
+    # The bot's label goes on here, before the enable; it comes off after the
+    # disable, in a later action of its own (_bot_label_removal).
+    if auto_merge_state in pr_auto_merge.BOT_STATES and AUTO_MERGE_BOT not in existing:
+        add.append(AUTO_MERGE_BOT)
 
     return add, remove
+
+
+def _bot_label_removal(context: dict, auto_merge_state: str) -> dict | None:
+    """The action that takes ``auto-merge:bot`` off, placed after the disable.
+
+    The label is how the bot knows an auto-merge is its own. A write that fails
+    half-way may leave the label without an auto-merge, which the next run
+    clears, but never an armed auto-merge without the label, which every later
+    run would leave alone as a human's.
+    """
+    if auto_merge_state in pr_auto_merge.BOT_STATES or AUTO_MERGE_BOT not in context["labels"]:
+        return None
+    return {"kind": "set_labels", "add": [], "remove": [AUTO_MERGE_BOT]}
 
 
 def _reviewer_action(context: dict) -> dict | None:
@@ -287,6 +298,9 @@ def plan_publish(
         actions.append(reviewer)
     if auto_merge_action is not None:
         actions.append(auto_merge_action)
+    bot_label_removal = _bot_label_removal(context, auto_merge_state)
+    if bot_label_removal is not None:
+        actions.append(bot_label_removal)
     status = pr_verdict_status.status_action(context, review, status_url)
     actions.append(status)
     return _plan(
@@ -311,9 +325,7 @@ def plan_hold(context: dict, skip_prefixes: tuple[str, ...] = ()) -> dict:
         return _plan(context, "aborted", pr_skip.ABORT_REASON, [], decision)
 
     state, action = pr_auto_merge.plan_hold(context)
-    actions: list[dict] = []
-    if AUTO_MERGE_BOT in context["labels"]:
-        actions.append({"kind": "set_labels", "add": [], "remove": [AUTO_MERGE_BOT]})
-    if action is not None:
-        actions.append(action)
+    actions = [
+        planned for planned in (action, _bot_label_removal(context, state)) if planned is not None
+    ]
     return _plan(context, "planned", None, actions, {**decision, "auto_merge": state})

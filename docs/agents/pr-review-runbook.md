@@ -121,7 +121,10 @@ Branch deletion comes from the repository setting `delete_branch_on_merge`.
 **Ownership.** The bot adds `auto-merge:bot` when it enables auto-merge. An
 active auto-merge without that label belongs to a human: the bot never takes
 it over and never disables it. The one exception is `do-not-merge`
-(decision B), which disables any auto-merge, whoever enabled it.
+(decision B), which disables any auto-merge, whoever enabled it. The label
+goes on before the enable and comes off after the disable, and neither write
+follows a failed one, so a failed run never leaves the bot's auto-merge
+without its label (ADR-0011, amendment of 2026-11-15).
 
 **Revocation.** On a push, `hold` disables the bot's auto-merge at once, before
 the new head is reviewed (GitHub keeps auto-merge on when someone with write
@@ -192,7 +195,8 @@ the file there, and `pull_request_target` reads it from there.
 1. Merge the scripts, tests, docs and workflow with `PR_AUTO_MERGE` unset.
    From then on every pull request event writes labels and the comment.
 2. Run the [Actions dry run](#dry-run) on an open docs-only pull request
-   (paths under `docs/` outside `docs/agents/` and `docs/adr/`).
+   (Markdown files under `docs/` outside `docs/agents/`, `docs/adr/` and
+   `docs/factory/`).
 3. Observe for a week: labels, verdicts and the comment on real pull
    requests. Check that no `auto-merge:bot` label appears.
 4. Make the [ruleset change](#setup) (step 6 of the setup).

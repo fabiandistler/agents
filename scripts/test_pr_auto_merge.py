@@ -11,6 +11,7 @@ from typing import Any
 import pr_plan
 import pytest
 from pr_publish_testkit import (
+    REMOVE_BOT_LABEL,
     actions_of,
     file_entry,
     label_action,
@@ -164,10 +165,11 @@ def test_every_failed_gate_disables_the_bots_auto_merge(
         auto_merge=auto_merge,
     )
 
-    assert auto_merge_actions(plan) == [{"kind": "disable_auto_merge", "pull_request_id": NODE_ID}]
-    labels = label_action(plan)
-    assert "auto-merge:bot" in labels["remove"]
-    assert "auto-merge:bot" not in labels["add"]
+    disable = {"kind": "disable_auto_merge", "pull_request_id": NODE_ID}
+    assert auto_merge_actions(plan) == [disable]
+    actions = plan["actions"]
+    assert actions.index(disable) < actions.index(REMOVE_BOT_LABEL), "disable first"
+    assert not any("auto-merge:bot" in labels["add"] for labels in actions_of(plan, "set_labels"))
     assert plan["decision"]["auto_merge"] == "disabled"
 
 
@@ -176,7 +178,7 @@ def test_a_raised_risk_relabels_while_it_disables():
 
     plan = pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
 
-    assert "risk:medium" in label_action(plan)["add"]
+    assert "risk:medium" in actions_of(plan, "set_labels")[0]["add"]
     assert len(actions_of(plan, "disable_auto_merge")) == 1
 
 
@@ -257,11 +259,10 @@ def test_a_refused_auto_merge_is_not_enabled_again_and_asks_for_a_human():
 
     assert plan["decision"]["auto_merge"] == "refused"
     assert actions_of(plan, "enable_auto_merge") == []
-    assert label_action(plan) == {
-        "kind": "set_labels",
-        "add": ["needs-review"],
-        "remove": ["auto-merge:bot"],
-    }
+    assert actions_of(plan, "set_labels") == [
+        {"kind": "set_labels", "add": ["needs-review"], "remove": []},
+        REMOVE_BOT_LABEL,
+    ]
 
 
 def test_the_comment_says_a_refused_auto_merge_could_not_be_armed():

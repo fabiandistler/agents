@@ -55,9 +55,10 @@ Claude Code, `./install.sh --merge-guard` for Codex CLI and opencode. This repo'
 One exception, in this repository only ([ADR-0011](adr/0011-pr-review-merge-exception.md)):
 the model-free `publish` job of `.github/workflows/pr-review.yml` may enable
 GitHub's native auto-merge on a docs-only pull request. Docs-only means
-`risk:low`: only `docs/**` outside `docs/agents/` and `docs/adr/`,
-`GLOSSARY.md`, `MAINTENANCE.md` or `maintenance/reports/**`, with no deletion,
-no rename and within the size limits; `README.md` and ADRs are excluded. It
+`risk:low`: only plain Markdown files under `docs/` outside `docs/agents/`,
+`docs/adr/` and `docs/factory/` or under `maintenance/reports/`, plus
+`GLOSSARY.md` and `MAINTENANCE.md`, with no deletion, no rename and within the
+size limits; `README.md`, ADRs and agent instruction files are excluded. It
 also needs a complete `review:pass`, a same-repository non-draft pull request
 to `main`, no `do-not-merge`, and the repository variable `PR_AUTO_MERGE` set
 to `true`. GitHub then merges only after the required checks `checks`,

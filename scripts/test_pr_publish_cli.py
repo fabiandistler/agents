@@ -8,11 +8,11 @@ import pr_github_client
 import pr_publish
 import pytest
 from pr_publish_testkit import (
-    ACTIVE_AUTO_MERGE,
     COMMENTS_PATH,
     NUMBER,
     REPO,
     FakeGitHub,
+    bot_armed_pull_request,
     live_args,
     make_assessment,
     make_context,
@@ -299,9 +299,7 @@ def hold_args() -> list[str]:
 
 
 def held_pull_request() -> FakeGitHub:
-    fake = FakeGitHub(["abc1234"], labels=["risk:low", "review:pass", "auto-merge:bot"])
-    fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
-    return fake
+    return bot_armed_pull_request("abc1234")
 
 
 def test_cli_hold_prints_the_hold_plan_without_writing(capsys):
@@ -312,7 +310,7 @@ def test_cli_hold_prints_the_hold_plan_without_writing(capsys):
     assert code == 0
     plan = json.loads(capsys.readouterr().out)
     assert plan["decision"]["auto_merge"] == "disabled"
-    assert [action["kind"] for action in plan["actions"]] == ["set_labels", "disable_auto_merge"]
+    assert [action["kind"] for action in plan["actions"]] == ["disable_auto_merge", "set_labels"]
     assert write_calls(fake) == []
 
 
@@ -327,12 +325,12 @@ def test_cli_hold_write_disables_the_bots_auto_merge_and_its_label(monkeypatch, 
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is True
     assert [result["kind"] for result in payload["results"]] == [
-        "set_labels",
         "disable_auto_merge",
+        "set_labels",
     ]
     assert [(call["method"], call["path"]) for call in write_calls(fake)] == [
-        ("DELETE", f"/repos/{REPO}/issues/{NUMBER}/labels/auto-merge%3Abot"),
         ("POST", "/graphql"),
+        ("DELETE", f"/repos/{REPO}/issues/{NUMBER}/labels/auto-merge%3Abot"),
     ]
 
 

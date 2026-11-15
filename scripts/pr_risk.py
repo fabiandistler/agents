@@ -25,6 +25,10 @@ HIGH = "high"
 
 RISK_ORDER = {LOW: 0, MEDIUM: 1, HIGH: 2}
 
+# The rest of a path under a low prefix: a `.md` file name and no component
+# that starts with a dot.
+PLAIN_MARKDOWN = r"(?:[^./][^/]*/)*[^./][^/]*\.md$"
+
 # Ordered most-specific first. When several rules match one path, the highest
 # risk wins; among equal risks the first rule supplies the reason label.
 PATH_RULES = (
@@ -87,9 +91,15 @@ PATH_RULES = (
     (re.compile(r"^\.claude/"), MEDIUM, "claude-mirror"),
     (re.compile(r"^skills/"), MEDIUM, "skills"),
     (re.compile(r"^instructions/"), MEDIUM, "instructions"),
-    (re.compile(r"^docs/agents/"), MEDIUM, "agent-docs"),
-    # Agents load AGENTS.md and CLAUDE.md as instructions wherever they sit.
-    (re.compile(r"(?:^|/)(?:AGENTS|CLAUDE)\.md$"), MEDIUM, "agent-docs"),
+    # Agent sessions read the factory docs before they change a factory task.
+    (re.compile(r"^docs/(?:agents|factory)/"), MEDIUM, "agent-docs"),
+    # Agents load these as instructions wherever they sit: a nested
+    # .claude/skills/<name>/SKILL.md, AGENTS.override.md, CLAUDE.local.md.
+    (
+        re.compile(r"(?:^|/)(?:SKILL\.md|(?:AGENTS|CLAUDE)[^/]*\.md|GEMINI\.md)$"),
+        MEDIUM,
+        "agent-docs",
+    ),
     # Declined ideas that the triage agent checks new requests against.
     (re.compile(r"^\.out-of-scope/"), MEDIUM, "agent-docs"),
     # README.md and the ADRs state repository policy, such as the merge rule.
@@ -110,10 +120,12 @@ PATH_RULES = (
         "scripts",
     ),
     (re.compile(r"^maintenance/(?!reports/)"), MEDIUM, "maintenance"),
-    # Low: documentation and generated reports.
+    # Low: documentation and generated reports, as plain Markdown only. Any
+    # other file there, or one under a dot-directory such as a nested .claude/,
+    # matches no rule and is high; an instruction file name above is medium.
     (re.compile(r"^(?:MAINTENANCE|GLOSSARY)\.md$"), LOW, "docs"),
-    (re.compile(r"^docs/(?!agents/|adr/)"), LOW, "docs"),
-    (re.compile(r"^maintenance/reports/"), LOW, "maintenance-reports"),
+    (re.compile(r"^docs/(?!agents/|adr/|factory/)" + PLAIN_MARKDOWN), LOW, "docs"),
+    (re.compile(r"^maintenance/reports/" + PLAIN_MARKDOWN), LOW, "maintenance-reports"),
 )
 
 

@@ -211,9 +211,9 @@ class FakeGitHub:
         self.calls.append({"method": method, "path": path, "payload": payload})
         if path in self.fail_paths:
             raise pr_github_client.FetchError("server error", status=500)
-        self._track(method, path, payload or {})
         if path == "/graphql" and self.graphql_errors:
             return json_response({"data": None, "errors": self.graphql_errors})
+        self._track(method, path, payload or {})
         return pr_github_client.Response(status=200, body=b"{}")
 
     def _track(self, method: str, path: str, payload: dict) -> None:
@@ -229,6 +229,10 @@ class FakeGitHub:
             for comment in self.comments:
                 if comment["id"] == comment_id:
                     comment["body"] = payload["body"]
+        elif path == "/graphql":
+            # A mutation GitHub accepted arms or disarms auto-merge.
+            armed = payload["query"] == pr_actions.ENABLE_AUTO_MERGE
+            self.pull_overrides["auto_merge"] = ACTIVE_AUTO_MERGE if armed else None
 
     def post(self, path: str, payload: dict | None = None):
         return self._write("POST", path, payload)
@@ -238,6 +242,19 @@ class FakeGitHub:
 
     def delete(self, path: str, payload: dict | None = None):
         return self._write("DELETE", path, payload)
+
+
+# The labels of a pull request whose auto-merge the bot armed.
+BOT_LABELS = ["risk:low", "review:pass", "auto-merge:bot"]
+# The action that takes the bot's label off; plans place it after the disable.
+REMOVE_BOT_LABEL = {"kind": "set_labels", "add": [], "remove": ["auto-merge:bot"]}
+
+
+def bot_armed_pull_request(*head_shas: str) -> FakeGitHub:
+    """A pull request with the bot's armed auto-merge, served once per head SHA."""
+    fake = FakeGitHub(list(head_shas), labels=list(BOT_LABELS))
+    fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
+    return fake
 
 
 def write_calls(fake: FakeGitHub) -> list[dict]:

@@ -3,8 +3,9 @@
 ## Status
 
 Accepted (2026-10-28) by the maintainer on #621, for the gated cases below
-only. Amended 2026-11-07 with decisions A–D, and 2026-11-11 with the five
-required checks of decision A (#764). Implemented in #635 and in force
+only. Amended 2026-11-07 with decisions A–D, 2026-11-11 with the five
+required checks of decision A (#764), and 2026-11-15 with the low set and
+the write order of `auto-merge:bot` (#765). Implemented in #635 and in force
 from merge, but inert until the maintainer sets `PR_AUTO_MERGE=true` at the
 end of the [rollout](../agents/pr-review-runbook.md#rollout). The interactive
 merge guard is unchanged.
@@ -38,10 +39,9 @@ can only raise the risk.
 All gates must hold on data re-fetched right before the write:
 
 - `PR_AUTO_MERGE` is exactly `true` (off by default).
-- Deterministic risk is low: only `docs/**` outside `docs/agents/` and
-  `docs/adr/`, `GLOSSARY.md`, `MAINTENANCE.md` or `maintenance/reports/**`,
-  within the size limits and with no deletion or rename. `README.md` and the
-  ADRs state policy, including this rule, so they are medium.
+- Deterministic risk is low: only the low set below, within the size
+  limits and with no deletion or rename. `README.md` and the ADRs state
+  policy, including this rule, so they are medium.
 - The review is complete (not partial) with verdict `pass`.
 - Same repository, not a draft, targets the default branch, mergeable.
 - Head SHA unchanged since the assessment; no human change request; no
@@ -88,6 +88,33 @@ The bot marks its own auto-merge with `auto-merge:bot`. It disables only that
 one when a later push, a worse verdict or a failed gate revokes eligibility,
 and a model-free `hold` job disables it on every push before the new head is
 reviewed.
+
+**Amendment of 2026-11-15 (#765).** The low set is an allowlist, and the
+label write order keeps the ownership rule fail safe.
+
+- **Low set.** `GLOSSARY.md`, `MAINTENANCE.md`, and Markdown files (`*.md`)
+  under `docs/` or `maintenance/reports/`, except `docs/agents/`,
+  `docs/adr/` and `docs/factory/`, a path with a component that starts with
+  a dot, and an agent instruction file. Agents load `SKILL.md`, `AGENTS*.md`,
+  `CLAUDE*.md` and `GEMINI.md` as instructions wherever they sit (Claude Code
+  a nested `.claude/skills/`), so these names are medium anywhere, and so is
+  `docs/factory/`, which agent sessions read before they change a factory
+  task. Any other file under the two prefixes matches no rule and is high.
+  `MAINTENANCE.md` stays low as decided above.
+- **Ownership.** `auto-merge:bot` stays the only mark of the bot's
+  auto-merge; an active auto-merge without it is a human's. The label goes on
+  before the enable and comes off after the disable, and the publisher sends
+  neither write when the one before it failed: no enable after an earlier
+  failed action, no label removal after a failed disable. A failed or
+  cancelled run can then leave a label without an auto-merge, which the next
+  run clears, but never an armed auto-merge without the label, which every
+  later run would leave alone. Removing the label by hand still hands the
+  auto-merge to a human.
+- **Considered: ownership from `auto_merge.enabled_by.login`.** Rejected:
+  every auto-merge armed with a workflow's `GITHUB_TOKEN`, such as the common
+  Dependabot `gh pr merge --auto` workflow, reports `github-actions[bot]`, so
+  in a repository that calls the reusable review (ADR-0018) the `hold` would
+  disable it on every push.
 
 ## Considered options
 
