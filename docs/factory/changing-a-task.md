@@ -59,7 +59,13 @@ is watching. So check each layer before you push:
    for the maintainer to commit, as #847 left `implementer-queue.yml` and
    `factory-implementer-queue.yml`
    ([write limits](../wiki/problems/implementer-write-limits.md)).
-9. **Docs.** Update the [architecture](architecture.md), this page and the
+9. **Cron lines.** A schedule whose `cron:` line the `claude` account wrote
+   never fired; the same schedule ran once a squash merge made the
+   maintainer the line's author (#864). So a pull request that adds or changes a `cron:` line says in
+   its body that it must be merged with **Squash and merge**; a merge commit
+   keeps the agent as the line's author. Changes elsewhere in the file do
+   not matter: retro ran although `claude` last changed `retro.yml`.
+10. **Docs.** Update the [architecture](architecture.md), this page and the
    source tables in `docs/agents/` in the same pull request.
 
 `scripts/pr_*` and `.github/` are `risk:high`, so such a pull request always
