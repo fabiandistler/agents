@@ -3,13 +3,15 @@
 _How a model result is shown to the person who acts on it. Source: Apple HIG
 "Machine Learning" and "Generative AI", consumer-app guidance re-cut for
 expert/B2B tools. When you build or change a UI that shows model output,
-check every rule below and list the unmet ones in the PR description.
+check every rule below and list the unmet ones in the change description or
+review notes.
 Confirmation before irreversible actions: the approval-gate rule in
 [`ai-engineering-conventions.md`, Guardrails & security](ai-engineering-conventions.md#guardrails--security)._
 
-As of 2026-09-24 (Machine Learning) and 2026-11-16 (Generative AI), both
-distilled from the HIG revision of 2026-06-08; AI Act Art. 50 has applied
-since 2026-08-02.
+As of 2026-09-24 (Machine Learning rules) and 2026-11-16 (Generative AI
+rules): the dates when each rule set was added here, both distilled from the
+HIG revision of 2026-06-08. Art. 50 of Regulation (EU) 2024/1689 (AI Act) sets
+the transparency duties; check its current application date.
 
 - **Show a confidence value only after its correlation with result quality is
   verified across several thresholds and re-checked per model version.

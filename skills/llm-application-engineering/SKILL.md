@@ -46,7 +46,7 @@ question is *how to implement* one of these steps well, not *which* step to take
 next. Whenever you build or change a UI that shows model output (confidence,
 attribution, edit/undo/retry, AI labelling, blocked output), check
 [`references/result-surface.md`](references/result-surface.md) and list the
-unmet rules in the PR description.
+unmet rules in the change description or review notes.
 
 For multi-stage or unattended LLM pipelines, read
 [`references/agent-pipelines.md`](references/agent-pipelines.md) for grader
