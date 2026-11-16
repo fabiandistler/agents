@@ -4,9 +4,11 @@
 # with `ready-for-agent`.
 #
 # Triggers: an implementer run completed (its job not skipped); an issue
-# closed, which may be a blocker; a schedule, in case a `workflow_run` chain
-# stops or a closing starts no run (an issue a GITHUB_TOKEN merge closes may
-# not); a manual run, dry by default. A run this queue dispatched starts no
+# closed, which may be a blocker; a schedule, a slow fallback in case a
+# `workflow_run` chain stops or a closing starts no run (an issue a
+# GITHUB_TOKEN merge closes may not): GitHub starts it late or skips slots
+# (observed 2026-11-15: 2 runs in about 12 slots, each 30 min or more late,
+# #864); a manual run, dry by default. A run this queue dispatched starts no
 # workflow_run, so the implementer's follow-up job dispatches this workflow
 # with dry_run false after it (#863).
 name: implementer-queue

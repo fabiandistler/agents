@@ -146,7 +146,10 @@ one waiting issue. It runs from `.github/workflows/implementer-queue.yml`, which
 calls the reusable `.github/workflows/factory-implementer-queue.yml`: after an
 implementer run a person or a label started completes (unless its job was
 skipped), when an issue closes, on an hourly schedule, and by hand (Actions →
-implementer-queue → Run workflow, a dry run by default).
+implementer-queue → Run workflow, a dry run by default). The schedule is a slow
+fallback, not a guarantee: GitHub starts scheduled runs late or skips slots
+(observed 2026-11-15: 2 runs in about 12 slots, each 30 minutes or more late,
+#864).
 
 The starter dispatches with the job's `GITHUB_TOKEN`, so a dispatched run's
 actor is `github-actions[bot]`. The implementer's `claude-code-action` step
