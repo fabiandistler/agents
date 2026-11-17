@@ -77,7 +77,12 @@ def git(repo: Path, *args: str) -> str:
 
 
 def fork_point(repo: Path) -> str:
-    """The commit where HEAD left the default branch."""
+    """The commit where HEAD left the default branch.
+
+    The first ref of DEFAULT_BRANCH_REFS that exists wins, as fetched. A stale
+    origin/main gives an older fork point, so findings main gained since the
+    last fetch count as new; cloud sessions clone fresh, so this is local only.
+    """
     for ref in DEFAULT_BRANCH_REFS:
         exists = run_tool(["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], repo)
         if exists.returncode == 0:
@@ -144,6 +149,8 @@ def introduced(head: list[dict], base: list[dict]) -> list[dict]:
 
     Line numbers move with every edit above a function, so they do not take
     part in the match; the message names the function (C901) or the count.
+    PLR0913 and PLR0915 messages carry only the count, so removing one
+    6-parameter function and adding another in the same file goes uncoached.
     """
     remaining = Counter((finding["code"], finding["message"]) for finding in base)
     new = []
