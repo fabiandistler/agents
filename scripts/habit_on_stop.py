@@ -76,12 +76,21 @@ def fork_point(repo: Path) -> str:
     )
 
 
-def changed_python_files(repo: Path, base: str) -> list[str]:
-    """Python files added, modified or renamed since base, plus untracked ones."""
-    changed = git(repo, "diff", "--name-only", "--diff-filter=AMR", base, "--", "*.py")
+def changed_python_files(repo: Path, base: str) -> dict[str, str | None]:
+    """Python files changed since base, each mapped to its path at base.
+
+    A renamed file maps to its old path, so its old findings stay old; an added
+    or untracked file maps to None.
+    """
+    status = git(repo, "diff", "--name-status", "-M", "--diff-filter=AMR", base, "--", "*.py")
     untracked = git(repo, "ls-files", "--others", "--exclude-standard", "--", "*.py")
-    paths = {line for line in (changed + untracked).splitlines() if line}
-    return sorted(path for path in paths if (repo / path).is_file())
+    path_at_base: dict[str, str | None] = dict.fromkeys(untracked.splitlines())
+    for line in status.splitlines():
+        kind, *paths = line.split("\t")
+        path_at_base[paths[-1]] = None if kind == "A" else paths[0]
+    return {
+        path: before for path, before in sorted(path_at_base.items()) if (repo / path).is_file()
+    }
 
 
 def ruff_findings(repo: Path, path: str, source: str) -> list[dict]:
@@ -103,13 +112,17 @@ def ruff_findings(repo: Path, path: str, source: str) -> list[dict]:
     )
     if completed.returncode not in (0, 1):
         raise HookError(f"ruff failed on {path}: {completed.stderr.strip()}")
-    return json.loads(completed.stdout or "[]")
+    try:
+        return json.loads(completed.stdout or "[]")
+    except json.JSONDecodeError as error:
+        raise HookError(f"ruff printed no JSON for {path}: {error}") from error
 
 
-def base_source(repo: Path, base: str, path: str) -> str | None:
-    """path's content at base, or None when the branch added it."""
-    completed = run_tool(["git", "show", f"{base}:{path}"], repo)
-    return completed.stdout if completed.returncode == 0 else None
+def head_source(repo: Path, path: str) -> str:
+    try:
+        return (repo / path).read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise HookError(f"{path} is not UTF-8, so ruff cannot check it") from error
 
 
 def introduced(head: list[dict], base: list[dict]) -> list[dict]:
@@ -155,12 +168,16 @@ def as_habit_findings(repo: Path, findings: list[dict]) -> list[dict]:
 def new_findings(repo: Path) -> list[dict]:
     base = fork_point(repo)
     found = []
-    for path in changed_python_files(repo, base):
-        head = ruff_findings(repo, path, (repo / path).read_text(encoding="utf-8"))
+    for path, path_at_base in changed_python_files(repo, base).items():
+        head = ruff_findings(repo, path, head_source(repo, path))
         if not head:
             continue
-        before = base_source(repo, base, path)
-        found += introduced(head, ruff_findings(repo, path, before) if before else [])
+        before = (
+            []
+            if path_at_base is None
+            else ruff_findings(repo, path, git(repo, "show", f"{base}:{path_at_base}"))
+        )
+        found += introduced(head, before)
     return found
 
 
@@ -172,7 +189,7 @@ def coaching(repo: Path, findings: list[dict]) -> str | None:
     if completed.returncode == 0:
         return None
     if completed.returncode == 1:
-        return completed.stdout
+        return completed.stdout.strip() or completed.stderr.strip()
     raise HookError(f"habit-mapper failed: {completed.stderr.strip() or completed.stdout.strip()}")
 
 

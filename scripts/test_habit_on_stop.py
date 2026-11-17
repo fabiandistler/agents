@@ -17,6 +17,7 @@ from pathlib import Path
 
 import habit_on_stop
 import pytest
+import yaml
 
 SCRIPT = Path(__file__).resolve().parent / "habit_on_stop.py"
 REPO_ROOT = SCRIPT.parent.parent
@@ -156,6 +157,25 @@ def test_a_new_function_with_too_many_parameters_is_coached(repo, mapper):
     )
 
 
+def test_old_debt_in_a_renamed_file_stays_quiet(repo, mapper):
+    git(repo, "mv", "legacy.py", "renamed.py")
+    commit_all(repo, "rename")
+
+    completed = run_hook(repo)
+
+    assert (completed.returncode, completed.stderr) == (0, "")
+    assert not mapper.exists()
+
+
+def test_a_file_that_is_not_utf8_is_reported(repo, mapper):
+    (repo / "latin1.py").write_bytes("NAME = 'Grüße'\n".encode("latin-1"))
+
+    completed = run_hook(repo)
+
+    assert completed.returncode == 2
+    assert "habit-on-stop: latin1.py is not UTF-8" in completed.stderr
+
+
 def test_complexity_that_grows_in_an_old_function_counts_as_new(repo, mapper):
     (repo / "legacy.py").write_text(complex_function(13) + "\n\nVALUE = 1\n", encoding="utf-8")
 
@@ -254,12 +274,15 @@ def test_the_committed_settings_run_the_hook_once_on_stop():
 
 def test_the_ruff_pin_matches_the_pre_commit_pin():
     """The hook's ruff and the commit hooks' ruff are one version, pinned twice."""
-    requirements = (REPO_ROOT / "scripts" / "check_all.requirements.txt").read_text(
-        encoding="utf-8"
-    )
-    pre_commit = (REPO_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    requirements_path = REPO_ROOT / "scripts" / "check_all.requirements.txt"
+    requirements = requirements_path.read_text(encoding="utf-8")
+    pre_commit = yaml.safe_load((REPO_ROOT / ".pre-commit-config.yaml").read_text("utf-8"))
 
     pinned = re.search(r"^ruff==(\S+)$", requirements, re.MULTILINE)
-    rev = re.search(r"astral-sh/ruff-pre-commit\n\s+rev: v(\S+)", pre_commit)
-    assert pinned and rev
-    assert pinned.group(1) == rev.group(1)
+    (rev,) = [
+        entry["rev"]
+        for entry in pre_commit["repos"]
+        if entry["repo"] == "https://github.com/astral-sh/ruff-pre-commit"
+    ]
+    assert pinned
+    assert f"v{pinned.group(1)}" == rev
