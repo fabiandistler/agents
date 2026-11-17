@@ -200,6 +200,16 @@ def test_an_untracked_file_is_checked(repo, mapper):
     assert issue["details"]["file"] == "pkg/fresh.py"
 
 
+def test_a_syntax_error_is_left_to_lint_on_edit(repo, mapper):
+    """Ruff reports invalid-syntax whatever --select says; it is no design smell."""
+    (repo / "broken.py").write_text("def broken(:\n    pass\n", encoding="utf-8")
+
+    completed = run_hook(repo)
+
+    assert (completed.returncode, completed.stderr) == (0, "")
+    assert not mapper.exists()
+
+
 def test_a_file_ruff_excludes_is_not_checked(repo, mapper):
     (repo / "ruff.toml").write_text('extend-exclude = ["vendored.py"]\n', encoding="utf-8")
     (repo / "vendored.py").write_text(MANY_PARAMETERS, encoding="utf-8")

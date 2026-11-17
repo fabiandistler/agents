@@ -132,9 +132,12 @@ def ruff_findings(repo: Path, path: str, source: str) -> list[dict]:
     if completed.returncode not in (0, 1):
         raise HookError(f"ruff failed on {path}: {completed.stderr.strip()}")
     try:
-        return json.loads(completed.stdout or "[]")
+        findings = json.loads(completed.stdout or "[]")
     except json.JSONDecodeError as error:
         raise HookError(f"ruff printed no JSON for {path}: {error}") from error
+    # Ruff adds invalid-syntax whatever --select says. A syntax error is no
+    # design smell, and lint-on-edit.sh already reports it on the edit itself.
+    return [finding for finding in findings if finding["code"] in SMELL_OF_CODE]
 
 
 def head_source(repo: Path, path: str) -> str:
