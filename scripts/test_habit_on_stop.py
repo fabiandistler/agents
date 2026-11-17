@@ -229,6 +229,14 @@ def test_a_broken_mapper_is_reported_not_passed(repo, mapper, monkeypatch):
     assert "habit-on-stop: habit-mapper failed: mapper broke" in completed.stderr
 
 
+def test_missing_tools_do_not_block_a_branch_without_python_changes(repo, tmp_path):
+    (repo / "README.md").write_text("notes\n", encoding="utf-8")
+
+    completed = run_hook(repo, path=f"{tmp_path}{os.pathsep}/usr/bin{os.pathsep}/bin")
+
+    assert (completed.returncode, completed.stderr) == (0, "")
+
+
 def test_a_missing_mapper_is_reported_with_the_install_line(repo, tmp_path):
     ruff_only = tmp_path / "ruff-only"
     ruff_only.mkdir()
@@ -282,8 +290,8 @@ def test_a_project_dir_below_the_repo_root_checks_the_whole_repo(repo, mapper):
 
 
 @pytest.mark.skipif(
-    shutil.which("habit-mapper") is None,
-    reason="habit-mapper not installed; CI installs it from check_all.requirements.txt",
+    shutil.which("habit-mapper") is None and not os.environ.get("CI"),
+    reason="habit-mapper not installed; CI installs it and never skips this test",
 )
 def test_the_real_mapper_reads_our_findings_and_blocks_with_a_guide(tmp_path):
     """Contract with habit-hooks 1.5.0: the finding shape, exit 1 and guides on stdout."""

@@ -60,10 +60,13 @@ class NoForkPoint(HookError):
 
 
 def run_tool(argv: list[str], cwd: Path, stdin: str | None = None) -> subprocess.CompletedProcess:
-    """argv run in cwd, output captured; the caller reads the exit code."""
-    return subprocess.run(  # noqa: S603 -- fixed argv from this module, no shell
-        argv, cwd=cwd, input=stdin, capture_output=True, text=True, check=False
-    )
+    """argv run in cwd, output captured as UTF-8; the caller reads the exit code."""
+    try:
+        return subprocess.run(  # noqa: S603 -- fixed argv from this module, no shell
+            argv, cwd=cwd, input=stdin, capture_output=True, encoding="utf-8", check=False
+        )
+    except UnicodeDecodeError as error:
+        raise HookError(f"{' '.join(argv[:3])} printed output that is not UTF-8") from error
 
 
 def git(repo: Path, *args: str) -> str:
@@ -176,10 +179,9 @@ def as_habit_findings(repo: Path, findings: list[dict]) -> list[dict]:
     ]
 
 
-def new_findings(repo: Path) -> list[dict]:
-    base = fork_point(repo)
+def new_findings(repo: Path, base: str, changed: dict[str, str | None]) -> list[dict]:
     found = []
-    for path, path_at_base in changed_python_files(repo, base).items():
+    for path, path_at_base in changed.items():
         head = ruff_findings(repo, path, head_source(repo, path))
         if not head:
             continue
@@ -207,11 +209,15 @@ def coaching(repo: Path, findings: list[dict]) -> str | None:
 def run(event: dict, repo: Path) -> tuple[int, str]:
     if event.get("stop_hook_active"):
         return EXIT_PASS, ""
-    missing = [tool for tool in ("ruff", "habit-mapper") if shutil.which(tool) is None]
-    if missing:
-        return EXIT_COACH, f"habit-on-stop: MISSING {', '.join(missing)}: {INSTALL_HINT}"
     try:
-        findings = new_findings(repo)
+        base = fork_point(repo)
+        changed = changed_python_files(repo, base)
+        if not changed:
+            return EXIT_PASS, ""
+        missing = [tool for tool in ("ruff", "habit-mapper") if shutil.which(tool) is None]
+        if missing:
+            return EXIT_COACH, f"habit-on-stop: MISSING {', '.join(missing)}: {INSTALL_HINT}"
+        findings = new_findings(repo, base, changed)
         guides = coaching(repo, findings) if findings else None
     except NoForkPoint as error:
         return EXIT_SKIP, f"habit-on-stop: skipped: {error}"
