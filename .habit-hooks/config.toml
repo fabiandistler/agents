@@ -1,0 +1,11 @@
+# habit-mapper config for scripts/habit_on_stop.py, the Stop hook that turns
+# the design smells a branch adds into coaching guides. The hook is its own
+# sensor (ruff against the fork point), so this file only routes guides.
+# The python plugin's guides win over generic's for findings it speaks for.
+plugins = ["python", "generic"]
+
+# Default is "suggested", which coaches but lets the agent stop. Broad
+# excepts break instructions/20-coding-standards.md, so they block like the
+# other three smells.
+[smells.swallowed-exception]
+severity = "enforced"

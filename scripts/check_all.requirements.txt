@@ -1,8 +1,13 @@
 # Python tools scripts/check_all.sh needs, pinned. CI installs exactly this
 # file; install it locally with `pip install -r scripts/check_all.requirements.txt`.
 # ruff, ty, shellcheck, shfmt and the secret scanner are pinned in
-# .pre-commit-config.yaml and run through prek, not installed here.
+# .pre-commit-config.yaml and run through prek. The exception: habit-hooks
+# and ruff serve the Stop hook scripts/habit_on_stop.py, which runs ruff on
+# stdin, outside prek. ruff stays at the rev in .pre-commit-config.yaml
+# (scripts/test_habit_on_stop.py checks it).
+habit-hooks[python]==1.5.0
 prek==0.5.10
 pytest==9.2.0
 pyyaml==6.0.3
+ruff==0.17.3
 zizmor==1.32.0
