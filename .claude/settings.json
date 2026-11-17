@@ -58,6 +58,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/scripts/habit_on_stop.py",
+            "timeout": 120
+          }
+        ]
+      }
     ]
   }
 }
