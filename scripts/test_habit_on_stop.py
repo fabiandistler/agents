@@ -244,17 +244,64 @@ def test_a_missing_mapper_is_reported_with_the_install_line(repo, tmp_path):
     )
 
 
-def test_a_repo_without_a_default_branch_is_reported(tmp_path, mapper):
+def test_a_checkout_without_a_default_branch_is_skipped_without_blocking(tmp_path, mapper):
+    """Like the factory's depth-1 rework checkout of agent/issue-<n> alone."""
     lonely = tmp_path / "lonely"
     lonely.mkdir()
-    git(lonely, "init", "-q", "-b", "trunk")
-    (lonely / "a.py").write_text("A = 1\n", encoding="utf-8")
+    git(lonely, "init", "-q", "-b", "agent/issue-1")
+    (lonely / "a.py").write_text(MANY_PARAMETERS, encoding="utf-8")
     commit_all(lonely, "base")
 
     completed = run_hook(lonely)
 
+    assert completed.returncode == 1
+    assert "habit-on-stop: skipped: no default branch to compare against" in completed.stderr
+    assert not mapper.exists()
+
+
+def test_a_branch_without_history_in_common_is_skipped_without_blocking(repo, mapper):
+    git(repo, "switch", "-q", "--orphan", "unrelated")
+    (repo / "new.py").write_text(MANY_PARAMETERS, encoding="utf-8")
+    commit_all(repo, "unrelated root")
+
+    completed = run_hook(repo)
+
+    assert completed.returncode == 1
+    assert "habit-on-stop: skipped: HEAD and main share no history" in completed.stderr
+
+
+def test_a_project_dir_below_the_repo_root_checks_the_whole_repo(repo, mapper):
+    (repo / "pkg").mkdir()
+    (repo / "pkg" / "inner.py").write_text(MANY_PARAMETERS, encoding="utf-8")
+
+    completed = run_hook(repo / "pkg")
+
     assert completed.returncode == 2
-    assert "no default branch to compare against" in completed.stderr
+    (issue,) = mapper_smells(mapper)["too-many-parameters"]
+    assert issue["details"]["file"] == "pkg/inner.py"
+
+
+@pytest.mark.skipif(
+    shutil.which("habit-mapper") is None,
+    reason="habit-mapper not installed; CI installs it from check_all.requirements.txt",
+)
+def test_the_real_mapper_reads_our_findings_and_blocks_with_a_guide(tmp_path):
+    """Contract with habit-hooks 1.5.0: the finding shape, exit 1 and guides on stdout."""
+    project = tmp_path / "project"
+    (project / ".habit-hooks").mkdir(parents=True)
+    shutil.copy(REPO_ROOT / ".habit-hooks" / "config.toml", project / ".habit-hooks")
+    finding = {
+        "filename": str(project / "billing.py"),
+        "code": "PLR0913",
+        "message": "Too many arguments in function definition (6 > 5)",
+        "location": {"row": 7, "column": 5},
+    }
+
+    guides = habit_on_stop.coaching(project, [finding])
+
+    assert guides is not None
+    assert "too-many-parameters (1 issue)" in guides
+    assert "billing.py:7" in guides
 
 
 def test_identical_findings_are_matched_one_for_one():

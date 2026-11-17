@@ -14,6 +14,9 @@ Both sides of the comparison run through the same ruff binary from stdin, so a
 ruff upgrade shifts both sides alike.
 
 Exit 0: stop_hook_active is set, no changed Python file, or nothing new.
+Exit 1: no fork point (a checkout without the default branch, such as the
+factory's depth-1 rework checkout); the reason on stderr. Claude Code shows it
+as a hook error and lets the agent stop, since the agent cannot repair it.
 Exit 2: the guides, or what broke, on stderr. Claude Code then keeps the agent
 working; on its next stop stop_hook_active is set and the hook lets it go.
 
@@ -33,6 +36,7 @@ from collections import Counter
 from pathlib import Path
 
 EXIT_PASS = 0
+EXIT_SKIP = 1  # non-blocking: Claude Code shows the error and lets the agent stop
 EXIT_COACH = 2  # a Stop hook exiting 2 shows stderr to the agent and keeps it working
 
 # Ruff code -> Habit Hooks smell, as in the python plugin's ruff.jq (1.5.0).
@@ -49,6 +53,10 @@ INSTALL_HINT = "python3 -m pip install -r scripts/check_all.requirements.txt"
 
 class HookError(Exception):
     """A tool or git state the hook needs is missing; the message says which."""
+
+
+class NoForkPoint(HookError):
+    """The checkout has no default branch, or no common history with it."""
 
 
 def run_tool(argv: list[str], cwd: Path, stdin: str | None = None) -> subprocess.CompletedProcess:
@@ -70,8 +78,11 @@ def fork_point(repo: Path) -> str:
     for ref in DEFAULT_BRANCH_REFS:
         exists = run_tool(["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], repo)
         if exists.returncode == 0:
-            return git(repo, "merge-base", "HEAD", ref).strip()
-    raise HookError(
+            merge_base = run_tool(["git", "merge-base", "HEAD", ref], repo)
+            if merge_base.returncode != 0:
+                raise NoForkPoint(f"HEAD and {ref} share no history in this checkout")
+            return merge_base.stdout.strip()
+    raise NoForkPoint(
         f"no default branch to compare against (tried {', '.join(DEFAULT_BRANCH_REFS)})"
     )
 
@@ -202,6 +213,8 @@ def run(event: dict, repo: Path) -> tuple[int, str]:
     try:
         findings = new_findings(repo)
         guides = coaching(repo, findings) if findings else None
+    except NoForkPoint as error:
+        return EXIT_SKIP, f"habit-on-stop: skipped: {error}"
     except HookError as error:
         return EXIT_COACH, f"habit-on-stop: {error}"
     if guides is None:
@@ -214,7 +227,12 @@ def run(event: dict, repo: Path) -> tuple[int, str]:
 
 def main() -> int:
     event = json.load(sys.stdin)
-    repo = Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or Path.cwd()).resolve()
+    start = Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or Path.cwd())
+    try:
+        repo = Path(git(start, "rev-parse", "--show-toplevel").strip())
+    except HookError as error:
+        print(f"habit-on-stop: skipped: {error}", file=sys.stderr)
+        return EXIT_SKIP
     code, message = run(event, repo)
     if message:
         print(message, file=sys.stderr)
