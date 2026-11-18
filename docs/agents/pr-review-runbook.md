@@ -248,6 +248,10 @@ re-fetches the pull request, re-checks the head SHA and the policy on that
 fresh data and plans exactly what a write run would, then writes nothing.
 `hold` does not run on a dispatch. Check:
 
+- no review run for the same pull request is in progress when you dispatch:
+  until #882 lands, a dry run shares that run's concurrency group and can cancel
+  it, and the cancelled run publishes `review:unavailable` and an `error`
+  verdict on the head (recovery: "No verdict on the head" below);
 - `assess`, `review` and `publish` are green;
 - the run summary under **PR review decision** shows the risk, the verdict,
   the auto-merge state and the planned labels;
