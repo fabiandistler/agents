@@ -171,3 +171,15 @@ green.
 
 Not a synonym for a review: a check decides what a script can decide; the
 weekly skill audit handles judgement.
+
+## Handoff protocol
+
+The facts factory runs hand each other through GitHub: comment and issue
+markers, run names, agent branch names and issue state labels. A runner keeps
+nothing, so one run learns what an earlier one did only from these. The
+handoff protocol module (`scripts/factory_handoff.py`) owns them: it formats
+each fact, reads it back, and counts a marker only when the workflow bot wrote
+it.
+
+Not a synonym for an artifact: artifacts carry data inside one run's jobs, the
+handoff protocol carries facts between runs.

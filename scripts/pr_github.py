@@ -101,18 +101,23 @@ def _map_file(entry: dict) -> dict:
     }
 
 
+def author_login(entry: dict) -> str:
+    """The author login of a REST issue, pull request or comment; empty when absent."""
+    user = entry.get("user")
+    login = user.get("login") if isinstance(user, dict) else None
+    return login if isinstance(login, str) else ""
+
+
 def comment_entry(entry: dict) -> dict:
     """One REST issue comment as id, body, author login and author association."""
     body = entry.get("body")
-    user = entry.get("user")
-    login = user.get("login") if isinstance(user, dict) else None
     association = entry.get("author_association")
     # The author tells the bot's sticky comment apart from a human one quoting
     # its marker; the association decides whether the review model sees it.
     return {
         "id": entry.get("id"),
         "body": body if isinstance(body, str) else "",
-        "author": login if isinstance(login, str) else "",
+        "author": author_login(entry),
         "author_association": association if isinstance(association, str) else "",
     }
 

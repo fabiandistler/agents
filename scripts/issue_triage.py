@@ -33,6 +33,7 @@ from issue_triage_policy import (
     plan_labels,
     unchanged_since_assessment,
 )
+from pr_github import author_login
 from pr_github_client import GitHubClient, get_json, paginate
 from pr_review_claude import TOKEN_ENV, ProviderError, run_claude
 
@@ -95,12 +96,6 @@ def _client(client: object | None) -> object:
     return GitHubClient(token)
 
 
-def _login(entry: dict) -> str:
-    user = entry.get("user")
-    login = user.get("login") if isinstance(user, dict) else None
-    return login if isinstance(login, str) else ""
-
-
 def _label_names(entry: dict) -> list[str]:
     labels = entry.get("labels")
     if not isinstance(labels, list):
@@ -145,7 +140,7 @@ def fetch_context(client, repo: str, number: int, trigger: str) -> dict:
     """Fetch issue ``number`` and decide whether ``trigger`` may triage it."""
     issue = _fetch_issue(client, repo, number)
     comments = [
-        {"author": _login(entry), "body": entry.get("body") or "", "created_at": _time(entry)}
+        {"author": author_login(entry), "body": entry.get("body") or "", "created_at": _time(entry)}
         for entry in paginate(client, f"/repos/{repo}/issues/{number}/comments")
     ]
     label_events = [
@@ -171,7 +166,7 @@ def fetch_context(client, repo: str, number: int, trigger: str) -> dict:
         "repo": repo,
         "number": number,
         "trigger": trigger,
-        "author": _login(issue),
+        "author": author_login(issue),
         "title": issue.get("title") or "",
         "body": issue.get("body") or "",
         "other_labels": [label for label in labels if label not in decision["states"]],

@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import retro_gate
+from factory_handoff import APP_LOGIN, REWORK_ROUND, format_marker
 from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
 from pr_github_client import FetchError, Response
 from pr_github_fake import json_response
@@ -46,8 +47,12 @@ def comment(body: str, login: str, association: str = "NONE") -> dict:
     return {"body": body, "user": {"login": login}, "author_association": association}
 
 
-def rework(round_: int) -> dict:
-    return comment(f"<!-- rework-round:{round_} -->\nRework round {round_}.", COMMENT_AUTHOR)
+def round_marker(round_: int) -> str:
+    return format_marker(REWORK_ROUND, round=round_, head=f"{round_:040x}")
+
+
+def rework(round_: int, login: str = COMMENT_AUTHOR) -> dict:
+    return comment(f"{round_marker(round_)}\nRework round {round_}.", login)
 
 
 class RoutedClient:
@@ -167,9 +172,25 @@ def test_bot_comments_without_a_rework_marker_count_no_round():
 
 def test_rework_markers_count_only_from_the_review_bot():
     pulls = ten_after_floor()
-    forged = comment("<!-- rework-round:1 --><!-- rework-round:2 -->", "outsider")
+    forged = comment(round_marker(1) + round_marker(2), "outsider")
     client = RoutedClient(gate_routes(pulls, comments={2: [forged]}))
     assert retro_gate.run_gate(client, REPO, 10).selected == 10
+
+
+def test_only_well_formed_rework_markers_by_the_workflow_bot_count():
+    pull = retro_gate.merged_agent_pull(api_pull(1, merged_at=after(1)), REPO)
+    assert pull is not None
+    not_rounds = [
+        rework(1, APP_LOGIN),
+        rework(2, "fabiandistler"),
+        comment("<!-- rework-round:1 -->\nheadless", COMMENT_AUTHOR),
+        comment(f"<!-- rework-round:0 head:{'a' * 40} -->", COMMENT_AUTHOR),
+        comment(f"<!-- rework-round:1 head:{'A' * 40} -->", COMMENT_AUTHOR),
+        comment(f"<!-- rework-round:1 head:{'a' * 39} -->", COMMENT_AUTHOR),
+        {"user": {"login": COMMENT_AUTHOR}, "body": None},
+    ]
+    assert retro_gate.non_pass_rounds(pull, not_rounds) == 0
+    assert retro_gate.non_pass_rounds(pull, [*not_rounds, rework(1), rework(1)]) == 1
 
 
 def test_unmerged_foreign_and_retro_pulls_are_not_counted():
@@ -432,7 +453,7 @@ def test_context_holds_trusted_text_and_no_outsider_text():
     text = retro_gate.build_context(RoutedClient(context_routes()), REPO, 50, "Issue 49 done.")
     assert "Build the gate." in text
     assert "Sticky review." in text
-    assert "<!-- rework-round:1 -->" in text
+    assert round_marker(1) in text
     assert "Rework round 1 done" in text
     assert "Maintainer note" in text
     assert "Member review" in text

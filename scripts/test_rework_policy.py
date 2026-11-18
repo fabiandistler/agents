@@ -125,8 +125,8 @@ def test_a_bot_comment_without_a_marker_counts_no_round():
     ]
     assert rework_policy.round_heads(bot_comments) == []
     assert not rework_policy.handed_off(bot_comments[:2], HEAD)
-    assert rework_policy.ROUND_MARKER.startswith("<!-- rework-round:")
-    assert rework_policy.HANDOFF_MARKER.startswith("<!-- rework-handoff head:")
+    assert rework_policy.round_marker(1, HEAD).startswith("<!-- rework-round:")
+    assert rework_policy.handoff_comment(HEAD).startswith("<!-- rework-handoff head:")
 
 
 def test_the_handoff_comment_starts_with_its_marker():

@@ -39,10 +39,12 @@ from pathlib import Path
 from typing import Protocol
 
 from agent_brief import is_trusted
+from factory_handoff import APP_LOGIN, REWORK_ROUND, read_markers
 from implementer_contract import contract_text, read_ticket
 from pr_actions import Operation
 from pr_apply import WriteClient, send_operation
 from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
+from pr_github import author_login, comment_entry
 from pr_github_client import (
     PER_PAGE,
     REPO_PATTERN,
@@ -60,12 +62,9 @@ AGENT_BRANCH = re.compile(r"^agent/issue-([1-9][0-9]*)$")
 RETRO_BRANCH_PREFIX = "agent/retro-"
 RETRO_DONE = "retro:done"
 RETRO_DONE_LABEL = ("5319e7", "The Retro task has looked at this merged agent pull request")
-REWORK_MARKER = re.compile(r"<!-- rework-round:[^>]*-->")
 NON_PASS_VERDICTS = frozenset(
     f"{VERDICT_PREFIX}{verdict}" for verdict in ("concerns", "block", "unavailable")
 )
-# The login the Claude GitHub App writes as: the implementer's and Rework's replies.
-APP_AUTHOR = "claude[bot]"
 DEFAULT_EVERY = 10
 IMPLEMENTER_WORKFLOW = "implementer.yml"
 SUMMARY_ARTIFACT = "run-summary"
@@ -185,13 +184,9 @@ def pending_pulls(pulls: list[MergedPull], floor: datetime) -> list[MergedPull]:
 
 
 def non_pass_rounds(pull: MergedPull, comments: list[dict]) -> int:
-    """Rework markers by the review bot, plus one for a non-pass verdict at merge."""
-    markers = {
-        marker
-        for comment in comments
-        if _login(comment) == COMMENT_AUTHOR
-        for marker in REWORK_MARKER.findall(_body(comment))
-    }
+    """Well-formed Rework round markers by the workflow bot, plus one for a non-pass verdict."""
+    reads = read_markers(REWORK_ROUND, [comment_entry(comment) for comment in comments])
+    markers = {(m["round"], m["head"]) for read in reads for m in read.markers}
     return len(markers) + (1 if pull.labels & NON_PASS_VERDICTS else 0)
 
 
@@ -206,12 +201,6 @@ def choose(pending: list[MergedPull], rounds: dict[int, int]) -> MergedPull:
 def _mapping(value: object) -> dict:
     """A JSON object field, or an empty one when GitHub sent something else."""
     return value if isinstance(value, dict) else {}
-
-
-def _login(item: dict) -> str:
-    user = item.get("user")
-    login = user.get("login") if isinstance(user, dict) else None
-    return login if isinstance(login, str) else ""
 
 
 def _body(item: dict) -> str:
@@ -390,16 +379,13 @@ def build_context(
     sticky = [
         _body(comment)
         for comment in comments
-        if _login(comment) == COMMENT_AUTHOR and COMMENT_MARKER in _body(comment)
+        if author_login(comment) == COMMENT_AUTHOR and COMMENT_MARKER in _body(comment)
     ]
-    rework = [
-        _body(comment)
-        for comment in comments
-        if _login(comment) == COMMENT_AUTHOR and REWORK_MARKER.search(_body(comment))
-    ]
-    app_replies = [_body(comment) for comment in comments if _login(comment) == APP_AUTHOR]
+    entries = [comment_entry(comment) for comment in comments]
+    rework = [str(read.entry["body"]) for read in read_markers(REWORK_ROUND, entries)]
+    app_replies = [_body(comment) for comment in comments if author_login(comment) == APP_LOGIN]
     trusted = [
-        f"{kind} by @{_login(item)}:\n\n{_body(item)}"
+        f"{kind} by @{author_login(item)}:\n\n{_body(item)}"
         for kind, items in (
             ("Comment", comments),
             ("Review", reviews),
