@@ -201,11 +201,17 @@ def secret_var(name: str) -> bool:
     return any(p.endswith(SECRET_VAR_PARTS) for p in re.split(r"[^A-Z0-9]+", name.upper()))
 
 
+def check_secret_print(program: str, args: list[str]) -> str | None:
+    """Why `echo`/`printf` would print the value of a secret-looking variable, or None."""
+    if program not in PRINTING_COMMANDS:
+        return None
+    refs = (m.group(1) or m.group(2) for a in args for m in VALUE_EXPANSION.finditer(a))
+    if any(secret_var(name) for name in refs):
+        return f"`{program}` prints a variable whose name looks secret"
+    return None
+
+
 def check_env_dump(program: str, args: list[str]) -> str | None:
-    if program in PRINTING_COMMANDS:
-        refs = (m.group(1) or m.group(2) for a in args for m in VALUE_EXPANSION.finditer(a))
-        if any(secret_var(name) for name in refs):
-            return f"`{program}` prints a variable whose name looks secret"
     names = [a for a in args if not a.startswith(("-", "+"))]
     if program == "printenv":
         if not names:
@@ -323,6 +329,7 @@ def check_argv(argv: list[str], cwd: Path, depth: int) -> str | None:
         return check_shell(" ".join(args), cwd, depth + 1)
     return (
         check_env_dump(program, args)
+        or check_secret_print(program, args)
         or check_secret_store(program, args)
         or check_file_args(program, args)
     )
