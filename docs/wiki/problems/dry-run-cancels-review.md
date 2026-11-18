@@ -1,7 +1,10 @@
 # A dry run in the review's concurrency group
 
 - 2026-11-18, at `fabiandistler/agents@b101adc`: a manual `pr-review` dispatch shares the concurrency group `pr-review-<n>` with the review runs of the same pull request (`.github/workflows/factory-pr-review.yml:93-97`, `cancel-in-progress: true`).
-- 2026-11-18: on #878, the `opened` run [44336062821](https://github.com/fabiandistler/agents/actions/runs/44336062821) cancelled the dry run [44335933096](https://github.com/fabiandistler/agents/actions/runs/44335933096) that had been dispatched 41 s earlier.
+- 2026-11-18, on #878:
+  - The dry run [44335933096](https://github.com/fabiandistler/agents/actions/runs/44335933096) was dispatched at 15:27:55Z, 7 s after the pull request opened (15:27:48Z).
+  - The `opened` run [44336062821](https://github.com/fabiandistler/agents/actions/runs/44336062821) was created at 15:28:36Z and cancelled the dry run.
+  - The same `opened` run then armed the bot's auto-merge, which is row 2 of the acceptance record.
   - The dry run's `publish` still ran (`always()`) and planned the following, but wrote none of it, being a dry run:
     - `review:unavailable`;
     - a comment blaming a missing provider;
