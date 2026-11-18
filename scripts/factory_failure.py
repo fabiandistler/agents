@@ -41,6 +41,7 @@ from factory_failure_policy import (
 )
 from pr_actions import Operation
 from pr_apply import WriteClient, send_operation
+from pr_github import author_login
 from pr_github_client import PER_PAGE, GitHubClient, ReadClient, get_json, paginate
 
 SCRIPT = "factory_failure.py"
@@ -95,17 +96,11 @@ def _object(client: ReadClient, path: str, params: dict | None = None) -> dict:
     return payload
 
 
-def _login(entry: dict) -> str:
-    user = entry.get("user")
-    login = user.get("login") if isinstance(user, dict) else None
-    return login if isinstance(login, str) else ""
-
-
 def _issue(entry: dict) -> dict:
     return {
         "number": entry.get("number"),
         "state": entry.get("state"),
-        "author": _login(entry),
+        "author": author_login(entry),
         "body": entry.get("body") or "",
         "labels": [
             label["name"]
@@ -119,7 +114,7 @@ def _with_comments(client: ReadClient, repo: str, issue: dict) -> dict:
     comments = paginate(client, f"/repos/{repo}/issues/{issue['number']}/comments")
     return {
         **issue,
-        "comments": [{"author": _login(c), "body": c.get("body") or ""} for c in comments],
+        "comments": [{"author": author_login(c), "body": c.get("body") or ""} for c in comments],
     }
 
 

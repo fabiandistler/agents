@@ -43,6 +43,7 @@ from implementer_contract import contract_text, read_ticket
 from pr_actions import Operation
 from pr_apply import WriteClient, send_operation
 from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
+from pr_github import author_login
 from pr_github_client import (
     PER_PAGE,
     REPO_PATTERN,
@@ -189,7 +190,7 @@ def non_pass_rounds(pull: MergedPull, comments: list[dict]) -> int:
     markers = {
         marker
         for comment in comments
-        if _login(comment) == COMMENT_AUTHOR
+        if author_login(comment) == COMMENT_AUTHOR
         for marker in REWORK_MARKER.findall(_body(comment))
     }
     return len(markers) + (1 if pull.labels & NON_PASS_VERDICTS else 0)
@@ -206,12 +207,6 @@ def choose(pending: list[MergedPull], rounds: dict[int, int]) -> MergedPull:
 def _mapping(value: object) -> dict:
     """A JSON object field, or an empty one when GitHub sent something else."""
     return value if isinstance(value, dict) else {}
-
-
-def _login(item: dict) -> str:
-    user = item.get("user")
-    login = user.get("login") if isinstance(user, dict) else None
-    return login if isinstance(login, str) else ""
 
 
 def _body(item: dict) -> str:
@@ -390,16 +385,16 @@ def build_context(
     sticky = [
         _body(comment)
         for comment in comments
-        if _login(comment) == COMMENT_AUTHOR and COMMENT_MARKER in _body(comment)
+        if author_login(comment) == COMMENT_AUTHOR and COMMENT_MARKER in _body(comment)
     ]
     rework = [
         _body(comment)
         for comment in comments
-        if _login(comment) == COMMENT_AUTHOR and REWORK_MARKER.search(_body(comment))
+        if author_login(comment) == COMMENT_AUTHOR and REWORK_MARKER.search(_body(comment))
     ]
-    app_replies = [_body(comment) for comment in comments if _login(comment) == APP_AUTHOR]
+    app_replies = [_body(comment) for comment in comments if author_login(comment) == APP_AUTHOR]
     trusted = [
-        f"{kind} by @{_login(item)}:\n\n{_body(item)}"
+        f"{kind} by @{author_login(item)}:\n\n{_body(item)}"
         for kind, items in (
             ("Comment", comments),
             ("Review", reviews),
