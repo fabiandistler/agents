@@ -7,6 +7,7 @@ import pr_review
 import pr_review_claude
 import pr_review_comments as comments
 import pytest
+from factory_handoff import WORKFLOW_BOT_LOGIN
 from pr_review_testkit import base_context, run_cli, user_payload, write_context
 
 END_OF_DIFF = "=== END OF DIFF ==="
@@ -52,9 +53,7 @@ def test_a_comment_without_an_association_is_left_out():
 
 
 def test_the_review_bots_sticky_comment_is_left_out_even_if_trusted():
-    sticky = comment(
-        f"{pr_comment.COMMENT_MARKER}\nSTICKY-FINDINGS", "MEMBER", pr_comment.COMMENT_AUTHOR
-    )
+    sticky = comment(f"{pr_comment.COMMENT_MARKER}\nSTICKY-FINDINGS", "MEMBER", WORKFLOW_BOT_LOGIN)
     request, _ = build(sticky, comment("A human answer."))
 
     payload = user_payload(request)

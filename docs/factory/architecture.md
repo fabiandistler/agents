@@ -245,8 +245,8 @@ A runner keeps nothing, so every fact one run hands the next lives on GitHub:
 | Artifact `rework-findings` | Rework gate | Rework model job, its only task list |
 | Artifacts `issue-context`, `issue-triage` | triage `assess`, `triage` | triage `publish` |
 | Artifact `run-summary` (90 days) | implementer | Retro gate |
-| PR comment `<!-- pr-review-bot -->` | `publish` (`pr_comment.py:14`) | `publish`, which edits only its own |
-| Issue comment `<!-- issue-triage-bot -->` | triage `publish` | triage `assess`: two automatic triages per issue |
+| PR comment `<!-- pr-review-bot -->` | `publish`, through the handoff protocol module (`factory_handoff.py`) | `publish`, which edits only its own, and Retro gate, both through the module's reader |
+| Issue comment `<!-- issue-triage-bot -->` | triage `publish`, through the handoff protocol module (`factory_handoff.py`) | triage `assess` through the module's reader: two automatic triages per issue |
 | PR comments `<!-- rework-round:<k> head:<sha> -->`, `<!-- rework-handoff head:<sha> -->` | Rework gate, through the handoff protocol module (`factory_handoff.py`) | Rework gate (one per head; their count is the round), Retro gate, both through the module's reader |
 | Issue body `<!-- factory-failure:<hash> -->` | Fix task | Fix task (dedupe) |
 | Labels `retro:done`, `auto-merge:bot` | Retro gate; `publish` | Retro gate (counter); `hold`, `publish` (ownership) |

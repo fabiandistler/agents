@@ -8,7 +8,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 import retro_gate
 from factory_handoff import APP_LOGIN, REWORK_ROUND, format_marker
-from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
+from factory_handoff import WORKFLOW_BOT_LOGIN as COMMENT_AUTHOR
+from pr_comment import COMMENT_MARKER
 from pr_github_client import FetchError, Response
 from pr_github_fake import json_response
 

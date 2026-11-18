@@ -17,12 +17,13 @@ from pathlib import Path
 import pr_actions
 import pr_comment
 import pr_github_client
+from factory_handoff import WORKFLOW_BOT_LOGIN
 from pr_risk_testkit import file_entry
 
 SCRIPT = Path(__file__).resolve().parent / "pr_publish.py"
 MARKER = pr_comment.COMMENT_MARKER
 # The login GITHUB_TOKEN writes as; only its comments can be the sticky comment.
-BOT_AUTHOR = pr_comment.COMMENT_AUTHOR
+BOT_AUTHOR = WORKFLOW_BOT_LOGIN
 MAINTAINER = pr_actions.MAINTAINER_LOGIN
 
 # The kinds the writer resolves; a plan must name no other.
@@ -146,7 +147,7 @@ def pull_request(head_sha: str, labels: list[str]) -> dict:
 
 
 # The `auto_merge` object of a pull request payload while auto-merge is on.
-ACTIVE_AUTO_MERGE = {"merge_method": "merge", "enabled_by": {"login": "github-actions[bot]"}}
+ACTIVE_AUTO_MERGE = {"merge_method": "merge", "enabled_by": {"login": WORKFLOW_BOT_LOGIN}}
 
 
 ISSUE_LABELS_PATH = f"/repos/{REPO}/issues/{NUMBER}/labels"

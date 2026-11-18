@@ -27,7 +27,8 @@ it is skipped when:
 The dispatch goes to the implementer's workflow file on the default branch,
 with `inputs.issue`. GITHUB_TOKEN may do that: a workflow_dispatch "always
 creates a workflow run" (GitHub docs, "Triggering a workflow", read
-2026-11-13). The run's actor is github-actions[bot], which the implementer's
+2026-11-13). The run's actor is the workflow bot
+(`factory_handoff.WORKFLOW_BOT_LOGIN`), which the implementer's
 claude-code-action step admits only because it lists it in `allowed_bots`. A
 run started this way starts no `workflow_run` workflow, so the implementer's
 model-free follow-up job dispatches this queue and, unless the run succeeded,

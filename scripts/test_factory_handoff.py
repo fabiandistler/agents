@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 from factory_handoff import (
     APP_LOGIN,
+    ISSUE_TRIAGE,
+    REVIEW_STICKY,
     REWORK_HANDOFF,
     REWORK_ROUND,
     WORKFLOW_BOT_LOGIN,
@@ -17,6 +19,8 @@ OTHER_HEAD = "f" * 40
 KINDS = {
     "round": (REWORK_ROUND, {"round": 2, "head": HEAD}),
     "handoff": (REWORK_HANDOFF, {"head": HEAD}),
+    "sticky": (REVIEW_STICKY, {}),
+    "triage": (ISSUE_TRIAGE, {}),
 }
 
 
@@ -39,6 +43,33 @@ def test_the_rework_round_text_is_as_stored_on_github():
 
 def test_the_rework_handoff_text_is_as_stored_on_github():
     assert format_marker(REWORK_HANDOFF, head=HEAD) == f"<!-- rework-handoff head:{HEAD} -->"
+
+
+def test_the_review_sticky_text_is_as_stored_on_github():
+    assert format_marker(REVIEW_STICKY) == "<!-- pr-review-bot -->"
+
+
+def test_the_issue_triage_text_is_as_stored_on_github():
+    assert format_marker(ISSUE_TRIAGE) == "<!-- issue-triage-bot -->"
+
+
+@pytest.mark.parametrize("kind", [REVIEW_STICKY, ISSUE_TRIAGE])
+def test_a_quoted_fieldless_marker_in_a_human_comment_reads_as_nothing(kind):
+    quoted = f"> {format_marker(kind)}\n> the bot said this"
+    assert read_markers(kind, [entry(quoted, "fabiandistler")]) == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "other"), [(REVIEW_STICKY, ISSUE_TRIAGE), (ISSUE_TRIAGE, REVIEW_STICKY)]
+)
+def test_a_fieldless_marker_reads_only_its_own_kind(kind, other):
+    assert read_markers(kind, [entry(format_marker(other))]) == []
+
+
+@pytest.mark.parametrize("kind", [REVIEW_STICKY, ISSUE_TRIAGE])
+def test_a_fieldless_formatter_rejects_any_field(kind):
+    with pytest.raises(ValueError):
+        format_marker(kind, head=HEAD)
 
 
 @pytest.mark.parametrize("name", KINDS)

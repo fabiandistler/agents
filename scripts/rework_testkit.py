@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 
 import pr_github_client
+from factory_handoff import WORKFLOW_BOT_LOGIN
 
 REPO = "fabiandistler/agents"
 PR = 42
@@ -21,7 +22,7 @@ OTHER_HEAD = "b" * 40
 THIRD_HEAD = "c" * 40
 REVIEW_RUN = 900
 OWN_RUN = 1000
-BOT = "github-actions[bot]"
+BOT = WORKFLOW_BOT_LOGIN
 
 PR_COMMENTS = f"/repos/{REPO}/issues/{PR}/comments"
 ISSUE_PATH = f"/repos/{REPO}/issues/{ISSUE}"

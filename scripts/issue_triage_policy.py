@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from factory_handoff import ISSUE_TRIAGE, format_marker, read_markers
+
 NEEDS_TRIAGE = "needs-triage"
 NEEDS_INFO = "needs-info"
 READY_FOR_AGENT = "ready-for-agent"
@@ -30,9 +32,9 @@ RECOMMENDABLE_STATES = (NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX)
 BOT_STATES = (NEEDS_INFO,)
 CATEGORIES = ("bug", "enhancement")
 
-# The triage comment is found by this marker and its author, the workflow bot.
-COMMENT_MARKER = "<!-- issue-triage-bot -->"
-COMMENT_AUTHOR = "github-actions[bot]"
+# The triage comment's marker; the handoff protocol reader counts it only in a
+# comment by the workflow bot.
+COMMENT_MARKER = format_marker(ISSUE_TRIAGE)
 
 # Only issues by people with write access reach the model: the repository is
 # public, and both the subscription quota and the prompt are theirs to spend.
@@ -53,13 +55,9 @@ def state_labels(labels: list[str]) -> list[str]:
     return [label for label in STATE_LABELS if label in labels]
 
 
-def _is_bot_triage(comment: dict) -> bool:
-    return comment.get("author") == COMMENT_AUTHOR and COMMENT_MARKER in (comment.get("body") or "")
-
-
 def count_bot_triages(comments: list[dict]) -> int:
     """Count the triage comments the workflow bot posted on the issue."""
-    return sum(1 for comment in comments if _is_bot_triage(comment))
+    return len(read_markers(ISSUE_TRIAGE, comments))
 
 
 def parse_time(text: str) -> datetime:
@@ -82,7 +80,7 @@ def _relabeled_since_last_triage(comments: list[dict], label_events: list[dict])
     never counts: only a maintainer's later re-add asks for another run.
     """
     newest_triage = max(
-        parse_time(comment["created_at"]) for comment in comments if _is_bot_triage(comment)
+        parse_time(str(read.entry["created_at"])) for read in read_markers(ISSUE_TRIAGE, comments)
     )
     return any(
         parse_time(event["created_at"]) > newest_triage
