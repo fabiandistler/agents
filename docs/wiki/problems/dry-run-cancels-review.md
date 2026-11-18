@@ -9,9 +9,9 @@
     - `review:unavailable`;
     - a comment blaming a missing provider;
     - `pr-review/verdict` with state `error`.
-- Inferred, not observed: a dry run dispatched during a real review cancels that review, and the cancelled run then writes exactly that plan.
+- 2026-11-18, inferred, not observed: a dry run dispatched during a real review cancels that review, and the cancelled run then writes exactly that plan.
   - The `error` status fails the required check.
   - Recovery: dispatch with `"dry_run": "false"`.
-- Until #882 gives dry runs their own group, wait for the review run of the head to finish before dispatching a dry run.
+- 2026-11-18: until #882 gives dry runs their own group, wait for the review run of the head to finish before dispatching a dry run.
 
 Related: [PR review acceptance record](../../agents/pr-review-acceptance.md), [missing pull_request runs](missing-pull-request-runs.md).
