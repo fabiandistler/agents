@@ -19,6 +19,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-11 factory rollout](decisions/2026-11-11-factory-rollout.md) — dotfiles and repo-maintenance via reusable workflows, spec #786.
 - [2026-11-14 decisions](decisions/2026-11-14-decisions.md) — #802, #822, #823 option 1; repo-maintenance#150; YAML tickets stay interactive; #764 done.
 - [2026-11-13 triage decisions](decisions/2026-11-13-triage-decisions.md) — reopen #783, queue issue #801, #769 script-only, YAML tickets in interactive sessions.
+- [2026-11-18 decisions](decisions/2026-11-18-decisions.md) — `PR_AUTO_MERGE=true`; high-risk zones already in `pr_risk.py`, no issue; #877 lists all repos.
 
 ## Recurring problems
 
