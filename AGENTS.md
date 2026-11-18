@@ -14,6 +14,16 @@ Code, Codex CLI, opencode, Continue, Aider, Cursor, and others.
 - Vocabulary: [`GLOSSARY.md`](GLOSSARY.md). Decisions:
   [`docs/adr/README.md`](docs/adr/README.md).
 
+## Other repos
+
+When a task changes another repo, use its local clone, or clone it from the
+remote if the path is missing. Read that repo's `AGENTS.md` before changing it.
+The paths are the WSL2 clones; on Posit Workbench they differ. A cloud routine
+sees only the repos attached to its task; these pointers do not attach one.
+
+- `repo-maintenance`: `~/dev/repo-maintenance`, else `https://github.com/fabiandistler/repo-maintenance`
+- `dotfiles`: `~/.local/share/chezmoi`, else `https://github.com/fabiandistler/dotfiles`
+
 ## How to use this repo
 
 - Each directory under `skills/` that contains a `SKILL.md` file is a
