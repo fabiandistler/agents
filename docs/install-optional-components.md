@@ -162,19 +162,29 @@ over-block costs one question and a leaked token a rotation. It also blocks
 environment dumps: bare `env`, `printenv` without a name or with a secret-looking
 one (`*_TOKEN`, `*_KEY`, `*SECRET*`, ...), `export -p`, `declare -x`/`-p`, bare
 `set`, `/proc/<pid>/environ`, plus `pass show`, `gopass show`, `sops -d` and
-`gpg --decrypt`.
+`gpg --decrypt`, and `echo`/`printf` of a secret-looking variable
+(`echo "$API_TOKEN"`, `${API_TOKEN:-x}`). A path held in a shell variable
+assigned earlier in the same command (`F=.env; cat "$F"`, also after `export`,
+`readonly`, `local`, `declare`) or produced by a command substitution
+(`cat "$(echo .env)"`) counts as written out.
 
 It lets through what only names, writes or consumes a secret file: `ls`, `rm`,
-`test -f`, `git add`/`rm`/`check-ignore`, `source .env`, `--env-file .env`,
-`cp .env.example .env`, `ssh -i ~/.ssh/id_ed25519`; `env FOO=bar cmd` (the
-command is checked) and `printenv PATH`. Listing file names (`Glob`, `ls`)
-passes too. Malformed hook input fails open (exit 3), as with the merge guard.
+`test -f`, `git add`/`rm`/`check-ignore`, `source .env` and `. .env`,
+`--env-file .env`, `cp .env.example .env`, `ssh -i ~/.ssh/id_ed25519`;
+`env FOO=bar cmd` (the command is checked), `printenv PATH`, and a variable's
+length or presence (`echo "${#API_TOKEN}"`, `${API_TOKEN:+set}`). Listing file
+names (`Glob`, `ls`) passes too. Malformed hook input fails open (exit 3), as
+with the merge guard.
 
 The table above applies with `secret-guard`, `secret-read-guard.js` and the
 `secret read guard` markers. Limits: it keeps secrets out of the context by
-accident, it does not sandbox a determined agent. `echo $TOKEN`, a script or
-`python -c` that opens `.env`, or `grep -r TOKEN .` get through. So do a bare
+accident, it does not sandbox a determined agent. A variable assigned in an
+earlier tool call (each call is checked alone), a path built by `read`, a loop
+or `${F%x}`-style parameter operations, a secret printed by any command other
+than `echo`/`printf` (`cat <<<"$TOKEN"`, `python -c`), a script or `python -c`
+that opens `.env`, or `grep -r TOKEN .` get through. So do a bare
 `cat *` next to a `secrets.env` and a glob in a directory name
 (`cat ~/.config/*/rclone.conf`). A shell word with whitespace counts as prose,
 not a path, so `git commit -m 'never commit .env'` passes and so does
-`cat "My Project/.env"`; a file tool's path with spaces is blocked.
+`cat "My Project/.env"`; a file tool's path with spaces is blocked. The parser
+does not keep quoting either, so a single-quoted `'echo $TOKEN'` or `'$(cat .env)'` is blocked too.

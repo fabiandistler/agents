@@ -110,6 +110,22 @@ BLOCKED_COMMANDS = [
     "bash -lc 'cat .env'",
     "bash -euo pipefail <<'EOF'\ncat .env\nEOF",
     "cat \\\n  .env",
+    # A path in a variable, a command substitution, or a printed secret (#876).
+    'F=.env; cat "$F"',
+    'F=.env; grep TOKEN "${F}"',
+    'F=~/demo/app.env; cat "$F"',
+    'export F=~/demo/app.env; cat "$F"',
+    'D=~/demo; F="$D/app.env"; grep TOKEN "$F"',
+    'F=.env; bash -c "cat $F"',
+    'cat "$(echo .env)"',
+    'cat "$(echo ~/demo/app.env)"',
+    "cat $(echo .env)",
+    "cat `echo .env`",
+    'echo "$(cat .env)"',
+    'source .env; echo "$API_TOKEN"',
+    'echo "$GITHUB_TOKEN"',
+    'printf "%s" "${API_TOKEN:-unset}"',
+    "source ~/demo/app.env; printenv API_TOKEN",
 ]
 
 ALLOWED_COMMANDS = [
@@ -169,6 +185,17 @@ ALLOWED_COMMANDS = [
     "cat ~/.gemini/settings.json",
     "ls -la # then cat .env",
     "git commit -m 'docs: never commit .env # really'",
+    'F=.env; ls "$F"',
+    'F=.env; test -f "$F" && echo present',
+    ". .env",
+    "set -a; . .env; set +a",
+    'echo "${#API_TOKEN}"',
+    'echo "${API_TOKEN:+set}"',
+    'echo "$PATH"',
+    'echo "$HOME"',
+    'F=README.md; cat "$F"',
+    'cat "$(git rev-parse --show-toplevel)/README.md"',
+    "git commit -m \"$(cat <<'EOF'\nfix: stop reading .env\nEOF\n)\"",
 ]
 
 

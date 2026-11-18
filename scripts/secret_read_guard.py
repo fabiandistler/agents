@@ -20,9 +20,12 @@ command or a file tool (Read, Edit, Grep, MCP tools with a path, the file
 headers of a Codex `apply_patch`, never its body); dumping the
 environment with bare `env`, `printenv`,
 `export -p`, `declare -x`/`-p`, bare `set` or `/proc/<pid>/environ`.
+Also blocked: `echo`/`printf` of a variable whose name looks secret
+(an API token variable). A path in a shell variable (`F=.env; cat "$F"`) or in a
+command substitution (`cat "$(echo .env)"`) counts as written out.
 Allowed: `env FOO=bar cmd` (a launcher), `printenv NAME` for a name that does
 not look secret, commands that only name a file (`ls`, `rm`, `git add`,
-`source`, `--env-file`), and writing one (`cp .env.example .env`).
+`source`, `.`, `--env-file`), and writing one (`cp .env.example .env`).
 
 Reuses the merge guard's shell parser. Stdlib-only.
 """
@@ -43,6 +46,7 @@ from pr_merge_guard import (
     EXIT_BLOCK,
     HARNESSES,
     SHELLS,
+    SUBSTITUTION,
     UsageError,
     parse_event,
     positionals,
@@ -129,6 +133,15 @@ PASS_LISTING = {"find", "search", "help", "version", "git", "init", "sync"}
 PASS_STORES = {"pass", "gopass"}
 SOPS_DECRYPT = {"-d", "--decrypt", "decrypt"}
 GPG_SECRET_FLAGS = {"-d", "--decrypt", "--decrypt-files"}
+# `$NAME`, `${NAME}`: a variable reference this guard can substitute.
+VARIABLE_REF = re.compile(r"\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*)(?!\w))")
+# An expansion that prints a variable's value: `$NAME`, `${NAME}`, `${NAME:-x}`,
+# `${NAME:0:4}`, but not its length `${#NAME}` or `${NAME:+set}`.
+VALUE_EXPANSION = re.compile(r"\$(?:\{([A-Za-z_]\w*)(?!\w|:?\+)|([A-Za-z_]\w*)(?!\w))")
+ASSIGNMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.DOTALL)
+# Builtins whose `NAME=value` arguments assign a shell variable.
+DECLARING_COMMANDS = {"export", "readonly", "local", "declare", "typeset"}
+PRINTING_COMMANDS = {"echo", "printf"}
 SECRET_VAR_PARTS = (
     "TOKEN", "SECRET", "KEY", "PASSWORD", "PASSWD", "PASS", "PAT", "CREDENTIAL",
     "CREDENTIALS", "AUTH", "COOKIE",
@@ -189,6 +202,10 @@ def secret_var(name: str) -> bool:
 
 
 def check_env_dump(program: str, args: list[str]) -> str | None:
+    if program in PRINTING_COMMANDS:
+        refs = (m.group(1) or m.group(2) for a in args for m in VALUE_EXPANSION.finditer(a))
+        if any(secret_var(name) for name in refs):
+            return f"`{program}` prints a variable whose name looks secret"
     names = [a for a in args if not a.startswith(("-", "+"))]
     if program == "printenv":
         if not names:
@@ -246,13 +263,60 @@ def check_file_args(program: str, args: list[str]) -> str | None:
     return None
 
 
+def expand_variables(word: str, variables: dict[str, str]) -> str:
+    """`word` with `$NAME` and `${NAME}` replaced for each variable assigned earlier."""
+    return VARIABLE_REF.sub(lambda m: variables.get(m.group(1) or m.group(2), m.group(0)), word)
+
+
+def record_assignments(argv: list[str], variables: dict[str, str]) -> None:
+    """Remember the `NAME=value` words of a simple command, bare or after `export`."""
+    words = argv
+    while words and (match := ASSIGNMENT.match(words[0])):
+        variables[match.group(1)] = match.group(2)
+        words = words[1:]
+    if words and words[0] in DECLARING_COMMANDS:
+        for word in words[1:]:
+            if match := ASSIGNMENT.match(word):
+                variables[match.group(1)] = match.group(2)
+
+
+def substitution_bodies(word: str) -> list[str]:
+    """The command text inside each `$(…)` and backtick pair of a quoted shell word."""
+    bodies: list[str] = []
+    i = 0
+    while i < len(word):
+        if word.startswith("$(", i) and not word.startswith("$((", i):
+            depth, j = 1, i + 2
+            while j < len(word) and depth:
+                depth += {"(": 1, ")": -1}.get(word[j], 0)
+                j += 1
+            bodies.append(word[i + 2 : j - 1 if depth == 0 else j])
+            i = j
+        elif word[i] == "`" and (end := word.find("`", i + 1)) > 0:
+            bodies.append(word[i + 1 : end])
+            i = end + 1
+        else:
+            i += 1
+    return bodies
+
+
 def check_argv(argv: list[str], cwd: Path, depth: int) -> str | None:
     words = strip_prefixes(argv)
     if not words:
         if any(Path(w).name == "env" for w in argv):
             return "`env` without a command dumps the environment"
         return None
-    program, args = Path(words[0]).name, words[1:]
+    for word in words:
+        for body in substitution_bodies(word) if word != SUBSTITUTION else []:
+            if reason := check_shell(body, cwd, depth + 1):
+                return reason
+            try:
+                # The output of `$(echo .env)` is the file a reading command opens.
+                words = words + [w for cmd in split_simple_commands(body) for w in cmd]
+            except ValueError:
+                continue
+    # `.` is the POSIX name of `source`; Path(".").name would be "".
+    program, args = (words[0] if words[0] == "." else Path(words[0]).name), words[1:]
     if program in SHELLS and (script := shell_script(args)) is not None:
         return check_shell(script, cwd, depth + 1)
     if program == "eval":
@@ -273,14 +337,20 @@ def check_shell(command: str, cwd: Path, depth: int = 0) -> str | None:
         if reason := check_shell(body, cwd, depth + 1):
             return reason
     try:
-        simple_commands = split_simple_commands(text)
+        simple_commands = split_simple_commands(text, keep_expansions=True)
     except ValueError:
         # Unbalanced quotes: the shell would reject the command too. Fall back
         # to a coarse scan of the words.
         words = re.split(r"[\s;|&()<>`'\"]+", text)
         kinds = (secret_file(w.removeprefix("$")) for w in words)
         return next((f"the command names {k}" for k in kinds if k), None)
-    for argv in simple_commands:
+    variables: dict[str, str] = {}
+    for index, argv in enumerate(simple_commands):
+        argv = [expand_variables(word, variables) for word in argv]
+        record_assignments(argv, variables)
+        if SUBSTITUTION in argv and index + 1 < len(simple_commands):
+            # An unquoted `cat $(echo .env)`: the substitution's command follows.
+            argv = [w for w in argv if w != SUBSTITUTION] + simple_commands[index + 1]
         if reason := check_argv(argv, cwd, depth):
             return reason
     return None
