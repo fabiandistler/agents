@@ -38,6 +38,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [implementer write limits](problems/implementer-write-limits.md) — no writes to `.github/workflows/`, `.claude/`, `.pre-commit-config.yaml`; Rework/Retro inactive until YAML is committed.
 - [missing pull_request runs](problems/missing-pull-request-runs.md) — #826: no `pull_request` run, so required `secrets` never reported (2026-11-14).
 - [review model inputs](problems/review-model-inputs.md) — review saw no rebuttals or briefs and stripped HTML comments; #822/#823.
+- [dry run in the review's concurrency group](problems/dry-run-cancels-review.md) — a manual dry run shares `pr-review-<n>` and can cancel a review (2026-11-18); fix #882.
 
 ## Snapshots
 
