@@ -20,8 +20,8 @@ draws the state labels as a state machine.
 that opens without a state label, except a wayfinder map or ticket: an issue
 that opens with a label containing `wayfinder:` is a decision, not
 implementation work, and carries no triage label (#896). Only a label set in
-the create call counts; one added later comes too late. It calls the reusable workflow
-`.github/workflows/factory-triage-label.yml`
+the create call counts; one added later comes too late. It calls the reusable
+workflow `.github/workflows/factory-triage-label.yml`
 ([ADR-0018](../adr/0018-reusable-factory-workflows.md)), which holds the job
 and its state-label guard and takes no inputs. It needs no model and no secret;
 `scripts/test_triage_label_workflow.py` keeps its state labels in sync with
