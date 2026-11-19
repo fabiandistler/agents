@@ -18,7 +18,22 @@ import hashlib
 import re
 
 from agent_run_report import FAILED_PREFIX
-from factory_handoff import WORKFLOW_BOT_LOGIN
+from factory_handoff import (
+    FIX_ISSUE,
+    FIX_RUN,
+    IMPLEMENTER_WORKFLOW,
+    ISSUE_TRIAGE_WORKFLOW,
+    RETRO_WORKFLOW,
+    REVIEW_WORKFLOW,
+    REWORK_WORKFLOW,
+    SKILL_AUDIT_WORKFLOW,
+    WORKFLOW_BOT_LOGIN,
+    MarkerKind,
+    format_marker,
+    implementer_run_issue,
+    read_markers,
+    workflow_path,
+)
 from issue_triage_policy import NEEDS_TRIAGE
 from pr_comment import fenced_block
 
@@ -30,18 +45,19 @@ ISSUE_LABELS = (LABEL, "bug", NEEDS_TRIAGE)
 # marker quoted by anyone else never counts.
 AUTHOR = WORKFLOW_BOT_LOGIN
 
-WATCHED_WORKFLOWS = (
-    ".github/workflows/implementer.yml",
-    ".github/workflows/skill-audit.yml",
-    ".github/workflows/issue-triage.yml",
-    ".github/workflows/pr-review.yml",
-    ".github/workflows/rework.yml",
-    ".github/workflows/retro.yml",
+WATCHED_WORKFLOWS = tuple(
+    workflow_path(file_name)
+    for file_name in (
+        IMPLEMENTER_WORKFLOW,
+        SKILL_AUDIT_WORKFLOW,
+        ISSUE_TRIAGE_WORKFLOW,
+        REVIEW_WORKFLOW,
+        REWORK_WORKFLOW,
+        RETRO_WORKFLOW,
+    )
 )
-IMPLEMENTER = ".github/workflows/implementer.yml"
+IMPLEMENTER = workflow_path(IMPLEMENTER_WORKFLOW)
 FAILED_CONCLUSIONS = ("failure", "timed_out")
-# The implementer's run-name; only this exact shape names the issue it works.
-IMPLEMENTER_RUN_NAME = re.compile(r"implementer: issue #([1-9][0-9]*)")
 
 MAX_REASON = 200
 NO_REASON = "(no error annotation)"
@@ -102,30 +118,34 @@ def signature(path: str, job: str, step: str, reason: str) -> dict:
     """The signature fields and the marker their hash makes."""
     fields = {"workflow": path, "job": job, "step": step, "reason": normalize_reason(reason)}
     digest = hashlib.sha256("\n".join(fields.values()).encode("utf-8")).hexdigest()[:16]
-    return {**fields, "hash": digest, "marker": f"<!-- factory-failure:{digest} -->"}
+    return {**fields, "hash": digest, "marker": format_marker(FIX_ISSUE, hash=digest)}
 
 
 def run_record(run: dict) -> str:
     """The marker that records one run attempt on an issue."""
-    return f"<!-- factory-failure-run:{run['id']}/{run['attempt']} -->"
+    return format_marker(FIX_RUN, run_id=run["id"], attempt=run["attempt"])
 
 
 def fix_issue_number(run: dict) -> int | None:
     """The issue an implementer run works on, read from its run-name."""
     if run.get("path") != IMPLEMENTER:
         return None
-    found = IMPLEMENTER_RUN_NAME.fullmatch(str(run.get("display_title") or ""))
-    return int(found.group(1)) if found else None
+    return implementer_run_issue(run.get("display_title"))
 
 
-def _bot_wrote(entry: dict, marker: str) -> bool:
-    return entry.get("author") == AUTHOR and marker in (entry.get("body") or "")
+def _bot_marked(kind: MarkerKind, entries: list[dict], marker: str) -> list[dict]:
+    """The entries the bot wrote that carry ``marker``, a ``kind`` marker, in entry order."""
+    return [
+        dict(read.entry)
+        for read in read_markers(kind, entries)
+        if any(format_marker(kind, **fields) == marker for fields in read.markers)
+    ]
 
 
 def find_issues(issues: list[dict], marker: str) -> tuple[dict | None, dict | None]:
     """The open issue the bot filed with ``marker``, and the newest closed one."""
     matching = sorted(
-        (issue for issue in issues if _bot_wrote(issue, marker)),
+        _bot_marked(FIX_ISSUE, issues, marker),
         key=lambda issue: issue["number"],
         reverse=True,
     )
@@ -226,9 +246,7 @@ def plan(
     elif open_issue is not None:
         target = open_issue
     if target is not None:
-        if _bot_wrote(target, record) or any(
-            _bot_wrote(comment, record) for comment in target.get("comments", [])
-        ):
+        if _bot_marked(FIX_RUN, [target, *target.get("comments", [])], record):
             planned["skip_reason"] = f"run {run['id']} attempt {run['attempt']} is recorded"
             return planned
         planned["action"] = {

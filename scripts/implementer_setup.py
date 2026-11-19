@@ -20,10 +20,10 @@ import os
 import re
 from dataclasses import dataclass
 
+from factory_handoff import IMPLEMENTER_WORKFLOW
 from pr_github_client import FetchError
 
 WORKFLOW_REF_VARIABLE = "GITHUB_WORKFLOW_REF"
-IMPLEMENTER_WORKFLOW = "implementer.yml"
 IMPLEMENT_JOB = "implement"
 BRANCH_PREFIX = "agent/issue-"
 

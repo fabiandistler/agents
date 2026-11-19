@@ -47,7 +47,7 @@ import sys
 from dataclasses import asdict, dataclass, field
 
 import agent_run_capacity
-from factory_failure_policy import IMPLEMENTER_RUN_NAME
+from factory_handoff import implementer_run_issue
 from implementer_capacity import MAX_WORKING_RUNS
 from implementer_claim import (
     HTTP_NOT_FOUND,
@@ -157,9 +157,9 @@ def latest_runs(client: GitHubClient, repo: str, workflow: str) -> dict[int, dic
     for run in runs:
         if not isinstance(run, dict):
             raise FetchError(f"GitHub API returned a malformed run for {path}")
-        found = IMPLEMENTER_RUN_NAME.fullmatch(str(run.get("display_title") or ""))
-        if found is not None:
-            newest.setdefault(int(found[1]), run)
+        issue = implementer_run_issue(run.get("display_title"))
+        if issue is not None:
+            newest.setdefault(issue, run)
     return newest
 
 

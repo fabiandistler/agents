@@ -9,6 +9,7 @@ from pathlib import Path
 
 import factory_failure_policy
 import yaml
+from factory_handoff import implementer_run_name
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
@@ -79,8 +80,13 @@ def test_the_implementer_run_name_matches_the_policy():
     run_name = yaml.safe_load(
         (REPO_ROOT / ".github/workflows/implementer.yml").read_text(encoding="utf-8")
     )["run-name"]
-    assert run_name == "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
-    assert factory_failure_policy.IMPLEMENTER_RUN_NAME.fullmatch("implementer: issue #783")
+    assert run_name == implementer_run_name("${{ github.event.issue.number || inputs.issue }}")
+    assert (
+        factory_failure_policy.fix_issue_number(
+            {"path": factory_failure_policy.IMPLEMENTER, "display_title": implementer_run_name(783)}
+        )
+        == 783
+    )
 
 
 def test_caller_calls_the_local_factory_workflow_and_stays_thin():
