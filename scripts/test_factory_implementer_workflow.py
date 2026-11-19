@@ -27,6 +27,7 @@ from agent_run_workflow_testkit import (
     step_with_id,
     workflow,
 )
+from factory_handoff import implementer_run_name
 
 
 def test_the_factory_is_fetched_at_the_workflows_own_commit_without_a_token():
@@ -245,8 +246,8 @@ def test_the_check_command_and_the_guards_are_prepared_from_the_factory(tmp_path
 def test_caller_calls_the_local_factory_workflow_with_this_repositorys_inputs():
     assert list(workflow(IMPLEMENTER)["jobs"]) == [implementer_setup.IMPLEMENT_JOB]
     # The Fix task reads the issue from the caller's run-name (ADR-0016).
-    assert workflow(IMPLEMENTER)["run-name"] == (
-        "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
+    assert workflow(IMPLEMENTER)["run-name"] == implementer_run_name(
+        "${{ github.event.issue.number || inputs.issue }}"
     )
     job = agent_job(IMPLEMENTER)
     assert job["uses"] == "./.github/workflows/factory-implementer.yml"
