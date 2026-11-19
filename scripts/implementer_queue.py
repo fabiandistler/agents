@@ -16,7 +16,7 @@ dispatch.
 A waiting issue is an open issue with `ready-for-agent`. Lowest number first,
 it is skipped when:
 
-- its latest implementer run, found by the run name `implementer: issue #<n>`,
+- its latest implementer run, found by its run name (`factory_handoff`),
   has not completed, or ended other than success or skipped: a running issue is
   handled, and a failed or cancelled one waits for a person (and the Fix task),
   so a failing issue is not dispatched again and again;

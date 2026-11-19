@@ -75,7 +75,7 @@ NON_PASS_VERDICTS = frozenset(
 )
 DEFAULT_EVERY = 10
 SUMMARY_ARTIFACT = "run-summary"
-# The events that run implementer.yml as it is on the default branch. A pull
+# The events that run the implementer caller as it is on the default branch. A pull
 # request runs its own copy of the file, which can reuse the run-name and upload
 # a summary of its choosing.
 IMPLEMENTER_EVENTS = ("issues", "workflow_dispatch")

@@ -1,6 +1,6 @@
 """How many runs of an agent workflow are working ahead of this one.
 
-The agent-run workflows (implementer.yml, rework.yml) allow a fixed number of
+The agent-run workflows (the implementer and Rework callers) allow a fixed number of
 runs to work at a time. Each asks the Actions API, from inside its own run,
 how many other runs of the same workflow are working and come earlier.
 
