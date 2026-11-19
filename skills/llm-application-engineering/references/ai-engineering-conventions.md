@@ -236,6 +236,15 @@ obvious — the cost of guessing wrong is high._
 - **Set approval gates by consequence and reversibility. Require explicit human
   approval for high-impact or hard-to-reverse mutations**, such as destructive
   SQL, external messages, or transactions. (Ch. 5, 10)
+- **Whatever enters the context, the requesting user can extract — authorize
+  before context construction, never with an instruction.** Filter retrieved
+  documents, tool results and memory by the end user's permissions before they
+  reach the prompt; keep credentials and other users' data out of the system
+  prompt and write it as if it will be published. "Do not reveal X" is not an
+  access control: models disclose context they were told to withhold. The
+  DB-scope rule below is the database case of this rule. (Ch. 5; OWASP LLM07,
+  https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/)
+  - ❌ every client's salary benchmarks in context plus "only discuss the user's own client"   ← likely-default
 - **Enforce an agent's database scope with database grants, never with the
   prompt or a query filter: connect it as a dedicated user with SELECT on
   approved views only — never through the developer's or an admin connection.
