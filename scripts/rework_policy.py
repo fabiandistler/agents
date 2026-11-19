@@ -23,6 +23,7 @@ from factory_handoff import (
     REVIEW_WORKFLOW,
     REWORK_HANDOFF,
     REWORK_ROUND,
+    agent_branch_issue,
     format_marker,
     read_markers,
     workflow_path,
@@ -37,7 +38,6 @@ REVIEW_WORKFLOW_PATH = workflow_path(REVIEW_WORKFLOW)
 REVIEW_EVENT = "pull_request_target"
 REWORK_VERDICTS = ("concerns", "block")
 
-AGENT_BRANCH = re.compile(r"agent/issue-([1-9][0-9]*)")
 HEAD_SHA = re.compile(r"[0-9a-f]{40}")
 
 PROCEED = "proceed"
@@ -64,8 +64,7 @@ def agent_issue(pull: dict) -> int | None:
     """The issue number of an `agent/issue-<n>` head branch, or None for any other branch."""
     head = pull.get("head")
     ref = head.get("ref") if isinstance(head, dict) else None
-    match = AGENT_BRANCH.fullmatch(ref) if isinstance(ref, str) else None
-    return int(match[1]) if match else None
+    return agent_branch_issue(ref)
 
 
 def linked_issue(pull: dict, repo: str) -> int | None:

@@ -20,12 +20,12 @@ import os
 import re
 from dataclasses import dataclass
 
-from factory_handoff import IMPLEMENTER_WORKFLOW
+from factory_handoff import AGENT_BRANCH_PREFIX, IMPLEMENTER_WORKFLOW, agent_branch
 from pr_github_client import FetchError
 
 WORKFLOW_REF_VARIABLE = "GITHUB_WORKFLOW_REF"
 IMPLEMENT_JOB = "implement"
-BRANCH_PREFIX = "agent/issue-"
+BRANCH_PREFIX = AGENT_BRANCH_PREFIX
 
 # A file name under .github/workflows/, never a path.
 WORKFLOW_FILE_PATTERN = re.compile(r"[A-Za-z0-9._-]+\.ya?ml")
@@ -41,7 +41,7 @@ class ImplementerSetup:
     branch_prefix: str = BRANCH_PREFIX
 
     def branch(self, issue: int) -> str:
-        return f"{self.branch_prefix}{issue}"
+        return agent_branch(issue, self.branch_prefix)
 
 
 DEFAULT_SETUP = ImplementerSetup()
