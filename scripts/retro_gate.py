@@ -66,7 +66,6 @@ from pr_github_client import (
 from pr_labels import VERDICT_PREFIX
 
 RETRO_WORKFLOW = workflow_path(factory_handoff.RETRO_WORKFLOW)
-AGENT_BRANCH = re.compile(r"^agent/issue-([1-9][0-9]*)$")
 RETRO_BRANCH_PREFIX = "agent/retro-"
 RETRO_DONE = "retro:done"
 RETRO_DONE_LABEL = ("5319e7", "The Retro task has looked at this merged agent pull request")
@@ -159,9 +158,9 @@ def merged_agent_pull(pull: dict, repo: str) -> MergedPull | None:
         return None
     head = _mapping(pull.get("head"))
     ref = head.get("ref")
-    match = AGENT_BRANCH.fullmatch(ref) if isinstance(ref, str) else None
+    issue = factory_handoff.agent_branch_issue(ref)
     full_name = _mapping(head.get("repo")).get("full_name")
-    if match is None or not isinstance(full_name, str) or full_name.lower() != repo.lower():
+    if issue is None or not isinstance(full_name, str) or full_name.lower() != repo.lower():
         return None
     number = pull.get("number")
     if isinstance(number, bool) or not isinstance(number, int):
@@ -176,7 +175,7 @@ def merged_agent_pull(pull: dict, repo: str) -> MergedPull | None:
     )
     return MergedPull(
         number,
-        int(match.group(1)),
+        issue,
         _timestamp(pull["merged_at"], "merge time"),
         names,
     )

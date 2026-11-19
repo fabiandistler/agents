@@ -15,6 +15,7 @@ import subprocess
 from pathlib import Path
 from typing import cast
 
+import factory_handoff
 import rework_gate
 import yaml
 from pr_github_client import GitHubClient
@@ -67,6 +68,14 @@ def test_triggers_on_a_completed_review_or_a_manual_run_never_a_label():
     assert triggers["workflow_run"] == {"workflows": ["pr-review"], "types": ["completed"]}
     assert triggers["workflow_dispatch"]["inputs"]["pr"]["required"] is True
     assert set(triggers) == {"workflow_run", "workflow_dispatch"}
+
+
+def test_the_head_branch_filter_uses_the_default_agent_branch_prefix():
+    condition = _job("gate")["if"]
+    filters = re.findall(
+        r"startsWith\(github\.event\.workflow_run\.head_branch, '([^']*)'\)", condition
+    )
+    assert filters == [factory_handoff.AGENT_BRANCH_PREFIX]
 
 
 def test_permissions_are_empty_by_default_and_narrow_in_each_job():

@@ -26,7 +26,7 @@ from pathlib import Path
 
 import rework_policy
 from agent_run_capacity import runs_working_ahead
-from factory_handoff import REVIEW_WORKFLOW, REWORK_WORKFLOW
+from factory_handoff import REVIEW_WORKFLOW, REWORK_WORKFLOW, agent_branch
 from implementer_claim import swap_to_human
 from pr_github import comment_entry
 from pr_github_client import (
@@ -175,6 +175,8 @@ def decide_rework(
         return rework_policy.Decision(rework_policy.STOP, "another rework run is working")
     if not write:
         return decision
+    if decision.issue is None:
+        raise ValueError("a proceed decision carries its issue number")
     round_number = decision.round or 0
     head_sha = decision.head_sha or ""
     findings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -184,7 +186,7 @@ def decide_rework(
                 "repository": repo,
                 "pull_request": pr,
                 "issue": decision.issue,
-                "branch": f"agent/issue-{decision.issue}",
+                "branch": agent_branch(decision.issue),
                 "round": round_number,
                 "max_rounds": rework_policy.MAX_REWORK_ROUNDS,
                 "head_sha": head_sha,

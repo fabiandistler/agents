@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 
 import pr_github_client
-from factory_handoff import WORKFLOW_BOT_LOGIN
+from factory_handoff import WORKFLOW_BOT_LOGIN, agent_branch
 
 REPO = "fabiandistler/agents"
 PR = 42
@@ -64,7 +64,7 @@ def run(**overrides: object) -> dict:
     return payload
 
 
-def head(ref: str = f"agent/issue-{ISSUE}", sha: str = HEAD, repo: str = REPO) -> dict:
+def head(ref: str = agent_branch(ISSUE), sha: str = HEAD, repo: str = REPO) -> dict:
     return {"ref": ref, "sha": sha, "repo": {"full_name": repo}}
 
 
