@@ -4,12 +4,12 @@ A runner keeps nothing, so one run tells the next what happened through
 comment and issue markers, run names and workflow file names on GitHub
 (docs/factory/architecture.md, "Data flow"). This module owns those facts: who
 counts as the factory's own author, the text of each marker, the implementer
-run name and the caller workflow file names. ``format_marker`` writes a
+run name, the agent branch name and the caller workflow file names. ``format_marker`` writes a
 marker; ``read_markers`` reads them back, and only from entries the workflow
 bot wrote, so a marker a person quotes is just text.
 
 Pure and standard library only; it imports no other factory module. The
-marker texts and the run name are a contract with comments, issues and runs
+marker texts, the run name and the agent branch are a contract with comments, issues and runs
 already stored on GitHub: a changed byte resets a counter, duplicates a
 comment or loses the issue a run worked on.
 """
@@ -25,6 +25,11 @@ WORKFLOW_BOT_LOGIN = "github-actions[bot]"
 # The login the Claude GitHub App writes as: the implementer's and Rework's
 # pull requests and replies.
 APP_LOGIN = "claude[bot]"
+
+# The branch prefix of an implementer run's work, `agent/issue-<n>`. The
+# implementer may be called with another prefix; Rework and Retro read this one,
+# and the reusable Rework workflow's head-branch filter names it too.
+AGENT_BRANCH_PREFIX = "agent/issue-"
 
 # The caller workflows other runs look up, by file name under .github/workflows/.
 WORKFLOWS_DIR = ".github/workflows"
@@ -183,3 +188,16 @@ def implementer_run_issue(title: object) -> int | None:
         return None
     found = _RUN_NAME_PATTERN.fullmatch(title)
     return int(found["issue"]) if found else None
+
+
+def agent_branch(issue: int, prefix: str = AGENT_BRANCH_PREFIX) -> str:
+    """The branch an implementer run works on for an issue number."""
+    return f"{prefix}{issue}"
+
+
+def agent_branch_issue(ref: object, prefix: str = AGENT_BRANCH_PREFIX) -> int | None:
+    """The issue number the whole ref ``prefix<n>`` names; ``None`` for any other ref."""
+    if not isinstance(ref, str) or not ref.startswith(prefix):
+        return None
+    found = re.fullmatch(_POSITIVE, ref[len(prefix) :])
+    return int(found[0]) if found else None

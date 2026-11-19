@@ -1,10 +1,11 @@
 """The handoff protocol module: marker text, round trip, authorship, malformed markers,
-the implementer run name and the caller workflow names."""
+the implementer run name, the agent branch and the caller workflow names."""
 
 from __future__ import annotations
 
 import pytest
 from factory_handoff import (
+    AGENT_BRANCH_PREFIX,
     APP_LOGIN,
     FIX_ISSUE,
     FIX_RUN,
@@ -19,6 +20,8 @@ from factory_handoff import (
     REWORK_WORKFLOW,
     SKILL_AUDIT_WORKFLOW,
     WORKFLOW_BOT_LOGIN,
+    agent_branch,
+    agent_branch_issue,
     format_marker,
     implementer_run_issue,
     implementer_run_name,
@@ -306,3 +309,45 @@ def test_the_caller_workflow_file_names():
         "skill-audit.yml",
     )
     assert workflow_path(RETRO_WORKFLOW) == ".github/workflows/retro.yml"
+
+
+def test_the_agent_branch_text_is_as_stored_on_github():
+    assert AGENT_BRANCH_PREFIX == "agent/issue-"
+    assert agent_branch(889) == "agent/issue-889"
+
+
+@pytest.mark.parametrize("issue", [1, 889, 10**9])
+@pytest.mark.parametrize("prefix", [AGENT_BRANCH_PREFIX, "factory/", "a.b_c-"])
+def test_the_agent_branch_round_trips(issue, prefix):
+    assert agent_branch_issue(agent_branch(issue, prefix), prefix) == issue
+
+
+def test_a_custom_prefix_branch_is_not_a_default_prefix_branch():
+    assert agent_branch_issue(agent_branch(7, "factory/")) is None
+    assert agent_branch_issue(agent_branch(7), "factory/") is None
+
+
+@pytest.mark.parametrize(
+    "ref",
+    [
+        "agent/issue-0",
+        "agent/issue-07",
+        "agent/issue-7-extra",
+        "agent/issue-7/x",
+        "agent/issue-7 ",
+        "refs/heads/agent/issue-7",
+        "xagent/issue-7",
+        "agent/issue-",
+        "agent/retro-7",
+        "agent/issue--7",
+        "",
+        None,
+        7,
+    ],
+)
+def test_any_other_ref_names_no_issue(ref):
+    assert agent_branch_issue(ref) is None
+
+
+def test_the_prefix_is_text_not_a_pattern():
+    assert agent_branch_issue("aXb_c-7", "a.b_c-") is None
