@@ -17,7 +17,10 @@ an issue's life; the [architecture](../factory/architecture.md#label-state-machi
 draws the state labels as a state machine.
 
 `.github/workflows/triage-label.yml` adds `needs-triage` to every new issue
-that opens without a state label. It calls the reusable workflow
+that opens without a state label, except a wayfinder map or ticket: an issue
+that opens with a label containing `wayfinder:` is a decision, not
+implementation work, and carries no triage label (#896). Only a label set in
+the create call counts; one added later comes too late. It calls the reusable workflow
 `.github/workflows/factory-triage-label.yml`
 ([ADR-0018](../adr/0018-reusable-factory-workflows.md)), which holds the job
 and its state-label guard and takes no inputs. It needs no model and no secret;
@@ -51,8 +54,10 @@ person's label event is newer than the last bot triage; a bot's label event
 never does.
 Issues by people without write access, bot issues and issues filed with a
 state label are not sent to the model. The workflow filter already drops a
-bot's issue and an issue filed with a state label other than `needs-triage`,
-so neither starts a runner.
+bot's issue, an issue filed with a state label other than `needs-triage` and
+an issue filed with a `wayfinder:` label, so none of them starts a runner. A
+wayfinder issue is still triaged when a person adds `needs-triage` to it or
+starts a manual run.
 The state labels live in the handoff protocol module
 (`scripts/factory_handoff.py`); `scripts/test_issue_triage_policy.py` keeps
 them in sync with this table.

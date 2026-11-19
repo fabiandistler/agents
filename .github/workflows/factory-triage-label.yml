@@ -1,7 +1,10 @@
 name: factory-triage-label
 
 # Reusable workflow (ADR-0018): every new issue gets `needs-triage`, so nothing
-# skips the triage queue. triage-label.yml calls it here; another repository
+# skips the triage queue except a wayfinder map or ticket: an issue opened with
+# a label containing `wayfinder:` is a decision, not implementation work, and
+# carries no triage label (#896). Only a label set in the create call counts.
+# triage-label.yml calls it here; another repository
 # calls it with a thin caller pinned to a SHA, on `issues: [opened]`, granting
 # `issues: write`. `github` is the caller's context.
 # Model-free on purpose, adapted from mattpocock/skills. An issue opened with a
@@ -23,7 +26,8 @@ jobs:
       !contains(github.event.issue.labels.*.name, 'needs-info') &&
       !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
       !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
-      !contains(github.event.issue.labels.*.name, 'wontfix')
+      !contains(github.event.issue.labels.*.name, 'wontfix') &&
+      !contains(join(github.event.issue.labels.*.name, ','), 'wayfinder:')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

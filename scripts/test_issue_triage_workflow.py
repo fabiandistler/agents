@@ -288,6 +288,21 @@ def test_a_new_issue_starts_a_runner_only_without_a_state_label():
         assert f"!contains(github.event.issue.labels.*.name, '{label}')" in clause, label
 
 
+WAYFINDER_TERM = "!contains(join(github.event.issue.labels.*.name, ','), 'wayfinder:')"
+
+
+def test_a_new_wayfinder_issue_starts_no_runner_but_stays_triageable_on_purpose():
+    # A wayfinder map or ticket is a decision, not implementation work (#896):
+    # its `opened` run is dropped. A person adding needs-triage, the needs-info
+    # reply and a manual run still triage it, so only the `opened` clause has
+    # the term (the concurrency group repeats it; the equality test covers it).
+    assert WAYFINDER_TERM in _opened_clause()
+    condition = " ".join(_jobs()["assess"]["if"].split())
+    others = [c for c in _top_level_clauses(condition) if c != _opened_clause()]
+    assert len(others) == 3
+    assert all("wayfinder" not in clause for clause in others), others
+
+
 def test_an_issue_filed_with_a_state_label_other_than_needs_triage_is_never_triaged():
     # Through the caller: it filters nothing itself, so the called `opened`
     # clause decides, and the `labeled` clause only passes needs-triage.
