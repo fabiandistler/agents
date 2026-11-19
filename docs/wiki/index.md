@@ -43,6 +43,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [tools gallery had no checks](problems/tools-no-checks.md) — `tools` deployed straight to Pages; data-workflow broken since 2026-04-19, XSS; smoke suite tools#17 (2026-11-19).
 - [subagent tool overhead](problems/subagent-tool-overhead.md) — ~92k tokens of unused tool definitions per subagent, 45–57 % of its cost (retro 2026-11-19).
 - [Playwright revision mismatch](problems/playwright-revision-mismatch.md) — cloud image Chromium ≠ Python Playwright's; use `--browser-channel chrome` (2026-11-19).
+- [fix-agent test time](problems/fix-agent-test-time.md) — fix runs spent most time on full-suite reruns; `-k` trap fixed, xdist in CI (2026-11-19).
 
 ## Snapshots
 

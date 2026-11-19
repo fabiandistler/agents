@@ -19,3 +19,8 @@
   `ea5d802`), but none of the open audit bugs: most are silently wrong results
   after interaction, and the suite checks only the first load (retro
   2026-11-19). Fixes therefore ship their repro as a test.
+- 2026-11-19, later PRs: tools#25 (prek hooks with gitleaks, the 5000-token limit
+  with 11 existing tools exempt by name, Dependabot, `AGENTS.md`), tools#26
+  (one-time whitespace pass instead of name-based hook exclusions), tools#27
+  (an end-of-test check: no sideways scroll at phone width, no visible
+  NaN/Infinity/undefined; pytest-xdist in CI, pytest step ~195 s → 59 s).

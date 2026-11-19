@@ -30,6 +30,15 @@ Decided by the user on 2026-11-19 in a chief-of-staff session that took on
   claude.ai; not confirmed as done.
 - Resulting work (2026-11-19): infra PR tools#17; fix issues tools#11 to tools#16,
   each fixed on its own branch and PR.
+- Whitespace (user, 2026-11-19): one formatting pass (option b) instead of
+  excluding 5 tools from the whitespace hooks; intentional trailing spaces in
+  `<pre>` kept as `&#32;` (tools#26).
+- Behaviour changes in fixes, reported to the user 2026-11-19, no objection:
+  evo-algo spawns more food and reproduces at a lower threshold (tools#20);
+  dfbetas treats a column as numeric at a majority of cells instead of 95 %
+  (tools#19).
+- Open (2026-11-19): tool-pattern's clipboard inspector has no paste target on a
+  phone after tools#23; the user was asked whether to file an issue.
 - Open (2026-11-19): touch targets ≥ 44 px, CSS tokens for canvas/SVG, the
   gallery's house style vs. "serif body", axe-core in the suite.
 
