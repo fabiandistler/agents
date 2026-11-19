@@ -81,7 +81,7 @@ If the request asks for several deliverables (e.g., "implementation plan with mo
 
 ## Output mechanics
 
-Two delivery modes, slightly different mechanics. Which one applies depends on the runtime, not on the content.
+Two delivery modes, slightly different mechanics. Which one applies depends on the runtime, not on the content. A third destination, the learning gallery, applies only when the user asks for it.
 
 ### Writing a file to disk
 
@@ -94,6 +94,15 @@ If the artifact is a member of a *web* of related files (explorations → mockup
 Some runtimes render a document inline next to the conversation instead of writing it to disk. Emit a single `text/html` document — not a component framework, not a bare diagram, not SVG-only — unless the request specifically calls for one of those. It is the closest analog to the file on disk and gives the user the same affordance: open, screenshot, share.
 
 Sandboxed preview panes are stricter than a local file. Guard storage access with try/catch and an in-memory fallback instead of assuming `localStorage`/`sessionStorage` exists, keep everything in one file, and load no external scripts beyond whatever the host allows. Some runtimes render a single self-contained file with storage possibly unavailable, so the guarded in-memory fallback above is the portable default.
+
+### Publishing to the learning gallery (on request only)
+
+The learning gallery is the user's public repository `fabiandistler/tools`, served at `https://fabiandistler.github.io/tools/`; the user calls it the tools repo. A page goes there only when the user asks for it.
+
+1. **Check the content.** The repository is public and a merge publishes the page, so it carries only generic or synthetic data. When it holds employer, client or person data, stop and ask before committing.
+2. **Add the file.** In a clone of the repository, branch from `main` and write the full document to the repository root as `<kebab-case-name>.html`. The gallery's index lists every root `.html` file on its own, so it needs no edit.
+3. **Open a pull request** against `main`. Use the GitHub MCP tools if the session has them; otherwise `gh api repos/fabiandistler/tools/pulls -f title=<title> -f head=<branch> -f base=main -f body=<body>`. The user merges, and the merge deploys.
+4. **Hand back both links:** the pull request and the page's address after the merge, `https://fabiandistler.github.io/tools/<kebab-case-name>.html`.
 
 ## A note on token cost and time
 
