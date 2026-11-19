@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from check_pr_issue_links import closing_references
 from factory_handoff import (
     APP_LOGIN,
+    READY_FOR_HUMAN,
     REVIEW_WORKFLOW,
     REWORK_HANDOFF,
     REWORK_ROUND,
@@ -28,7 +29,6 @@ from factory_handoff import (
     read_markers,
     workflow_path,
 )
-from issue_triage_policy import READY_FOR_HUMAN
 from pr_labels import DO_NOT_MERGE
 
 MAX_REWORK_ROUNDS = 2

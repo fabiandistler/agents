@@ -24,9 +24,9 @@ from pathlib import Path
 
 import pr_cli
 import pr_github_client
+from factory_handoff import NEEDS_TRIAGE
 from issue_triage_answer import AnswerError, artifact, build_request, parse_answer, render_comment
 from issue_triage_policy import (
-    NEEDS_TRIAGE,
     TRIGGERS,
     assess,
     parse_time,

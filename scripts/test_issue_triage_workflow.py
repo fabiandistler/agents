@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 import yaml
-from issue_triage_policy import STATE_LABELS
+from factory_handoff import STATE_LABELS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "factory-issue-triage.yml"

@@ -22,7 +22,8 @@ import json
 import sys
 from typing import TextIO
 
-from issue_triage_policy import CATEGORIES, STATE_LABELS
+from factory_handoff import STATE_LABELS
+from issue_triage_policy import CATEGORIES
 
 # The factory's reusable workflows and the actions they run
 # (docs/agents/factory-onboarding.md, "Manual steps"; pr-review-runbook.md,

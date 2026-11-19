@@ -41,6 +41,7 @@ from pathlib import Path
 
 from agent_run_report import FAILED_PREFIX
 from check_pr_issue_links import closing_references
+from factory_handoff import READY_FOR_AGENT, READY_FOR_HUMAN
 from implementer_capacity import MAX_WORKING_RUNS, runs_working_ahead
 from implementer_contract import NO_CONTRACT_COMMENT, Ticket, contract_text, read_ticket
 from implementer_setup import (
@@ -53,7 +54,6 @@ from implementer_setup import (
     branch_prefix,
     workflow_file,
 )
-from issue_triage_policy import READY_FOR_AGENT, READY_FOR_HUMAN
 from pr_github_client import (
     REPO_PATTERN,
     FetchError,

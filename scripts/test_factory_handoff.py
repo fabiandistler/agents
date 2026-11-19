@@ -1,5 +1,6 @@
 """The handoff protocol module: marker text, round trip, authorship, malformed markers,
-the implementer run name, the agent branch and the caller workflow names."""
+the implementer run name, the agent branch, the caller workflow names and the issue
+state labels."""
 
 from __future__ import annotations
 
@@ -12,6 +13,10 @@ from factory_handoff import (
     IMPLEMENTER_WORKFLOW,
     ISSUE_TRIAGE,
     ISSUE_TRIAGE_WORKFLOW,
+    NEEDS_INFO,
+    NEEDS_TRIAGE,
+    READY_FOR_AGENT,
+    READY_FOR_HUMAN,
     RETRO_WORKFLOW,
     REVIEW_STICKY,
     REVIEW_WORKFLOW,
@@ -19,6 +24,8 @@ from factory_handoff import (
     REWORK_ROUND,
     REWORK_WORKFLOW,
     SKILL_AUDIT_WORKFLOW,
+    STATE_LABELS,
+    WONTFIX,
     WORKFLOW_BOT_LOGIN,
     agent_branch,
     agent_branch_issue,
@@ -26,6 +33,7 @@ from factory_handoff import (
     implementer_run_issue,
     implementer_run_name,
     read_markers,
+    state_labels,
     workflow_path,
 )
 
@@ -351,3 +359,33 @@ def test_any_other_ref_names_no_issue(ref):
 
 def test_the_prefix_is_text_not_a_pattern():
     assert agent_branch_issue("aXb_c-7", "a.b_c-") is None
+
+
+def test_the_state_labels_are_as_stored_on_github_in_vocabulary_order():
+    assert STATE_LABELS == (
+        "needs-triage",
+        "needs-info",
+        "ready-for-agent",
+        "ready-for-human",
+        "wontfix",
+    )
+    assert STATE_LABELS == (NEEDS_TRIAGE, NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX)
+
+
+@pytest.mark.parametrize(
+    ("labels", "expected"),
+    [
+        ([], []),
+        (["bug", "enhancement"], []),
+        (["bug", NEEDS_TRIAGE], [NEEDS_TRIAGE]),
+        ([WONTFIX, "bug", NEEDS_TRIAGE, READY_FOR_AGENT], [NEEDS_TRIAGE, READY_FOR_AGENT, WONTFIX]),
+        (list(reversed(STATE_LABELS)), list(STATE_LABELS)),
+    ],
+    ids=["none", "no-state", "one", "vocabulary-order", "all"],
+)
+def test_state_labels_picks_the_state_labels_in_vocabulary_order(labels, expected):
+    assert state_labels(labels) == expected
+
+
+def test_state_labels_matches_whole_names_only():
+    assert state_labels(["needs-triage-later", "Wontfix", "ready-for"]) == []

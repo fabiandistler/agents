@@ -10,22 +10,26 @@ Two decisions live here, both pure functions over issue data:
   leaves the issue in ``needs-triage`` for the maintainer, who applies the
   state (docs/agents/triage-labels.md, ADR-0013).
 
-The state label strings follow docs/agents/triage-labels.md;
-scripts/test_issue_triage_policy.py keeps them in sync with that table.
+The state labels themselves belong to the handoff protocol module
+(factory_handoff.py); this module holds only the triage rules over them.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from factory_handoff import ISSUE_TRIAGE, format_marker, read_markers
+from factory_handoff import (
+    ISSUE_TRIAGE,
+    NEEDS_INFO,
+    NEEDS_TRIAGE,
+    READY_FOR_AGENT,
+    READY_FOR_HUMAN,
+    WONTFIX,
+    format_marker,
+    read_markers,
+    state_labels,
+)
 
-NEEDS_TRIAGE = "needs-triage"
-NEEDS_INFO = "needs-info"
-READY_FOR_AGENT = "ready-for-agent"
-READY_FOR_HUMAN = "ready-for-human"
-WONTFIX = "wontfix"
-STATE_LABELS = (NEEDS_TRIAGE, NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX)
 # What the model may recommend: every state except the one it starts from.
 RECOMMENDABLE_STATES = (NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX)
 # The only state the bot applies on its own.
@@ -48,11 +52,6 @@ AUTOMATIC_TRIGGERS = ("opened", "reply")
 # Automated triages per issue: the first on open, one more after the
 # reporter answers needs-info. After that only the maintainer re-triggers.
 MAX_AUTOMATIC_TRIAGES = 2
-
-
-def state_labels(labels: list[str]) -> list[str]:
-    """The state labels among ``labels``, in vocabulary order."""
-    return [label for label in STATE_LABELS if label in labels]
 
 
 def count_bot_triages(comments: list[dict]) -> int:

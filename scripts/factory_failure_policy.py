@@ -23,6 +23,7 @@ from factory_handoff import (
     FIX_RUN,
     IMPLEMENTER_WORKFLOW,
     ISSUE_TRIAGE_WORKFLOW,
+    NEEDS_TRIAGE,
     RETRO_WORKFLOW,
     REVIEW_WORKFLOW,
     REWORK_WORKFLOW,
@@ -34,7 +35,6 @@ from factory_handoff import (
     read_markers,
     workflow_path,
 )
-from issue_triage_policy import NEEDS_TRIAGE
 from pr_comment import fenced_block
 
 LABEL = "factory-failure"

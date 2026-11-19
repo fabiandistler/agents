@@ -27,7 +27,10 @@ is watching. So check each layer before you push:
    passed as `--job-name implement` in the prompt and listed by the jobs API
    as `<caller job> / implement`; Rework and Fix match workflow names; the
    event policy names `pr-review.yml`; Fix, Retro and the implementer queue
-   read the `run-name`; a renamed job or step files a new Fix issue.
+   read the `run-name`; a renamed job or step files a new Fix issue. The
+   handoff protocol module (`factory_handoff.py`) is the one place to change a
+   run name, marker, agent branch name, caller workflow file name or issue
+   state label; every task imports it from there.
 6. **A new task** gets `permissions: {}`, the narrowest job scopes, a
    structure test, and its workflow name in `fix-task.yml` plus its path in
    `WATCHED_WORKFLOWS` (`factory_failure_policy.py:32`). A model step that

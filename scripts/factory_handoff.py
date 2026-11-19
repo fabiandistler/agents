@@ -1,17 +1,18 @@
 """The handoff protocol: the facts factory runs hand each other through GitHub.
 
 A runner keeps nothing, so one run tells the next what happened through
-comment and issue markers, run names and workflow file names on GitHub
-(docs/factory/architecture.md, "Data flow"). This module owns those facts: who
-counts as the factory's own author, the text of each marker, the implementer
-run name, the agent branch name and the caller workflow file names. ``format_marker`` writes a
-marker; ``read_markers`` reads them back, and only from entries the workflow
-bot wrote, so a marker a person quotes is just text.
+comment and issue markers, run names, workflow file names and issue state
+labels on GitHub (docs/factory/architecture.md, "Data flow"). This module owns
+those facts: who counts as the factory's own author, the text of each marker,
+the implementer run name, the agent branch name, the caller workflow file names
+and the issue state labels every task moves (docs/agents/triage-labels.md).
+``format_marker`` writes a marker; ``read_markers`` reads them back, and only
+from entries the workflow bot wrote, so a marker a person quotes is just text.
 
 Pure and standard library only; it imports no other factory module. The
-marker texts, the run name and the agent branch are a contract with comments, issues and runs
-already stored on GitHub: a changed byte resets a counter, duplicates a
-comment or loses the issue a run worked on.
+marker texts, the run name, the agent branch and the state labels are a
+contract with comments, issues and runs already stored on GitHub: a changed
+byte resets a counter, duplicates a comment or loses the issue a run worked on.
 """
 
 from __future__ import annotations
@@ -40,6 +41,14 @@ RETRO_WORKFLOW = "retro.yml"
 ISSUE_TRIAGE_WORKFLOW = "issue-triage.yml"
 SKILL_AUDIT_WORKFLOW = "skill-audit.yml"
 
+# The issue state labels, in vocabulary order. An issue carries at most one.
+NEEDS_TRIAGE = "needs-triage"
+NEEDS_INFO = "needs-info"
+READY_FOR_AGENT = "ready-for-agent"
+READY_FOR_HUMAN = "ready-for-human"
+WONTFIX = "wontfix"
+STATE_LABELS = (NEEDS_TRIAGE, NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX)
+
 _HEAD = r"[0-9a-f]{40}"
 _POSITIVE = r"[1-9][0-9]*"
 _FAILURE_HASH = r"[0-9a-f]{16}"
@@ -52,6 +61,11 @@ _EXPRESSION = re.compile(r"\$\{\{.+\}\}")
 def workflow_path(file_name: str) -> str:
     """The repository path of a workflow file, as a run's ``path`` carries it."""
     return f"{WORKFLOWS_DIR}/{file_name}"
+
+
+def state_labels(labels: Sequence[str]) -> list[str]:
+    """The state labels among ``labels``, in vocabulary order."""
+    return [label for label in STATE_LABELS if label in labels]
 
 
 def _positive(value: object) -> bool:

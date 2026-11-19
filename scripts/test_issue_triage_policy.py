@@ -6,16 +6,18 @@ import re
 from pathlib import Path
 
 import pytest
-from factory_handoff import WORKFLOW_BOT_LOGIN as COMMENT_AUTHOR
-from issue_triage_policy import (
-    COMMENT_MARKER,
-    MAX_AUTOMATIC_TRIAGES,
+from factory_handoff import (
     NEEDS_INFO,
     NEEDS_TRIAGE,
     READY_FOR_AGENT,
     READY_FOR_HUMAN,
     STATE_LABELS,
     WONTFIX,
+)
+from factory_handoff import WORKFLOW_BOT_LOGIN as COMMENT_AUTHOR
+from issue_triage_policy import (
+    COMMENT_MARKER,
+    MAX_AUTOMATIC_TRIAGES,
     assess,
     plan_labels,
     unchanged_since_assessment,

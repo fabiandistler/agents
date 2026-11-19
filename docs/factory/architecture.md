@@ -222,7 +222,8 @@ stateDiagram-v2
 ```
 
 Text equivalent: an issue holds at most one of the five state labels
-(`STATE_LABELS`, `issue_triage_policy.py:26`). The triage label task, and the
+(`STATE_LABELS`, `factory_handoff.py:50`); the handoff protocol module owns
+them, and every task imports them from there. The triage label task, and the
 Fix task for its own issues, start it in `needs-triage`. The triage bot may
 move it to `needs-info`, and the reporter's answer moves it back (in a
 target, a person re-adds `needs-triage`). From `needs-triage`, only the
@@ -251,6 +252,7 @@ A runner keeps nothing, so every fact one run hands the next lives on GitHub:
 | Issue body `<!-- factory-failure:<hash> -->`, issue comments `<!-- factory-failure-run:<run id>/<attempt> -->` | Fix task, through the handoff protocol module (`factory_handoff.py`) | Fix task (dedupe; one record per run attempt), through the module's reader |
 | Labels `retro:done`, `auto-merge:bot` | Retro gate; `publish` | Retro gate (counter); `hold`, `publish` (ownership) |
 | Status `pr-review/verdict` | `publish` | the ruleset |
+| Issue state labels (`needs-triage` … `wontfix`) | triage `publish`, Fix task, implementer claim, Rework gate, all with the names from the handoff protocol module (`factory_handoff.py`) | triage `assess`, implementer claim and queue, onboarding check, through the module's names and its `state_labels` picker |
 | Run name `implementer: issue #<n>` | `implementer.yml:17`, as the handoff protocol module (`factory_handoff.py`) formats it; a structure test ties the two | Fix task, implementer queue, Retro gate, through the module's parser |
 | `RUN FAILED: <reason>` in the run summary | model step | `agent_run_report.py`, whose `::error::` becomes the Fix task's signature |
 
