@@ -38,8 +38,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+import factory_handoff
 from agent_brief import is_trusted
-from factory_handoff import APP_LOGIN, REVIEW_STICKY, REWORK_ROUND, read_markers
+from factory_handoff import (
+    APP_LOGIN,
+    IMPLEMENTER_WORKFLOW,
+    REVIEW_STICKY,
+    REWORK_ROUND,
+    implementer_run_name,
+    read_markers,
+    workflow_path,
+)
 from implementer_contract import contract_text, read_ticket
 from pr_actions import Operation
 from pr_apply import WriteClient, send_operation
@@ -56,7 +65,7 @@ from pr_github_client import (
 )
 from pr_labels import VERDICT_PREFIX
 
-RETRO_WORKFLOW = ".github/workflows/retro.yml"
+RETRO_WORKFLOW = workflow_path(factory_handoff.RETRO_WORKFLOW)
 AGENT_BRANCH = re.compile(r"^agent/issue-([1-9][0-9]*)$")
 RETRO_BRANCH_PREFIX = "agent/retro-"
 RETRO_DONE = "retro:done"
@@ -65,7 +74,6 @@ NON_PASS_VERDICTS = frozenset(
     f"{VERDICT_PREFIX}{verdict}" for verdict in ("concerns", "block", "unavailable")
 )
 DEFAULT_EVERY = 10
-IMPLEMENTER_WORKFLOW = "implementer.yml"
 SUMMARY_ARTIFACT = "run-summary"
 # The events that run implementer.yml as it is on the default branch. A pull
 # request runs its own copy of the file, which can reuse the run-name and upload
@@ -249,7 +257,7 @@ def _issue_comments(client: ReadClient, repo: str, number: int) -> list[dict]:
 
 def implementer_run(client: ReadClient, repo: str, issue: int) -> int | None:
     """The newest implementer run for the issue that kept a run-summary artifact."""
-    title = f"implementer: issue #{issue}"
+    title = implementer_run_name(issue)
     path = f"/repos/{repo}/actions/workflows/{IMPLEMENTER_WORKFLOW}/runs"
     page = 1
     while True:

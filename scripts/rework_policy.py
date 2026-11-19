@@ -18,14 +18,22 @@ import re
 from dataclasses import dataclass
 
 from check_pr_issue_links import closing_references
-from factory_handoff import APP_LOGIN, REWORK_HANDOFF, REWORK_ROUND, format_marker, read_markers
+from factory_handoff import (
+    APP_LOGIN,
+    REVIEW_WORKFLOW,
+    REWORK_HANDOFF,
+    REWORK_ROUND,
+    format_marker,
+    read_markers,
+    workflow_path,
+)
 from issue_triage_policy import READY_FOR_HUMAN
 from pr_labels import DO_NOT_MERGE
 
 MAX_REWORK_ROUNDS = 2
 
 BASE_BRANCH = "main"
-REVIEW_WORKFLOW_PATH = ".github/workflows/pr-review.yml"
+REVIEW_WORKFLOW_PATH = workflow_path(REVIEW_WORKFLOW)
 REVIEW_EVENT = "pull_request_target"
 REWORK_VERDICTS = ("concerns", "block")
 
