@@ -10,7 +10,7 @@
 # is github-actions[bot], which the implementer's claude-code-action step
 # admits through `allowed_bots`, and it starts no workflow_run workflow, so the
 # implementer's follow-up job dispatches the caller's queue and Fix task after
-# it (#863; see docs/agents/triage-labels.md#implementer-queue).
+# it (#863; see docs/agents/implementer-queue.md#implementer-queue).
 name: factory-implementer-queue
 
 on:
