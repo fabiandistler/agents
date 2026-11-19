@@ -20,6 +20,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-14 decisions](decisions/2026-11-14-decisions.md) — #802, #822, #823 option 1; repo-maintenance#150; YAML tickets stay interactive; #764 done.
 - [2026-11-13 triage decisions](decisions/2026-11-13-triage-decisions.md) — reopen #783, queue issue #801, #769 script-only, YAML tickets in interactive sessions.
 - [2026-11-18 decisions](decisions/2026-11-18-decisions.md) — `PR_AUTO_MERGE=true`; high-risk zones already in `pr_risk.py`, no issue; #877 lists all repos.
+- [2026-11-19 tools decisions](decisions/2026-11-19-tools-decisions.md) — tools gallery: deploy gate first, line limit reframed, fix high+med, skill rules, one branch per package.
 
 ## Recurring problems
 
@@ -39,6 +40,9 @@ nothing here describes the present. See [conventions](conventions.md).
 - [missing pull_request runs](problems/missing-pull-request-runs.md) — #826: no `pull_request` run, so required `secrets` never reported (2026-11-14).
 - [review model inputs](problems/review-model-inputs.md) — review saw no rebuttals or briefs and stripped HTML comments; #822/#823.
 - [dry run in the review's concurrency group](problems/dry-run-cancels-review.md) — a manual dry run shares `pr-review-<n>` and can cancel a review (2026-11-18); fix #882.
+- [tools gallery had no checks](problems/tools-no-checks.md) — `tools` deployed straight to Pages; data-workflow broken since 2026-04-19, XSS; smoke suite tools#17 (2026-11-19).
+- [subagent tool overhead](problems/subagent-tool-overhead.md) — ~92k tokens of unused tool definitions per subagent, 45–57 % of its cost (retro 2026-11-19).
+- [Playwright revision mismatch](problems/playwright-revision-mismatch.md) — cloud image Chromium ≠ Python Playwright's; use `--browser-channel chrome` (2026-11-19).
 
 ## Snapshots
 
@@ -48,3 +52,4 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-10-20 skill candidates](snapshots/2026-10-20-skill-candidates.md) — ranked proposals for new skills.
 - [2026-11-10 ready-for-human](snapshots/2026-11-10-ready-for-human.md) — four human issues across three repos and their recommended order.
 - [2026-11-13 triage](snapshots/2026-11-13-triage.md) — verdicts on all open issues in three repos, the agent queue order, manual steps with deadlines.
+- [2026-11-19 tools audit](snapshots/2026-11-19-tools-audit.md) — 13 files, 104 bugs, 94 rule violations; issues tools#11–#16.

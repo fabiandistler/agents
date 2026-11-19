@@ -19,6 +19,11 @@ cloud sessions it starts all draw on one Claude subscription.
   lean (no fan-out subagents while an implementer run works) or feed the
   queue only outside interactive hours. Until answered, the session stays
   lean.
+- 2026-11-19: the tools session fanned out about 2.6M subagent tokens across
+  twelve subagents (four parallel browser audits of 286k–312k each) before the
+  fix wave, without asking first, although the 2026-11-14 entry says the
+  session stays lean until the user answers. No implementer run was active
+  (last run 12:16 UTC). Flagged to the user the same day.
 
 Related: [no agent consumer outside agents](no-agent-consumer-outside-agents.md),
 [merge plan](../merge-plan.md) (2026-11-14 section).
