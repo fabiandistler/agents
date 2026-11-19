@@ -1,0 +1,1 @@
+../../plugins/workflow/agents/browser-worker.md

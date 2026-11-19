@@ -156,6 +156,18 @@ AGENT
     fail "OpenCode did not map mcp__github__create_pull_request to github_create_pull_request"
 }
 
+@test "OpenCode renders the workflow browser-worker with its GitHub tools" {
+  install_opencode_workflow
+  worker="$command_home/.config/opencode/agents/browser-worker.md"
+  [[ -f "$worker" ]] || fail "OpenCode install skipped the browser-worker agent"
+  for permission in edit bash github_issue_read github_create_pull_request github_issue_write; do
+    grep -qxF "  $permission: allow" "$worker" ||
+      fail "browser-worker lacks the $permission allow rule"
+  done
+  ! grep -qE '^  (webfetch|websearch|task): allow$' "$worker" ||
+    fail "browser-worker allows a tool its Claude tools: list leaves out"
+}
+
 @test "OpenCode agent install is idempotent and --update restores/prunes outputs" {
   install_opencode_architecture
   before="$(cat "$coupling")"

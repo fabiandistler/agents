@@ -179,7 +179,7 @@ needs `python3` (the extras are skipped with a warning otherwise); `--env`
 filters skills only, while the extras follow `--category`.
 
 **Subagents.** Each selected plugin's subagents (`coupling-analyst`,
-`cohesion-analyst`) are converted into [Codex custom
+`cohesion-analyst`, `browser-worker`) are converted into [Codex custom
 agents](https://developers.openai.com/codex/subagents) under
 `~/.codex/agents/<name>.toml`. The generated files carry a marker comment;
 files you created yourself are never overwritten, and `--uninstall` removes
