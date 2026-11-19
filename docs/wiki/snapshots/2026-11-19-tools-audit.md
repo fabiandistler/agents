@@ -28,5 +28,15 @@ skill adherence").
   bugs each, the other nine 3–10.
 - Skill follow-up: html-artifacts rule 9 and the 390 px rule 3 in agents#901;
   paste-ready html-tool-builder changes given to the user.
+- Outcome (2026-11-19, evening): every filed issue got a PR. Merged: tools#18
+  (#11), #19 (#12), #20 (#13), #21 (#15), #23 (#16), #24 (#14). #14 closed after the
+  owner checked the microphone on an iPhone. One more bug found while fixing #15
+  (Builder page ~825 px wide on a phone) became tools#22; its fix, tools#28, was
+  open when this was written.
+- Corrections the fixes made to the audit (2026-11-19): the einsingen octave
+  error also hit vowel-"i" tones from G2 to D5, and a lag search started one step
+  late above ~1.09 kHz even before #7 (PR tools#24). The #18 number parser read
+  "0.125" as 125 under a decimal comma; the dfbetas agent found it, fixed in
+  `fabiandistler/tools@d2bd2ec`.
 
 Related: [tools gallery had no checks](../problems/tools-no-checks.md).
