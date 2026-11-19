@@ -32,7 +32,7 @@ creates a workflow run" (GitHub docs, "Triggering a workflow", read
 claude-code-action step admits only because it lists it in `allowed_bots`. A
 run started this way starts no `workflow_run` workflow, so the implementer's
 model-free follow-up job dispatches this queue and, unless the run succeeded,
-the Fix task by `workflow_dispatch` (#863; docs/agents/triage-labels.md).
+the Fix task by `workflow_dispatch` (#863; docs/agents/implementer-queue.md).
 
 Standard library only. Prints one JSON object; errors name the API call and
 status, never issue text.

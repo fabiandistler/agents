@@ -93,6 +93,17 @@ def test_guard_skips_every_state_label_from_the_vocabulary():
         )
 
 
+WAYFINDER_TERM = "!contains(join(github.event.issue.labels.*.name, ','), 'wayfinder:')"
+
+
+def test_guard_skips_wayfinder_maps_and_tickets():
+    # A wayfinder map or ticket is a decision, not implementation work, and
+    # carries no triage label (#896). `contains` on the label array is an exact
+    # match, so the guard joins the names to match the `wayfinder:` prefix.
+    guard = " ".join(_label_job()["if"].split())
+    assert f"&& {WAYFINDER_TERM}" in guard
+
+
 def test_adds_needs_triage_label_through_rest():
     run = "\n".join(step.get("run", "") for step in _label_job()["steps"])
     needs_triage = _state_labels()["needs-triage"]

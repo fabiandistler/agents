@@ -11,12 +11,12 @@
 # sets the label (which is what starts the implementer).
 #
 # Triggers are the caller's (`github` is the caller's context): a new issue by
-# a person, filed without a state label or with `needs-triage`; the
-# maintainer adding `needs-triage` again; the reporter answering on a
-# `needs-info` issue; a manual run. Only issues by people with write access
-# reach the model, and the two automatic triggers stop after two bot triages
-# per issue (scripts/issue_triage_policy.py). The caller subscribes to
-# `issues: [opened, labeled]`, `issue_comment: [created]` and
+# a person, filed without a state label or with `needs-triage` and without a
+# `wayfinder:` label; the maintainer adding `needs-triage` again; the reporter
+# answering on a `needs-info` issue; a manual run. Only issues by people with
+# write access reach the model, and the two automatic triggers stop after two
+# bot triages per issue (scripts/issue_triage_policy.py). The caller
+# subscribes to `issues: [opened, labeled]`, `issue_comment: [created]` and
 # `workflow_dispatch`, and grants `contents: read` and `issues: write`.
 #
 # Scripts and the prompt run from this workflow's own repository and commit
@@ -76,7 +76,8 @@ concurrency:
       !contains(github.event.issue.labels.*.name, 'needs-info') &&
       !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
       !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
-      !contains(github.event.issue.labels.*.name, 'wontfix')) ||
+      !contains(github.event.issue.labels.*.name, 'wontfix') &&
+      !contains(join(github.event.issue.labels.*.name, ','), 'wayfinder:')) ||
       (github.event_name == 'issues' && github.event.action == 'labeled' &&
       github.event.label.name == 'needs-triage' && github.event.sender.type != 'Bot') ||
       (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
@@ -94,7 +95,10 @@ jobs:
     # here is always a person. `opened` passes only a person's issue with no
     # state label: an issue filed with `needs-triage` is triaged by its own
     # `labeled` run, and one filed with any other state label, or by a bot, is
-    # not waiting for triage (#797). A skipped job takes no runner.
+    # not waiting for triage (#797). Nor is a wayfinder map or ticket, filed
+    # with a label containing `wayfinder:` (#896); `join` makes `contains` a
+    # substring match. Only `opened` skips it: a person adding `needs-triage`
+    # or a manual run still triages it. A skipped job takes no runner.
     if: >-
       (github.event_name == 'issues' && github.event.action == 'opened' &&
       github.event.sender.type != 'Bot' &&
@@ -102,7 +106,8 @@ jobs:
       !contains(github.event.issue.labels.*.name, 'needs-info') &&
       !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
       !contains(github.event.issue.labels.*.name, 'ready-for-human') &&
-      !contains(github.event.issue.labels.*.name, 'wontfix')) ||
+      !contains(github.event.issue.labels.*.name, 'wontfix') &&
+      !contains(join(github.event.issue.labels.*.name, ','), 'wayfinder:')) ||
       (github.event_name == 'issues' && github.event.action == 'labeled' &&
       github.event.label.name == 'needs-triage' && github.event.sender.type != 'Bot') ||
       (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
