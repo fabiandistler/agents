@@ -53,8 +53,9 @@ Issues by people without write access, bot issues and issues filed with a
 state label are not sent to the model. The workflow filter already drops a
 bot's issue and an issue filed with a state label other than `needs-triage`,
 so neither starts a runner.
-`scripts/test_issue_triage_policy.py` keeps the bot's state labels in sync
-with this table.
+The state labels live in the handoff protocol module
+(`scripts/factory_handoff.py`); `scripts/test_issue_triage_policy.py` keeps
+them in sync with this table.
 
 Setup: the `CLAUDE_CODE_OAUTH_TOKEN` secret of the PR review; the optional
 repository variable `ISSUE_TRIAGE_MODEL` (default `sonnet`). A failed or

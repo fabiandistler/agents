@@ -7,7 +7,8 @@ import io
 import json
 
 import factory_repo_setup
-from issue_triage_policy import CATEGORIES, STATE_LABELS
+from factory_handoff import STATE_LABELS
+from issue_triage_policy import CATEGORIES
 
 
 def run(capsys, *argv: str, stdin: str = ""):

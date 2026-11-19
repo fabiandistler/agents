@@ -47,7 +47,7 @@ import sys
 from dataclasses import asdict, dataclass, field
 
 import agent_run_capacity
-from factory_handoff import implementer_run_issue
+from factory_handoff import READY_FOR_AGENT, implementer_run_issue
 from implementer_capacity import MAX_WORKING_RUNS
 from implementer_claim import (
     HTTP_NOT_FOUND,
@@ -63,7 +63,6 @@ from implementer_setup import (
     branch_prefix,
     workflow_file,
 )
-from issue_triage_policy import READY_FOR_AGENT
 from pr_github_client import (
     PER_PAGE,
     REPO_PATTERN,

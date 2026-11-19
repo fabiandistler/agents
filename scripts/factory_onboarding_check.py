@@ -35,7 +35,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import NoReturn
 
-from issue_triage_policy import STATE_LABELS
+from factory_handoff import STATE_LABELS
 from pr_github_client import REPO_PATTERN, FetchError, GitHubClient, ReadClient, get_json, paginate
 
 FACTORY_REPO = "fabiandistler/agents"

@@ -19,16 +19,8 @@ import os
 import re
 from pathlib import Path
 
-from issue_triage_policy import (
-    CATEGORIES,
-    COMMENT_MARKER,
-    NEEDS_INFO,
-    READY_FOR_AGENT,
-    READY_FOR_HUMAN,
-    RECOMMENDABLE_STATES,
-    WONTFIX,
-    target_state,
-)
+from factory_handoff import NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX
+from issue_triage_policy import CATEGORIES, COMMENT_MARKER, RECOMMENDABLE_STATES, target_state
 from pr_review_sanitize import sanitize_text
 
 SCHEMA_VERSION = 1

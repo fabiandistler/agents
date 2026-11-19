@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import factory_onboarding_check as check
 import pytest
-from issue_triage_policy import STATE_LABELS
+from factory_handoff import STATE_LABELS
 from pr_github_client import FetchError, Response
 from pr_github_fake import contents_response, json_response
 
