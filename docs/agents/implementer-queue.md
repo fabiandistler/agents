@@ -57,7 +57,8 @@ does, with or without a colon:
 Runs for one issue share a concurrency group, so a branch that exists at claim
 time never belongs to a live run of this workflow.
 
-At most one implementer run works at a time (`MAX_WORKING_RUNS` in `scripts/implementer_capacity.py`).
+At most one implementer run works at a time (`MAX_WORKING_RUNS` in
+`scripts/implementer_capacity.py`).
 Runs are ordered by the start of their `implement` job, then by run id; only
 runs earlier in that order count, so of two simultaneous starts exactly one
 stops. The check reads the Actions API, so it can lag a few seconds; a run about
