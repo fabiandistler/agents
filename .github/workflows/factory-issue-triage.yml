@@ -12,11 +12,11 @@
 #
 # Triggers are the caller's (`github` is the caller's context): a new issue by
 # a person, filed without a state label or with `needs-triage` and without a
-# `wayfinder:` label; the maintainer adding `needs-triage` again; the reporter answering on a
-# `needs-info` issue; a manual run. Only issues by people with write access
-# reach the model, and the two automatic triggers stop after two bot triages
-# per issue (scripts/issue_triage_policy.py). The caller subscribes to
-# `issues: [opened, labeled]`, `issue_comment: [created]` and
+# `wayfinder:` label; the maintainer adding `needs-triage` again; the reporter
+# answering on a `needs-info` issue; a manual run. Only issues by people with
+# write access reach the model, and the two automatic triggers stop after two
+# bot triages per issue (scripts/issue_triage_policy.py). The caller
+# subscribes to `issues: [opened, labeled]`, `issue_comment: [created]` and
 # `workflow_dispatch`, and grants `contents: read` and `issues: write`.
 #
 # Scripts and the prompt run from this workflow's own repository and commit

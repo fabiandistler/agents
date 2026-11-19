@@ -152,7 +152,7 @@ closes the issue through the pull request's `Closes #<n>`. Add
 ### Handle a stopped or failed run
 
 Read the bot comment on the issue, then the outcome tables in
-[triage labels](../agents/implementer-queue.md#implementer-claim); they say who
+[implementer claim](../agents/implementer-queue.md#implementer-claim); they say who
 acts next. The cases that need you:
 
 - **`at-capacity`, `blocked`.** The issue keeps `ready-for-agent` and waits
