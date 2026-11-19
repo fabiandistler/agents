@@ -70,7 +70,8 @@ an agent installed after that run is neither added nor reported by `--update
 When OpenCode is selected, plugin subagents from `plugins/*/agents/*.md` are
 rendered into `~/.config/opencode/agents/<name>.md`. The renderer keeps each
 description and prompt, sets `mode: subagent`, maps Claude tools to OpenCode
-permissions, and denies editing unless the source lists `Edit` or `Write`. It
+permissions (an MCP tool `mcp__<server>__<tool>` becomes `<server>_<tool>`),
+and denies editing unless the source lists `Edit` or `Write`. It
 drops Claude's `model` value and resolves `${CLAUDE_PLUGIN_ROOT}` for this
 checkout. Generated files carry an ownership comment; stale generated files
 are pruned, and uninstall removes only generated files for selected categories.
