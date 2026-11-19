@@ -26,6 +26,7 @@ from pathlib import Path
 
 import rework_policy
 from agent_run_capacity import runs_working_ahead
+from factory_handoff import REVIEW_WORKFLOW, REWORK_WORKFLOW
 from implementer_claim import swap_to_human
 from pr_github import comment_entry
 from pr_github_client import (
@@ -38,13 +39,11 @@ from pr_github_client import (
     paginate,
 )
 
-# The caller's file, whose runs the capacity check lists; the jobs live in the
-# called factory-rework.yml and match by their composed names, `rework / gate`.
-REWORK_WORKFLOW = "rework.yml"
+# The capacity check lists the runs of the caller, REWORK_WORKFLOW; the jobs live
+# in the called factory-rework.yml and match by their composed names, `rework / gate`.
 GATE_JOB = "gate"
 REWORK_JOB = "rework"
 MAX_WORKING_REWORK_RUNS = 1
-REVIEW_WORKFLOW = "pr-review.yml"
 REVIEW_ARTIFACT = "pr-review"
 
 NO_REVIEW = rework_policy.Decision(rework_policy.STOP, "the review job did not run")

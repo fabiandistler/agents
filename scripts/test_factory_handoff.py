@@ -1,22 +1,37 @@
-"""The handoff protocol module: marker text, round trip, authorship and malformed markers."""
+"""The handoff protocol module: marker text, round trip, authorship, malformed markers,
+the implementer run name and the caller workflow names."""
 
 from __future__ import annotations
 
 import pytest
 from factory_handoff import (
     APP_LOGIN,
+    FIX_ISSUE,
+    FIX_RUN,
+    IMPLEMENTER_WORKFLOW,
     ISSUE_TRIAGE,
+    ISSUE_TRIAGE_WORKFLOW,
+    RETRO_WORKFLOW,
     REVIEW_STICKY,
+    REVIEW_WORKFLOW,
     REWORK_HANDOFF,
     REWORK_ROUND,
+    REWORK_WORKFLOW,
+    SKILL_AUDIT_WORKFLOW,
     WORKFLOW_BOT_LOGIN,
     format_marker,
+    implementer_run_issue,
+    implementer_run_name,
     read_markers,
+    workflow_path,
 )
 
 HEAD = "0123456789abcdef0123456789abcdef01234567"
 OTHER_HEAD = "f" * 40
+FAILURE_HASH = "0123456789abcdef"
 KINDS = {
+    "fix issue": (FIX_ISSUE, {"hash": FAILURE_HASH}),
+    "fix run": (FIX_RUN, {"run_id": 111, "attempt": 2}),
     "round": (REWORK_ROUND, {"round": 2, "head": HEAD}),
     "handoff": (REWORK_HANDOFF, {"head": HEAD}),
     "sticky": (REVIEW_STICKY, {}),
@@ -169,3 +184,125 @@ def test_the_round_formatter_rejects_invalid_fields(fields):
 def test_the_handoff_formatter_rejects_invalid_fields(fields):
     with pytest.raises(ValueError):
         format_marker(REWORK_HANDOFF, **fields)
+
+
+def test_the_fix_issue_text_is_as_stored_on_github():
+    assert format_marker(FIX_ISSUE, hash=FAILURE_HASH) == f"<!-- factory-failure:{FAILURE_HASH} -->"
+
+
+def test_the_fix_run_record_text_is_as_stored_on_github():
+    assert format_marker(FIX_RUN, run_id=111, attempt=2) == "<!-- factory-failure-run:111/2 -->"
+
+
+@pytest.mark.parametrize(("kind", "other"), [(FIX_ISSUE, "fix run"), (FIX_RUN, "fix issue")])
+def test_a_fix_marker_reads_only_its_own_kind(kind, other):
+    other_kind, fields = KINDS[other]
+    assert read_markers(kind, [entry(format_marker(other_kind, **fields))]) == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        f"<!-- factory-failure:{FAILURE_HASH[:15]} -->",
+        f"<!-- factory-failure:{FAILURE_HASH}0 -->",
+        f"<!-- factory-failure:{FAILURE_HASH.upper()} -->",
+        "<!-- factory-failure: -->",
+    ],
+)
+def test_a_malformed_fix_issue_marker_reads_as_nothing(body):
+    assert read_markers(FIX_ISSUE, [entry(body)]) == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "<!-- factory-failure-run:0/1 -->",
+        "<!-- factory-failure-run:111/0 -->",
+        "<!-- factory-failure-run:0111/1 -->",
+        "<!-- factory-failure-run:111 -->",
+        "<!-- factory-failure-run:111/x -->",
+    ],
+)
+def test_a_malformed_fix_run_record_reads_as_nothing(body):
+    assert read_markers(FIX_RUN, [entry(body)]) == []
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [{"hash": FAILURE_HASH[:15]}, {"hash": FAILURE_HASH.upper()}, {"hash": None}, {}],
+)
+def test_the_fix_issue_formatter_rejects_invalid_fields(fields):
+    with pytest.raises(ValueError):
+        format_marker(FIX_ISSUE, **fields)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"run_id": 0, "attempt": 1},
+        {"run_id": 111, "attempt": 0},
+        {"run_id": "111", "attempt": 1},
+        {"run_id": 111, "attempt": True},
+        {"run_id": 111},
+    ],
+)
+def test_the_fix_run_formatter_rejects_invalid_fields(fields):
+    with pytest.raises(ValueError):
+        format_marker(FIX_RUN, **fields)
+
+
+def test_the_implementer_run_name_text_is_as_stored_on_github():
+    assert implementer_run_name(783) == "implementer: issue #783"
+
+
+@pytest.mark.parametrize("issue", [1, 783, 10**9])
+def test_the_run_name_round_trips(issue):
+    assert implementer_run_issue(implementer_run_name(issue)) == issue
+
+
+def test_the_run_name_takes_the_callers_github_expression():
+    expression = "${{ github.event.issue.number || inputs.issue }}"
+    assert implementer_run_name(expression) == f"implementer: issue #{expression}"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "implementer: issue #0",
+        "implementer: issue #07",
+        "implementer: issue #7 extra",
+        "re-run implementer: issue #7",
+        "implementer: issue #",
+        "Fix #7: something",
+        "",
+        None,
+        7,
+    ],
+)
+def test_any_other_title_names_no_issue(title):
+    assert implementer_run_issue(title) is None
+
+
+@pytest.mark.parametrize("issue", [0, -1, True, "7", "issue", None])
+def test_the_run_name_rejects_anything_but_a_positive_issue(issue):
+    with pytest.raises(ValueError):
+        implementer_run_name(issue)
+
+
+def test_the_caller_workflow_file_names():
+    assert (
+        IMPLEMENTER_WORKFLOW,
+        REVIEW_WORKFLOW,
+        REWORK_WORKFLOW,
+        RETRO_WORKFLOW,
+        ISSUE_TRIAGE_WORKFLOW,
+        SKILL_AUDIT_WORKFLOW,
+    ) == (
+        "implementer.yml",
+        "pr-review.yml",
+        "rework.yml",
+        "retro.yml",
+        "issue-triage.yml",
+        "skill-audit.yml",
+    )
+    assert workflow_path(RETRO_WORKFLOW) == ".github/workflows/retro.yml"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Report one claude-code-action run on the job page and fail a failed run.
 
-The agent-run workflows (implementer.yml, skill-audit.yml) ask the model to
+The agent-run workflows (the implementer and skill audit callers) ask the model to
 write a short summary file. This script appends it to the step summary and
 exits 1 when the summary is missing or starts with ``RUN FAILED``, so GitHub
 notifies about the failed run. A failed run also prints one ``::error::``

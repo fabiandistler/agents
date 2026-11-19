@@ -1,6 +1,6 @@
 """Where an implementer run lives: the workflow file, the job, and the branch names.
 
-The defaults are this repository's own `implementer.yml`. Called as a reusable
+The defaults are this repository's own implementer caller workflow. Called as a reusable
 workflow from another repository, a run is a run of the caller's workflow file,
 because "the github context is always associated with the caller workflow"
 (GitHub docs, "Reusing workflow configurations"). That file is the target
@@ -20,10 +20,10 @@ import os
 import re
 from dataclasses import dataclass
 
+from factory_handoff import IMPLEMENTER_WORKFLOW
 from pr_github_client import FetchError
 
 WORKFLOW_REF_VARIABLE = "GITHUB_WORKFLOW_REF"
-IMPLEMENTER_WORKFLOW = "implementer.yml"
 IMPLEMENT_JOB = "implement"
 BRANCH_PREFIX = "agent/issue-"
 
@@ -48,7 +48,7 @@ DEFAULT_SETUP = ImplementerSetup()
 
 
 def workflow_file(option: str | None) -> str:
-    """--workflow-file, else the file GITHUB_WORKFLOW_REF names, else implementer.yml."""
+    """--workflow-file, else the file GITHUB_WORKFLOW_REF names, else IMPLEMENTER_WORKFLOW."""
     if option is not None:
         source, file_name = "--workflow-file", option
     else:

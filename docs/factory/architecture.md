@@ -248,10 +248,10 @@ A runner keeps nothing, so every fact one run hands the next lives on GitHub:
 | PR comment `<!-- pr-review-bot -->` | `publish`, through the handoff protocol module (`factory_handoff.py`) | `publish`, which edits only its own, and Retro gate, both through the module's reader |
 | Issue comment `<!-- issue-triage-bot -->` | triage `publish`, through the handoff protocol module (`factory_handoff.py`) | triage `assess` through the module's reader: two automatic triages per issue |
 | PR comments `<!-- rework-round:<k> head:<sha> -->`, `<!-- rework-handoff head:<sha> -->` | Rework gate, through the handoff protocol module (`factory_handoff.py`) | Rework gate (one per head; their count is the round), Retro gate, both through the module's reader |
-| Issue body `<!-- factory-failure:<hash> -->` | Fix task | Fix task (dedupe) |
+| Issue body `<!-- factory-failure:<hash> -->`, issue comments `<!-- factory-failure-run:<run id>/<attempt> -->` | Fix task, through the handoff protocol module (`factory_handoff.py`) | Fix task (dedupe; one record per run attempt), through the module's reader |
 | Labels `retro:done`, `auto-merge:bot` | Retro gate; `publish` | Retro gate (counter); `hold`, `publish` (ownership) |
 | Status `pr-review/verdict` | `publish` | the ruleset |
-| Run name `implementer: issue #<n>` | `implementer.yml:17` | Fix task, Retro gate |
+| Run name `implementer: issue #<n>` | `implementer.yml:17`, as the handoff protocol module (`factory_handoff.py`) formats it; a structure test ties the two | Fix task, implementer queue, Retro gate, through the module's parser |
 | `RUN FAILED: <reason>` in the run summary | model step | `agent_run_report.py`, whose `::error::` becomes the Fix task's signature |
 
 Only markers in comments by `github-actions[bot]` count, so quoting one

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import retro_gate
 import yaml
+from factory_handoff import implementer_run_name
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RETRO = REPO_ROOT / ".github" / "workflows" / "retro.yml"
@@ -161,7 +162,7 @@ def test_checkouts_keep_no_credentials():
 
 def test_implementer_run_name_is_the_title_the_gate_looks_for():
     run_name = _workflow(IMPLEMENTER)["run-name"]
-    assert run_name == "implementer: issue #${{ github.event.issue.number || inputs.issue }}"
+    assert run_name == implementer_run_name("${{ github.event.issue.number || inputs.issue }}")
     assert retro_gate.IMPLEMENTER_WORKFLOW == IMPLEMENTER.name
 
 
