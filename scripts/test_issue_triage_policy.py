@@ -6,8 +6,8 @@ import re
 from pathlib import Path
 
 import pytest
+from factory_handoff import WORKFLOW_BOT_LOGIN as COMMENT_AUTHOR
 from issue_triage_policy import (
-    COMMENT_AUTHOR,
     COMMENT_MARKER,
     MAX_AUTOMATIC_TRIAGES,
     NEEDS_INFO,

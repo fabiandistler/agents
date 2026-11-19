@@ -10,8 +10,8 @@ The heading may stand at the start of any line of the comment's prose, because
 a triage comment opens with the AI disclaimer before it. Trust is decided by the
 comment's author alone, so a trusted comment that holds the brief in a
 `<details>` block counts too. The triage bot's draft brief does not: the bot
-posts as `github-actions[bot]`, whose association is not a trusted one, and the
-draft is the maintainer's to post (ADR-0013).
+posts as `factory_handoff.WORKFLOW_BOT_LOGIN`, whose association is not a
+trusted one, and the draft is the maintainer's to post (ADR-0013).
 
 Standard library only.
 """

@@ -1,20 +1,19 @@
 """Render the review bot's sticky pull request comment.
 
 One comment per pull request carries the risk, the verdict, the summary, the
-risk reasons and the findings. It is found again by its marker and its author,
-the workflow bot, and updated in place; an unchanged body plans no action.
+risk reasons and the findings. It is found again through the handoff protocol
+reader (``factory_handoff``), which counts its marker only in a comment by the
+workflow bot, and updated in place; an unchanged body plans no action.
 """
 
 from __future__ import annotations
 
 import re
 
+from factory_handoff import REVIEW_STICKY, format_marker, read_markers
 from pr_review_response import SEVERITIES
 
-COMMENT_MARKER = "<!-- pr-review-bot -->"
-# The login the workflow's GITHUB_TOKEN writes as. A comment by anyone else is
-# never the sticky comment, even when it quotes the marker.
-COMMENT_AUTHOR = "github-actions[bot]"
+COMMENT_MARKER = format_marker(REVIEW_STICKY)
 
 
 def _single_line(value: object) -> str:
@@ -113,27 +112,15 @@ def _render_comment(
     return "\n".join(lines)
 
 
-def bot_comments(comments: object) -> list[dict]:
-    """The comments ``COMMENT_AUTHOR`` wrote; a marker in anyone else's comment is quoted text."""
-    return [
-        comment
-        for comment in (comments if isinstance(comments, list) else [])
-        if isinstance(comment, dict)
-        and comment.get("author") == COMMENT_AUTHOR
-        and isinstance(comment.get("body"), str)
-    ]
-
-
 def is_sticky_comment(comment: dict) -> bool:
     """Whether ``comment`` is this bot's own review comment, not a human one quoting its marker."""
-    return any(COMMENT_MARKER in own["body"] for own in bot_comments([comment]))
+    return bool(read_markers(REVIEW_STICKY, [comment]))
 
 
 def _sticky_comment(context: dict) -> dict | None:
-    for comment in bot_comments(context.get("comments")):
-        if is_sticky_comment(comment):
-            return comment
-    return None
+    comments = context.get("comments")
+    reads = read_markers(REVIEW_STICKY, comments if isinstance(comments, list) else [])
+    return dict(reads[0].entry) if reads else None
 
 
 def comment_action(

@@ -12,12 +12,14 @@ TOKEN_VALUE=sk-ant-oat01-do-not-print-me
 
 setup() {
   common_setup
-  # A copy of the wizard beside the real label policy and a fake onboarding
-  # check, so the Verify stage makes no network call.
+  # A copy of the wizard beside the real label policy (with the handoff
+  # protocol module it imports) and a fake onboarding check, so the Verify
+  # stage makes no network call.
   scripts="$BATS_TEST_TMPDIR/scripts"
   mkdir -p "$scripts" "$BATS_TEST_TMPDIR/bin"
   cp "$REPO_ROOT/scripts/factory-repo-setup.sh" "$REPO_ROOT/scripts/factory_repo_setup.py" \
-    "$REPO_ROOT/scripts/issue_triage_policy.py" "$scripts/"
+    "$REPO_ROOT/scripts/issue_triage_policy.py" "$REPO_ROOT/scripts/factory_handoff.py" \
+    "$scripts/"
   cat >"$scripts/factory_onboarding_check.py" <<'PY'
 import os, sys
 print(f"check argv={' '.join(sys.argv[1:])} token={os.environ.get('GH_TOKEN', '')}")

@@ -63,6 +63,22 @@ REWORK_HANDOFF = MarkerKind(
     fields={"head": _head},
     parsers={"head": str},
 )
+# `<!-- pr-review-bot -->`: the review's sticky comment, edited in place by `publish`.
+REVIEW_STICKY = MarkerKind(
+    name="review sticky comment",
+    template="<!-- pr-review-bot -->",
+    pattern=re.compile(re.escape("<!-- pr-review-bot -->")),
+    fields={},
+    parsers={},
+)
+# `<!-- issue-triage-bot -->`: one issue triage comment; their count caps automatic triages.
+ISSUE_TRIAGE = MarkerKind(
+    name="issue triage comment",
+    template="<!-- issue-triage-bot -->",
+    pattern=re.compile(re.escape("<!-- issue-triage-bot -->")),
+    fields={},
+    parsers={},
+)
 
 
 @dataclass(frozen=True)

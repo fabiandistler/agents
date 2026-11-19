@@ -18,7 +18,8 @@ import hashlib
 import re
 
 from agent_run_report import FAILED_PREFIX
-from issue_triage_policy import COMMENT_AUTHOR, NEEDS_TRIAGE
+from factory_handoff import WORKFLOW_BOT_LOGIN
+from issue_triage_policy import NEEDS_TRIAGE
 from pr_comment import fenced_block
 
 LABEL = "factory-failure"
@@ -27,7 +28,7 @@ LABEL_DESCRIPTION = "A factory workflow run failed; filed by the Fix task"
 ISSUE_LABELS = (LABEL, "bug", NEEDS_TRIAGE)
 # Issues and comments the workflow's GITHUB_TOKEN writes carry this author; a
 # marker quoted by anyone else never counts.
-AUTHOR = COMMENT_AUTHOR
+AUTHOR = WORKFLOW_BOT_LOGIN
 
 WATCHED_WORKFLOWS = (
     ".github/workflows/implementer.yml",

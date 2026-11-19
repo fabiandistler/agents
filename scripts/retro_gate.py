@@ -39,11 +39,10 @@ from pathlib import Path
 from typing import Protocol
 
 from agent_brief import is_trusted
-from factory_handoff import APP_LOGIN, REWORK_ROUND, read_markers
+from factory_handoff import APP_LOGIN, REVIEW_STICKY, REWORK_ROUND, read_markers
 from implementer_contract import contract_text, read_ticket
 from pr_actions import Operation
 from pr_apply import WriteClient, send_operation
-from pr_comment import COMMENT_AUTHOR, COMMENT_MARKER
 from pr_github import author_login, comment_entry
 from pr_github_client import (
     PER_PAGE,
@@ -376,12 +375,8 @@ def build_context(
         f"- `{entry.get('filename')}` +{entry.get('additions')} -{entry.get('deletions')}"
         for entry in files
     ]
-    sticky = [
-        _body(comment)
-        for comment in comments
-        if author_login(comment) == COMMENT_AUTHOR and COMMENT_MARKER in _body(comment)
-    ]
     entries = [comment_entry(comment) for comment in comments]
+    sticky = [str(read.entry["body"]) for read in read_markers(REVIEW_STICKY, entries)]
     rework = [str(read.entry["body"]) for read in read_markers(REWORK_ROUND, entries)]
     app_replies = [_body(comment) for comment in comments if author_login(comment) == APP_LOGIN]
     trusted = [
