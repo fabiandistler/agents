@@ -6,7 +6,7 @@ expert/B2B tools. When you build or change a UI that shows model output,
 check every rule below and list the unmet ones in the change description or
 review notes.
 Confirmation before irreversible actions: the approval-gate rule in
-[`ai-engineering-conventions.md`, Guardrails & security](ai-engineering-conventions.md#guardrails--security)._
+[`security.md`, Guardrails & security](security.md#guardrails--security)._
 
 As of 2026-09-24 (Machine Learning rules) and 2026-11-16 (Generative AI
 rules): the dates when each rule set was added here, both distilled from the
@@ -21,7 +21,7 @@ the transparency duties; check its current application date.
   features (unbidden suggestions). Above the floor, bands drive presentation:
   low → ask for confirmation or show a range; high → show directly.** Pairs
   with the repeat-stability rule in
-  [`ai-engineering-conventions.md`, Evaluation](ai-engineering-conventions.md#evaluation):
+  [`evaluation.md`, Evaluation](evaluation.md#evaluation):
   that one measures, this one decides what the user sees. (Apple HIG,
   Confidence)
   - ❌ one presentation for every confidence level   ← likely-default
@@ -38,7 +38,7 @@ the transparency duties; check its current application date.
   - ❌ a raw score as the only explanation   ← likely-default
 - **Put edit, undo and retry next to the generated result, and make
   discarding it as cheap as accepting it.** The correction rule in
-  [`ai-engineering-conventions.md`, Evaluation](ai-engineering-conventions.md#evaluation)
+  [`evaluation.md`, Evaluation](evaluation.md#evaluation)
   logs the edit; this one makes it reachable. (Apple HIG, Generative AI:
   Outputs)
   - ❌ accept is one click, editing sits in a menu or on another page   ← likely-default
