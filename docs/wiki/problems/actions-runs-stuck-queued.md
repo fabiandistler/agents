@@ -27,6 +27,7 @@
   43096185342, were still `queued` with zero jobs since the 2026-11-11
   stall. All 40 runs started since 2026-11-12 had completed.
   Source: [2026-11-13 triage](../snapshots/2026-11-13-triage.md).
+  *Superseded 2026-11-20 for the count in agents, see below.*
 - 2026-11-13 (`fabiandistler/agents@0585e8e`): the implementer's capacity
   gate counts only runs whose implement job has started
   (`scripts/implementer_claim.py:341-351`), so the zero-job runs do not
@@ -42,5 +43,22 @@
 - 2026-11-15 (#857): `claude.yml` is removed
   ([ADR-0019](../../adr/0019-remove-claude-mention-workflow.md)), so a
   comment starts one run fewer; the same issue now creates 7 runs.
+- 2026-11-20 (supersedes the 2026-11-13 count of 108 in agents) [read]: 28
+  runs in agents were still `queued`, all created 2026-11-11 20:27–20:47 UTC
+  (ids 43096138849–43098075883): CI 6, issue-triage 4, Homepage 3, PR issue
+  links 3, maintenance-gate 3, pr-review 3, implementer 2, Claude Code 2,
+  Triage label 1. The sweep did not record how the other 80 ended. Source:
+  [2026-11-20 status sweep](../snapshots/2026-11-20-status.md).
+- 2026-11-20 (confirms the 2026-11-13 dotfiles count) [read]: the same 5
+  dotfiles runs were still `queued`, all on branch
+  `claude/upbeat-newton-r03ixe` (head of the merged PR dotfiles#62; the
+  branch still at `513cc5e`): token-probe 43096185342, ci 43097644518 and
+  43098277682, maintenance-gate 43097644670 and 43098277669.
+  repo-maintenance had no queued or in-progress run.
+- 2026-11-20 [inferred]: the queued runs block nothing. At
+  `fabiandistler/agents@acbd1c9` the capacity check counts only
+  `in_progress` runs (`scripts/agent_run_capacity.py:120`), and every
+  dotfiles run since 2026-11-12 completed. Cleanup is cosmetic; deleting the
+  dotfiles branch or asking GitHub Support is a person's call.
 
 Related: [cross-repo token exchange](cross-repo-token-exchange.md).

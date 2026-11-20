@@ -7,4 +7,12 @@ Decided by the maintainer on 2026-11-18:
 - #877 (`## Other repos` in `AGENTS.md`): list all five repos in the public `AGENTS.md`, the private ones included.
 - The pull request that adds this page is the live acceptance test for the bot's auto-merge (`docs/agents/pr-review-acceptance.md`, throwaway docs pull request).
 
+## 2026-11-20 outcomes
+
+Read in the [2026-11-20 status sweep](../snapshots/2026-11-20-status.md).
+
+- 2026-11-20 [read]: the auto-merge acceptance test passed. `github-actions[bot]` merged #878, the pull request that added this page, on 2026-11-18 15:30:43 UTC.
+- 2026-11-20 [read]: #877 closed via PR #879 (`claude[bot]`), merged 2026-11-18 17:48 UTC. Read during the wiki ingest the same day: the PR's commit `fabiandistler/agents@062e880` lists two repos, repo-maintenance and dotfiles, and `AGENTS.md:17-25` at `fabiandistler/agents@acbd1c9` still does, not all five as decided above.
+- 2026-11-20 (extends the count of `risk:low` pull requests) [read]: three more `risk:low` pull requests were bot-merged since: #878 (2026-11-18), #902 and #904 (2026-11-19). [inferred] Their titles say `docs(wiki)`; their file lists were not checked.
+
 Related: [2026-11-14 decisions](2026-11-14-decisions.md).
