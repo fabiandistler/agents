@@ -11,9 +11,6 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
 
 ## Guardrails & security
 
-_Extends SKILL.md Part B step 2. Security rules are kept even where they read as
-obvious — the cost of guessing wrong is high._
-
 - **Guardrail inputs AND outputs** — harmless inputs can still produce harmful
   outputs. (Huyen Ch. 5, 10)
 - **Track the false-refusal rate alongside the catch rate.** An over-blocking
@@ -51,10 +48,6 @@ obvious — the cost of guessing wrong is high._
   studies. (Huyen Ch. 5)
 
 ## Security
-
-_Kept even where obvious — the cost of an agent guessing wrong is high. Input/
-output guardrails and PII masking before third-party calls live in the Huyen
-sheet; these are the agent/MCP-specific additions._
 
 - **Treat all retrieved external content (web pages, documents, tool outputs) as
   untrusted input — indirect prompt injection arrives through data, not the

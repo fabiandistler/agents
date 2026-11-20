@@ -29,11 +29,11 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
   hidden API calls** — 10 variants × 30 eval examples is 300 calls per run.
   (Huyen Ch. 5)
 - **Repeat critical instructions both before AND after untrusted content, and
-  name explicitly what must never be output.** (Huyen Ch. 5)
+  name explicitly what must never be output.** After the untrusted content,
+  repeat only the critical check, so the cached prompt prefix stays stable.
+  (Huyen Ch. 5)
 
 ## Adaptation
-
-_Extends SKILL.md Part A (the ladder and failure-type gating)._
 
 - **Reject "prompting doesn't work" unless the prompt experiments were
   systematic** — versioned prompts, fixed eval data, standardized metrics. Most
@@ -47,10 +47,7 @@ _Extends SKILL.md Part A (the ladder and failure-type gating)._
 
 ## Finetuning
 
-_SKILL.md places finetuning on the ladder; these are the mechanics once you're
-actually on that rung._
-
-- **Choose SFT for format and style with demonstrations, DPO when pairwise preferences are cheaper than demonstrations, RFT when outputs are verifiable and a grader exists.** RFT works with scarce labels, often after an SFT cold start; the grader must first pass the judge-calibration rule in Evaluation above.
+- **Choose SFT for format and style with demonstrations, DPO when pairwise preferences are cheaper than demonstrations, RFT when outputs are verifiable and a grader exists.** RFT works with scarce labels, often after an SFT cold start; the grader must first pass the judge-calibration rule in `evaluation.md`, Evaluation.
 - **Start with LoRA/PEFT; attempt full finetuning only with thousands of
   examples or more** — with a few hundred, full finetuning won't beat LoRA.
   (Huyen Ch. 7)
@@ -77,8 +74,6 @@ actually on that rung._
   train/test splits. (Huyen Ch. 8)
 
 ## Serving & architecture
-
-_Extends SKILL.md Part B (the five-step build order)._
 
 - **When out-of-scope requests are common or need a separate path, front the
   system with a small, cheap intent classifier and use stock responses where no

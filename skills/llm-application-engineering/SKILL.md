@@ -11,28 +11,19 @@ metadata:
 
 ## When to use
 
-Whenever a foundation model's output is wrong and the fix (prompting,
-retrieval, or finetuning) is unclear; whenever an LLM app's architecture
-(context, guardrails, routing, caching, agents) is being designed or reviewed;
-whenever production evaluation metrics or user-feedback signals need defining;
-or whenever the question is how to implement prompting and prompt management,
-an evaluation harness or LLM judge, guardrails and security gating, finetuning
-(LoRA, hyperparameters), or training-data preparation. Draws on Chip Huyen's
-*AI Engineering* and bundles the adaptation ladder, the architecture build
-sequence, production monitoring, and operational conventions by topic.
+- Model output is wrong and the fix (prompting, retrieval, finetuning) is unclear.
+- An LLM app's architecture (context, guardrails, routing, caching, agents) is designed or reviewed.
+- Production metrics or user-feedback signals need defining.
+- A step needs implementing: prompts, an eval harness or judge, guardrails, finetuning, training data, or a UI that shows model output.
 
-Building an LLM application is not one decision but three nested ones: how to
-adapt the model to the task, how to grow the surrounding system, and how to know
-it is still working once users touch it. This skill bundles all three, because
-they are usually needed in the same conversation and each guards against the
-same failure mode — reaching for the most powerful, most complex tool before the
-cheaper one has been ruled out.
+All three parts below guard against one failure: reaching for the more complex
+tool before the cheaper one is ruled out.
 
 ## References
 
 Open the file for the topic you are implementing:
 
-- [`references/evaluation.md`](references/evaluation.md): eval harness, LLM judges, agent evaluation, rollout experiments, production triage.
+- [`references/evaluation.md`](references/evaluation.md): eval harness, LLM judges, agent evaluation, rollout experiments, production metrics and implicit feedback.
 - [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context engineering, agent memory, autonomy UX.
 - [`references/security.md`](references/security.md): guardrails, context authorization, database scope, agent security.
 - [`references/adaptation-and-serving.md`](references/adaptation-and-serving.md): prompting, finetuning, training data, serving, cost caps.
@@ -41,10 +32,9 @@ Open the file for the topic you are implementing:
 
 ## Part A — The adaptation ladder
 
-When a foundation model fails at a task, finetuning is almost never the right
-first move. There is an ordered ladder of adaptation techniques; each rung adds
-complexity, risk, and ongoing cost, so climb only when the current rung cannot
-fix the root cause.
+When a model fails at a task, climb this ladder one rung at a time, and only
+when the current rung cannot fix the root cause: each rung adds complexity,
+risk, and ongoing cost.
 
 ### The rungs, in order
 
@@ -52,7 +42,7 @@ fix the root cause.
 |---|---|---|
 | 1 | **Prompting** | Zero-shot task description first on reasoning models, with systematic versioning of prompts. |
 | 2 | **Structured outputs** | Schema-constrained outputs or tool schemas for format failures — fix format without training. |
-| 3 | **Few-shot prompting** | A few diverse canonical examples; on reasoning models try zero-shot first and skip step-by-step scaffolds. |
+| 3 | **Few-shot prompting** | A few diverse canonical examples; skip step-by-step scaffolds on reasoning models. |
 | 4 | **Stronger model** | A stronger model or enabled reasoning when the failure is capability, not knowledge. |
 | 5 | **Cached long context** | Whole knowledge base in a cached prompt that fits the model's context window (check the provider's current limits); still prefer retrieval for fact-seeking or freshness-critical data. |
 | 6 | **Retrieval** | Hybrid plus contextual chunks plus rerank as the default, or agentic search, when the failure is missing information. |
@@ -70,25 +60,11 @@ This distinction blocks the single most expensive wrong turn in LLM projects:
 finetuning a RAG problem. More training data does not cure knowledge the model
 is missing *at inference time*.
 
-### Complexity asymmetry: RAG vs. finetuning
-
-The two paths carry complexity in different places, which matters for where a
-team wants to pay the cost:
-
-- **Embedding-based retrieval** raises *inference-time* complexity — vector
-  search on every request, added latency, embedding drift.
-- **Finetuning** raises *development-time* complexity — a training pipeline,
-  eval sets, hyperparameters — but leaves inference unchanged.
-
-Latency-sensitive products with a small ML team tend toward finetuning;
-data-rich products with engineering capacity tend toward RAG.
-
 ### The sample-size rule of thumb
 
-Every rung-change decision needs an eval that can actually detect whether it
-helped. Sample size needed to be 95% confident scales with a simple rule:
-**every 3× decrease in the score difference to detect requires roughly 10×
-more samples.**
+Every rung change needs an eval that can detect whether it helped. At 95%
+confidence, **every 3× decrease in the score difference to detect needs
+roughly 10× more samples.**
 
 | Difference to detect | Samples needed |
 |---|---|
@@ -97,20 +73,14 @@ more samples.**
 | 3% | ~1,000 |
 | 1% | ~10,000 |
 
-Before climbing a rung: estimate the expected effect size first. If it is
-small (~1%), either budget for a much larger eval set or reframe the
-comparison around a more variance-rich indirect metric (e.g. confidence
-calibration, latency) instead of end accuracy.
+Estimate the expected effect size before climbing. If it is small (~1%),
+budget a much larger eval set or compare on a more variance-rich indirect
+metric (e.g. confidence calibration, latency) instead of end accuracy.
 
-### Evaluation is the constant underneath every rung
+### Error analysis first
 
-None of the rungs above should be climbed without evaluation criteria and a
-pipeline already in place. Without eval, every step up is a gamble — there is
-no way to tell whether it helped or introduced a regression.
-
-#### Error analysis first
-
-Start every eval from outputs, not from metrics:
+Climb no rung without an eval in place. Start it from outputs, not from
+metrics:
 
 1. Sample about 100 traces from current behavior.
 2. Take free-form notes on each trace (open coding).
@@ -121,11 +91,8 @@ Start every eval from outputs, not from metrics:
 
 ## Part B — Progressive architecture: five build steps
 
-LLM applications grow more complex step by step, not all at once. Each of the
-five steps below solves one concrete problem and should be added only when
-that problem is actually present — none of them should be built
-preemptively. The numbers give the usual order; the "Add it when" line
-decides each step.
+Add each step only when its trigger is present, never preemptively. The
+numbers give the usual order; the "Add it when" line decides each step.
 
 - **1. Enhance and minimize context**
   - What it adds: Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/agents-and-tools.md`
@@ -137,14 +104,14 @@ decides each step.
   - What it adds: Router sends each request to the right model (e.g. cheap model for simple queries); gateway unifies the interface across self-hosted models and APIs, centralizing load balancing, logging, caching, guardrails
   - Add it when: As soon as more than one model or provider is in use
 - **4. Reduce latency with caches**
-  - What it adds: Prompt cache for shared prefixes first (hosted APIs, cache reads cost a fraction of input price; check current provider pricing); then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix. Tension: repeating instructions after untrusted content breaks the prefix — repeat only the critical check, keep the prefix stable
+  - What it adds: Prompt cache for shared prefixes first; then exact cache for identical requests, semantic cache for similar ones; pick an eviction policy (LRU/LFU/FIFO). Order prompts static-first — system, tools, documents — dynamic content last; never interpolate timestamps or IDs into the prefix
   - Add it when: As soon as requests repeat, or individual calls are expensive
 - **5a. Add predefined workflows**
   - What it adds: Chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer — fixed paths where generated output feeds back into the system
   - Add it when: When the path through the system can be predefined
 - **5b. Add autonomous agents**
   - What it adds: The model plans its own path and the system may take write actions
-  - Add it when: Last, and only when the path cannot be predefined — agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation
+  - Add it when: Last: only when the path cannot be predefined, and only once eval, context (step 1) and guardrails (step 2) exist — agentic loops carry the most complexity, the biggest security risk, and the hardest evaluation
 
 ### Dependencies between the steps
 
@@ -163,71 +130,19 @@ dependencies hold, each when both steps are present:
 - Autonomous agents need guardrails on every write action before real users
   can reach them.
 
-### Anti-pattern: building agents first
-
-The recurring mistake is building autonomous agents (step 5b) before eval, context (step
-1), and guardrails (step 2) exist. This produces impressive demos and
-unusable products. Add a step because its trigger is present, not because it
-sounds more capable.
-
 ## Part C — Production monitoring and feedback
 
-Classic software monitoring (MTTD, MTTR, CFR) is necessary but not sufficient
-for LLM systems — it says nothing about quality, security, or drift, the
-dimensions where LLMs develop their own failure modes. Production
-observability for an LLM application needs two additional taxonomies on top
-of the classic trio.
+Track six metric families on top of classic service monitoring: latency
+(TTFT, TPOT), quality, security and guardrails, user behavior, cost, and
+drift. What each family measures, the patterns that signal trouble, and the
+five implicit-feedback signals are in
+[`references/evaluation.md`](references/evaluation.md#production-metrics-and-feedback).
 
-### Six metric families
-
-| Family | Key metrics | Notes |
-|---|---|---|
-| **Latency** | TTFT (time to first token), TPOT (time per output token), total response latency | LLMs stream; a single request/response total misses the experience. High TTFT + low TPOT often signals routing/cold-start issues; low TTFT + high TPOT signals a throughput bottleneck. |
-| **Quality** | Format validity (valid JSON, required fields), factual consistency / hallucination rate (via AI judges or ground truth), conciseness, creativity | The most expensive family — needs either a second model call or human labeling; sampling strategy is mandatory. |
-| **Security / guardrails** | Toxicity rate, PII-detection rate, guardrail-trigger frequency, refusal rate | A rising guardrail-trigger trend is an early warning of adversarial traffic; a sudden refusal-rate jump often means a provider silently changed the model's refusal behavior. |
-| **User behavior** | Early-termination rate, turns per conversation, input/output token distribution, prompt complexity | Implicit signals that need no user annotation — see the feedback signals below. |
-| **Cost** | Input/output token volume, tokens per second (TPS), rate-limit hits | Rate-limit hits should trigger scaling or routing decisions. |
-| **Drift** | System-prompt drift, user-behavior drift, provider-model drift | The most underestimated family. The first two have no classic-software equivalent; provider drift (silent model updates behind an API) is detectable only through periodic probing with fixed reference inputs. |
-
-Supporting layer: all six families depend on high-granularity, append-only
-logs (endpoint, sampling settings, full prompt templates — not just user
-input, tool-call intermediate outputs, crashes) and tracing that reconstructs
-request timelines. Without traces, debugging a multi-step agent is guesswork.
-
-### Five implicit-feedback signals
-
-Explicit feedback (thumbs up/down, stars) is rare and biased in conversational
-AI — only frustrated or delighted users bother. Implicit feedback is
-generated by every conversation automatically: it is proprietary, continuous,
-and honest (behavior shows what a rating hides).
-
-| Signal | What it looks like | Read as |
-|---|---|---|
-| **Early termination** | User stops generation mid-stream, closes the app, ignores the answer | Practically always negative — one of the best chat-app health metrics |
-| **Error correction** | Follow-up starts with "No…", "I meant…", "That's not what I wanted…" | Retroactively marks the previous assistant message as a failure; detectable with a narrow classifier |
-| **Complaints / sentiment drops** | Direct criticism, unspecific frustration ("ugh", "nope"), a shift from polite to curt phrasing | Aggregate with a sentiment tracker on the user side of the dialogue |
-| **Regeneration requests** | User clicks "regenerate" or re-asks the same question | The clearest signal — the first answer was bad enough that the user actively requested a second try; regeneration rate is a direct A/B metric |
-| **Implicit follow-up (downstream action)** | e.g. a recommended product gets purchased | Positive signal without an explicit click, but requires telemetry/identity mapping to observe the downstream action at all |
-
-Aggregate these on two loops: short-term (hours — dashboards, spike alerts on
-termination/regeneration rate, fast rollback) and long-term (days to weeks —
-training and eval data for the next model iteration; error-correction
-patterns become negative examples, corrected follow-ups become positive
-examples). Because this is behavioral data, disclose its use and offer an
-opt-out — lost trust costs more than the data is worth.
+All six rest on append-only logs (endpoint, sampling settings, full prompts as
+sent, tool-call intermediate outputs, crashes) and on traces that reconstruct
+each request. Redact PII before the logs leave the service
+(`references/security.md`).
 
 ### Baseline checklist before calling anything deployment-worthy
 
 For classifiers, use the five-baseline gate in `members/ml-project-lifecycle/SKILL.md` Part A, read via the `ai-ml` router. For generative apps, compare against these four instead: the current prompt and model version as the regression baseline, the strongest available model as the ceiling, a simple non-LLM heuristic or template, and a human expert. Ship only when the candidate beats the regression baseline and the heuristic, and the gap to the ceiling and the expert is acceptable for the use case.
-
-## Applying the three parts together
-
-The parts compose: Part A decides *what adaptation to apply* when output
-quality is the problem. Part B decides *what to build next* when the
-application's surrounding system is the problem — and its step 1 (Enhance
-and minimize context) is exactly where retrieval from Part A gets implemented
-in practice; context construction is the same discipline as feature
-engineering was for classical ML, just with retrieved information standing
-in for engineered columns. Part C decides *how to know* whether either
-change actually helped once it reaches users, and feeds new failure evidence
-back into Part A's diagnosis step.
