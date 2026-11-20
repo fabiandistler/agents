@@ -38,7 +38,9 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
   constrains sampling to the schema. Where strict mode is unavailable, validate
   every proposed call before executing it; on mismatch, prompt the model to
   correct only the broken portion, then fall back (backup model, cached data,
-  safe default).** (Albada Ch. 4, 7; Anthropic strict tool use, OpenAI structured outputs)
+  safe default).** (Albada Ch. 4, 7; Anthropic strict tool use,
+  https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use;
+  OpenAI structured outputs, https://developers.openai.com/api/docs/guides/structured-outputs)
 - **Log every tool invocation with parameters; alert on anomalous patterns**
   (mass deletions, schema-altering calls). (Albada Ch. 4)
 - **Set `tool_choice` explicitly (`auto`/`required`/`none`/pinned) per call path
