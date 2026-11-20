@@ -29,7 +29,9 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
   hidden API calls** — 10 variants × 30 eval examples is 300 calls per run.
   (Huyen Ch. 5)
 - **Repeat critical instructions both before AND after untrusted content, and
-  name explicitly what must never be output.** (Huyen Ch. 5)
+  name explicitly what must never be output.** After the untrusted content,
+  repeat only the critical check, so the cached prompt prefix stays stable.
+  (Huyen Ch. 5)
 
 ## Adaptation
 

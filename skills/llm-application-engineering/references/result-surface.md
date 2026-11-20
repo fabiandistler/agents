@@ -62,7 +62,7 @@ the transparency duties; check its current application date.
 - **Place an optional feedback control (thumbs up/down plus a path for
   detail) at a fixed spot on the output, never as an interruption, and route
   it to someone who reads it.** Implicit signals:
-  [`SKILL.md`, Part C](../SKILL.md#part-c--production-monitoring-and-feedback).
+  [`evaluation.md`, Production metrics and feedback](evaluation.md#production-metrics-and-feedback).
   (Apple HIG, Generative AI: Continuous improvement)
   - ❌ a feedback modal after each result, or ratings in a log nobody reads   ← likely-default
 - **When output is blocked or out of scope, say so and show how to ask
