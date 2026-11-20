@@ -33,7 +33,7 @@ is watching. So check each layer before you push:
    state label; every task imports it from there.
 6. **A new task** gets `permissions: {}`, the narrowest job scopes, a
    structure test, and its workflow name in `fix-task.yml` plus its path in
-   `WATCHED_WORKFLOWS` (`factory_failure_policy.py:32`). A model step that
+   `WATCHED_WORKFLOWS` (`factory_failure_policy.py:49`). A model step that
    pushes uses `claude-code-action` without `github_token`, writes
    `RUN FAILED: <reason>` into its run summary, is followed by an
    `agent_run_report.py` step, and loads both guards as the implementer does:

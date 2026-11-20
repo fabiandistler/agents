@@ -110,7 +110,7 @@ model and no write scope, `publish` with write scopes and no model token) and
 model-free `follow-up` job). **`rework.yml`,
 `fix-task.yml`, `retro.yml` and `skill-audit.yml`** run in agents only and
 read `scripts/` from their own checkout; Fix watches seven workflows by name
-(`fix-task.yml:14`). **`scripts/`** holds the model-free logic: the claim,
+(`fix-task.yml:16`). **`scripts/`** holds the model-free logic: the claim,
 `pr_risk.py`, `pr_publish.py`, the gates and the two guards.
 `implementer_queue.py` (#847) dispatches the next waiting issue from
 `implementer-queue.yml`, which calls the reusable
