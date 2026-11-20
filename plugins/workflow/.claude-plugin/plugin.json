@@ -1,6 +1,6 @@
 {
   "name": "workflow",
-  "description": "Planning and workflow skills: natural planning, repo status updates, release PRs for R and Python packages, open-source contribution scouting, pypet command-snippet curation, and taking a greenfield PoC to production through a spec and TDD loop. Includes a tool-restricted browser-worker subagent for browser audits and test-first fixes that end in a pull request.",
+  "description": "Planning and workflow skills: natural planning, repo status updates, release PRs for R and Python packages, open-source contribution scouting, pypet command-snippet curation, and taking a greenfield PoC to production through a spec and TDD loop. Includes two tool-restricted subagents: browser-worker for browser audits and test-first fixes that end in a pull request, and the read-only analyst for status sweeps and analyses across GitHub repositories and scheduled tasks.",
   "author": {
     "name": "Fabian Distler"
   }

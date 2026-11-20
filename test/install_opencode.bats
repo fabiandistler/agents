@@ -168,6 +168,25 @@ AGENT
     fail "browser-worker allows a tool its Claude tools: list leaves out"
 }
 
+@test "OpenCode renders the workflow analyst with only its read-only tools" {
+  install_opencode_workflow
+  analyst="$command_home/.config/opencode/agents/analyst.md"
+  [[ -f "$analyst" ]] || fail "OpenCode install skipped the analyst agent"
+  # edit comes from Write, which the analyst needs for its report file.
+  expected="$(printf '%s\n' read grep glob bash edit \
+    github_list_pull_requests github_pull_request_read github_list_issues \
+    github_issue_read github_actions_list github_actions_get github_get_job_logs \
+    github_list_commits github_get_commit github_get_file_contents \
+    github_list_branches claude-code-remote_get_trigger \
+    claude-code-remote_get_session claude-code-remote_list_sessions \
+    claude-code-remote_list_events | sort)"
+  allowed="$(sed -n 's/^  \(.*\): allow$/\1/p' "$analyst" | sort)"
+  [[ "$allowed" == "$expected" ]] ||
+    fail "analyst allow rules differ from its read-only tools: $(diff <(echo "$expected") <(echo "$allowed"))"
+  grep -qxF '  "*": deny' "$analyst" ||
+    fail "analyst lacks the catch-all deny rule"
+}
+
 @test "OpenCode agent install is idempotent and --update restores/prunes outputs" {
   install_opencode_architecture
   before="$(cat "$coupling")"

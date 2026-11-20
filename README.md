@@ -185,7 +185,7 @@ still listed here.
 | `instructions/` | Always-on, Claude path-scoped and on-demand rule fragments, composed or installed by `--instructions` |
 | `.claude/` | Mixed tree for Claude cloud sessions in this repo: generated skill and agent links, `rules/` files and hook entries; vendored Matt Pocock skills; the repo-owned `repo-error-checker`/`skill-reviewer` agents; hand-written `hooks/` and settings outside the generated entries |
 | `.claude-plugin/` | The plugin marketplace manifest (`marketplace.json`) |
-| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents, workflow the tool-restricted `browser-worker`), plus the hook-only `merge-guard` and `secret-guard` plugins |
+| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents, workflow the tool-restricted `browser-worker` and `analyst`), plus the hook-only `merge-guard` and `secret-guard` plugins |
 | `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
 | `maintenance/` | Run records (`runs/`) and reports (`reports/`) from the scheduled maintenance rotation described in [`MAINTENANCE.md`](MAINTENANCE.md) |
 | `vendor/` | Lock file and license of code vendored from other repositories: `repo-maintenance/` pins the maintenance scanner and the instruction-unicode check in `scripts/` (see [`MAINTENANCE.md`](MAINTENANCE.md)) |
