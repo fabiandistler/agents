@@ -235,6 +235,16 @@ category_count() {
   echo "$n"
 }
 
+plugin_agent_count() {
+  # Count the plugin subagents (plugins/*/agents/*.md), each of which a Codex
+  # install renders to one agent TOML.
+  local n=0 md
+  for md in "$REPO_ROOT"/plugins/*/agents/*.md; do
+    [[ -f "$md" ]] && n=$((n + 1))
+  done
+  echo "$n"
+}
+
 # Every link opencode creates on its own: auto and command skills.
 opencode_expected() {
   echo $(($(skill_count all opencode) + $(command_count all opencode)))

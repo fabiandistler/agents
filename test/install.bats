@@ -20,7 +20,7 @@ setup() {
   [[ ! -d "$HOME_DRY/.claude" ]] || fail "dry-run created $HOME_DRY/.claude"
   [[ ! -d "$HOME_DRY/.codex" ]] || fail "dry-run created $HOME_DRY/.codex"
   [[ ! -d "$HOME_DRY/.config/opencode" ]] || fail "dry-run created $HOME_DRY/.config/opencode"
-  [[ "$(grep -c '^\[dry-run\] write .*/\.codex/agents/.*\.toml$' <<<"$dry_output")" -eq 2 ]] ||
+  [[ "$(grep -c '^\[dry-run\] write .*/\.codex/agents/.*\.toml$' <<<"$dry_output")" -eq "$(plugin_agent_count)" ]] ||
     fail "dry-run agent writes were not one target-only line each"
 }
 
@@ -86,7 +86,7 @@ setup() {
   if grep -Eq '^  (linked|removed|updated|agent) ' <<<"$oc_dry"; then
     fail "dry-run emitted a second write status line"
   fi
-  [[ "$(grep -c '^\[dry-run\] write .*/\.codex/agents/.*\.toml$' <<<"$oc_dry")" -eq 2 ]] ||
+  [[ "$(grep -c '^\[dry-run\] write .*/\.codex/agents/.*\.toml$' <<<"$oc_dry")" -eq "$(plugin_agent_count)" ]] ||
     fail "dry-run did not report each agent TOML write once"
 }
 

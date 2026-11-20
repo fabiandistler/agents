@@ -324,9 +324,9 @@ PY
 @test "category without subagents leaves agents directory alone" {
   # a category without agents creates no agents directory.
   HOME_NOAG="$(mktemp -d)"
-  HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=workflow >/dev/null
+  HOME="$HOME_NOAG" "$INSTALL" --target=codex --category=personal >/dev/null
   [[ ! -d "$HOME_NOAG/.codex/agents" ]] ||
-    fail "category=workflow created an agents directory"
+    fail "category=personal created an agents directory"
 }
 
 @test "stale generated agent files are pruned, foreign and live ones kept" {

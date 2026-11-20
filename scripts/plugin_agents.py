@@ -97,6 +97,18 @@ def render_codex(fields, body: str, plugin_dir: str, marker: str) -> str:
     )
 
 
+def opencode_permission(source_tool: str) -> str:
+    # Claude names an MCP tool mcp__<server>__<tool>; OpenCode checks it as the
+    # permission <server>_<tool> (https://opencode.ai/docs/permissions#actions).
+    if source_tool.startswith("mcp__"):
+        server, separator, tool = source_tool.removeprefix("mcp__").partition("__")
+        if server and separator and tool:
+            return f"{server}_{tool}"
+    if source_tool not in TOOL_PERMISSIONS:
+        raise ValueError(f"unsupported Claude tool in frontmatter: {source_tool}")
+    return TOOL_PERMISSIONS[source_tool]
+
+
 def opencode_permissions(tools: str):
     # A Claude tools: list is an allowlist. OpenCode lets the last matching rule
     # win, so the catch-all deny goes first and the listed tools override it.
@@ -105,9 +117,7 @@ def opencode_permissions(tools: str):
         source_tool = source_tool.strip()
         if not source_tool:
             continue
-        if source_tool not in TOOL_PERMISSIONS:
-            raise ValueError(f"unsupported Claude tool in frontmatter: {source_tool}")
-        permissions[TOOL_PERMISSIONS[source_tool]] = "allow"
+        permissions[opencode_permission(source_tool)] = "allow"
     return permissions
 
 
