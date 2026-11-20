@@ -76,6 +76,26 @@ repositories recorded the miss.
   run's output is optional ("at most one" PR, a maintenance run that may find
   nothing due), "nothing to do" and "did nothing" look the same from outside.
 
+- 2026-11-20, later the same day: repo-maintenance#174, merged as
+  `fabiandistler/repo-maintenance@9a5c5e3`, covers the classifier outage for
+  the repo-maintenance routine. On "gave no verdict (error)" a run keeps doing
+  read-only steps and retries. After the 9th such answer in a row it stops
+  with a `RUN FAILED` push
+  ([2026-11-20 decisions](../decisions/2026-11-20-decisions.md)). That
+  routine's bootstrap reads the `## Prompt` block from `main` at run start,
+  so the rule is live from its next run [read: PR body]. The agents and
+  dotfiles routines get the rule only once their stored prompts are switched
+  to the bootstrap. That is a hand step, decided the same day, and was not
+  read as done ([schedules](../schedules.md)). The PR also notes a gap: an
+  outage during the bootstrap's own setup Bash calls is not covered [read].
+- 2026-11-20, scheduled Actions runs [read: draft spec, F5, citing GitHub's
+  "Events that trigger workflows" page, `schedule`]: they can be delayed
+  under load and may be dropped. A dropped run leaves no failed run, so the
+  Fix task cannot file it. This was one reason to keep the maintenance runs
+  as routines
+  ([parked spec, findings](../specs/2026-11-20-maintenance-runs-on-actions-draft-findings.md)).
+  Late starts in agents: [schedules](../schedules.md), 2026-11-20.
+
 Related: [implementer-queue page guard](implementer-queue-page-guard.md) (a
 failure the Fix task does not watch),
 [2026-11-14 decisions](../decisions/2026-11-14-decisions.md).

@@ -97,3 +97,41 @@
   fired 10 times since 2026-11-17 against about 79 slots. [inferred] The
   skill audit may start hours late or be dropped; look on the evening of
   2026-11-22 and dispatch it by hand if no run exists.
+- 2026-11-20, the three maintenance routines [read: `get_trigger`; sources
+  from `get_session`, which `get_trigger` does not show]. Each starts a new
+  session per fire, has push on and is bound to no device:
+  - agents, `trig_016FpvZkZFm5tPdbFCrXebbT` ("agents repo-maintenance"):
+    `CRON_TZ=Europe/Berlin 34 1 * * 0`, next run 2026-11-22 00:34 UTC. No
+    model pinned (`""`), connector Claude-Docs. Prompt last updated
+    2026-11-02 06:56 UTC. Sources: agents and repo-maintenance.
+  - dotfiles, `trig_01XtaNXwvNSQbiDAZJq2vBPV` ("Dotfiles repo maintenance"):
+    `36 1 * * 0` (no `CRON_TZ`, so UTC), next run 2026-11-22 01:36 UTC. No
+    model pinned, connector Claude-Docs. Prompt last updated 2026-10-27
+    14:47 UTC. Sources: dotfiles, repo-maintenance and agents.
+  - repo-maintenance, `trig_01XPRmF1GFqjd1qFoWGvCi1G`:
+    `CRON_TZ=Europe/Berlin 32 8 * * 1`, next run 2026-11-23 07:32 UTC. Model
+    `claude-opus-5-5`, no connectors. Its prompt is the bootstrap.
+- 2026-11-20, decided ([2026-11-20 decisions](decisions/2026-11-20-decisions.md)):
+  pin Opus and the bootstrap prompt on the agents and dotfiles routines. Run
+  dotfiles twice a week for three weeks; the prepared cron is
+  `CRON_TZ=UTC 36 1 * * 0,3` (Sundays and Wednesdays 01:36 UTC). For the
+  2026-11-22 runs to use the new settings, they must be applied before
+  00:34 UTC (agents) and 01:36 UTC (dotfiles) that day. The maintainer
+  applies them by hand; whether the maintainer had done so was not read on
+  2026-11-20.
+- 2026-11-20, limitation [read]: agents cannot change these routines.
+  `update_trigger` failed with an error because the routines were created via
+  `http_api`. Prompt, model and cron changes go through the routine's page
+  (`claude.ai/code/routines/<id>`) by hand.
+- 2026-11-20: one-shot evaluation task `trig_01Hmdw7paA38BPcfNMoQhGhF`,
+  created that day. It fires 2026-12-10 09:23 UTC in a fresh session, with a
+  push notification. It was created with no sources and no connectors.
+  [inferred] It likely cannot read dotfiles unless the maintainer adds
+  sources on its page. An agent's call to disable it was refused by the
+  auto-mode classifier on 2026-11-20.
+- 2026-11-20: the dotfiles test does not revert by itself. To end it, set the
+  cron back to `36 1 * * 0` after the 2026-12-09 run and before Wednesday
+  2026-12-16 01:36 UTC, when the first unwanted run would fire. Doing this is
+  a manual step. If the test cron is applied before 2026-11-22, the test runs
+  on 2026-11-22, -25 and -29, 2026-12-02, -06 and -09: six runs, three of
+  them added [inferred].

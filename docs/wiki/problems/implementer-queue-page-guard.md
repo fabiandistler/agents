@@ -24,6 +24,7 @@
   the logs carry only the outcome line.
 - Effect (2026-11-20): the tickets still landed, as PRs #892–#895 [read].
   [inferred] The bug is latent: it bites whenever an issue waits in the queue.
+  *Superseded 2026-11-20: fixed by #907, see below.*
 - Nobody was told (2026-11-20): `.github/workflows/fix-task.yml:16`
   (`fabiandistler/agents@acbd1c9`) watches `implementer`, `skill-audit`,
   `issue-triage`, `pr-review`, `rework` and `retro`, not `implementer-queue`
@@ -31,6 +32,7 @@
   `fix-task.yml:9-11` says the list equals `WATCHED_WORKFLOWS` in
   `scripts/factory_failure_policy.py` [read]. An issue search for "one page"
   found no tracking issue [read]; none was filed as of 2026-11-20.
+  *Superseded the same day: #905, #908 and #909, see below.*
 - Reach (2026-11-20): `runs_working_ahead`
   (`scripts/agent_run_capacity.py:93`, same commit) also goes through
   `working_runs`; `scripts/rework_gate.py:173` calls it, and so does
@@ -40,6 +42,32 @@
 - Where a fix belongs (2026-11-20): in the shared module
   `scripts/agent_run_capacity.py`, not in the queue, per the bug-fixing rule
   (`.claude/rules/agents-55-bug-fixing.md`).
+
+- 2026-11-20, later the same day [read: issues, PR bodies, merge commits]:
+  - #905, filed by the maintainer at 09:15 UTC (`ready-for-agent`), lists
+    every caller of `_single_page`. Its hypothesis is unverified: the
+    status-filtered listing's `total_count` may not match its array while an
+    implementer run is ending.
+  - Fixed: the implementer's PR #907, merged 10:49 UTC as
+    `fabiandistler/agents@68dcf08`, closed #905. The fix sits in the shared
+    helper only, which is now `_all_pages`. It reads page after page and stops
+    at `total_count` items or at a short or empty page. So a `total_count`
+    that overstates the listing returns the items that were listed. Every
+    caller keeps its signature. The cause is still unknown.
+  - #908, merged 10:49 UTC as `fabiandistler/agents@77f4ee8`:
+    `implementer-queue` joins the `workflow_run` list in
+    `.github/workflows/fix-task.yml` and `WATCHED_WORKFLOWS` in
+    `scripts/factory_failure_policy.py`. Only run 44387046433 of the four
+    started through `workflow_run`. The other three were `workflow_dispatch`
+    runs by `github-actions[bot]`: the implementer's follow-up job dispatched
+    them with `GITHUB_TOKEN`, so they start no `workflow_run` (#858).
+  - Dispatch gap: #909, filed `ready-for-human` at 10:56 UTC, covers those
+    token-dispatched runs. PR #910 (opened 11:59 UTC, merged 12:11 UTC as
+    `fabiandistler/agents@8f96040`) closed it. It adds a `report-failure` job
+    and a `fix_task_workflow` input to
+    `.github/workflows/factory-implementer-queue.yml`, and
+    `implementer-queue.yml` passes `fix-task.yml`.
+  - Decisions: [2026-11-20 decisions](../decisions/2026-11-20-decisions.md).
 
 Related: [2026-11-20 status sweep](../snapshots/2026-11-20-status.md),
 [runs without a trace](runs-without-trace.md),

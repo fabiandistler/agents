@@ -16,5 +16,11 @@
   Measure the first browser-worker run's starting context against the 81.5k a
   general-purpose subagent started with (figure from the agents#903 run). The PR
   also changes the OpenCode installer, which rejected `mcp__` tool names.
+- 2026-11-20: three chief-of-staff subagents used the browser-worker type:
+  the first wiki ingest (PR #906), #908 and #910. Their reported totals were
+  186k, 119k and 168k tokens. General-purpose subagents the same day
+  reported 119k–467k. This is not a like-for-like comparison: the tasks
+  differed in kind and size. The starting context of a browser-worker run is
+  still unmeasured, so the 2026-11-19 question stays open.
 - Why it matters: subagents share one 5-hour budget with the implementer
   ([shared usage limit](shared-usage-limit.md)).
