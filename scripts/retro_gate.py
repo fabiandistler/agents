@@ -60,7 +60,9 @@ from retro_counter import (
     RETRO_DONE,
     FloorError,
     MergedPull,
+    eligible_pulls,
     json_object,
+    last_retro,
     merged_agent_pull,
     merged_pulls,
     pending_pulls,
@@ -218,7 +220,8 @@ def run_gate(client: GateClient, repo: str, every: int) -> Selection:
     """Decide whether a retro is due, and label the selected pull request."""
     floor = read_floor(client, repo)
     floor_text = floor.isoformat()
-    pending = pending_pulls(merged_pulls(client, repo), floor)
+    eligible = eligible_pulls(merged_pulls(client, repo), floor)
+    pending = pending_pulls(eligible, floor, last_retro(client, repo, eligible))
     if len(pending) < every:
         reason = (
             f"{len(pending)} merged agent pull request(s) since the last retro, fewer than {every}"

@@ -36,6 +36,12 @@ request. Procedure and PR body format: [`docs/agents/retro.md`](../agents/retro.
   ends. It labels the selected pull request before the model job starts, so
   the counter lives on GitHub, needs no state file, and a failed model run
   does not repeat on the same pull request.
+  Note (2026-11-20, #922): the counter starts at the last retro run, the time
+  of the newest `retro:done` label event on a pull request that still carries
+  the label, not at that pull request's merge time. Counting from the merge
+  time let a retro that selected an older pull request count the merges after
+  it twice, and made the runbook's retry a no-op while a newer-merged pull
+  request kept its label.
 - **Eligibility floor.** Only pull requests merged after the commit that
   added `retro.yml` count. The pull requests merged before (20 on 2026-11-13)
   were made under older prompts; a backlog sweep would spend runs on lessons

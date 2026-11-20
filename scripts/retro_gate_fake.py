@@ -8,6 +8,7 @@ from factory_handoff import REWORK_ROUND, format_marker
 from factory_handoff import WORKFLOW_BOT_LOGIN as COMMENT_AUTHOR
 from pr_github_client import Response
 from pr_github_fake import json_response
+from retro_counter import RETRO_DONE
 
 REPO = "fabiandistler/agents"
 FLOOR = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
@@ -99,14 +100,27 @@ class RoutedClient:
         raise AssertionError(f"unexpected DELETE {path}")
 
 
-def gate_routes(pulls: list[dict], open_pulls: list[dict] | None = None, comments=None) -> dict:
+def label_event(name: str, at: datetime, event: str = "labeled") -> dict:
+    return {"event": event, "label": {"name": name}, "created_at": iso(at)}
+
+
+def gate_routes(
+    pulls: list[dict],
+    open_pulls: list[dict] | None = None,
+    comments=None,
+    labelled_at: dict[int, datetime] | None = None,
+) -> dict:
+    """``labelled_at`` maps a pull request to when it was given `retro:done`."""
     routes: dict[str, object] = {
         f"/repos/{REPO}/pulls?state=closed": pulls,
         f"/repos/{REPO}/pulls?state=open": open_pulls or [],
     }
     for pull in pulls:
-        routes[f"/repos/{REPO}/issues/{pull['number']}/comments"] = (comments or {}).get(
-            pull["number"], []
+        number = pull["number"]
+        routes[f"/repos/{REPO}/issues/{number}/comments"] = (comments or {}).get(number, [])
+        at = (labelled_at or {}).get(number)
+        routes[f"/repos/{REPO}/issues/{number}/events"] = (
+            [] if at is None else [label_event(RETRO_DONE, at)]
         )
     return routes
 

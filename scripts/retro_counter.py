@@ -4,8 +4,9 @@
   repository, merged after the floor, the oldest commit on the default branch
   that touches `.github/workflows/retro.yml`. Earlier merges never count, and
   an unreadable floor fails the gate instead of counting from the start.
-- Pending: the eligible ones merged after the newest one labelled `retro:done`
-  (after the floor while there is none).
+- Pending: the eligible ones merged after the last retro run, the newest time
+  a pull request that still carries `retro:done` was given it (after the floor
+  while none carries it).
 
 The counter lives on GitHub, in the `retro:done` label; there is no state file.
 Standard library only. Errors name the API call, never issue or comment text.
@@ -89,11 +90,21 @@ def merged_agent_pull(pull: dict, repo: str) -> MergedPull | None:
     )
 
 
-def pending_pulls(pulls: list[MergedPull], floor: datetime) -> list[MergedPull]:
-    """The eligible pull requests merged since the newest retro, or the floor."""
-    eligible = [pull for pull in pulls if pull.merged_at > floor]
-    done = [pull.merged_at for pull in eligible if pull.retro_done]
-    since = max(done, default=floor)
+def eligible_pulls(pulls: list[MergedPull], floor: datetime) -> list[MergedPull]:
+    """The pull requests merged after the floor."""
+    return [pull for pull in pulls if pull.merged_at > floor]
+
+
+def pending_pulls(
+    eligible: list[MergedPull], floor: datetime, last_retro: datetime | None
+) -> list[MergedPull]:
+    """The eligible pull requests merged after the last retro run, or the floor.
+
+    ``last_retro`` is when the gate last labelled a pull request `retro:done`.
+    Anchoring at the label time, not the selected pull request's merge time,
+    keeps an older selection from letting newer merges count twice.
+    """
+    since = floor if last_retro is None else max(floor, last_retro)
     return [pull for pull in eligible if pull.merged_at > since]
 
 
@@ -123,3 +134,25 @@ def read_floor(client: ReadClient, repo: str) -> datetime:
 def merged_pulls(client: ReadClient, repo: str) -> list[MergedPull]:
     pulls = paginate(client, f"/repos/{repo}/pulls", params={"state": "closed"})
     return [merged for pull in pulls if (merged := merged_agent_pull(pull, repo)) is not None]
+
+
+def _retro_done_labelled_at(client: ReadClient, repo: str, number: int) -> datetime:
+    """When the pull request was last given `retro:done`, from its issue events."""
+    path = f"/repos/{repo}/issues/{number}/events"
+    times = [
+        _timestamp(event.get("created_at"), "label event time")
+        for event in paginate(client, path)
+        if event.get("event") == "labeled"
+        and json_object(event.get("label")).get("name") == RETRO_DONE
+    ]
+    if not times:
+        raise FetchError(f"GitHub API returned no {RETRO_DONE} label event for {path}")
+    return max(times)
+
+
+def last_retro(client: ReadClient, repo: str, eligible: list[MergedPull]) -> datetime | None:
+    """The newest `retro:done` label time among the pull requests that still carry it."""
+    labelled = [
+        _retro_done_labelled_at(client, repo, pull.number) for pull in eligible if pull.retro_done
+    ]
+    return max(labelled, default=None)
