@@ -26,6 +26,15 @@ dispatched whose implement job did not succeed, the implementer's model-free
 for up to 180 seconds, and fails past that. What is filed is still decided by
 the policy here alone (conclusion `failure` or `timed_out`).
 
+Amended 2026-11-20: the Fix task also watches `implementer-queue` (#801),
+which was missing from its list, so four failed queue runs on 2026-11-18 and
+2026-11-19 (44387046433, 44475342609, 44477947672, 44480055480) were not
+filed. Only the first was started through `workflow_run`. The other three
+were dispatched by the implementer's `follow-up` job with `GITHUB_TOKEN`, and
+such a run starts no `workflow_run` workflow (#858). That job dispatches the
+Fix task only for the implementer run it reports, so a failed queue run it
+dispatched is filed only by a manual run with the queue run's id.
+
 ## Context
 
 The factory workflows fail in two ways. The agent runs (`implementer`,
@@ -43,8 +52,8 @@ model-free job. Amended 2026-11-14 (#846): the job lives in the reusable
 names its own caller workflows in its `workflow_run` list.
 
 **Trigger.** `workflow_run`, type `completed`, for `implementer`,
-`skill-audit`, `issue-triage`, `pr-review`, `rework` and `retro`, and
-`workflow_dispatch` with a run id, which plans only unless `dry_run` is false.
+`skill-audit`, `issue-triage`, `pr-review`, `rework`, `retro` and
+`implementer-queue`, and `workflow_dispatch` with a run id, which plans only unless `dry_run` is false.
 It acts on conclusion `failure` or `timed_out` only. Excluded: `cancelled` (a
 person or a newer run stopped it, nothing broke), `ci.yml` (a red check on a
 pull request is the author's to fix, and it reports itself there), and the Fix

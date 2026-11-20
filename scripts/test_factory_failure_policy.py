@@ -220,6 +220,7 @@ def test_a_timed_out_run_is_filed():
         (".github/workflows/pr-review.yml", "pr-review"),
         (".github/workflows/rework.yml", "rework"),
         (".github/workflows/retro.yml", "retro"),
+        (".github/workflows/implementer-queue.yml", "implementer-queue"),
     ],
 )
 def test_a_failed_run_of_each_factory_task_is_filed(path, name):
