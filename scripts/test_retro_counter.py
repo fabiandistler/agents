@@ -11,6 +11,7 @@ from pr_github_client import PER_PAGE, FetchError
 from retro_gate_fake import (
     FLOOR,
     REPO,
+    Branch,
     RoutedClient,
     after,
     api_pull,
@@ -26,10 +27,10 @@ from retro_gate_fake import (
 def test_unmerged_foreign_and_retro_pulls_are_not_counted():
     pulls = ten_after_floor()[:9] + [
         api_pull(20, merged_at=None),
-        api_pull(21, merged_at=after(30), ref="feature/x"),
-        api_pull(22, merged_at=after(31), ref="agent/retro-5"),
-        api_pull(23, merged_at=after(32), head_repo="someone/fork"),
-        api_pull(24, merged_at=after(33), ref="agent/issue-12-extra"),
+        api_pull(21, merged_at=after(30), head=Branch("feature/x")),
+        api_pull(22, merged_at=after(31), head=Branch("agent/retro-5")),
+        api_pull(23, merged_at=after(32), head=Branch("agent/issue-1023", "someone/fork")),
+        api_pull(24, merged_at=after(33), head=Branch("agent/issue-12-extra")),
     ]
     selection = retro_gate.run_gate(RoutedClient(gate_routes(pulls)), REPO, 10)
     assert selection.selected is None

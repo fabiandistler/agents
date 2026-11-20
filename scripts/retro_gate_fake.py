@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from factory_handoff import REWORK_ROUND, format_marker
@@ -18,19 +19,30 @@ def iso(moment: datetime) -> str:
     return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+@dataclass(frozen=True)
+class Branch:
+    """A pull request's head: a branch of a repository, this one unless a fork."""
+
+    ref: str
+    repo: str = REPO
+
+    def payload(self) -> dict:
+        return {"ref": self.ref, "repo": {"full_name": self.repo}}
+
+
 def api_pull(
     number: int,
     *,
     merged_at: datetime | None,
-    ref: str | None = None,
+    head: Branch | None = None,
     labels: tuple[str, ...] = (),
-    head_repo: str = REPO,
     body: str = "Closes #1",
 ) -> dict:
+    """A pull request as GitHub lists it; the head defaults to `agent/issue-<number + 1000>`."""
     return {
         "number": number,
         "merged_at": iso(merged_at) if merged_at else None,
-        "head": {"ref": ref or f"agent/issue-{number + 1000}", "repo": {"full_name": head_repo}},
+        "head": (head or Branch(f"agent/issue-{number + 1000}")).payload(),
         "labels": [{"name": label} for label in labels],
         "body": body,
         "user": {"login": "claude[bot]"},

@@ -12,6 +12,7 @@ from pr_comment import COMMENT_MARKER
 from pr_github_client import FetchError
 from retro_gate_fake import (
     REPO,
+    Branch,
     RoutedClient,
     after,
     api_pull,
@@ -96,7 +97,7 @@ def test_only_well_formed_rework_markers_by_the_workflow_bot_count():
 
 
 def test_an_open_retro_pull_selects_nothing():
-    open_pulls = [api_pull(30, merged_at=None, ref="agent/retro-3")]
+    open_pulls = [api_pull(30, merged_at=None, head=Branch("agent/retro-3"))]
     client = RoutedClient(gate_routes(ten_after_floor(), open_pulls=open_pulls))
     selection = retro_gate.run_gate(client, REPO, 10)
     assert selection.selected is None
@@ -220,7 +221,7 @@ def context_routes() -> dict:
     pull = api_pull(
         50,
         merged_at=after(1),
-        ref="agent/issue-49",
+        head=Branch("agent/issue-49"),
         labels=("review:concerns", "retro:done"),
         body="Closes #49\n\nThe PR body.",
     )
@@ -284,7 +285,7 @@ def test_context_holds_trusted_text_and_no_outsider_text():
 
 def test_context_refuses_a_pull_that_is_not_a_merged_agent_pull():
     routes = context_routes()
-    routes[f"/repos/{REPO}/pulls/50"] = api_pull(50, merged_at=after(1), ref="feature/x")
+    routes[f"/repos/{REPO}/pulls/50"] = api_pull(50, merged_at=after(1), head=Branch("feature/x"))
     with pytest.raises(FetchError):
         retro_gate.build_context(RoutedClient(routes), REPO, 50)
 
