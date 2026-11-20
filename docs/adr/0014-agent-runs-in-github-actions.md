@@ -46,6 +46,13 @@ A third task, the weekly `repo-maintenance` run, stays a scheduled task: it
 reads the plugin from the private `fabiandistler/repo-maintenance`, which the
 Actions token cannot reach without a personal access token.
 
+Verified 2026-11-20 at the pinned `anthropics/claude-code-action@4fa93a8`
+(v1.0.271): the token exchange sends only the job's OIDC token
+(`src/github/token.ts:103-123`), and the App token is "sandboxed to the
+current repository only" (`docs/faq.md:180-182`, `docs/security.md:19-21`).
+[ADR-0019](0019-remove-claude-mention-workflow.md) checked the same pin on
+2026-11-15 and lists the token's write scopes.
+
 ## Decision
 
 `.github/workflows/implementer.yml` (whose job, since #790, is the reusable
