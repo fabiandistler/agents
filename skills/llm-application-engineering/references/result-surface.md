@@ -37,11 +37,15 @@ the transparency duties; check its current application date.
   so general it says nothing.** (Apple HIG, Attribution)
   - ❌ a raw score as the only explanation   ← likely-default
 - **Put edit, undo and retry next to the generated result, and make
-  discarding it as cheap as accepting it.** The correction rule in
-  [`evaluation.md`, Evaluation](evaluation.md#evaluation)
-  logs the edit; this one makes it reachable. (Apple HIG, Generative AI:
-  Outputs)
+  discarding it as cheap as accepting it.** The next rule logs the edit;
+  this one makes it reachable. (Apple HIG, Generative AI: Outputs)
   - ❌ accept is one click, editing sits in a menu or on another page   ← likely-default
+- **Where users can override a model result, offer guided alternatives before
+  free-form editing, persist the correction, and log it as a labelled example.
+  Report correction rate per output field as a quality metric with a ceiling.
+  If correcting costs more than doing the task by hand, the feature has
+  failed — corrections never compensate for low base quality.** (Apple HIG,
+  Corrections)
 - **Confirm at the result that a user's correction took effect.** A silent
   re-render leaves people unsure whether their input counted. (Apple HIG,
   Generative AI: Outputs)

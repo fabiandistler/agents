@@ -70,13 +70,9 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
 - **Return actionable errors naming what failed and what to try next.**
   - ✅ `order 42 not found in open orders; check status or create it`
   - ❌ `error 400`   ← likely-default
-- **Iterate tools from evals: every tool addition or rename ships with eval cases asserting correct selection and parameters.** (Albada Ch. 9)
 
 ## Agents
 
-- **Evaluate agents per failure mode with explicit metrics:** % valid plans,
-  invalid-tool calls, valid-tool-with-invalid-params calls, wrong parameter
-  values, plus steps and cost per task. (Huyen Ch. 6)
 - **If a tool stays error-prone after prompting, examples, and finetuning,
   replace the tool with a simpler interface** — don't keep patching the agent.
   (Huyen Ch. 6)
@@ -149,3 +145,8 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
 - **Classify each interaction explicitly as synchronous or asynchronous and
   design status communication for the async ones; never leave users watching a
   spinner on a long-running task.** (Albada Ch. 3)
+- **Escalate to a human on low model certainty (>20% divergence across an
+  ensemble of runs, or low mean token logprobs) or high consequence;** a
+  self-reported confidence score is a weak tiebreaker only, since verbalized
+  confidence is poorly calibrated. Tune thresholds so < ~10% of cases
+  escalate. (Albada Ch. 11; Xiong et al., ICLR 2024)
