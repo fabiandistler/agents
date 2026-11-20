@@ -27,8 +27,12 @@ model:
   The gate reads that commit's committer time, so add the workflow by a
   direct commit or a squash merge. A merge commit keeps the branch commit's
   earlier time, and an agent pull request merged in between would count.
-- **Pending:** the eligible pull requests merged after the newest one
-  labelled `retro:done`, or after the floor while none is.
+- **Pending:** the eligible pull requests merged after the last retro run,
+  or after the floor while none ran. The run's time is when the gate gave
+  `retro:done` to the selected pull request, read from the `labeled` events of
+  the pull requests that still carry the label; the newest one counts. The
+  selected pull request's merge time does not: a retro that picks an older
+  pull request would otherwise count the merges after it again.
 - **Due:** at least `RETRO_EVERY` pending (repository variable, default 10)
   and no open pull request from an `agent/retro-*` branch.
 - **Selected:** the pending pull request with the most non-pass review
@@ -41,8 +45,10 @@ starts, and creates the label on first use. A failed context, upload or model
 step therefore does not repeat on the same pull request, and the count
 restarts after it. To retry that retro, remove `retro:done` from the pull
 request and run the workflow by hand (Actions → retro → Run workflow): the
-gate counts it as pending again, with any agent pull request merged since,
-and selects again.
+count falls back to the retro before it, so that pull request and every agent
+pull request merged since are pending again, and the gate selects again. This
+works for the most recent retro only; removing the label from an older one
+changes nothing while a newer label stands.
 
 `python3 scripts/retro_gate.py context --repo OWNER/REPO --pr N --output FILE`
 writes the context: the pull request's body, commits and diff stat; the

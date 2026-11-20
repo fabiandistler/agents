@@ -3,6 +3,7 @@
 import re
 from pathlib import Path
 
+import retro_counter
 import retro_gate
 import yaml
 from factory_handoff import implementer_run_name
@@ -41,7 +42,7 @@ def _prompt() -> str:
 
 
 def test_gate_names_this_workflow_file():
-    assert REPO_ROOT / retro_gate.RETRO_WORKFLOW == RETRO
+    assert REPO_ROOT / retro_counter.RETRO_WORKFLOW == RETRO
 
 
 def test_triggers_are_a_daily_schedule_off_the_hour_and_a_manual_run():
