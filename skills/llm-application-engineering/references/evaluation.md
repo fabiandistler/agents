@@ -14,9 +14,6 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
 
 ## Evaluation
 
-_Extends SKILL.md Part A. The sample-size rule and the deployment
-baselines (generative: four, in SKILL.md Part C; classifier: five, in `members/ml-project-lifecycle/SKILL.md`, read via the `ai-ml` router) live in SKILL.md — cross-reference, don't duplicate._
-
 - **Write the evaluation guideline as a first draft before building, then revise it after error analysis** — including out-of-scope
   inputs and the required refusal behavior. "Correct" ≠ "good"; define good per
   application, and expect the first definition to move once traces are read. (Huyen Ch. 4)
@@ -97,9 +94,6 @@ baselines (generative: four, in SKILL.md Part C; classifier: five, in `members/m
 
 ## Agent Evaluation
 
-_Extends the Huyen sheet's Evaluation section with the trajectory-level
-structure agents need; generic judge configuration lives there._
-
 - **Ship the first agent version with eval cases that assert: correct tool
   called, correct parameters, response contains required phrases.** Track tool
   recall, tool precision, parameter accuracy, phrase recall, task success.
@@ -114,9 +108,6 @@ structure agents need; generic judge configuration lives there._
   counterfactual variants with human review before inclusion. (Albada Ch. 9–11)
 
 ## Deployment & Learning
-
-_The Huyen sheet covers finetuning mechanics and the nonparametric-first ladder;
-these are the agent-rollout specifics._
 
 - **A/B tests on stateful agents need sticky user/session-level variant
   assignment;** reassignment mid-history corrupts both arms. (Albada Ch. 11)
@@ -160,13 +151,10 @@ opt-out — lost trust costs more than the data is worth.
 
 ## Monitoring
 
-_Extends SKILL.md Part C (the six metric families) with observability-stack
-integration and drift triage._
-
 - **Route agent telemetry into the same observability stack as other services —
   no separate agent-monitoring silo.** Tag spans/logs with session ID,
   agent/prompt version, and workflow ID so traces and logs correlate. (Albada Ch. 10)
-- **Instrument with the OpenTelemetry GenAI semantic conventions: `invoke_agent` parent with `chat` and `execute_tool` spans, `gen_ai.request.model` and `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` attributes; keep content capture off by default per the PII-redaction rule in Security below.** Experimental — opt in via `OTEL_SEMCONV_STABILITY_OPT_IN`.
+- **Instrument with the OpenTelemetry GenAI semantic conventions: `invoke_agent` parent with `chat` and `execute_tool` spans, `gen_ai.request.model` and `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` attributes; keep content capture off by default per the PII-redaction rule in `security.md`, Security.** Experimental — opt in via `OTEL_SEMCONV_STABILITY_OPT_IN`.
 - **Triage failures with a reproducibility test before reacting: rerun 3–5×;
   ≥80% failure rate = systematic bug for engineering; otherwise check drift
   statistically (PSI > 0.25 major / > 0.1 minor, KS > 0.1)** instead of chasing

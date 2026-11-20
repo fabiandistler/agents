@@ -15,9 +15,6 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
 
 ## Tool Design
 
-_Net-new vs. the Huyen sheet, which covers guardrails and code-sandboxing but
-not tool-as-interface design._
-
 - **Expose narrow tools by default; expose SQL only through a constrained query
   interface.** Never provide unrestricted `execute_sql(query)` or code execution.
   For read-only database access, limit the connection to approved views with
@@ -77,8 +74,6 @@ not tool-as-interface design._
 
 ## Agents
 
-_Extends SKILL.md Part B step 5._
-
 - **Evaluate agents per failure mode with explicit metrics:** % valid plans,
   invalid-tool calls, valid-tool-with-invalid-params calls, wrong parameter
   values, plus steps and cost per task. (Huyen Ch. 6)
@@ -127,8 +122,6 @@ _Extends SKILL.md Part B step 5._
 
 ## Context engineering
 
-_Extends SKILL.md Part B step 1. Minimize first, then enhance._
-
 - **Keep the smallest high-signal context that solves the task — never fill the window because it fits.** Context rot degrades quality well below documented limits.
   - ❌ dumping the corpus into the window because the model accepts it   ← likely-default
 - **Budget operating context well below the documented window**, with headroom for tool outputs and multi-turn growth.
@@ -139,9 +132,6 @@ _Extends SKILL.md Part B step 1. Minimize first, then enhance._
 - **Load identifiers first and fetch content on demand** — just-in-time retrieval over preloaded documents.
 
 ## Memory & Retrieval
-
-_Escalate-only-on-need is already the SKILL.md Part A principle; these are the
-agent-memory deltas._
 
 - **Reach for GraphRAG only when vector retrieval demonstrably fails on
   multi-hop questions** — it prototypes in minutes but productionizing it is a
