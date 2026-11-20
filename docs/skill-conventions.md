@@ -158,16 +158,13 @@ dropping them from the model's skill list. `--uninstall` removes the block.
   output templates included, because skills and the answers they shape are
   read on a phone; use a nested list or a table of at most three columns. CI
   enforces this with `python3 scripts/check_table_width.py`.
-- A rule may carry one example pair: a `✅` line with the target shape,
-  directly followed by a `❌` line with the default it replaces. Add a pair
+- In `skills/**/*.md`, a rule may carry `✅`/`❌` example pairs: a `✅` line
+  with the target shape, directly followed by a `❌` line with the default it
+  replaces, each line holding only its marker and the example. Add a pair
   only when both lines show code (a call, signature, query or return value)
   that the rule text does not contain: writers copy the `✅` shape, and
-  reviewers match code against the `❌` shape, which `microservices-design`
-  tells its reviewer to quote. A `❌` line never stands alone, and no line
-  carries a `← likely-default` tag. A `❌` line in prose that only restates
-  its rule is dropped, and anything only it said moves into the rule text.
-  Guidance on prompting steers by the wanted behaviour, so a lone negative
-  example buys little and repeats the rule.
+  reviewers search the code under review for the `❌` shape. A `❌` example in
+  prose only restates its rule, so its detail goes into the rule text instead.
 - Every `references/`, `scripts/`, `assets/`, `evals/` or `members/` path a
   SKILL.md or reference names exists relative to the skill directory, and
   every relative Markdown link exists relative to the linking file — code

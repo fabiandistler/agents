@@ -43,7 +43,7 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
   the agent can be talked around; a GRANT is not. (Rehberger; CVE-2026-65669,
   https://nvd.nist.gov/vuln/detail/CVE-2026-65669)
   - ✅ `agent_ro` user, `GRANT SELECT ON v_*`, schema text from a curated fixture
-  - ❌ agent runs on the analyst's connection, read-only via a SQL keyword filter
+  - ❌ `connect(ANALYST_DSN)` with a `^\s*SELECT` regex as the read-only guard
 - **Set approval gates by consequence and reversibility. Require explicit human
   approval for high-impact or hard-to-reverse mutations**, such as destructive
   SQL, external messages, or transactions. (Huyen Ch. 5, 10)

@@ -18,8 +18,8 @@
 
 ## Aggregates
 
-- **Commit exactly one aggregate instance per database transaction.** Needing to write two aggregates in one transaction means the boundaries are wrong — redraw them, don't span the transaction (Ch 6).
-  - ✅ `unitOfWork.save(order); commit()`, then inventory reacts to `OrderPlaced` in its own transaction
+- **Commit exactly one aggregate instance per database transaction.** Needing to write two aggregates in one transaction means the boundaries are wrong — redraw them, or update the other aggregate in its own transaction from a domain event published through the outbox; don't span the transaction (Ch 6).
+  - ✅ `unitOfWork.save(order); commit()`
   - ❌ `unitOfWork.save(order); unitOfWork.save(inventory); commit()`
 - **Reference other aggregates by ID only, never by object holding.** Embedded object references smuggle a second aggregate into the boundary (Ch 6).
   - ✅ `private CustomerId customerId;`
@@ -66,7 +66,7 @@ them in code.
 - **Use a shared kernel only when cost-of-duplication > cost-of-coordination.** Keep it minimal (integration contracts / shared data structures only) and trigger integration tests for all consumers on every change. It deliberately breaks single-team ownership, so justify it (Ch 4).
 - **Conform to an upstream model (conformist) only when its model is acceptable or an industry standard.** Otherwise use an anticorruption layer (Ch 4).
 - **Publish domain events reliably via the outbox pattern** — write the event to an outbox table in the *same* transaction as the state change, then relay it. Never call the message bus directly inside the business transaction: that dual write loses the event when the second step fails (Ch 9).
-  - ✅ `save(order); outbox.add(orderShipped)` in one transaction, then a relay publishes
+  - ✅ `save(order); outbox.add(orderShipped); commit()`
   - ❌ `save(order); bus.publish(orderShipped)` in one method
 - **Shared writable data is never allowed; read-only reference data is allowed if the consuming context owns its copy.** Integrate through contracts/events otherwise (Ch 3/4/9).
 

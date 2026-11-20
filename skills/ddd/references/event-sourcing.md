@@ -19,7 +19,7 @@ analytics, or point-in-time reconstruction.
 ## Personal data
 
 - **Handle personal data with crypto-shredding (per-subject key) or forgettable payloads, never by rewriting streams.** Encrypt each subject's payload fields under a per-subject key and erase by destroying the key, or keep personal data out of the event body behind a reference the store can forget. The stream stays append-only and every other projection keeps working.
-  - ✅ `keys.destroy(subjectId)` to honor erasure; the subject's fields stay encrypted
+  - ✅ `keys.destroy(subjectId)` to honor erasure
   - ❌ `DELETE FROM events WHERE subject_id = ...` to honor erasure
 
 ## Snapshots

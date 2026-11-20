@@ -80,5 +80,5 @@ Sibling sub-skills, each read via the `architecture` router:
 
 Distilled from Sam Newman, *Building Microservices: Designing Fine-Grained
 Systems*, 2nd ed. (O'Reilly, 2021), chapters 2–6, 9, and 12: generic best
-practice is omitted; only non-obvious forks with a wrong likely-default
-survive.
+practice is omitted; only non-obvious forks where an unaided implementation
+picks the wrong default survive.

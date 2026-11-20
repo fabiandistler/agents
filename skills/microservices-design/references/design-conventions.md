@@ -52,7 +52,7 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 - **Model any multi-service business process as an explicit saga with compensating transactions.** You get no cross-service ACID atomicity; compensations are *semantic* rollbacks (you can't un-send an email — send a correcting one). (ch6)
 - **Order saga steps so the most-likely-to-fail steps run first,** so fewer already-committed steps need compensating. (ch6)
 - **Use sagas to recover from *business* failures only** (e.g. insufficient funds); handle *technical* failures (timeouts, 5xx) with the resiliency patterns below. (ch6)
-- **Run an orchestrated saga on a durable-execution engine (Temporal, Restate, or DBOS if Postgres-only with no new infra — examples, not endorsements; post-2021 practice). Hand-roll a saga state machine only if no durable-execution engine can be adopted.** (ch6)
+- **Run an orchestrated saga on a durable-execution engine (Temporal, Restate, or DBOS if Postgres-only with no new infra — examples, not endorsements; post-2021 practice). Hand-roll a saga state machine (ad-hoc timers and retries) only if no durable-execution engine can be adopted.** (ch6)
 - **Default to orchestration for a saga — durable execution keeps it cheap even across teams; choose choreography only when no single team can own the orchestrator.** (ch6)
 - **Propagate W3C `traceparent` via OpenTelemetry through every call and message header in a workflow** — mandatory for choreographed sagas to reconstruct state. (ch6)
 
@@ -60,8 +60,8 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 
 - **Write the state change and the event through a transactional outbox in the same local transaction; relay the outbox to the broker asynchronously.** See `members/ddd/SKILL.md` (read via the `architecture` router) for the outbox pattern. (ch4, ch6)
 - **Assume at-least-once delivery and dedupe consumers on the message or business ID.** A consumer must tolerate receiving the same event twice. (ch4)
-- **Never publish to the broker inside the business transaction.** Commit state (plus the outbox row) first; let the relay publish afterward. (ch4, ch6)
-  - ✅ `db.insert(outbox_row(evt)); db.commit()`, then the relay publishes
+- **Never publish to the broker from the business code path, inside the transaction or right after its commit.** Commit state (plus the outbox row) first; let the relay publish afterward. (ch4, ch6)
+  - ✅ `db.save(order); db.insert(outbox_row(evt)); db.commit()`
   - ❌ `db.commit(); broker.publish(evt)`
 
 ## Resiliency
