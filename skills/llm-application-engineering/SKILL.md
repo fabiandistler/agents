@@ -19,15 +19,7 @@ or whenever the question is how to implement prompting and prompt management,
 an evaluation harness or LLM judge, guardrails and security gating, finetuning
 (LoRA, hyperparameters), or training-data preparation. Draws on Chip Huyen's
 *AI Engineering* and bundles the adaptation ladder, the architecture build
-sequence, production monitoring, and an operational conventions sheet.
-
-When the application is an **agent** — tool loops, orchestration topologies,
-multi-agent decomposition, autonomy levels — pair that sheet with
-[`references/agent-engineering-conventions.md`](references/agent-engineering-conventions.md),
-its agent-specific companion (distilled from Albada, *Building Applications with
-AI Agents*). It carries the tool-design, orchestration, agent-evaluation,
-agent-memory-scoping, and autonomy-UX rules the general sheet does not, and
-defers to the general sheet wherever they overlap.
+sequence, production monitoring, and operational conventions by topic.
 
 Building an LLM application is not one decision but three nested ones: how to
 adapt the model to the task, how to grow the surrounding system, and how to know
@@ -36,21 +28,16 @@ they are usually needed in the same conversation and each guards against the
 same failure mode — reaching for the most powerful, most complex tool before the
 cheaper one has been ruled out.
 
-For the craft-level rules underneath these three decisions — prompt engineering
-and prompt management, evaluation-harness and LLM-judge configuration,
-guardrails and security gating, finetuning mechanics, and training-data
-preparation — open
-[`references/ai-engineering-conventions.md`](references/ai-engineering-conventions.md).
-It is a dense, falsifiable conventions sheet meant to be consulted when the
-question is *how to implement* one of these steps well, not *which* step to take
-next. Whenever you build or change a UI that shows model output (confidence,
-attribution, edit/undo/retry, AI labelling, blocked output), check
-[`references/result-surface.md`](references/result-surface.md) and list the
-unmet rules in the change description or review notes.
+## References
 
-For multi-stage or unattended LLM pipelines, read
-[`references/agent-pipelines.md`](references/agent-pipelines.md) for grader
-separation, code-review meta-grading, and controlled external writes.
+Open the file for the topic you are implementing:
+
+- [`references/evaluation.md`](references/evaluation.md): eval harness, LLM judges, agent evaluation, rollout experiments, production triage.
+- [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context engineering, agent memory, autonomy UX.
+- [`references/security.md`](references/security.md): guardrails, context authorization, database scope, agent security.
+- [`references/adaptation-and-serving.md`](references/adaptation-and-serving.md): prompting, finetuning, training data, serving, cost caps.
+- [`references/result-surface.md`](references/result-surface.md): any UI that shows model output; list the unmet rules in the change description or review notes.
+- [`references/agent-pipelines.md`](references/agent-pipelines.md): multi-stage or unattended pipelines; grader separation, code-review meta-grading, controlled external writes.
 
 ## Part A — The adaptation ladder
 
@@ -141,7 +128,7 @@ preemptively. The numbers give the usual order; the "Add it when" line
 decides each step.
 
 - **1. Enhance and minimize context**
-  - What it adds: Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/ai-engineering-conventions.md`
+  - What it adds: Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/agents-and-tools.md`
   - Add it when: Always first — poor context is the most common cause of poor output
 - **2. Put in guardrails**
   - What it adds: Input protection (prompt-injection detection, PII filtering) and output protection (hallucination/toxicity filters)
