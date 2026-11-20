@@ -25,7 +25,7 @@ Open the file for the topic you are implementing:
 
 - [`references/evaluation.md`](references/evaluation.md): eval harness, LLM judges, agent evaluation, rollout experiments, production metrics and implicit feedback.
 - [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context and retrieval, autonomy and escalation.
-- [`references/security.md`](references/security.md): guardrails, context authorization, database scope, agent security.
+- [`references/security.md`](references/security.md): guardrails, access and authorization, sandboxing, log redaction, red-teaming.
 - [`references/adaptation-and-serving.md`](references/adaptation-and-serving.md): prompting, finetuning, training data, serving, cost caps.
 - [`references/result-surface.md`](references/result-surface.md): any UI that shows model output; list the unmet rules in the change description or review notes.
 - [`references/agent-pipelines.md`](references/agent-pipelines.md): multi-stage or unattended pipelines; grader separation, code-review meta-grading, controlled external writes.

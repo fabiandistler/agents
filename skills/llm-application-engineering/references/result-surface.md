@@ -6,7 +6,7 @@ expert/B2B tools. When you build or change a UI that shows model output,
 check every rule below and list the unmet ones in the change description or
 review notes.
 Confirmation before irreversible actions: the approval-gate rule in
-[`security.md`, Guardrails & security](security.md#guardrails--security)._
+[`security.md`, Access and authorization](security.md#access-and-authorization)._
 
 As of 2026-09-24 (Machine Learning rules) and 2026-11-16 (Generative AI
 rules): the dates when each rule set was added here, both distilled from the

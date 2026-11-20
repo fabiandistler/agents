@@ -17,7 +17,7 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
   interface. Give a read-only agent no write/delete tools, and grant its
   account only the privileges those tools need.** Never provide unrestricted
   `execute_sql(query)` or code execution. Database grants enforce the scope
-  (`security.md`, Guardrails & security). (Albada Ch. 4)
+  (`security.md`, Access and authorization). (Albada Ch. 4)
   - ✅ `get_user_profile(user_id)`, `cancel_order(order_id)`
   - ❌ `execute_sql(query: str)` with broad database access
 - **Treat tool metadata as the selection interface: a precise narrow name, a
@@ -38,7 +38,7 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
   constrains sampling to the schema. Where strict mode is unavailable, validate
   every proposed call before executing it; on mismatch, prompt the model to
   correct only the broken portion, then fall back (backup model, cached data,
-  safe default).** (Albada Ch. 4, 7)
+  safe default).** (Albada Ch. 4, 7; Anthropic strict tool use, OpenAI structured outputs)
 - **Log every tool invocation with parameters; alert on anomalous patterns**
   (mass deletions, schema-altering calls). (Albada Ch. 4)
 - **Set `tool_choice` explicitly (`auto`/`required`/`none`/pinned) per call path

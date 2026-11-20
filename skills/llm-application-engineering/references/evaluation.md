@@ -138,7 +138,7 @@ opt-out — lost trust costs more than the data is worth.
   `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens` attributes, and
   session ID, agent/prompt version and workflow ID so traces and logs
   correlate. Keep content capture off by default per the PII-redaction rule in
-  `security.md`, Security.** The conventions are still in Development status;
+  `security.md`, Execution and operations.** The conventions are still in Development status;
   instrumentations that honour `OTEL_SEMCONV_STABILITY_OPT_IN` emit the latest
   ones only with `gen_ai_latest_experimental`. (Albada Ch. 10)
 - **Triage failures with a reproducibility test before reacting: rerun 3–5×;
