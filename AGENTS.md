@@ -209,7 +209,7 @@ output. That file is their only home. This repository adds:
 
 ### Issue tracker
 
-Issues live as GitHub issues on fabiandistler/agents, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live as GitHub issues on fabiandistler/agents. GitHub reads and writes (issues, pull requests, search) go through `gh api` REST: `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
