@@ -133,6 +133,8 @@ class FakeGitHub:
     run_artifacts: dict[int, list[str]] = field(default_factory=dict)
     missing_label: bool = False
     failing_label_add: bool = False
+    # When set, the total_count the Rework run and job listings report.
+    listed_total: int | None = None
     writes: list[tuple[str, str, dict | None]] = field(default_factory=list)
 
     def get(
@@ -149,10 +151,12 @@ class FakeGitHub:
             return json_response(self.comments if params.get("page") == 1 else [])
         if path == REWORK_RUNS:
             runs = [{"id": run_id} for run_id in self.jobs]
-            return json_response({"total_count": len(runs), "workflow_runs": runs})
+            total = len(runs) if self.listed_total is None else self.listed_total
+            return json_response({"total_count": total, "workflow_runs": runs})
         if (match := re.fullmatch(rf"/repos/{REPO}/actions/runs/(\d+)/jobs", path)) is not None:
             jobs = self.jobs[int(match[1])]
-            return json_response({"total_count": len(jobs), "jobs": jobs})
+            total = len(jobs) if self.listed_total is None else self.listed_total
+            return json_response({"total_count": total, "jobs": jobs})
         if (
             match := re.fullmatch(rf"/repos/{REPO}/actions/runs/(\d+)/artifacts", path)
         ) is not None:

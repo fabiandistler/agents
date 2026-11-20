@@ -116,6 +116,21 @@ def test_a_finished_or_skipped_earlier_run_does_not_hold_capacity(tmp_path):
     assert gate(fake, tmp_path).action == rework_policy.PROCEED
 
 
+@pytest.mark.parametrize("earlier_working", [False, True], ids=["alone", "earlier-run-working"])
+def test_a_total_count_beyond_the_listed_runs_and_jobs_is_read_not_failed(
+    tmp_path, earlier_working
+):
+    # Issue #905: the shared capacity guard failed on such a listing.
+    fake = FakeGitHub(listed_total=200)
+    if earlier_working:
+        fake.jobs[OWN_RUN - 1] = [
+            gate_job(status="completed", started="2026-11-14T09:00:00Z"),
+            gate_job("rework", status="in_progress"),
+        ]
+    expected = rework_policy.STOP if earlier_working else rework_policy.PROCEED
+    assert gate(fake, tmp_path).action == expected
+
+
 def _two_rounds() -> list[dict]:
     return [rest_comment(marker(1, OTHER_HEAD)), rest_comment(marker(2, THIRD_HEAD))]
 

@@ -60,6 +60,7 @@ class QueueFake:
     numbers carrying `ready-for-agent` (open or not: the fake filters by state).
     ``working`` maps an in-progress run id to its jobs; ``runs`` is the run
     listing, newest first. ``branches`` names the issues whose branch exists.
+    ``listed_total``, when set, is the ``total_count`` the working-run and job listings report.
     """
 
     issues: dict[int, dict] = field(default_factory=dict)
@@ -73,6 +74,7 @@ class QueueFake:
     reads: list[str] = field(default_factory=list)
     writes: list[tuple[str, str, dict]] = field(default_factory=list)
     workflow_file: str = "implementer.yml"
+    listed_total: int | None = None
 
     def get(
         self, path: str, params: dict | None = None, accept: str | None = None
@@ -85,11 +87,13 @@ class QueueFake:
         if path == f"/repos/{REPO}/actions/workflows/{self.workflow_file}/runs":
             if params.get("status") == "in_progress":
                 listed = [{"id": run_id} for run_id in self.working]
-                return json_response({"total_count": len(listed), "workflow_runs": listed})
+                total = len(listed) if self.listed_total is None else self.listed_total
+                return json_response({"total_count": total, "workflow_runs": listed})
             return json_response({"total_count": len(self.runs), "workflow_runs": self.runs})
         if (found := re.fullmatch(rf"/repos/{REPO}/actions/runs/(\d+)/jobs", path)) is not None:
             jobs = self.working[int(found[1])]
-            return json_response({"total_count": len(jobs), "jobs": jobs})
+            total = len(jobs) if self.listed_total is None else self.listed_total
+            return json_response({"total_count": total, "jobs": jobs})
         if path == f"/repos/{REPO}/issues":
             assert params.get("state") == "open", "only open issues wait"
             assert params.get("labels") == "ready-for-agent"
@@ -258,6 +262,22 @@ def test_a_run_whose_job_was_skipped_or_has_ended_does_not_make_the_queue_busy()
     }
     start(fake)
     assert dispatched_issue(fake) == 12
+
+
+@pytest.mark.parametrize(
+    "working", [{}, {WORKING_RUN: [working_job(EARLIER)]}], ids=["idle", "busy"]
+)
+def test_a_working_run_listing_whose_total_count_exceeds_its_items_does_not_fail(working):
+    # Issue #905: four queue runs failed on such a listing and dispatched nothing.
+    fake = waiting(12)
+    fake.working = working
+    fake.listed_total = 200
+    outcome = start(fake)
+    if working:
+        assert outcome.outcome == implementer_queue.BUSY
+        assert fake.writes == []
+    else:
+        assert dispatched_issue(fake) == 12
 
 
 def test_a_called_job_name_counts_as_working():

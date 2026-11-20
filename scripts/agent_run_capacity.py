@@ -27,24 +27,38 @@ from pr_github_client import PER_PAGE, FetchError, ReadClient, get_json
 CALLED_JOB_SEPARATOR = " / "
 
 
-def _single_page(
+def _all_pages(
     client: ReadClient, path: str, items_key: str, params: dict[str, object] | None = None
 ) -> list:
-    """The list under ``items_key``; more than one page would undercount, so it fails."""
-    listing = get_json(client, path, params={**(params or {}), "per_page": PER_PAGE})
-    items = listing.get(items_key) if isinstance(listing, dict) else None
-    total_count = listing.get("total_count") if isinstance(listing, dict) else None
-    if not isinstance(items, list) or not isinstance(total_count, int):
-        raise FetchError(f"GitHub API returned an unexpected payload for {path}")
-    if total_count > len(items):
-        raise FetchError(f"GitHub API listed more items than one page holds for {path}")
-    return items
+    """Every item under ``items_key`` of an Actions listing, read page by page.
+
+    An Actions listing wraps one page in ``{"total_count": n, items_key: [...]}``,
+    so ``pr_github_client.paginate``, which reads top-level arrays, cannot read it.
+    Reading stops once ``total_count`` items are held or a page comes back short
+    or empty. ``total_count`` may exceed the items the listing returns (the
+    status-filtered runs listing did, issue #905), and a short page is the
+    listing's own end, so neither case is an error.
+    """
+    items: list = []
+    page = 1
+    while True:
+        listing = get_json(
+            client, path, params={**(params or {}), "per_page": PER_PAGE, "page": page}
+        )
+        page_items = listing.get(items_key) if isinstance(listing, dict) else None
+        total_count = listing.get("total_count") if isinstance(listing, dict) else None
+        if not isinstance(page_items, list) or type(total_count) is not int:
+            raise FetchError(f"GitHub API returned an unexpected payload for {path}")
+        items.extend(page_items)
+        if len(page_items) < PER_PAGE or len(items) >= total_count:
+            return items
+        page += 1
 
 
 def _job_statuses(client: ReadClient, path: str, jobs: tuple[str, ...]) -> dict[str, dict]:
     """The listed jobs of one run attempt that are working jobs, by name."""
     found: dict[str, dict] = {}
-    for job in _single_page(client, path, "jobs"):
+    for job in _all_pages(client, path, "jobs"):
         try:
             name = job["name"]
             status = job["status"]
@@ -117,7 +131,7 @@ def working_runs(
     """Every working run of ``workflow`` but run ``skip``, by run id, with its work start."""
     runs_path = f"/repos/{repo}/actions/workflows/{workflow}/runs"
     working: dict[int, datetime] = {}
-    for run in _single_page(client, runs_path, "workflow_runs", {"status": "in_progress"}):
+    for run in _all_pages(client, runs_path, "workflow_runs", {"status": "in_progress"}):
         run_id = run.get("id") if isinstance(run, dict) else None
         if not isinstance(run_id, int):
             raise FetchError(f"GitHub API returned a malformed run for {runs_path}")
