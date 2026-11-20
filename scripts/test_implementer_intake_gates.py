@@ -398,7 +398,6 @@ OWN_JOBS = f"/repos/{REPO}/actions/runs/{RUN_ID}/jobs"
     ("route", "payload"),
     [
         (RUNS, {"workflow_runs": []}),
-        (RUNS, {"total_count": 200, "workflow_runs": [{"id": RUN_ID}]}),
         (RUNS, {"total_count": 1, "workflow_runs": [{"id": "x"}]}),
         (OWN_JOBS, {"total_count": 0, "jobs": []}),
         (OWN_JOBS, {"total_count": 1, "jobs": [{"name": "implement"}]}),
@@ -408,7 +407,6 @@ OWN_JOBS = f"/repos/{REPO}/actions/runs/{RUN_ID}/jobs"
     ],
     ids=[
         "no-total",
-        "overflow",
         "run-without-id",
         "own-job-missing",
         "job-without-status",
@@ -422,6 +420,18 @@ def test_malformed_action_payloads_are_api_errors(route, payload):
     with pytest.raises(pr_github_client.FetchError):
         claim(fake)
     assert fake.writes == []
+
+
+@pytest.mark.parametrize(
+    ("other_runs", "outcome"),
+    [({}, "claimed"), ({4999: [working_job(EARLIER)]}, "at-capacity")],
+    ids=["alone", "earlier-run-working"],
+)
+def test_a_total_count_beyond_the_listed_runs_and_jobs_is_read_not_failed(other_runs, outcome):
+    # Issue #905: the status-filtered run listing reported total_count 200 next
+    # to fewer runs. The listed runs and jobs decide; the count does not.
+    fake = FakeGitHub(jobs={RUN_ID: [working_job()], **other_runs}, listed_total=200)
+    assert claim(fake).outcome == outcome
 
 
 # The command line.

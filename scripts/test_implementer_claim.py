@@ -72,6 +72,7 @@ class FakeGitHub:
     ``errors`` maps (method, path) to an error, ``canned_payloads`` a GET path to its answer.
     ``jobs`` maps a run id to its jobs; by default only this run works.
     ``branch`` and ``workflow_file`` are the names the routes expect.
+    ``listed_total``, when set, is the ``total_count`` every Actions listing reports.
     """
 
     pulls: list[dict] = field(default_factory=list)
@@ -89,6 +90,7 @@ class FakeGitHub:
     compared: list[str] = field(default_factory=list)
     branch: str = BRANCH
     workflow_file: str = "implementer.yml"
+    listed_total: int | None = None
 
     def _fail_if_routed(self, method: str, path: str) -> None:
         if (method, path) in self.errors:
@@ -129,10 +131,12 @@ class FakeGitHub:
         if path == f"/repos/{REPO}/actions/workflows/{self.workflow_file}/runs":
             assert params.get("status") == "in_progress", "only working runs may be counted"
             runs = [{"id": run_id} for run_id in self.jobs]
-            return json_response({"total_count": len(runs), "workflow_runs": runs})
+            total = len(runs) if self.listed_total is None else self.listed_total
+            return json_response({"total_count": total, "workflow_runs": runs})
         if (match := re.fullmatch(rf"/repos/{REPO}/actions/runs/(\d+)/jobs", path)) is not None:
             jobs = self.jobs[int(match[1])]
-            return json_response({"total_count": len(jobs), "jobs": jobs})
+            total = len(jobs) if self.listed_total is None else self.listed_total
+            return json_response({"total_count": total, "jobs": jobs})
         if (match := re.fullmatch(rf"/repos/{REPO}/issues/(\d+)", path)) is not None:
             number = int(match[1])
             if number not in self.blocker_issues:
