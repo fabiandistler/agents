@@ -116,7 +116,10 @@ read `scripts/` from their own checkout; Fix watches seven workflows by name
 `implementer-queue.yml`, which calls the reusable
 `factory-implementer-queue.yml`; after a run it dispatched, the `follow-up`
 job's `implementer_follow_up.py` starts the queue and the Fix task (#863),
-because such a run starts no `workflow_run`. The diagram omits them.
+because such a run starts no `workflow_run`. A queue run that job dispatched
+starts none either, so the queue's `report-failure` job runs the same script
+to start the Fix task when that run's starter fails (#909). The diagram omits
+them.
 
 ## Dynamic view: claim to verdict
 
