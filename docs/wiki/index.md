@@ -51,6 +51,13 @@ nothing here describes the present. See [conventions](conventions.md).
 
 - [dictation](preferences/dictation.md) — a dictated "dort Files" meant dotfiles; ask before re-scoping when a phrase looks like a garbled repo or tool name (2026-11-20).
 
+## Parked specs
+
+- [2026-11-20 maintenance runs on Actions](specs/2026-11-20-maintenance-runs-on-actions-draft.md) — parked draft of option A, never filed; overview, problem, solution, user stories.
+  - [decisions](specs/2026-11-20-maintenance-runs-on-actions-draft-decisions.md) — its implementation and testing decisions, out of scope.
+  - [findings](specs/2026-11-20-maintenance-runs-on-actions-draft-findings.md) — findings F1–F5 (App token sandboxed; dropped schedules), risks, test seams.
+  - [tickets](specs/2026-11-20-maintenance-runs-on-actions-draft-tickets.md) — open questions and the 12-ticket sketch.
+
 ## Snapshots
 
 - [2026-10-19 backlog](snapshots/2026-10-19-backlog.md) — open issues, audit state, leverage ranking at session start.
