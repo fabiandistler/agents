@@ -21,6 +21,16 @@
 #             (workspace-write mounts .git read-only on Linux, openai/codex#15505,
 #             but each task commits; so: run codex in a container or VM)
 #   opencode  opencode run --auto <prompt>
+# Two more for claude (Claude Code docs as of 2026-11-20, not yet tried here):
+#   - Live view: in text mode run_<id>.log stays empty until the item ends.
+#     Follow the item's session transcript instead, which Claude Code writes as
+#     it goes. From the repo root, in a second terminal; each item is a fresh
+#     session, so re-run it per item. Read it, never parse it for a verdict:
+#     its format is internal and changes between releases.
+#       tail -f "$(ls -t ~/.claude/projects/"$(pwd | sed 's/[^[:alnum:]]/-/g')"/*.jsonl | head -1)"
+#   - `--bare` is announced to become the default for `claude -p`, and bare mode
+#     reads no subscription login. A preflight stop whose log shows an auth
+#     error then means a missing ANTHROPIC_API_KEY, not unwritable Git metadata.
 #
 # Run logs and last-failure output live under $(git rev-parse --git-dir)/poc-loop,
 # never in the working tree, so a stopped run can be restarted as is.
