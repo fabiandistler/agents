@@ -24,7 +24,7 @@ tool before the cheaper one is ruled out.
 Open the file for the topic you are implementing:
 
 - [`references/evaluation.md`](references/evaluation.md): eval harness, LLM judges, agent evaluation, rollout experiments, production metrics and implicit feedback.
-- [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context engineering, agent memory, autonomy UX.
+- [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context and retrieval, autonomy and escalation.
 - [`references/security.md`](references/security.md): guardrails, context authorization, database scope, agent security.
 - [`references/adaptation-and-serving.md`](references/adaptation-and-serving.md): prompting, finetuning, training data, serving, cost caps.
 - [`references/result-surface.md`](references/result-surface.md): any UI that shows model output; list the unmet rules in the change description or review notes.

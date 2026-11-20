@@ -4,6 +4,8 @@ Rules for eval harnesses, LLM judges, agent evaluation, rollout experiments and 
 
 Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Michael Albada, *Building Applications with AI Agents* (O'Reilly, 2025).
 
+As of 2026-11-20: the OpenTelemetry GenAI semantic conventions are in Development status, checked against <https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/>.
+
 ## Contents
 
 - [Evaluation](#evaluation)
