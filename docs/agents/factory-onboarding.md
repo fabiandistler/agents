@@ -273,7 +273,8 @@ and never a `factory-*.yml` file: a called workflow fails inside its caller's
 run. List only callers the target has. Each caller's path must be in
 `WATCHED_WORKFLOWS` of `scripts/factory_failure_policy.py`
 (`implementer.yml`, `issue-triage.yml`, `pr-review.yml`, `rework.yml`, and
-this repository's `skill-audit.yml` and `retro.yml`); a run of any other path
+this repository's `skill-audit.yml`, `retro.yml` and `implementer-queue.yml`);
+a run of any other path
 is not filed. The triage label caller is not watched. Fix is model-free and
 needs no secret.
 

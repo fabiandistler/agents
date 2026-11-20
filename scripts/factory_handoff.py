@@ -35,6 +35,7 @@ AGENT_BRANCH_PREFIX = "agent/issue-"
 # The caller workflows other runs look up, by file name under .github/workflows/.
 WORKFLOWS_DIR = ".github/workflows"
 IMPLEMENTER_WORKFLOW = "implementer.yml"
+IMPLEMENTER_QUEUE_WORKFLOW = "implementer-queue.yml"
 REVIEW_WORKFLOW = "pr-review.yml"
 REWORK_WORKFLOW = "rework.yml"
 RETRO_WORKFLOW = "retro.yml"

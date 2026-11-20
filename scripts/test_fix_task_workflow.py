@@ -58,6 +58,12 @@ def test_it_watches_the_rework_and_retro_tasks():
     assert {"rework", "retro"} <= set(watched)
 
 
+def test_it_watches_the_implementer_queue_by_its_name():
+    # workflow_run matches the `name:`, not the file name.
+    queue = _workflow(WORKFLOWS / "implementer-queue.yml")["name"]
+    assert queue in _workflow()[True]["workflow_run"]["workflows"]
+
+
 def test_every_watched_workflow_starts_runs_of_its_own():
     # A called (workflow_call) workflow runs inside its caller's run: its
     # failure is the caller's failed run, under the caller's name and path. So

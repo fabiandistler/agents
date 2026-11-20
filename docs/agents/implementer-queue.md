@@ -95,6 +95,13 @@ and, unless the implement job succeeded, fix-task with the run's id. The Fix
 task waits up to 180 seconds for the run to complete before it reads it. Runs a
 person or a label started skip that job and reach both through `workflow_run`.
 
+The Fix task also files a failed implementer-queue run (ADR-0016, amended
+2026-11-20), but only one that `workflow_run` reaches: a scheduled run, one
+started by an issue a person closed, one after an implementer run a person or
+a label started. A queue run the `follow-up` job dispatched starts no
+`workflow_run` either, and the job dispatches no Fix task for it; file it by
+hand (Actions → fix-task → Run workflow, its run id, `dry_run` false).
+
 | Situation | Outcome | What the starter does |
 | --- | --- | --- |
 | An implementer job is working | `busy` | Dispatches nothing and reads no issue |

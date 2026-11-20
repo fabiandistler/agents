@@ -10,6 +10,7 @@ from factory_handoff import (
     APP_LOGIN,
     FIX_ISSUE,
     FIX_RUN,
+    IMPLEMENTER_QUEUE_WORKFLOW,
     IMPLEMENTER_WORKFLOW,
     ISSUE_TRIAGE,
     ISSUE_TRIAGE_WORKFLOW,
@@ -308,6 +309,7 @@ def test_the_caller_workflow_file_names():
         RETRO_WORKFLOW,
         ISSUE_TRIAGE_WORKFLOW,
         SKILL_AUDIT_WORKFLOW,
+        IMPLEMENTER_QUEUE_WORKFLOW,
     ) == (
         "implementer.yml",
         "pr-review.yml",
@@ -315,6 +317,7 @@ def test_the_caller_workflow_file_names():
         "retro.yml",
         "issue-triage.yml",
         "skill-audit.yml",
+        "implementer-queue.yml",
     )
     assert workflow_path(RETRO_WORKFLOW) == ".github/workflows/retro.yml"
 

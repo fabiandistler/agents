@@ -13,7 +13,7 @@ name: fix-task
 
 on:
   workflow_run: # zizmor: ignore[dangerous-triggers] model-free, GITHUB_TOKEN only; it reads the run by id and writes issues
-    workflows: [implementer, skill-audit, issue-triage, pr-review, rework, retro]
+    workflows: [implementer, skill-audit, issue-triage, pr-review, rework, retro, implementer-queue]
     types: [completed]
   workflow_dispatch:
     inputs:

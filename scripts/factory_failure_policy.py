@@ -1,8 +1,8 @@
 """The rules of the Fix task, free of I/O: one issue per factory failure signature.
 
 A failed factory run (implementer, skill-audit, issue-triage, pr-review,
-rework, retro) is reduced to a signature: the workflow path, the job and step
-of the first failure, and a normalized reason. The reason is the first
+rework, retro, implementer-queue) is reduced to a signature: the workflow
+path, the job and step of the first failure, and a normalized reason. The reason is the first
 annotation starting with ``RUN FAILED`` (``agent_run_report.py`` prints it),
 otherwise the job's first error annotation. Numbers, SHAs, URLs and ``#<n>`` become placeholders,
 so two runs failing the same way share a signature and one issue.
@@ -21,6 +21,7 @@ from agent_run_report import FAILED_PREFIX
 from factory_handoff import (
     FIX_ISSUE,
     FIX_RUN,
+    IMPLEMENTER_QUEUE_WORKFLOW,
     IMPLEMENTER_WORKFLOW,
     ISSUE_TRIAGE_WORKFLOW,
     NEEDS_TRIAGE,
@@ -54,6 +55,7 @@ WATCHED_WORKFLOWS = tuple(
         REVIEW_WORKFLOW,
         REWORK_WORKFLOW,
         RETRO_WORKFLOW,
+        IMPLEMENTER_QUEUE_WORKFLOW,
     )
 )
 IMPLEMENTER = workflow_path(IMPLEMENTER_WORKFLOW)
