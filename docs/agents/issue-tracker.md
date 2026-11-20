@@ -6,6 +6,12 @@ REST endpoint. GraphQL-backed `gh` porcelain (`gh issue`, `gh pr`, `gh search`,
 `gh label`, `gh repo view`, `gh release list|view`) fails with HTTP 403 in
 Claude Code cloud sessions; REST works everywhere.
 
+Do not trust `gh auth status` in a cloud session. Checked 2026-11-20: it prints
+"The token in GH_TOKEN is invalid", yet REST `gh api` works through the cloud
+proxy, and only the GraphQL-backed porcelain (`gh pr`, `gh issue`) gets HTTP 403.
+Probe with REST instead: `gh api repos/{owner}/{repo} --jq .full_name` prints
+the repository name when `gh api` works.
+
 Inside a clone, `gh` replaces `{owner}` and `{repo}` in the endpoint. Pass owner
 and repo explicitly to the MCP tools.
 
@@ -53,6 +59,33 @@ and repo explicitly to the MCP tools.
 - **Close an issue with a comment**: comment first (above), then use the GitHub
   MCP tools if the session has them; otherwise `gh api --method PATCH
   repos/{owner}/{repo}/issues/<number> -f state=closed`.
+- **Search issues and pull requests**: one `search/issues` call returns only
+  the matches, where listing pages through every issue or pull request. The
+  GitHub MCP in cloud sessions has no `search_*` tools, so use REST. Pull
+  requests by head-branch prefix (`head:` matches a branch-name prefix):
+
+  ```bash
+  gh api -X GET search/issues \
+    -f q='repo:fabiandistler/agents is:pr head:maintenance/' \
+    --jq '[.items[] | {number, state, merged_at: .pull_request.merged_at}]'
+  ```
+
+  Issues by label:
+
+  ```bash
+  gh api -X GET search/issues \
+    -f q='repo:fabiandistler/agents is:issue is:open label:ready-for-agent' \
+    --jq '[.items[] | {number, title}]'
+  ```
+
+  - Every query names `is:issue` or `is:pr`, one query per kind. Without one,
+    a cloud session got HTTP 422 `{"message":"Query must include 'is:issue' or
+    'is:pull-request'"}` on 2026-11-20. Other tokens return issues and pull
+    requests mixed together.
+  - Write the repository out in the query, as above. `gh` fills `{owner}/{repo}`
+    in a query only in a `-F` value (`-F q='repo:{owner}/{repo} is:pr ...'`);
+    with `-f` it sends the braces literally and gets HTTP 422 "Validation
+    Failed ... cannot be searched".
 
 ## Pull requests
 
