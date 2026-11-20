@@ -56,8 +56,9 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
 - **Run generated code and agent execution only in an isolated sandbox
   (container or VM), isolate third-party tool dependencies (containers/venvs),
   and rate-limit all agent-facing endpoints.** (Huyen Ch. 5; Albada Ch. 4, 12)
-- **Redact PII from prompts, user messages and tool payloads at span export:
-  the service may log full prompts, but observability backends never receive
-  them in plaintext. Isolate monitoring backends with RBAC.** (Albada Ch. 10, 12)
+- **Redact PII from prompts, user messages and tool payloads before any log or
+  telemetry leaves the service (span export, log shipping, crash reports): full
+  prompts stay only in in-service logs with restricted access and a retention
+  limit. Isolate monitoring backends with RBAC.** (Albada Ch. 10, 12)
 - **Red-team before AND after every significant model/prompt change** — it's a
   recurring activity, not a launch checkbox (DeepTeam, Garak, PyRIT). (Albada Ch. 12)
