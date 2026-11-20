@@ -31,6 +31,7 @@
   (`permission_denials_count: 1` in the job log; dotfiles#63 names the
   call), so the run shows nothing about what the token may do there. The
   first implementer run in dotfiles checks this (#790, dotfiles#61).
+  *Superseded 2026-11-20, see below.*
 - 2026-11-12: dotfiles#63 (open) removes the probe caller, which pins a
   commit of the closed, unmerged #796. *Superseded 2026-11-13, see below.*
 - 2026-11-13 (supersedes the 2026-11-12 "open"): dotfiles#63 merged on
@@ -40,5 +41,17 @@
   an explicit `github_token` the ADR-0018 fallback, following #786 comment
   6806728845, records the 2026-11-12 probe and the default-branch rule,
   and keeps the App token's rights in a target as unverified.
+- 2026-11-20 (supersedes the 2026-11-12 "not verified" claim on the App
+  token's rights): the Claude App token is sandboxed to the current
+  repository. At `anthropics/claude-code-action@4fa93a8` the action
+  exchanges the job's OIDC token without naming a repository
+  (`src/github/token.ts:103-123`), and its FAQ says the token "is sandboxed
+  to the current repository only" and cannot push to any other
+  (`docs/faq.md:180-182`). ADR-0019 had checked the same pinned action on
+  2026-11-15 and lists the token's write scopes, `contents`,
+  `pull_requests` and `issues` (`docs/adr/0019-remove-claude-mention-workflow.md:19-27`
+  at `fabiandistler/agents@94e1b19`). Source: the check behind the
+  [2026-11-20 decisions](../decisions/2026-11-20-decisions.md), re-read at
+  `4fa93a8` for this page.
 
 Related: [rollout](../decisions/2026-11-11-factory-rollout.md).

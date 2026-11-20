@@ -30,7 +30,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [unlinked PRs](problems/unlinked-prs.md) — merged work left its issue open; caused a wasted worker run.
 - [Dependabot on private repos](problems/dependabot-private-repos.md) — update jobs wait for a `dependabot`-labelled runner and are cancelled after 24 h; fixed in dotfiles and repo-maintenance on 2026-11-14 (read 2026-11-20).
 - [private repos without rulesets](problems/private-repos-no-rulesets.md) — rollout targets cannot require checks; weaker brakes, push guard #789.
-- [cross-repo token exchange](problems/cross-repo-token-exchange.md) — claude-code-action#443 may break the App token in a called workflow; 2026-11-12 probe: the exchange works, token rights unverified.
+- [cross-repo token exchange](problems/cross-repo-token-exchange.md) — claude-code-action#443 may break the App token in a called workflow; 2026-11-12 probe: the exchange works, token rights unverified; *superseded* 2026-11-20: the App token is sandboxed to the current repository (claude-code-action `4fa93a8`, ADR-0019).
 - [Actions runs stuck in `queued`](problems/actions-runs-stuck-queued.md) — 2026-11-11 stall during GitHub incidents; runs with zero jobs, cancel refused; fresh runs via "Update branch"; 28 left in agents and 5 in dotfiles on 2026-11-20.
 - [cross-repo `Blocked by` URLs](problems/cross-repo-blocked-by.md) — fail closed after #785 and stop the implementer until removed.
 - [closing keyword in quoted text](problems/closing-keyword-in-quotes.md) — a quoted task list in PR #795 made GitHub mark #783 completed; the implementer claim reads the same body; check gap #802.
@@ -47,6 +47,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [fix-agent test time](problems/fix-agent-test-time.md) — fix runs spent most time on full-suite reruns; `-k` trap fixed, xdist in CI (2026-11-19).
 - [implementer-queue page guard](problems/implementer-queue-page-guard.md) — four queue runs failed on the one-page guard in `agent_run_capacity.py` (2026-11-18/19); cause unknown, the Fix task does not watch the queue, no issue (2026-11-20); *superseded* the same day: #905 fixed by #907, the queue's failures reach the Fix task (#908, #910).
 - [runs without a trace](problems/runs-without-trace.md) — the 2026-11-16 maintenance run, the retro on PR #873 and the #763 check ended with no artifact and no trace in the repos; status fields read success (2026-11-20); repo-maintenance#174 retries the classifier outage, agents and dotfiles only after their bootstrap switch; dropped Actions schedules leave no failed run.
+- [listing-tool cost](problems/listing-tool-cost.md) — on 2026-11-20 `list_triggers` returned 34 stored prompts (+101k tokens) and `list_pull_requests` 8 pages (+120k); use `get_trigger` with known ids and one `gh api search/issues` query; an `analyst` agent type is planned, PR pending.
 
 ## User preferences
 
