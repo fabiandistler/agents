@@ -4,7 +4,7 @@ category: ai-ml
 environments: coding
 description: "Engineers LLM applications: fixing bad output (prompting, RAG, finetuning), evals and LLM judges, agents and tools, guardrails, and production monitoring. Use when building or debugging an app on top of an LLM."
 metadata:
-  version: "1.2"
+  version: "2.0"
 ---
 
 # LLM Application Engineering
@@ -27,7 +27,7 @@ Open the file for the topic you are implementing:
 - [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context and retrieval, autonomy and escalation.
 - [`references/security.md`](references/security.md): guardrails, access and authorization, sandboxing, log redaction, red-teaming.
 - [`references/adaptation-and-serving.md`](references/adaptation-and-serving.md): prompting, finetuning, training data, serving, cost caps.
-- [`references/result-surface.md`](references/result-surface.md): any UI that shows model output; list the unmet rules in the change description or review notes.
+- [`references/result-surface.md`](references/result-surface.md): any UI that shows model output (confidence, attribution, corrections, AI labelling, blocked output).
 - [`references/agent-pipelines.md`](references/agent-pipelines.md): multi-stage or unattended pipelines; grader separation, code-review meta-grading, controlled external writes.
 
 ## Part A — The adaptation ladder
