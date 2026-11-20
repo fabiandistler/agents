@@ -8,7 +8,7 @@ nothing here describes the present. See [conventions](conventions.md).
 
 - [goal](goal.md) — the long-running goal, its scope, and the ordering decision (improve before extend).
 - [merge plan](merge-plan.md) — open PRs and their merge-order constraints; on 2026-11-20 none open, the 2026-11-13/14 queue all merged.
-- [schedules](schedules.md) — recurring scheduled tasks and their setup; the #763 brownout check failed (read 2026-11-20).
+- [schedules](schedules.md) — recurring scheduled tasks and their setup; the #763 brownout check failed (read 2026-11-20); the three maintenance routines as read 2026-11-20, agents cannot edit them (`http_api`), the dotfiles test reverts by hand before 2026-12-16, evaluation task due 2026-12-10.
 
 ## Decisions
 
@@ -21,6 +21,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-13 triage decisions](decisions/2026-11-13-triage-decisions.md) — reopen #783, queue issue #801, #769 script-only, YAML tickets in interactive sessions.
 - [2026-11-18 decisions](decisions/2026-11-18-decisions.md) — `PR_AUTO_MERGE=true`; high-risk zones already in `pr_risk.py`, no issue; #877 lists all repos.
 - [2026-11-19 tools decisions](decisions/2026-11-19-tools-decisions.md) — tools gallery: deploy gate first, line limit reframed, fix high+med, skill rules, one branch per package.
+- [2026-11-20 decisions](decisions/2026-11-20-decisions.md) — #905/#907, #908, #909/#910, repo-maintenance#174; Opus and bootstrap on the agents and dotfiles routines; dotfiles twice a week for three weeks; maintenance stays in routines (option B); routine edits by hand.
 
 ## Recurring problems
 
@@ -41,11 +42,11 @@ nothing here describes the present. See [conventions](conventions.md).
 - [review model inputs](problems/review-model-inputs.md) — review saw no rebuttals or briefs and stripped HTML comments; #822/#823.
 - [dry run in the review's concurrency group](problems/dry-run-cancels-review.md) — a manual dry run shares `pr-review-<n>` and can cancel a review (2026-11-18); fix #882.
 - [tools gallery had no checks](problems/tools-no-checks.md) — `tools` deployed straight to Pages; data-workflow broken since 2026-04-19, XSS; smoke suite tools#17 (2026-11-19).
-- [subagent tool overhead](problems/subagent-tool-overhead.md) — ~92k tokens of unused tool definitions per subagent, 45–57 % of its cost (retro 2026-11-19).
+- [subagent tool overhead](problems/subagent-tool-overhead.md) — ~92k tokens of unused tool definitions per subagent, 45–57 % of its cost (retro 2026-11-19); three browser-worker runs on 2026-11-20 reported 119k–186k, not like-for-like, starting context unmeasured.
 - [Playwright revision mismatch](problems/playwright-revision-mismatch.md) — cloud image Chromium ≠ Python Playwright's; use `--browser-channel chrome` (2026-11-19).
 - [fix-agent test time](problems/fix-agent-test-time.md) — fix runs spent most time on full-suite reruns; `-k` trap fixed, xdist in CI (2026-11-19).
-- [implementer-queue page guard](problems/implementer-queue-page-guard.md) — four queue runs failed on the one-page guard in `agent_run_capacity.py` (2026-11-18/19); cause unknown, the Fix task does not watch the queue, no issue (2026-11-20).
-- [runs without a trace](problems/runs-without-trace.md) — the 2026-11-16 maintenance run, the retro on PR #873 and the #763 check ended with no artifact and no trace in the repos; status fields read success (2026-11-20).
+- [implementer-queue page guard](problems/implementer-queue-page-guard.md) — four queue runs failed on the one-page guard in `agent_run_capacity.py` (2026-11-18/19); cause unknown, the Fix task does not watch the queue, no issue (2026-11-20); *superseded* the same day: #905 fixed by #907, the queue's failures reach the Fix task (#908, #910).
+- [runs without a trace](problems/runs-without-trace.md) — the 2026-11-16 maintenance run, the retro on PR #873 and the #763 check ended with no artifact and no trace in the repos; status fields read success (2026-11-20); repo-maintenance#174 retries the classifier outage, agents and dotfiles only after their bootstrap switch; dropped Actions schedules leave no failed run.
 
 ## User preferences
 
@@ -61,3 +62,4 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-13 triage](snapshots/2026-11-13-triage.md) — verdicts on all open issues in three repos, the agent queue order, manual steps with deadlines; follow-up 2026-11-20.
 - [2026-11-19 tools audit](snapshots/2026-11-19-tools-audit.md) — 13 files, 104 bugs, 94 rule violations; issues tools#11–#16.
 - [2026-11-20 status](snapshots/2026-11-20-status.md) — agents, repo-maintenance, dotfiles: human items with deadlines 2026-11-22 to 2026-12-02, broken items, no agent work queued.
+- [2026-11-20 maintenance cadence](snapshots/2026-11-20-maintenance-cadence.md) — capacity 1 slot a week against demand 2.2–3.4 runs, yield per job, cost per run by model, five levers.
