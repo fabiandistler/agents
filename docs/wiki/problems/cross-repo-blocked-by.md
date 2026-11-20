@@ -11,6 +11,11 @@
 - Where it bites (2026-11-11): the onboarding issues dotfiles#61 and
   repo-maintenance#153 list their blockers as agents issue URLs. Both are
   `ready-for-human` and note that the list must be rewritten before either
-  is handed to the implementer.
+  is handed to the implementer. *Superseded 2026-11-20, see below.*
+- 2026-11-20 (supersedes "Where it bites") [read]: dotfiles#61 and
+  repo-maintenance#153 closed completed 2026-11-14 20:01 UTC without the
+  implementer; their Blocked-by lists had been rewritten to agents#794 only
+  that day. The 2026-11-11 claims about the mechanism are not affected.
+  Source: [2026-11-20 status sweep](../snapshots/2026-11-20-status.md).
 
 Related: [rollout](../decisions/2026-11-11-factory-rollout.md).

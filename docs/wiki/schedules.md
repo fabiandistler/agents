@@ -36,8 +36,64 @@
   (disable dates not recorded). With no implementer workflow in
   repo-maintenance and dotfiles, nothing there consumes `ready-for-agent`:
   [no agent consumer outside agents](problems/no-agent-consumer-outside-agents.md).
+  *Superseded 2026-11-20 for the implementer, see below.*
 - 2026-11-13: one-off scheduled check `trig_01HdS5BtHMcP5ris2tjwviwh` for
   the Dependabot runner-type setting (repo-maintenance#142, dotfiles#52),
   due 2026-11-15 09:07 UTC. The scheduled maintenance run of 2026-11-16
   07:32 UTC is expected to open repo-maintenance's first deps-audit PR
-  (repo-maintenance#137).
+  (repo-maintenance#137). *Superseded 2026-11-20 for the maintenance run,
+  see below.*
+- 2026-11-14: one-off scheduled check `trig_0159BdYMZ82Lzb9o2aTGk19Y`
+  ("Verify #763 during pr-review brownout"), due 2026-11-16 17:40 UTC
+  ([2026-11-14 decisions](decisions/2026-11-14-decisions.md)).
+- 2026-11-20, result of that check [read]: it fired 2026-11-16 17:41:50 UTC
+  with status FAILED and `ended_reason: auto_disabled_session_gone`; the
+  verification never ran. No run of any workflow was created in agents
+  between 16:00 and 18:00 UTC that day, and no pr-review run between 15:30
+  and 18:30, so the brownout gave no evidence either. No other wiki page
+  recorded this result. The event policy (#763) stays unverified, with
+  GitHub's default block from 2026-12-02; see
+  [2026-11-20 status sweep](snapshots/2026-11-20-status.md) and
+  [runs without a trace](problems/runs-without-trace.md).
+- 2026-11-20 (supersedes the 2026-11-13 "nothing there consumes
+  `ready-for-agent`") [read]: repo-maintenance and dotfiles had implementer
+  callers since 2026-11-14; see
+  [no agent consumer outside agents](problems/no-agent-consumer-outside-agents.md).
+- 2026-11-20 [read]: the weekly maintenance run on repo-maintenance is the
+  scheduled task `trig_01XPRmF1GFqjd1qFoWGvCi1G` ("repo-maintenance weekly
+  maintenance run", `CRON_TZ=Europe/Berlin 32 8 * * 1`, enabled, model
+  `claude-opus-5-5`, no connectors, push on; created 2026-10-31, updated
+  2026-11-10 09:38 UTC). This page had not named it before. Its schedule
+  matches `docs/agents/weekly-maintenance-routine.md:29` at
+  `fabiandistler/repo-maintenance@bacc59d`. Next run 2026-11-23 07:32 UTC.
+- 2026-11-20 [read]: `trig_016FpvZkZFm5tPdbFCrXebbT` ("agents
+  repo-maintenance", 2026-11-10 above) runs the skill on
+  `fabiandistler/agents`, Sundays 01:34 Europe/Berlin
+  (`CRON_TZ=Europe/Berlin 34 1 * * 0`; last run 2026-11-15 00:35 UTC), not on
+  repo-maintenance. Its stored prompt, and that of the dotfiles task
+  `trig_01XtaNXwvNSQbiDAZJq2vBPV`, is an older direct prompt, not the
+  bootstrap that repo-maintenance's
+  `docs/agents/target-repo-maintenance-routine.md` says the prompt field
+  holds.
+- 2026-11-20 (supersedes the 2026-11-13 expectation for the 2026-11-16
+  maintenance run) [read]: `trig_01XPRmF1GFqjd1qFoWGvCi1G` fired 2026-11-16
+  07:32:42 UTC (session `cse_0154VwoYH6snGir8pi7WAc75`), stopped when the
+  auto-mode classifier gave no verdict on seven Bash calls in a row, and sent
+  a "RUN FAILED" push notification at 07:34:59 UTC. No repo trace; its
+  `last_run.status` reads `SUCCEEDED`. [inferred] A transient classifier
+  outage. repo-maintenance#137 still waits; see
+  [runs without a trace](problems/runs-without-trace.md).
+- 2026-11-20 [read]: repo-maintenance#142 and dotfiles#52 closed
+  2026-11-14 17:58 UTC, before the check `trig_01HdS5BtHMcP5ris2tjwviwh` was
+  due; that check's outcome was not read in the 2026-11-20 sweep.
+- 2026-11-20, skill audit on Actions [read]: `.github/workflows/skill-audit.yml:16`
+  (`fabiandistler/agents@acbd1c9`) has cron `41 13 8,22 * *` with
+  `timezone: Europe/Berlin`. No scheduled run yet; only the manual
+  dispatches 42791057621 (failure) and 42793271828 (success), both
+  2026-11-10. First scheduled run due 2026-11-22 13:41 Europe/Berlin.
+- 2026-11-20 [read]: scheduled Actions runs in agents started late. retro
+  (cron `23 6 * * *`, `timezone: Europe/Berlin`, `.github/workflows/retro.yml:17-18`)
+  started 14:16–14:39 UTC on 2026-11-17 to -19; the hourly implementer-queue
+  fired 10 times since 2026-11-17 against about 79 slots. [inferred] The
+  skill audit may start hours late or be dropped; look on the evening of
+  2026-11-22 and dispatch it by hand if no run exists.

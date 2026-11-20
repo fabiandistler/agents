@@ -59,6 +59,7 @@ See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
      push to or re-dispatch the review for each PR still open.
 - 2026-11-11: The rollout tickets (#786 and children, dotfiles#61,
   repo-maintenance#153) wait until #763, #764 and #770 are done.
+  *Superseded 2026-11-20, see below.*
 
 ## 2026-11-12 brakes merged, probe done
 
@@ -75,7 +76,7 @@ See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
   dotfiles#63 (probe removal) open (*superseded 2026-11-13, see below*).
   Result: see
   [cross-repo token exchange](problems/cross-repo-token-exchange.md).
-- 2026-11-12: still manual:
+- 2026-11-12 (*superseded 2026-11-20, see below*): still manual:
   - the Actions event policy for `pr-review.yml` (#763, #781's manual
     step), due before the brownout of 2026-11-16 16:00 UTC;
   - once a PR shows the `pr-review/verdict` status, adding `bats` and
@@ -86,7 +87,8 @@ See [expansion order](decisions/2026-11-11-factory-expansion-order.md).
 See [2026-11-13 triage](snapshots/2026-11-13-triage.md) and
 [triage decisions](decisions/2026-11-13-triage-decisions.md).
 
-- 2026-11-13: agent queue, one implementer run at a time
+- 2026-11-13 (*superseded 2026-11-20, see below*): agent queue, one
+  implementer run at a time
   (`MAX_WORKING_RUNS=1`), order set by the chief-of-staff session:
   1. #783: labelled `ready-for-agent` 20:20 UTC; run 43500665465 in
      progress when read.
@@ -97,13 +99,13 @@ See [2026-11-13 triage](snapshots/2026-11-13-triage.md) and
   6. #789 and #788, after #787 is closed.
 
   The session sets the next label when a run ends, until the queue from
-  #801 exists.
+  #801 exists. *Superseded 2026-11-20, see below.*
 - 2026-11-13: not in the agent queue: #797, #793, #790 and #767 go to
   interactive sessions; sessions for #797 and #767 started 20:33 UTC.
 - 2026-11-13 (supersedes the 2026-11-12 "open" for dotfiles#63): dotfiles#63
   merged 2026-11-12 at 11:40 UTC.
-- 2026-11-13: manual steps still open, with deadlines (extends the
-  2026-11-12 list):
+- 2026-11-13 (*superseded 2026-11-20, see below*): manual steps still
+  open, with deadlines (extends the 2026-11-12 list):
   1. Actions event policy for `pr-review.yml` (#763), before the brownout
      of 2026-11-16 16:00 UTC; default block from 2026-12-02.
   2. Add `bats` and `pr-review/verdict` to ruleset 18264711 (#764), after
@@ -119,14 +121,56 @@ See [2026-11-13 triage](snapshots/2026-11-13-triage.md) and
 ## 2026-11-14 queue progress
 
 - 2026-11-13: #783 → #800 (draft after the stop rule; marked ready by the
-  maintainer 20:40 UTC; `review:concerns`). See
+  maintainer 20:40 UTC; `review:concerns`; *superseded 2026-11-20 for the
+  label, see below*). See
   [implementer lint rounds](problems/implementer-lint-rounds.md).
 - 2026-11-13: first #782 run failed; see
   [shared usage limit](problems/shared-usage-limit.md). 2026-11-14: rerun
   opened #809 at 05:32 UTC.
 - 2026-11-14: interactive-session PRs: #804 (#767; publish failed on a
   GitHub 502 and was re-run) and #805 (#797; main merged in, `review:pass`).
-- 2026-11-14 (supersedes the 2026-11-13 order after #782): the
+- 2026-11-14 (supersedes the 2026-11-13 order after #782;
+  *superseded 2026-11-20, see below*): the
   chief-of-staff session moved the retro tickets ahead, because they make
   every later run cheaper: #807 (run 43562087089 started 05:33 UTC), #806,
   #787, #784, #769, then #789 and #788 after #787 is closed.
+
+## 2026-11-20 status sweep: everything landed
+
+See [2026-11-20 status sweep](snapshots/2026-11-20-status.md).
+
+- 2026-11-20 (supersedes the 2026-11-13 queue and the 2026-11-14 order)
+  [read]: every queued issue was closed on 2026-11-14, each through a PR
+  [inferred: issue and PR matched by closing time, at most 2 s apart]:
+  #783 → #800 (08:45 UTC), #782 → #809 (08:21), #807 → #811 (06:16),
+  #806 → #812 (08:20), #787 → #813 (06:16), #784 → #814 (07:35),
+  #769 → #815 (11:25), #789 → #817 (08:09), #788 → #818 (07:11).
+- 2026-11-20 (supersedes "the session sets the next label … until the queue
+  from #801 exists") [read]: #801 closed 2026-11-14 20:19 UTC via PR #847;
+  the queue workflows came with PR #856 (2026-11-15). Scheduled queue runs
+  44531222449 (2026-11-19) and 44666946640 (2026-11-20) reported
+  `{"outcome": "empty"}`; four earlier ones failed
+  ([implementer-queue page guard](problems/implementer-queue-page-guard.md)).
+- 2026-11-20 (supersedes `review:concerns` on #800) [read]: #800 merged
+  2026-11-14 08:45 UTC and carries `review:pass`.
+- 2026-11-20 (supersedes the 2026-11-12 and 2026-11-13 manual-step lists)
+  [read]:
+  1. #763: the maintainer closed it 2026-11-14 10:29 UTC, with no linked PR.
+     The brownout verification never happened: no run in the window, and the
+     scheduled check failed ([schedules](schedules.md)). The 2026-12-02 part
+     stays open.
+  2. #764 closed 2026-11-14 07:28 UTC. Ruleset 18264711 requires `bats` and
+     `pr-review/verdict`, so the picker deadline of about 2026-11-19 is moot.
+  3. repo-maintenance#142 and dotfiles#52 closed completed 2026-11-14
+     17:58 UTC ([Dependabot on private repos](problems/dependabot-private-repos.md)).
+  4. #765 closed 2026-11-15 10:21 UTC via PR #861; `PR_AUTO_MERGE=true` was
+     set 2026-11-18 ([2026-11-18 decisions](decisions/2026-11-18-decisions.md)).
+     repo-maintenance#151 closed 2026-11-15 via PR repo-maintenance#164; only
+     its review on 2026-12-01 remains.
+- 2026-11-20 (supersedes the 2026-11-11 wait of the rollout tickets) [read]:
+  #786 closed 2026-11-14 20:01 UTC; dotfiles#61 and repo-maintenance#153
+  closed completed 2026-11-14 20:01 UTC.
+- 2026-11-20 [read]: no PR open in agents, repo-maintenance or dotfiles.
+  Every agent PR in agents since 2026-11-17 merged: #879 (#877), #881 (#876)
+  and #884 (#882) on 2026-11-18; #891–#895 (#886–#890) between 2026-11-18
+  20:29 and 2026-11-19 07:38 UTC.
