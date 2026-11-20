@@ -35,6 +35,19 @@ such a run starts no `workflow_run` workflow (#858). That job dispatches the
 Fix task only for the implementer run it reports, so a failed queue run it
 dispatched is filed only by a manual run with the queue run's id.
 
+Amended 2026-11-20 (#909), closing the gap above: the reusable queue workflow
+has a model-free `report-failure` job, as the implementer has its `follow-up`
+job. In a queue run started by a `workflow_dispatch` whose triggering actor is
+`github-actions[bot]`, it runs after a failed `start-next` job and dispatches
+the caller's Fix task (input `fix_task_workflow`) with the run's id and
+`dry_run: false`. Every other queue run reaches the Fix task through
+`workflow_run` and skips the job, so none is filed twice. The job checks
+`github.triggering_actor`, not `github.actor`, which a person's re-run keeps:
+whether such a re-run starts `workflow_run` was not observed as of 2026-11-20,
+and if it does, `github.actor` would file it twice. If it does not, that
+attempt is filed by a manual run. The job's dispatch runs in the group
+`fix-task-dispatch`, as the `follow-up` job's does (see Consequences).
+
 ## Context
 
 The factory workflows fail in two ways. The agent runs (`implementer`,

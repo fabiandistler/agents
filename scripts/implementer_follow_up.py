@@ -18,6 +18,11 @@ It dispatches, on ``--ref``:
   capacity gate counts only the implement job, so this run, past it, does not
   keep the queue busy.
 
+The queue's model-free report-failure job runs it too (#909), after a failed
+starter in a queue run that the follow-up job dispatched: with an empty
+``--queue-workflow``, the starter's result as ``--implement-result`` and the
+queue run's id, so it dispatches only the Fix task for that run.
+
 An empty workflow argument dispatches nothing for it. Both dispatches are
 tried; a failed one fails the script after the other. ``--dry-run`` prints
 the planned dispatches and sends none. Starting either twice
@@ -132,20 +137,23 @@ def _workflow(value: str) -> str | None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Dispatch the queue and the Fix task after a queue-dispatched implementer run.",
+        description="Dispatch the Fix task and the queue after a GITHUB_TOKEN-dispatched run.",
         epilog=HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--repo", required=True, type=pr_cli.repo_argument, help="OWNER/REPO")
     parser.add_argument(
-        "--run-id", required=True, type=pr_cli.positive_int_argument, help="this implementer run"
+        "--run-id",
+        required=True,
+        type=pr_cli.positive_int_argument,
+        help="this run: the implementer run, or the queue run",
     )
     parser.add_argument("--ref", required=True, help="the branch to dispatch on")
     parser.add_argument(
         "--implement-result",
         required=True,
         choices=JOB_RESULTS,
-        help="the implement job's result",
+        help="the implement job's result, or the queue starter's",
     )
     parser.add_argument(
         "--queue-workflow", required=True, type=_workflow, help="queue workflow file, or ''"

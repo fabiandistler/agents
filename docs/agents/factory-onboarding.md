@@ -329,6 +329,12 @@ fabiandistler/repo-maintenance#153).
 | `fix_task_workflow` | `""` | `fix-task.yml` (agents; only with a queue caller) |
 | secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
 
+`factory-implementer-queue.yml` has no template here: as of 2026-11-20 only
+agents calls it. A target that adds a queue caller passes it
+`fix_task_workflow` as well, the same file as the implementer caller's, so a
+failed queue run that the `follow-up` job dispatched reaches the Fix task
+(#909).
+
 `factory-pr-review.yml`; the effect of each input is in the
 [input table](pr-review-reusable-workflow.md):
 

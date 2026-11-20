@@ -10,7 +10,9 @@
 # is github-actions[bot], which the implementer's claude-code-action step
 # admits through `allowed_bots`, and it starts no workflow_run workflow, so the
 # implementer's follow-up job dispatches the caller's queue and Fix task after
-# it (#863; see docs/agents/implementer-queue.md#implementer-queue).
+# it (#863; see docs/agents/implementer-queue.md#implementer-queue). A queue run
+# that job dispatched starts none either, so the report-failure job below
+# dispatches the caller's Fix task when such a run's starter fails (#909).
 name: factory-implementer-queue
 
 on:
@@ -32,8 +34,12 @@ on:
         description: Print the pick and dispatch nothing
         type: boolean
         default: false
+      fix_task_workflow:
+        description: The caller's Fix-task workflow file, dispatched after a failed run that a GITHUB_TOKEN dispatch started; empty for none
+        type: string
+        default: ""
 
-# No scope by default; the job below opts in to exactly what it needs. The
+# No scope by default; each job below opts in to exactly what it needs. The
 # calling job's permissions cap these.
 permissions: {}
 
@@ -92,3 +98,61 @@ jobs:
             args+=(--dry-run)
           fi
           python3 "$FACTORY_DIR/scripts/implementer_queue.py" "${args[@]}"
+
+  report-failure:
+    # A queue run that the implementer's follow-up job dispatched with
+    # GITHUB_TOKEN starts no workflow_run workflow (#858), so the Fix task
+    # would not see it fail. Every other run reaches fix-task.yml through
+    # workflow_run; a dispatch for it as well could file it twice (ADR-0016).
+    # triggering_actor, not actor: a person's re-run keeps the bot as actor,
+    # and if that re-run starts workflow_run, this job would file it twice.
+    # The actor is no trust gate: a wrong match files a run twice or not at all.
+    needs: start-next
+    if: >- # zizmor: ignore[bot-conditions] only routes the Fix task, as in factory-implementer.yml
+      always() &&
+      needs.start-next.result == 'failure' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.triggering_actor == 'github-actions[bot]' &&
+      inputs.fix_task_workflow != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # No concurrency: in `implementer-queue` it would wait behind the next
+    # starter. It dispatches only the Fix task, never the queue, so a failed
+    # run does not start the next one.
+    permissions:
+      actions: write
+    steps:
+      - name: Fetch the factory scripts
+        id: factory
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/factory"
+          git init --quiet "$dir"
+          git -C "$dir" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$dir" checkout --quiet --detach FETCH_HEAD
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      # The implementer's follow-up script, with no queue to dispatch; its
+      # --implement-result takes this run's starter result.
+      - name: Start the Fix task
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FACTORY_DIR: ${{ steps.factory.outputs.dir }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          START_NEXT_RESULT: ${{ needs.start-next.result }}
+          FIX_TASK_WORKFLOW: ${{ inputs.fix_task_workflow }}
+        run: |
+          python3 "$FACTORY_DIR/scripts/implementer_follow_up.py" --repo "$REPO" \
+            --run-id "$RUN_ID" --ref "$DEFAULT_BRANCH" --implement-result "$START_NEXT_RESULT" \
+            --queue-workflow "" --fix-task-workflow "$FIX_TASK_WORKFLOW"

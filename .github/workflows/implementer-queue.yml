@@ -10,7 +10,9 @@
 # (observed 2026-11-15: 2 runs in about 12 slots, each 30 min or more late,
 # #864); a manual run, dry by default. A run this queue dispatched starts no
 # workflow_run, so the implementer's follow-up job dispatches this workflow
-# with dry_run false after it (#863).
+# with dry_run false after it (#863). Such a queue run starts none either, so
+# the called workflow's report-failure job dispatches fix-task.yml with its run
+# id when its starter fails (#909); fix-task.yml watches every other run.
 name: implementer-queue
 
 on:
@@ -46,4 +48,5 @@ jobs:
     uses: ./.github/workflows/factory-implementer-queue.yml
     with:
       workflow_file: implementer.yml
+      fix_task_workflow: fix-task.yml
       dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
