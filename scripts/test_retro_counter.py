@@ -55,7 +55,9 @@ def _run_and_label(pulls: list[dict], labelled_at: dict[int, datetime], at: date
     eligible = retro_counter.eligible_pulls(retro_counter.merged_pulls(client, REPO), FLOOR)
     last = retro_counter.last_retro(client, REPO, eligible)
     pending = {pull.number for pull in retro_counter.pending_pulls(eligible, FLOOR, last)}
-    selected = retro_gate.run_gate(client, REPO, 10).selected
+    selection = retro_gate.run_gate(client, REPO, 10)
+    assert selection.pending == len(pending)
+    selected = selection.selected
     if selected is not None:
         labelled_at[selected] = at
         pulls[:] = [
@@ -122,11 +124,11 @@ def test_the_label_time_is_the_newest_retro_done_event_across_pages():
     assert f"GET {events_path}?page=2" in client.events
 
 
-def test_a_labelled_pull_without_a_label_event_fails_the_gate():
+def test_a_labelled_pull_without_a_label_event_anchors_at_its_merge_time(capsys):
     client = RoutedClient(gate_routes(ten_after_floor(pr4=(retro_counter.RETRO_DONE,))))
-    with pytest.raises(FetchError, match="no retro:done label event"):
-        retro_gate.run_gate(client, REPO, 10)
-    assert client.posts == []
+    selection = retro_gate.run_gate(client, REPO, 10)
+    assert selection.pending == 6  # 5..10, merged after PR 4
+    assert "no retro:done label event" in capsys.readouterr().err
 
 
 # --- Floor -------------------------------------------------------------------

@@ -14,6 +14,7 @@ Standard library only. Errors name the API call, never issue or comment text.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -136,8 +137,14 @@ def merged_pulls(client: ReadClient, repo: str) -> list[MergedPull]:
     return [merged for pull in pulls if (merged := merged_agent_pull(pull, repo)) is not None]
 
 
-def _retro_done_labelled_at(client: ReadClient, repo: str, number: int) -> datetime:
-    """When the pull request was last given `retro:done`, from its issue events."""
+def _retro_done_labelled_at(client: ReadClient, repo: str, pull: MergedPull) -> datetime:
+    """When the pull request was last given `retro:done`, from its issue events.
+
+    A label that left no `labeled` event (applied by hand through a path that
+    records none) falls back to the pull request's merge time, the earlier
+    anchor, and warns on stderr, so one such label cannot fail every daily run.
+    """
+    number = pull.number
     path = f"/repos/{repo}/issues/{number}/events"
     times = [
         _timestamp(event.get("created_at"), "label event time")
@@ -146,13 +153,20 @@ def _retro_done_labelled_at(client: ReadClient, repo: str, number: int) -> datet
         and json_object(event.get("label")).get("name") == RETRO_DONE
     ]
     if not times:
-        raise FetchError(f"GitHub API returned no {RETRO_DONE} label event for {path}")
+        print(
+            f"warning: GitHub API returned no {RETRO_DONE} label event for {path};"
+            " anchoring at the merge time",
+            file=sys.stderr,
+        )
+        return pull.merged_at
     return max(times)
 
 
 def last_retro(client: ReadClient, repo: str, eligible: list[MergedPull]) -> datetime | None:
-    """The newest `retro:done` label time among the pull requests that still carry it."""
-    labelled = [
-        _retro_done_labelled_at(client, repo, pull.number) for pull in eligible if pull.retro_done
-    ]
+    """The newest `retro:done` label time among the eligible pull requests that still carry it.
+
+    Pull requests merged before the floor are not in ``eligible``, so a label on
+    one of them is ignored.
+    """
+    labelled = [_retro_done_labelled_at(client, repo, pull) for pull in eligible if pull.retro_done]
     return max(labelled, default=None)
