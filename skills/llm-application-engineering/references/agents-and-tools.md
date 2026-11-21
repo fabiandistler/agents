@@ -102,6 +102,12 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
   context cost, paid on every turn. A search or query tool over the corpus
   (SQL over a trace store, search over a knowledge directory) keeps both flat
   as the corpus grows; one tool per document grows the tool list linearly.
+- **Before tuning chunk size, read about 10 random chunks and check that each
+  one stands alone: entity, period and referent recognizable without the
+  neighbours.** A chunk like "revenue rose 3 %" that has lost its company and
+  quarter is a defect no retriever can rank around. If it fails, add contextual
+  retrieval first: title, summary or a generated 50–100-token context per
+  chunk, codes as metadata. (Huyen Ch. 6)
 - **Prefer provider-native tool search and deferred loading once the toolset grows;** fall back to DIY embedding top-k selection only where native search is unavailable; plain
   in-prompt selection is fine for small toolsets.
 - **Reach for GraphRAG only when vector retrieval demonstrably fails on
