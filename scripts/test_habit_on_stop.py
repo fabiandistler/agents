@@ -54,6 +54,9 @@ def repo(tmp_path: Path) -> Path:
     root = tmp_path / "project"
     root.mkdir()
     git(root, "init", "-q", "-b", "main")
+    # An empty project config stops ruff from falling back to a user-level
+    # ruff.toml, so the fixtures meet ruff's default thresholds.
+    (root / "ruff.toml").write_text("", encoding="utf-8")
     (root / "legacy.py").write_text(complex_function(11) + "\n\nVALUE = 1\n", encoding="utf-8")
     commit_all(root, "base")
     git(root, "switch", "-qc", "work")
@@ -155,6 +158,24 @@ def test_a_new_function_with_too_many_parameters_is_coached(repo, mapper):
         issue["details"]["line"]
         == legacy.read_text().splitlines().index("def bill(a, b, c, d, e, f):") + 1
     )
+
+
+def test_a_user_level_ruff_config_does_not_change_the_thresholds(
+    repo, mapper, tmp_path, monkeypatch
+):
+    user_config = tmp_path / "xdg-config" / "ruff"
+    user_config.mkdir(parents=True)
+    (user_config / "ruff.toml").write_text(
+        "[lint.pylint]\nmax-args = 6\n\n[lint.mccabe]\nmax-complexity = 12\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(user_config.parent))
+    (repo / "bill.py").write_text(MANY_PARAMETERS, encoding="utf-8")
+    commit_all(repo, "add bill")
+
+    completed = run_hook(repo)
+
+    assert completed.returncode == 2
+    assert "too-many-parameters" in mapper_smells(mapper)
 
 
 def test_old_debt_in_a_renamed_file_stays_quiet(repo, mapper):
