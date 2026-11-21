@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Verify the hand-maintained skill catalogue tables stay in sync.
+"""Verify the hand-maintained skill catalogue table stays in sync.
 
 Run from repo root:
     python3 scripts/check_docs.py    # exit 1 on any drift
 
-The "when to use" catalogue is duplicated by hand in two places:
-  - README.md   (`## Skill catalogue`) rows like `| `skills/<name>/` | … |`
-  - AGENTS.md   (`## Skill catalogue`) rows like `| [<name>](…) | … |`
+The "when to use" catalogue is written by hand in README.md
+(`## Skill catalogue`), rows like `| `skills/<name>/` | … |`. AGENTS.md
+only points there and to `skills.json` (#924).
 
-They are intentionally phrased differently from the auto-generated
+The rows are intentionally phrased differently from the auto-generated
 `skills.json` summaries, so this guard does not touch the prose. It only
-checks that both tables cover exactly the current skill set and that the
-two tables agree with each other — catching the common mistake of adding,
-renaming, or removing a skill and forgetting one of the tables.
+checks that the table covers exactly the current skill set, each skill under
+the section of its category — catching the common mistake of adding,
+renaming, or removing a skill and forgetting the table.
 
 The current skill set and each skill's category come from `skills.json` via
 `catalogue.py`, not from crawling `skills/`, so a stale manifest makes this
@@ -30,10 +30,8 @@ from catalogue import load_catalogue
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 README = REPO_ROOT / "README.md"
-AGENTS = REPO_ROOT / "AGENTS.md"
 
 README_ROW = re.compile(r"^\| `skills/([a-z0-9-]+)/` \| (.*) \|$")
-AGENTS_ROW = re.compile(r"^\| \[([a-z0-9-]+)\]\(skills/\1/SKILL\.md\) \| (.*) \|$")
 # Category sections look like: ### Architecture & design (`architecture`)
 SECTION_HEADING = re.compile(r"^### .+ \(`([a-z0-9-]+)`\)$")
 
@@ -75,37 +73,23 @@ def main() -> int:
     skills = {entry.name for entry in catalogued}
     categories = {entry.name: entry.category for entry in catalogued}
     readme, readme_sections = parse_table(README, README_ROW)
-    agents, agents_sections = parse_table(AGENTS, AGENTS_ROW)
 
-    errors: list[str] = []
-    errors += report("README.md", skills, readme)
-    errors += report("AGENTS.md", skills, agents)
-
-    for name in sorted(set(readme) & set(agents)):
-        if readme[name] != agents[name]:
+    errors = report("README.md", skills, readme)
+    for name, section in sorted(readme_sections.items()):
+        want = categories.get(name)
+        if want is not None and section != want:
             errors.append(
-                f"{name}: README and AGENTS descriptions disagree\n"
-                f"    README: {readme[name]}\n"
-                f"    AGENTS: {agents[name]}"
+                f"README.md: {name} listed under section `{section or '(none)'}` "
+                f"but its SKILL.md says category: {want}"
             )
-
-    for label, sections in (("README.md", readme_sections), ("AGENTS.md", agents_sections)):
-        for name, section in sorted(sections.items()):
-            want = categories.get(name)
-            if want is not None and section != want:
-                errors.append(
-                    f"{label}: {name} listed under section `{section or '(none)'}` "
-                    f"but its SKILL.md says category: {want}"
-                )
 
     if errors:
         sys.stderr.write("catalogue drift detected:\n")
         for e in errors:
             sys.stderr.write(f"  - {e}\n")
         sys.stderr.write(
-            "\nUpdate the tables in README.md and AGENTS.md "
-            "(## Skill catalogue in both) so they list every skill "
-            "with matching text.\n"
+            "\nUpdate the table in README.md (## Skill catalogue) so it lists "
+            "every skill under the section of its category.\n"
         )
         return 1
 

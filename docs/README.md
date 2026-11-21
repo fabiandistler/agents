@@ -15,7 +15,7 @@ product page; this page routes from a job to the page that does it.
 ## Develop it
 
 - [Contributing](contributing.md) — end-to-end checklist for adding or changing a skill
-- [Agent entry point](../AGENTS.md) — repo layout and skill catalogue, loaded by every agent session
+- [Agent entry point](../AGENTS.md) — repo layout and pointers to the skill catalogue, loaded by every agent session
 - [Skill conventions](skill-conventions.md) — frontmatter, description budgets, generated files, checks
 - [Checks and CI gates](contributing.md#run-checks) — `scripts/check_all.sh` and the prek hooks
 - [Install internals](maintainers/install-internals.md) — Claude cloud mirror, vendored skills, regeneration order

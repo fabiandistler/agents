@@ -132,10 +132,10 @@ dropping them from the model's skill list. `--uninstall` removes the block.
   itself, so it validates the source rather than the generator's output,
   and `install.sh` reads it in bash, so skill linking never depends on
   `python3`.
-- After adding, renaming, or removing a skill, update both catalogue
-  tables by hand — `README.md` and `AGENTS.md` (`## Skill catalogue`) —
-  keeping their text identical and each skill under the section matching
-  its `category`. CI enforces this with `python3 scripts/check_docs.py`.
+- After adding, renaming, or removing a skill, update the catalogue table
+  in `README.md` (`## Skill catalogue`) by hand, each skill under the
+  section matching its `category`. `AGENTS.md` only points there. CI
+  enforces this with `python3 scripts/check_docs.py`.
 - Keep the plugin in sync for **top-level** skills: add/rename/remove the
   relative symlink `plugins/<category>/skills/<skill-name>` →
   `../../../skills/<skill-name>`. A router member is a normal skill directory

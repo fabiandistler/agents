@@ -89,8 +89,9 @@ sees only the repos attached to its task; these pointers do not attach one.
 
 ## Skill catalogue
 
-Each skill carries a `category` frontmatter field; the sections below
-group the catalogue by those categories.
+Read `skills.json` for the skill list, and the `README.md` *Skill catalogue*
+section for the human-written "when to use" tables, grouped by each skill's
+`category` frontmatter field.
 
 Some categories ship a **router** skill (`activation: router`, named after
 the category) as their single registered entry point. Its description is
@@ -99,73 +100,7 @@ before acting; the sub-skills nest under the router's `members/` directory
 and load only when routed to (progressive disclosure), so the category adds
 one trigger entry instead of many. The router's SKILL.md member table is
 generated from `skills.json` by `scripts/build_routers.py` (CI checks it for
-drift). The tables below still list every sub-skill individually.
-
-### Architecture & design (`architecture`)
-
-Registered through the [`architecture`](skills/architecture/SKILL.md) router.
-
-| Skill | When to use |
-|---|---|
-| [architecture-pattern-advisor](skills/architecture-pattern-advisor/SKILL.md) | Choosing or restructuring the architecture of a new or existing repository — system topology (monolith, modular monolith, microservices, serverless, event-driven) and code organization (layered, by-domain, hexagonal, clean/onion). |
-| [c4-modeling](skills/c4-modeling/SKILL.md) | Drafting a C4 model of a system interactively and rendering it as Mermaid diagrams — System Context, Container, and Component views plus landscape, dynamic, and deployment — per c4model.com best practices. |
-| [coupling-cohesion](skills/coupling-cohesion/SKILL.md) | Measuring coupling or cohesion of existing code — a module's cohesion and LCOM, codebase-wide coupling metrics (instability, abstractness, Zones of Pain/Uselessness), or whether one specific dependency is balanced (Khononov strength/distance/volatility). |
-| [ddd](skills/ddd/SKILL.md) | Domain-Driven Design across strategy and code — subdomain classification, context mapping, choosing an implementation pattern, and the correctness conventions for aggregates, value objects, domain events, and event sourcing. |
-| [fitness-functions](skills/fitness-functions/SKILL.md) | Designing architecture fitness functions — automated, CI-wired checks (cycle detection, layer rules, metric thresholds, chaos/conformity monitors) that govern architecture characteristics. |
-| [logical-component-design](skills/logical-component-design/SKILL.md) | Decomposing a new system or feature into named logical components — the iterative Workflow / Actor-Action identification cycle, the Entity-Trap antipattern, cohesion and coupling refinement, and the Law of Demeter. |
-| [microservices-design](skills/microservices-design/SKILL.md) | Designing or reviewing how microservices interact — boundaries, coupling, communication style, contract versioning, cross-service code reuse, sagas, and resiliency patterns (timeouts, bulkheads, circuit breakers, retries) — via a distilled Newman ruleset. |
-
-### Refactoring & code quality (`refactoring`)
-
-| Skill | When to use |
-|---|---|
-| [improve-codebase](skills/improve-codebase/SKILL.md) | Reviewing a repository's architecture for deepening opportunities — a visual HTML report of candidates with before/after diagrams and a top recommendation, then a round-by-round interview on the one you pick, keeping the glossary and ADRs current. |
-| [refactoring](skills/refactoring/SKILL.md) | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
-
-### AI & ML (`ai-ml`)
-
-Registered through the [`ai-ml`](skills/ai-ml/SKILL.md) router.
-
-| Skill | When to use |
-|---|---|
-| [llm-application-engineering](skills/llm-application-engineering/SKILL.md) | Diagnosing LLM output failures, ordering LLM app architecture builds, defining production monitoring metrics, or applying craft-level conventions for prompting, evaluation/LLM-judges, guardrails, finetuning, and training data. |
-| [ml-project-lifecycle](skills/ml-project-lifecycle/SKILL.md) | Scoping an ML project, picking a model/baseline, handling missing data, or planning pipelines and staged deployment. |
-
-### Workflow & planning (`workflow`)
-
-| Skill | When to use |
-|---|---|
-| [natural-planning](skills/natural-planning/SKILL.md) | When a project feels stuck, vague, or overwhelming, or a to-do isn't yet a concrete physical next action. |
-| [oss-scouting](skills/oss-scouting/SKILL.md) | Scouting one third-party open-source repo for issues worth a small contribution — policy gate, repro, root-cause analysis, fix diff, and a submit checklist, written locally for the user to submit themselves. |
-| [poc-spec-loop](skills/poc-spec-loop/SKILL.md) | Bring a greenfield R, Python, or bash PoC to production readiness in two gated phases — interactive spec (SPEC.md + prd.json), then a per-task TDD loop with fresh context up to a pull request. |
-| [pypet-snippets](skills/pypet-snippets/SKILL.md) | Curating pypet command snippets — creating, finding, editing, running and aliasing them on request, or proposing one for recurring terminal commands. |
-| [release-pr](skills/release-pr/SKILL.md) | Turning the current branch into a release PR for an R or Python package — confirmed version bump, NEWS.md/CHANGELOG.md, checks, PR body — and, after merge, tagging and publishing the release (GitHub, Azure Repos, GitLab). |
-| [repo-status](skills/repo-status/SKILL.md) | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
-
-### Communication & writing (`communication`)
-
-| Skill | When to use |
-|---|---|
-| [blue-team](skills/blue-team/SKILL.md) | Developing a raw early idea — tech decision, project pitch, LinkedIn thesis, personal choice — into a sharper version that holds up before its audience, with load points, reinforcements, and a hardness grade. |
-| [communication-analysis](skills/communication-analysis/SKILL.md) | Analyzing or rewriting feedback, messages, or conversations for congruence, hidden appeals, clarity, or boundaries. |
-| [documentation](skills/documentation/SKILL.md) | Writing or revising technical documentation for a named reader — README, API reference, runbook, architecture doc, or onboarding guide. |
-| [html-artifacts](skills/html-artifacts/SKILL.md) | Producing a self-contained HTML file instead of a markdown reply when content has spatial, comparative, or interactive structure — comparisons, diagrams, timelines, decks, throwaway editors. |
-| [ki-stil](skills/ki-stil/SKILL.md) | Checking a German draft for wording that reads generic or AI-typical — counted, located style signals from a bundled scanner, an evidence-tiered verdict, and concrete rewrites; a heuristic, never an authorship verdict. |
-| [problem-first-explanation](skills/problem-first-explanation/SKILL.md) | Producing explanations — technical or not — that lead with the concrete problem before the solution. |
-| [red-team](skills/red-team/SKILL.md) | Attacking a finished or near-finished artefact or decision — ADR, proposal, LinkedIn post, application, career move — through a fresh-context critic, a materiality gate, stakeholder lenses, and a categorical verdict. |
-| [stakeholder-update](skills/stakeholder-update/SKILL.md) | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
-| [tldr](skills/tldr/SKILL.md) | Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread. |
-| [was](skills/was/SKILL.md) | Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim. |
-
-### Personal & knowledge (`personal`)
-
-| Skill | When to use |
-|---|---|
-| [hypertrophy-training](skills/hypertrophy-training/SKILL.md) | Experienced trainee: set volume, RIR/effort, auto-regulation, diagnosing a stalled lift, training under elevated injury risk, or returning after an injury (educational). |
-
-For agents that auto-load `AGENTS.md` (Codex CLI, opencode, Aider): the
-links above are valid relative paths and may be fetched on demand. For
-machine consumption prefer `skills.json`.
+drift).
 
 ## Conventions for skill authors
 
