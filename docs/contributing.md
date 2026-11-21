@@ -82,11 +82,10 @@ way are in the [ADR index](adr/README.md).
    `plugins/<category>/.claude-plugin/plugin.json`, its `skills/` directory,
    and the marketplace entry.
 
-7. **Add the catalogue rows.** Append the skill to both tables in
-   `README.md` and `AGENTS.md` under the section matching its `category`, with
-   identical text. With a new category, add the section to both tables first.
-   Router skills get no row; their members do. CI enforces parity with
-   `scripts/check_docs.py`.
+7. **Add the catalogue row.** Append the skill to the table in `README.md`
+   (`## Skill catalogue`) under the section matching its `category`. With a
+   new category, add the section first. Router skills get no row; their
+   members do. CI enforces this with `scripts/check_docs.py`.
 
 8. **Update plugin descriptions when the scope changed.** The description in
    `plugins/<category>/.claude-plugin/plugin.json` and the matching entry in
