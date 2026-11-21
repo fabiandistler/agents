@@ -18,7 +18,8 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 ## Coupling
 
 - **Never read from or write to another service's database or internal tables.** The DB is not a public interface; go through the owning service's API. (ch2)
-  - ❌ `SELECT ... FROM orders_db.order` from the warehouse service   ← likely-default
+  - ✅ `ordersClient.getOrder(orderId)` from the warehouse service
+  - ❌ `SELECT ... FROM orders_db.order` from the warehouse service
 - **Avoid a shared mutable database across services.** Shared writable data is never allowed; read-only reference data is allowed if the consuming context owns its copy. (ch2, ch4)
 - **Don't pass data through an intermediary service purely because a further-downstream service needs it.** Every hop adds coupling and a failure mode for data the intermediary never uses. Either call the downstream directly, have the intermediary build the payload itself, or make the intermediary treat it as an opaque blob it never parses. (ch2)
 - **Send the minimum data a call or event requires.** Every extra field becomes an assumption consumers couple to — and, in an event, part of your contract. (ch2, ch4)
@@ -27,11 +28,9 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 ## Communication Style
 
 - **Don't use an event-streaming broker (e.g. Kafka) for request-response.** Match the tool to the style. (ch4)
-  - ❌ Kafka topic used as an RPC call/response channel   ← likely-default
 - **Drive client behavior off transport error semantics.** With HTTP: retry 429/502/503/504 and timeouts; don't retry other 4xx or a plain 500 unless the error is known-transient. (ch4)
 - **Publish an explicit schema for every interface, even over "schemaless" JSON.** A schemaless consumer still has a schema — just an implicit, unenforced one. (ch5)
-- **Consume as a tolerant reader: extract only the fields you need and ignore the rest;** don't bind the entire payload into a strict typed object. (ch5)
-  - ❌ deserializing the whole response into a fixed class that breaks when an unused field moves or disappears   ← likely-default
+- **Consume as a tolerant reader: extract only the fields you need and ignore the rest;** don't bind the entire payload into a strict typed object, which breaks when a field you never use moves or disappears. (ch5)
 
 ## Contracts & Versioning
 
@@ -43,20 +42,17 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 
 ## Code Reuse
 
-- **Never share domain or business-model code across service boundaries via a shared library** — it silently recouples them, so a model change forces a fan-out redeploy (and message-queue drains). Sharing internal-only libs (logging, transport) that are invisible outside the service is fine. (ch5)
-  - ❌ a common `domain-models`/`entities` package imported by every service   ← likely-default
+- **Never share domain or business-model code across service boundaries via a shared library** (such as a common `domain-models` or `entities` package) — it silently recouples them, so a model change forces a fan-out redeploy (and message-queue drains). Sharing internal-only libs (logging, transport) that are invisible outside the service is fine. (ch5)
 - **Assume multiple versions of a shared library run at once;** you cannot atomically upgrade all consumers. If a change truly must land everywhere simultaneously, expose it as a service, not a library. (ch5)
 - **If you ship a client library: keep transport concerns (discovery, retries, failure handling) separate from service logic, keep server logic out of it, and let the *consumer* choose when to upgrade.** (ch5)
 
 ## Workflow & Transactions
 
 - **Never use distributed transactions / two-phase commit to coordinate state across services.** (ch6)
-  - ❌ a 2PC coordinator spanning `payments` + `warehouse` to keep an order atomic   ← likely-default
 - **Model any multi-service business process as an explicit saga with compensating transactions.** You get no cross-service ACID atomicity; compensations are *semantic* rollbacks (you can't un-send an email — send a correcting one). (ch6)
 - **Order saga steps so the most-likely-to-fail steps run first,** so fewer already-committed steps need compensating. (ch6)
 - **Use sagas to recover from *business* failures only** (e.g. insufficient funds); handle *technical* failures (timeouts, 5xx) with the resiliency patterns below. (ch6)
-- **Run an orchestrated saga on a durable-execution engine (Temporal, Restate, or DBOS if Postgres-only with no new infra — examples, not endorsements; post-2021 practice). Hand-roll a saga state machine only if no durable-execution engine can be adopted.** (ch6)
-  - ❌ a hand-rolled saga state machine with ad-hoc timers and retries   ← likely-default
+- **Run an orchestrated saga on a durable-execution engine (Temporal, Restate, or DBOS if Postgres-only with no new infra — examples, not endorsements; post-2021 practice). Hand-roll a saga state machine (ad-hoc timers and retries) only if no durable-execution engine can be adopted.** (ch6)
 - **Default to orchestration for a saga — durable execution keeps it cheap even across teams; choose choreography only when no single team can own the orchestrator.** (ch6)
 - **Propagate W3C `traceparent` via OpenTelemetry through every call and message header in a workflow** — mandatory for choreographed sagas to reconstruct state. (ch6)
 
@@ -64,20 +60,18 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 
 - **Write the state change and the event through a transactional outbox in the same local transaction; relay the outbox to the broker asynchronously.** See `members/ddd/SKILL.md` (read via the `architecture` router) for the outbox pattern. (ch4, ch6)
 - **Assume at-least-once delivery and dedupe consumers on the message or business ID.** A consumer must tolerate receiving the same event twice. (ch4)
-- **Never publish to the broker inside the business transaction.** Commit state (plus the outbox row) first; let the relay publish afterward. (ch4, ch6)
-  - ❌ `db.commit(); broker.publish(evt)`   ← likely-default
+- **Never publish to the broker from the business code path, inside the transaction or right after its commit.** Commit state (plus the outbox row) first; let the relay publish afterward. (ch4, ch6)
+  - ✅ `db.save(order); db.insert(outbox_row(evt)); db.commit()`
+  - ❌ `db.commit(); broker.publish(evt)`
 
 ## Resiliency
 
 - **Put a timeout on every out-of-process call.** Default one everywhere, then tune from observed healthy latencies; log every timeout. A missing or huge (e.g. 30s) default lets a slow dependency hang the caller — and slow is worse than down. (ch12)
-  - ❌ an out-of-process call with no timeout, or a 30s blanket default   ← likely-default
 - **Set an overall operation time budget and propagate the remaining time downstream;** abort when the budget is exhausted rather than summing per-call timeouts. (ch12)
 - **Use a separate connection/thread pool per downstream dependency (bulkhead),** so one slow dependency can't exhaust the pool for all of them. (ch12)
-  - ❌ one shared HTTP connection pool for every downstream service   ← likely-default
 - **Wrap synchronous downstream calls in a circuit breaker** that fails fast while open and probes for recovery; skip it only where the owning layer already provides one. (ch12)
 - **Retry only idempotent operations and only retryable errors** (see the transport-error rule above); use exponential backoff with jitter; cap retries with a budget (~10–20% of traffic); honor 429/`Retry-After`; retry at exactly one layer; count retry time against the operation budget. (ch12)
 - **Decide whether the mesh/gateway or the client library owns timeouts, retries, and breakers — never both.** (ch12)
-  - ❌ retry and timeout policy set in both the client library and the mesh/gateway for the same call   ← likely-default
 - **For tail-latency-critical idempotent reads, consider hedging: send a follow-up request after a latency percentile and take the first response.** (ch12)
 - **Make an operation idempotent by carrying a business key** (e.g. the originating order ID), not by trusting HTTP-verb idempotency alone. (ch12)
 - **Design explicit graceful degradation per dependency — ask "what if this is down?" for each one.** A page assembled from N services must not fail wholesale when one is unavailable. (ch12)

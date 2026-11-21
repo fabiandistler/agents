@@ -18,8 +18,9 @@ objects.
 
 The binding rules live in
 [references/design-conventions.md](references/design-conventions.md). **Read
-that file before designing or reviewing any cross-service interaction** — the
-`← likely-default` markers flag exactly the habits to override.
+that file before designing or reviewing any cross-service interaction.**
+Where a rule carries a `✅`/`❌` pair, the `❌` line is the code shape to look
+for in review.
 
 ## When to use
 
@@ -40,7 +41,7 @@ service. Not for deciding whether to use microservices at all
    against each rule as a pass/fail checklist. Every rule is falsifiable by
    design.
 3. **Flag violations with the rule, not just an opinion.** Quote the rule, and
-   its `❌` example where one exists, when the code matches the likely-default anti-pattern.
+   its `❌` example when the code matches that shape.
 4. **Record consequential design calls** (e.g. choreography vs orchestration,
    breaking-change migration strategy) as an ADR.
 
@@ -79,5 +80,5 @@ Sibling sub-skills, each read via the `architecture` router:
 
 Distilled from Sam Newman, *Building Microservices: Designing Fine-Grained
 Systems*, 2nd ed. (O'Reilly, 2021), chapters 2–6, 9, and 12: generic best
-practice is omitted; only non-obvious forks with a wrong likely-default
-survive.
+practice is omitted; only non-obvious forks where an unaided implementation
+picks the wrong default survive.
