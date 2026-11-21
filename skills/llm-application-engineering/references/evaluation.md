@@ -32,6 +32,17 @@ As of 2026-11-20: the OpenTelemetry GenAI semantic conventions are in Developmen
   own, not noise. (Albada Ch. 3)
 - **Evaluate each pipeline component independently AND end-to-end, per-turn AND
   per-task.** Otherwise failures can't be localized. (Huyen Ch. 4)
+- **In RAG, score the retriever before touching the generator: context
+  precision and recall on a gold set of question → relevant-chunk pairs.** If
+  the right chunk is not in the top-k, prompt or model changes cannot fix the
+  answer. Only once retrieval passes, evaluate faithfulness and relevance of
+  the generated answer. (Huyen Ch. 6)
+- **Name the definition whenever you report or set a threshold on context
+  precision.** Huyen defines it as a set metric: the share of relevant chunks
+  among those retrieved, order ignored. Ragas defines it as rank-aware: the
+  mean of Precision@k over the ranks, so relevant chunks must sit on top. For
+  ordered lists, NDCG, MAP or MRR are the explicit alternatives. (Huyen Ch. 6;
+  Ragas, https://docs.ragas.io/en/latest/concepts/metrics/available_metrics/context_precision/)
 - **Give each failure mode its own binary pass/fail judge, never a
   continuous score** — wider or continuous ranges degrade judges. Use a
   discrete scale only with an explicit reason. Require a critique before the
