@@ -19,6 +19,4 @@ Moment, ich komme nicht mit. Erklär deine letzte Nachricht noch einmal neu, auf
   - Ein Wort, eine Bedeutung. Nenn dasselbe Ding immer gleich.
   - Kurze Sätze im Aktiv. Ein Gedanke pro Satz.
   - Keine Nominalketten wie „Durchführung der Überprüfung der Konfiguration“. Schreib „prüf die Konfiguration“.
-- Übernimm die Begriffe aus `GLOSSARY.md` wörtlich und übersetze sie nicht (hat das Repo mehrere, führt `GLOSSARY-MAP.md` zum richtigen). Bezeichner, Pfade und Fehlermeldungen bleiben ebenfalls im Original.
-
-War die Nachricht dagegen lang und ich habe sie gar nicht gelesen, schlag mir stattdessen vor, den Command „tldr“ auszuführen: Die Länge entscheidet, und die sehe ich vor dem Lesen.
+- Falls vorhanden: Übernimm die Begriffe aus `GLOSSARY.md` wörtlich und übersetze sie nicht (hat das Repo mehrere, führt `GLOSSARY-MAP.md` zum richtigen). Bezeichner, Pfade und Fehlermeldungen bleiben ebenfalls im Original.

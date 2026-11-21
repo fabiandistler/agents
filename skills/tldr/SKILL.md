@@ -18,7 +18,6 @@ Something got too long to read. The user calls this instead of reading it, so
 hand back the **cliffs**: the few facts that let them decide or act, and an
 honest line about what those facts leave out.
 
-
 ## What to summarize
 
 | Argument | Target |
@@ -40,11 +39,11 @@ picked in one clause. Answer rather than ask.
 ```markdown
 **Bottom line.** [One sentence. What survives if they read nothing else.]
 
+**Your move.** [The decision waiting on them, the next step, or "nothing — FYI".]
+
 - [Load-bearing fact]
 - [Load-bearing fact]
 - [3–5, ordered by what the decision turns on, not by source order]
-
-**Your move.** [The decision waiting on them, the next step, or "nothing — FYI".]
 ```
 
 Source:
@@ -60,12 +59,11 @@ Cliffs:
 ```markdown
 **Bottom line.** Mergeable once the secret exists; rate-limit timing is settled.
 
+**Your move.** Create `GATEWAY_JWT_KEY`, then confirm Friday with Mara.
+
 - Auth checks move to the gateway; Mara owns the Friday rollout.
 - Deploy fails without `GATEWAY_JWT_KEY` in staging and prod.
 - Rate limiting ships next week (inferred — agreed as follow-up, no date given).
-
-**Your move.** Create `GATEWAY_JWT_KEY`, then confirm Friday with Mara.
-
 ```
 
 ## Load-bearing
@@ -106,29 +104,7 @@ language (with several glossaries, `GLOSSARY-MAP.md` names the right one).
 Translating those, or inventing a cleaner label, makes the reader translate
 back.
 
-## When it is a different ask
-
-- **Writing a status from activity or for an outside audience.** A standup
-  drafted from recent activity is a `repo-status` task (suggest the user run
-  the command); a status for readers outside the working group is
-  `stakeholder-update`.
-- **Short, read, and it still did not land.** Length decides, and it is
-  visible before reading: long and unread comes here, short but unclear after
-  reading does not, because the gap is missing premises and shortening adds
-  none. Back up and re-explain with them, or suggest the user run `was`, which
-  re-pitches the last message in plain German.
-- **The reasoning is the point** — a trade-off, a review call. Give the shape of
-  the argument: both positions and what each turns on.
-- **Already short, no core, or a summary just written.** Say that in one line;
-  a thinner copy helps nobody.
-
 ## Before sending
 
 Point each bullet at its source line or passage. A bullet with no source
 goes out or goes marked "(inferred)".
-
-## Done when
-
-The user could act on the cliffs without opening the source, every bullet
-changes what they would do, and every number, path, and name in them was copied
-rather than remembered.
