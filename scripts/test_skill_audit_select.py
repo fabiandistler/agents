@@ -52,11 +52,20 @@ def test_consecutive_scheduled_runs_differ_by_one():
 
 def test_default_window_covers_longest_gap_between_runs():
     dates = scheduled_dates(datetime.date(2026, 1, 8), 48)
-    longest_gap = max((b - a).days for a, b in pairwise(dates))
-    assert longest_gap == 17
-    start, _ = skill_audit_select.change_window(datetime.date(2027, 2, 8), 17)
+    # A run can slip to the last catch-up day, two days after its scheduled one.
+    longest_gap = max((b + datetime.timedelta(days=2) - a).days for a, b in pairwise(dates))
+    assert longest_gap == 19
+    start, _ = skill_audit_select.change_window(datetime.date(2027, 2, 10), 19)
     # Covers the whole previous run day (2027-01-22), whatever time it ran.
     assert start == datetime.datetime(2027, 1, 22, tzinfo=datetime.timezone.utc)
+
+
+@pytest.mark.parametrize("day", [8, 9, 10, 14])
+def test_catch_up_days_keep_the_scheduled_runs_slice(day):
+    late = datetime.date(2027, 2, day)
+    assert skill_audit_select.run_number(late) == skill_audit_select.run_number(
+        datetime.date(2027, 2, 8)
+    )
 
 
 @pytest.mark.parametrize(
@@ -143,4 +152,4 @@ def test_help_describes_twice_monthly_run_not_weekly():
         assert "weekly" not in wording.replace("twice-monthly", "")
         assert "seven days" not in wording
         assert "twice-monthly" in wording
-        assert "17" in wording
+        assert "19" in wording

@@ -171,7 +171,7 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 ### Weekly skill audit
 
 `.github/workflows/skill-audit.yml` follows `docs/agents/skill-audit.md` on
-the 8th and the 22nd of each month: the `repo-error-checker` subagent runs the CI checks repo-wide, and the
+the 8th and the 22nd of each month, with two catch-up days each that its model-free gate (`scripts/skill_audit_gate.py`) skips once an audit has succeeded: the `repo-error-checker` subagent runs the CI checks repo-wide, and the
 `skill-reviewer` subagent judges a rotating quarter of the skills (plus the
 most-changed ones) against `docs/agents/skill-audit-checklist.md`. Findings
 land in one rolling `skill-audit` issue; mechanical fixes in one

@@ -3,20 +3,22 @@
 
 Usage: python3 scripts/skill_audit_select.py [--since-days N] [--slices K] [--date D] [--max M]
 
-The audit is scheduled on the 8th and the 22nd of each month. Each scheduled
+The audit is scheduled on the 8th and the 22nd of each month, with the two
+days after each as catch-up days for a late or dropped run. Each scheduled
 run gets its own number, run = (year*12 + month-1)*2 + (day >= 15), so two
-consecutive runs always differ by one.
+consecutive runs always differ by one and a catch-up run keeps the slice.
 
 Selection = the rotating slice (sorted skill names where index % K == run % K)
           + skills whose files changed in the N days before the run date and
             on it, most churned first, until M skills are selected.
 Every skill is thus reviewed at least once per K runs, changed ones sooner,
 and a busy fortnight cannot turn the run into a full (expensive) audit. The
-default window of 17 days covers the longest gap between two scheduled runs
-(22nd to the 8th of the next month); consecutive windows may overlap.
+default window of 19 days covers the longest gap between two runs (the 22nd
+to the 10th of the next month, the last catch-up day); consecutive windows
+may overlap.
 
 Options:
-  --since-days N  window for "changed" in days before the run date (default 17)
+  --since-days N  window for "changed" in days before the run date (default 19)
   --slices K      rotation length in runs (default 4; 1 = every skill every run)
   --date D        run date as YYYY-MM-DD for the slice and the window
                   (default: today, UTC)
@@ -50,7 +52,8 @@ def skill_names() -> list[str]:
     return sorted(p.name for p in SKILLS_DIR.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
 
 
-# The second half-month starts on this day; each half holds one scheduled run.
+# The second half-month starts on this day. Each half holds one scheduled run
+# (the 8th or the 22nd) and its catch-up days, so a late run keeps its slice.
 SECOND_HALF_DAY = 15
 
 
@@ -125,9 +128,9 @@ def main() -> int:
     parser.add_argument(
         "--since-days",
         type=int,
-        default=17,
-        help="window for 'changed' in days before the run date (default 17, the longest "
-        "gap between two scheduled runs)",
+        default=19,
+        help="window for 'changed' in days before the run date (default 19, the longest "
+        "gap between two runs, catch-up days included)",
     )
     parser.add_argument(
         "--slices",

@@ -135,3 +135,15 @@
   a manual step. If the test cron is applied before 2026-11-22, the test runs
   on 2026-11-22, -25 and -29, 2026-12-02, -06 and -09: six runs, three of
   them added [inferred].
+- 2026-11-22 [read]: the first scheduled `skill-audit.yml` run (22nd, 13:41
+  Europe/Berlin) had not started by 19:05; it was dispatched by hand
+  (run 45053131557, success). Scheduled runs in this repo start late across
+  the board: `retro.yml` (06:23 Berlin) started 7–9 hours late every day
+  2026-11-15 to -22, and the hourly `implementer-queue.yml` ran 2–4 times a
+  day. The skill audit therefore gets two catch-up days after the 8th and the
+  22nd and a model-free gate (`scripts/skill_audit_gate.py`) that skips a
+  scheduled run once an audit has succeeded in the half-month.
+- 2026-11-22 superseded (skill audit, 2026-10-19 lines): `--week` no longer
+  exists. `scripts/skill_audit_select.py` derives the slice from the run
+  date's half-month (`--date`), so a manual run needs no flag, and the
+  workflow's manual run takes no inputs.

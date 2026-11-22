@@ -7,28 +7,68 @@
 # which the App token lets ci.yml and pr-review.yml check. The procedure, its
 # guardrails and its outputs live in the runbook, not here; the prompt points
 # there and repeats only the hard limits.
+#
+# Two jobs. GitHub starts this repository's scheduled runs hours late or drops
+# them, so the schedule adds two catch-up days to the 8th and the 22nd. The
+# model-free gate (scripts/skill_audit_gate.py) lets the first scheduled run
+# of a half-month through and ends every later one, a late duplicate included,
+# once an audit has succeeded. A manual run always passes the gate.
 name: skill-audit
 
 on:
   schedule:
-    # The 8th and the 22nd, as the scheduled task ran. Scheduled runs start on
-    # the default branch only.
-    - cron: "41 13 8,22 * *"
+    # The 8th and the 22nd, as the scheduled task ran, each with two catch-up
+    # days for the gate. Scheduled runs start on the default branch only.
+    - cron: "41 13 8-10,22-24 * *"
       timezone: Europe/Berlin
   workflow_dispatch:
 
-# No scope by default; the job below opts in to exactly what it needs.
+# No scope by default; each job opts in to exactly what it needs.
 permissions: {}
 
+# A run that starts during another waits, gate included: two audits would both
+# edit the rolling issue, and a gate that ran early would miss the other's result.
+concurrency:
+  group: skill-audit
+  cancel-in-progress: false
+
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # actions: read to count this workflow's successful runs; contents: read
+    # for the checkout.
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      due: ${{ steps.decide.outputs.due }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Decide whether an audit is due
+        id: decide
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          python3 scripts/skill_audit_gate.py --repo "$REPO" --event "$EVENT" \
+            > "$RUNNER_TEMP/decision.json"
+          cat "$RUNNER_TEMP/decision.json" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '"due=\(.due)"' "$RUNNER_TEMP/decision.json" >> "$GITHUB_OUTPUT"
+
   audit:
+    needs: gate
+    if: needs.gate.outputs.due == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    # A manual run during a scheduled one waits; two audits would both edit
-    # the rolling issue.
-    concurrency:
-      group: skill-audit
-      cancel-in-progress: false
     # contents: read for the checkout; id-token: write for the App token
     # exchange. Every GitHub write goes through the App token, not this one.
     permissions:
