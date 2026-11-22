@@ -3,7 +3,7 @@
 The model below is Vlad Khononov's **Balanced Coupling**, from *Balancing
 Coupling in Software Design* (Addison-Wesley, 2024), the companion site
 [coupling.dev](https://coupling.dev), and the author's
-[`balanced-coupling`](https://github.com/vladikk/modularity) skill
+[`modularity`](https://github.com/vladikk/modularity) plugin (`/modularity:review`, `/modularity:design`)
 (CC BY-NC-SA 4.0). It unifies the classic coupling
 taxonomies — structured design's module coupling and connascence — into three
 dimensions, and gives one rule for when a dependency helps modularity and when
