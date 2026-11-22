@@ -6,8 +6,8 @@ components live (**distance**), and how likely that shared knowledge is to
 change (**volatility**). The model is Vlad Khononov's Balanced Coupling, from
 *Balancing Coupling in Software Design* (Addison-Wesley, 2024) and
 [coupling.dev](https://coupling.dev). The author also publishes it as the
-`balanced-coupling` skill in the
-[vladikk/modularity](https://github.com/vladikk/modularity) plugin
+`modularity` plugin
+([vladikk/modularity](https://github.com/vladikk/modularity); commands `/modularity:review`, `/modularity:design`)
 (CC BY-NC-SA 4.0), with the same four strength levels and balance rule. Its core rule
 in plain language: heavy sharing is fine up close; only light contract
 knowledge across distance unless proven stable with a revisit condition. The
