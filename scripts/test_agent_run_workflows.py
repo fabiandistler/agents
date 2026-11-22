@@ -20,6 +20,7 @@ import implementer_claim
 import implementer_setup
 import pytest
 from agent_run_workflow_testkit import (
+    ACTION,
     EXPRESSION,
     FACTORY_IMPLEMENTER,
     IMPLEMENTER,
@@ -161,7 +162,8 @@ def test_skill_audit_fetches_submodules():
 
 @BOTH
 def test_runs_are_serialised_without_cancelling(path):
-    concurrency = agent_job(path)["concurrency"]
+    # skill-audit.yml serialises the whole run, so its gate waits too.
+    concurrency = agent_job(path).get("concurrency") or workflow(path)["concurrency"]
     assert concurrency["cancel-in-progress"] is False, (
         "cancelling could stop a run between its push and its pull request"
     )
@@ -278,7 +280,8 @@ def test_implementer_stop_rule_writes_the_summary_last():
 
 def test_skill_audit_keeps_its_schedule():
     schedule = workflow(SKILL_AUDIT)[True]["schedule"]
-    assert schedule == [{"cron": "41 13 8,22 * *", "timezone": "Europe/Berlin"}]
+    # The 8th and the 22nd, each with two catch-up days the gate turns into no-ops.
+    assert schedule == [{"cron": "41 13 8-10,22-24 * *", "timezone": "Europe/Berlin"}]
     checkout = agent_job(SKILL_AUDIT)["steps"][0]
     assert checkout["with"]["fetch-depth"] == 0, "skill selection reads last week's commits"
 
@@ -357,3 +360,19 @@ def test_report_diagnoses_a_run_that_wrote_nothing(path, tmp_path):
     assert "wrote no summary" in text
     assert "Waiting for the subagents." in text
     assert "1 tool call(s) ran in the background (Agent x1)" in text
+
+
+def test_skill_audit_runs_the_model_only_after_its_gate():
+    audit_workflow = workflow(SKILL_AUDIT)
+    assert audit_workflow["concurrency"] == {"group": "skill-audit", "cancel-in-progress": False}
+    jobs = audit_workflow["jobs"]
+    assert set(jobs) == {"gate", "audit"}
+    gate = jobs["gate"]
+    assert gate["permissions"] == {"contents": "read", "actions": "read"}
+    assert not any(step.get("uses", "").startswith(ACTION) for step in gate["steps"])
+    decide = next(step for step in gate["steps"] if step.get("id") == "decide")
+    assert "scripts/skill_audit_gate.py" in decide["run"]
+    assert "${{" not in decide["run"], "event values reach the shell through env only"
+    assert decide["env"]["EVENT"] == "${{ github.event_name }}"
+    assert jobs["audit"]["needs"] == "gate"
+    assert jobs["audit"]["if"] == "needs.gate.outputs.due == 'true'"

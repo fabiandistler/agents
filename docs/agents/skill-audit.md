@@ -3,7 +3,11 @@
 Runbook for the scheduled audit of every skill in this catalogue against its
 format, this repo's conventions, and Anthropic's skill-authoring best
 practices. `.github/workflows/skill-audit.yml` runs it on the 8th and the
-22nd of each month (ADR-0014); start an extra run with the workflow's
+22nd of each month (ADR-0014). GitHub starts scheduled runs hours late or
+drops them, so the two days after each are catch-up days: the model-free gate
+`scripts/skill_audit_gate.py` runs the audit for the first scheduled run of a
+half-month and skips every later one once an audit has succeeded. Start an
+extra run with the workflow's
 *Run workflow* button, or by hand in any session ("follow
 docs/agents/skill-audit.md").
 
@@ -44,7 +48,7 @@ Per run, at most:
 ## Procedure
 
 1. **Prepare.** From the repo root on the default branch:
-   `git fetch --shallow-since='18 days ago' origin main` (a shallow clone
+   `git fetch --shallow-since='20 days ago' origin main` (a shallow clone
    undercounts changed skills in step 3; the workflow's checkout has full
    history, so there the fetch changes nothing). Read
    `AGENTS.md`, `docs/skill-conventions.md`,
@@ -61,8 +65,9 @@ Per run, at most:
 3. **Select skills for the content pass.**
    `python3 scripts/skill_audit_select.py` prints JSON: `selected` is this
    run's rotating quarter of the catalogue plus the most-changed skills of
-   the 17 days before the run date (the longest gap between two scheduled
-   runs), capped at 12. The slice steps once per scheduled run (8th, 22nd),
+   the 19 days before the run date (the longest gap between two runs,
+   catch-up days included), capped at 12. The slice steps once per
+   half-month (8th, 22nd; a catch-up run keeps its slice),
    so every skill comes up at least once per four runs. Record `slice` as
    `slice <k>/<K>` in the issue body and `deferred` in the issue comment;
    deferred skills come round in a later slice.
