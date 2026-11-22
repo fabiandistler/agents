@@ -59,6 +59,20 @@ def test_default_window_covers_longest_gap_between_runs():
     assert start == datetime.datetime(2027, 1, 22, tzinfo=datetime.timezone.utc)
 
 
+@pytest.mark.parametrize(
+    ("run_date", "start"),
+    [
+        (datetime.date(2026, 11, 8), datetime.date(2026, 11, 1)),
+        (datetime.date(2026, 11, 14), datetime.date(2026, 11, 1)),
+        (datetime.date(2026, 11, 15), datetime.date(2026, 11, 15)),
+        (datetime.date(2026, 11, 30), datetime.date(2026, 11, 15)),
+    ],
+)
+def test_half_month_start_matches_the_run_number(run_date, start):
+    assert skill_audit_select.half_month_start(run_date) == start
+    assert skill_audit_select.run_number(start) == skill_audit_select.run_number(run_date)
+
+
 def _git(repo: Path, *args: str, when: datetime.datetime | None = None) -> None:
     env = dict(os.environ)
     if when is not None:

@@ -50,9 +50,18 @@ def skill_names() -> list[str]:
     return sorted(p.name for p in SKILLS_DIR.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
 
 
+# The second half-month starts on this day; each half holds one scheduled run.
+SECOND_HALF_DAY = 15
+
+
 def run_number(run_date: datetime.date) -> int:
     """Count scheduled runs (8th and 22nd): one step per run, half-month buckets."""
-    return (run_date.year * 12 + run_date.month - 1) * 2 + (run_date.day >= 15)
+    return (run_date.year * 12 + run_date.month - 1) * 2 + (run_date.day >= SECOND_HALF_DAY)
+
+
+def half_month_start(run_date: datetime.date) -> datetime.date:
+    """First day of the half-month bucket `run_number` puts `run_date` in."""
+    return run_date.replace(day=SECOND_HALF_DAY if run_date.day >= SECOND_HALF_DAY else 1)
 
 
 def change_window(
