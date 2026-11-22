@@ -71,7 +71,8 @@ def decide(client: ReadClient, repo: str, event: str, today: datetime.date) -> D
         return Decision(True, f"{event} runs are always due", since.isoformat(), 0)
     count = successful_runs_since(client, repo, since)
     if count:
-        return Decision(False, "an audit already succeeded this half-month", since.isoformat(), count)
+        reason = "an audit already succeeded this half-month"
+        return Decision(False, reason, since.isoformat(), count)
     return Decision(True, "no successful audit this half-month", since.isoformat(), 0)
 
 

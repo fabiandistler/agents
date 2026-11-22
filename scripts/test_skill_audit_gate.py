@@ -32,7 +32,7 @@ def test_first_scheduled_run_of_the_half_month_is_due():
     decision = skill_audit_gate.decide(client, REPO, "schedule", datetime.date(2026, 11, 22))
     assert decision.due is True
     assert decision.since == "2026-11-15"
-    (path, params), = client.calls
+    ((path, params),) = client.calls
     assert path == RUNS_PATH
     assert params["status"] == "success"
     assert params["created"] == ">=2026-11-15"
