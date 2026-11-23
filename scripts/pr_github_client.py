@@ -25,6 +25,7 @@ API_VERSION = "2022-11-28"
 
 REPO_PATTERN = re.compile(r"^[^/\s]+/[^/\s]+$")
 PER_PAGE = 100
+HTTP_NOT_FOUND = 404
 # GitHub's own error text ("Resource not accessible by integration", "API rate
 # limit exceeded ...") tells a missing scope from a limit; a cap keeps it one
 # short line.
