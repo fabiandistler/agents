@@ -31,9 +31,10 @@ In the repository: *Settings → Actions → Policies* (a page of its own, not
 3. Target: the workflow file `.github/workflows/pr-review.yml` only. It is
    the caller that carries the trigger; the jobs run from the reusable
    `factory-pr-review.yml` it calls. Keep that file name: renaming the caller
-   breaks the policy's match. Whether a policy matches the caller's path or
-   the called workflow's path is not documented (ADR-0018, open question 2);
-   the first run after the extraction settles it in *Policy insights*.
+   breaks the policy's match. The policy matches the caller's path: after
+   the extraction (#856, 2026-11-15 07:52 UTC) `pr-review` ran daily on
+   `pull_request_target`, and *Policy insights* lists no *Would block*
+   entry after 2026-11-14 (ADR-0018, open question 2).
 4. Rule **Restrict events**: allow `pull_request_target` and
    `workflow_dispatch`. The rule is an allowlist for the targeted workflow,
    so without `workflow_dispatch` the [dry run](pr-review-runbook.md#dry-run)
@@ -96,7 +97,6 @@ API were not readable from an agent session:
 - that a repository of a personal account shows *Policies* and *Policy
   insights* (the docs name repository administrators and all public
   repositories, not account types);
-- whether such a policy already exists;
 - that the event allowlist also blocks `workflow_dispatch` when it is left
   out (read from the docs' allowlist wording, not observed);
 - the effect of either brownout: no `pr-review` run started between
