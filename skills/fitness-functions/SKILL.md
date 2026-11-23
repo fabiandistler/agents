@@ -20,7 +20,11 @@ existing code (→ `members/coupling-cohesion/SKILL.md`) or choosing an
 architecture in the first place (→ `members/architecture-pattern-advisor/SKILL.md`); both
 are read via the `architecture` router.
 
-An **architecture fitness function** is any automated check that scores how close the codebase or running system stays to the architect's intent — a perspective on tools you already have (tests, metrics, monitors, chaos), wired into CI so important-but-never-urgent concerns like modularity don't erode one import at a time.
+An **architecture fitness function** is any automated check that scores how
+close the codebase or running system stays to the architect's intent — a
+perspective on tools you already have (tests, metrics, monitors, chaos), wired
+into CI so important-but-never-urgent concerns like modularity don't erode one
+import at a time.
 
 Concrete tool-by-tool implementations live in
 [references/tooling-catalog.md](references/tooling-catalog.md) — read it once
@@ -170,8 +174,9 @@ Sibling sub-skills, each read via the `architecture` router:
 ## Source
 
 Mark Richards & Neal Ford, *Fundamentals of Software Architecture*, 2nd ed.
-(O'Reilly), "Measuring and Governing Architecture Characteristics" — definition and evolutionary-
-computing origin of fitness functions, the cyclic-dependency and Distance from
-the Main Sequence examples (JDepend), layer governance (ArchUnit, NetArchTest),
-metric gaming, and the Netflix Simian Army as production fitness functions. Builds on Neal Ford et al., *Building Evolutionary
-Architectures* (O'Reilly, 2022).
+(O'Reilly), "Measuring and Governing Architecture Characteristics" —
+definition and evolutionary-computing origin of fitness functions, the
+cyclic-dependency and Distance from the Main Sequence examples (JDepend),
+layer governance (ArchUnit, NetArchTest), metric gaming, and the Netflix
+Simian Army as production fitness functions. Builds on Neal Ford et al.,
+*Building Evolutionary Architectures* (O'Reilly, 2022).
