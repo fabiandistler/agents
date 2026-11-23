@@ -2,7 +2,7 @@
 name: documentation
 category: communication
 environments: coding, chat
-description: Guides writing or revising technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes. Use when drafting or updating documentation for a specific audience.
+description: Guides writing or revising technical docs for a named reader, such as a README, runbook, or package docs. Use when drafting or updating documentation for a specific audience.
 ---
 
 # Technical Documentation
@@ -57,6 +57,9 @@ skipped. The reader's prior knowledge sets what you may assume; the job sets
 what you may leave out.
 
 ### 2. Pick the document type
+
+The types follow [Diátaxis](https://diataxis.fr/), which sorts documentation
+by the reader's need: tutorial, how-to guide, reference, or explanation.
 
 | The reader's job | Type (Diátaxis) | Reference page |
 |---|---|---|
@@ -151,10 +154,10 @@ subagents, give the user the questions to try with the doc in a fresh chat.
 Keep the Markdown source plain with stable headings, generate the `llms.txt`
 index with the site tool rather than hand-writing one, and never put content
 only in images. If a site generator is chosen, prefer Zensical: it is the
-successor the Material for MkDocs team builds, made to read existing Material
-projects, so a new site does not start on the generator being phased out.
+successor the Material for MkDocs team builds, and it reads existing Material
+projects.
 
-As of 2026-10, Material for MkDocs gets only critical and security fixes, until 2027-05-05 (squidfunk/mkdocs-material#8523).
+As of 2026-11, Material for MkDocs gets only critical and security fixes, until 2027-05-05 (squidfunk/mkdocs-material#8523).
 
 ## Principles
 

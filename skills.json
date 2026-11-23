@@ -84,7 +84,7 @@
     },
     {
       "name": "documentation",
-      "summary": "Guides writing or revising technical docs for a named reader — README, tutorial, how-to, API reference, docstrings, runbook, package docs, or vignettes.",
+      "summary": "Guides writing or revising technical docs for a named reader, such as a README, runbook, or package docs.",
       "category": "communication",
       "path": "skills/documentation/SKILL.md",
       "environments": [
