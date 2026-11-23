@@ -8,6 +8,8 @@ import implementer_claim
 import pytest
 from test_implementer_briefs import brief
 from test_implementer_claim import ISSUE_PATH, FakeGitHub, claim, run_cli
+
+EVENTS_PATH = f"{ISSUE_PATH}/events"
 from test_implementer_intake_gates import assert_stopped_before_any_branch, blocker
 
 
@@ -107,3 +109,47 @@ def test_cli_writes_no_contract_when_the_run_stops(monkeypatch, tmp_path, capsys
     assert code == implementer_claim.EXIT_NO_CONTRACT
     assert json.loads(capsys.readouterr().out)["outcome"] == implementer_claim.NO_CONTRACT
     assert not (tmp_path / "contract.md").exists()
+
+
+def audit_finding(
+    events: list[dict], *, login: str = "claude[bot]", user_type: str = "Bot"
+) -> FakeGitHub:
+    issue = {
+        "body": "AUDIT FINDINGS",
+        "author_association": "CONTRIBUTOR",
+        "user": {"login": login, "type": user_type},
+        "labels": [{"name": "audit-finding"}, {"name": "ready-for-agent"}],
+    }
+    return FakeGitHub(canned_payloads={ISSUE_PATH: issue, EVENTS_PATH: events})
+
+
+def labeled(name: str, actor_type: str) -> dict:
+    return {"event": "labeled", "label": {"name": name}, "actor": {"type": actor_type}}
+
+
+def test_an_audit_finding_a_person_released_is_the_contract():
+    fake = audit_finding([labeled("audit-finding", "Bot"), labeled("ready-for-agent", "User")])
+    assert "AUDIT FINDINGS" in contract_of(fake)
+
+
+@pytest.mark.parametrize(
+    "events",
+    [
+        [labeled("ready-for-agent", "Bot")],
+        [labeled("ready-for-agent", "User"), labeled("ready-for-agent", "Bot")],
+        [labeled("audit-finding", "User")],
+        [],
+    ],
+)
+def test_an_audit_finding_no_person_released_stops_the_run(events):
+    fake = audit_finding(events)
+    assert claim(fake).outcome == implementer_claim.NO_CONTRACT
+    assert_stopped_before_any_branch(fake)
+
+
+@pytest.mark.parametrize(
+    ("login", "user_type"), [("someone[bot]", "Bot"), ("claude[bot]", "User"), ("mallory", "User")]
+)
+def test_only_the_apps_own_issue_counts_as_an_audit_finding(login, user_type):
+    fake = audit_finding([labeled("ready-for-agent", "User")], login=login, user_type=user_type)
+    assert claim(fake).outcome == implementer_claim.NO_CONTRACT

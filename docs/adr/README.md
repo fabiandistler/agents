@@ -29,6 +29,7 @@ governs; the replacement ADR or current record is named).
 | [0017](0017-retro-task.md) | Proposed (2026-11-14) | A daily, throttled Retro run turns about one merged agent PR in ten into one proposed change to the factory's own instruction texts. |
 | [0018](0018-reusable-factory-workflows.md) | Accepted (2026-11-11, recorded 2026-11-14) | The factory's tasks are `workflow_call` workflows in this repository; other repositories call them through thin callers pinned to a commit SHA. |
 | [0019](0019-remove-claude-mention-workflow.md) | Accepted (2026-11-15) | The `@claude` mention workflow is removed: its App token could write and its thread input came from anyone; no workflow starts `claude-code-action` from a comment or review. |
+| [0020](0020-audit-finding-issues.md) | Accepted (2026-11-23) | The skill audit files one `audit-finding` issue per skill; its body becomes the implementer's contract once a person adds `ready-for-agent`. |
 
 ## Supersession
 

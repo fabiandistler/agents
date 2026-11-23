@@ -18,6 +18,7 @@ from pr_github_fake import (
     REPO,
     SCRIPT,
     FakeClient,
+    IssueThread,
     api_comment,
     api_issue,
     fetch,
@@ -32,7 +33,7 @@ def fetch_linked(client: FakeClient) -> dict:
 
 
 def test_without_the_flag_the_context_has_no_field_and_fetches_no_issue():
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: api_issue(7)})
+    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7))})
 
     context = fetch(client)
 
@@ -42,7 +43,7 @@ def test_without_the_flag_the_context_has_no_field_and_fetches_no_issue():
 
 def test_a_same_repository_closing_reference_carries_number_title_and_body():
     issue = api_issue(7, title="Add the flag", body="The ticket text.")
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: issue})
+    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(issue)})
 
     context = fetch_linked(client)
 
@@ -73,7 +74,8 @@ def test_references_to_other_repositories_are_not_fetched():
 def test_a_reference_that_names_a_pull_request_is_not_an_issue():
     pull = {**api_issue(10), "pull_request": {"url": "https://api.github.com/x"}}
     client = FakeClient(
-        pull_request(body="Closes #10, closes #11"), issues={10: pull, 11: api_issue(11)}
+        pull_request(body="Closes #10, closes #11"),
+        issues={10: IssueThread(pull), 11: IssueThread(api_issue(11))},
     )
 
     context = fetch_linked(client)
@@ -92,7 +94,9 @@ def test_a_pull_request_without_a_closing_reference_gets_an_empty_list():
 
 def test_references_are_deduplicated_ascending_and_at_most_three():
     body = "Closes #9, closes #2\nFixes #5\nResolves #2\nCloses #1"
-    client = FakeClient(pull_request(body=body), issues={n: api_issue(n) for n in (1, 2, 5, 9)})
+    client = FakeClient(
+        pull_request(body=body), issues={n: IssueThread(api_issue(n)) for n in (1, 2, 5, 9)}
+    )
 
     context = fetch_linked(client)
 
@@ -105,7 +109,7 @@ def test_references_are_deduplicated_ascending_and_at_most_three():
 @pytest.mark.parametrize("association", ["CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", "NONE", None])
 def test_an_issue_by_an_outside_author_carries_no_text(association):
     issue = api_issue(7, title="OUTSIDE-TITLE", body="OUTSIDE-BODY", association=association)
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: issue})
+    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(issue)})
 
     context = fetch_linked(client)
 
@@ -118,7 +122,8 @@ def test_an_issue_by_an_outside_author_carries_no_text(association):
 @pytest.mark.parametrize("association", ["OWNER", "MEMBER", "COLLABORATOR"])
 def test_an_issue_by_a_trusted_author_is_shown(association):
     client = FakeClient(
-        pull_request(body="Closes #7"), issues={7: api_issue(7, association=association)}
+        pull_request(body="Closes #7"),
+        issues={7: IssueThread(api_issue(7, association=association))},
     )
 
     assert fetch_linked(client)["linked_issues"][0]["status"] == "ok"
@@ -138,11 +143,11 @@ def test_a_failed_issue_fetch_marks_it_unavailable_and_logs_number_and_status(
     response, status, capsys
 ):
     errors = {}
-    issues = {8: api_issue(8)}
+    issues = {8: IssueThread(api_issue(8))}
     if isinstance(response, Exception):
         errors[f"{ISSUES_PREFIX}7"] = response
     elif response is not None:
-        issues[7] = response
+        issues[7] = IssueThread(response)
     client = FakeClient(pull_request(body="Closes #7, closes #8"), issues=issues, errors=errors)
 
     context = fetch_linked(client)
@@ -171,7 +176,7 @@ def test_the_latest_trusted_agent_brief_is_the_issue_brief():
         api_comment("## Agent Brief\n\nBOT draft.", association=None, login="github-actions[bot]"),
     ]
     client = FakeClient(
-        pull_request(body="Closes #7"), issues={7: api_issue(7)}, issue_comments={7: comments}
+        pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7), comments=comments)}
     )
 
     assert fetch_linked(client)["linked_issues"][0]["brief"] == BRIEF
@@ -180,7 +185,7 @@ def test_the_latest_trusted_agent_brief_is_the_issue_brief():
 def test_a_heading_inside_a_code_block_is_no_brief():
     comment = api_comment("```\n## Agent Brief\n```")
     client = FakeClient(
-        pull_request(body="Closes #7"), issues={7: api_issue(7)}, issue_comments={7: [comment]}
+        pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7), comments=[comment])}
     )
 
     assert fetch_linked(client)["linked_issues"][0]["brief"] == ""
@@ -189,7 +194,8 @@ def test_a_heading_inside_a_code_block_is_no_brief():
 def test_an_outside_authors_issue_keeps_a_trusted_brief_but_no_title_or_body():
     issue = api_issue(7, title="OUTSIDE-TITLE", body="OUTSIDE-BODY", association="NONE")
     client = FakeClient(
-        pull_request(body="Closes #7"), issues={7: issue}, issue_comments={7: [api_comment(BRIEF)]}
+        pull_request(body="Closes #7"),
+        issues={7: IssueThread(issue, comments=[api_comment(BRIEF)])},
     )
 
     assert fetch_linked(client)["linked_issues"] == [
@@ -201,7 +207,7 @@ def test_a_failed_comment_fetch_marks_the_issue_unavailable(capsys):
     error = pr_github_client.FetchError("GitHub API returned 502", status=502)
     client = FakeClient(
         pull_request(body="Closes #7"),
-        issues={7: api_issue(7)},
+        issues={7: IssueThread(api_issue(7))},
         errors={f"{ISSUES_PREFIX}7/comments": error},
     )
 
@@ -239,7 +245,7 @@ def test_the_cli_passes_the_flag_and_exits_zero_on_an_unavailable_issue(
 
 
 def test_the_cli_without_the_flag_writes_no_field(tmp_path, monkeypatch, capsys):
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: api_issue(7)})
+    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7))})
     monkeypatch.setattr(pr_github, "GitHubClient", lambda token: client)
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     output = tmp_path / "context.json"
@@ -263,3 +269,53 @@ def test_the_usage_documents_the_flag_and_the_field():
     assert "--linked-issues" in result.stdout
     assert '"linked_issues"' in result.stdout
     assert "outside_author" in result.stdout
+
+
+def audit_finding(number: int, *, labels: tuple[str, ...] = ("audit-finding",)) -> dict:
+    issue = api_issue(number, title="AUDIT-TITLE", body="AUDIT-BODY", association="CONTRIBUTOR")
+    issue["user"] = {"login": "claude[bot]", "type": "Bot"}
+    issue["labels"] = [{"name": name} for name in labels]
+    return issue
+
+
+def labeled(name: str, actor_type: str) -> dict:
+    return {"event": "labeled", "label": {"name": name}, "actor": {"type": actor_type}}
+
+
+def test_an_audit_finding_a_person_released_is_shown():
+    client = FakeClient(
+        pull_request(body="Closes #7"),
+        issues={7: IssueThread(audit_finding(7), events=[labeled("ready-for-agent", "User")])},
+    )
+
+    linked = fetch_linked(client)["linked_issues"][0]
+
+    assert (linked["status"], linked["body"]) == ("ok", "AUDIT-BODY")
+
+
+@pytest.mark.parametrize(
+    ("labels", "events"),
+    [
+        # Released by a bot only.
+        (("audit-finding",), [labeled("ready-for-agent", "Bot")]),
+        # A person's release, then the label again from a bot.
+        (
+            ("audit-finding",),
+            [labeled("ready-for-agent", "User"), labeled("ready-for-agent", "Bot")],
+        ),
+        # Not released at all.
+        (("audit-finding",), [labeled("audit-finding", "User")]),
+        # Released, but not filed as an audit finding.
+        ((), [labeled("ready-for-agent", "User")]),
+    ],
+)
+def test_an_audit_finding_without_a_persons_release_carries_no_text(labels, events):
+    client = FakeClient(
+        pull_request(body="Closes #7"),
+        issues={7: IssueThread(audit_finding(7, labels=labels), events=events)},
+    )
+
+    context = fetch_linked(client)
+
+    assert context["linked_issues"][0]["status"] == "outside_author"
+    assert "AUDIT-" not in json.dumps(context)

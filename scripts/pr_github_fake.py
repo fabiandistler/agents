@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import base64
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +47,18 @@ def text_response(text: str, status: int = 200) -> pr_github_client.Response:
     return pr_github_client.Response(status=status, body=text.encode("utf-8"))
 
 
+@dataclass
+class IssueThread:
+    """One issue as the REST API serves it: the issue itself, its comments and its events.
+
+    ``issue`` is the payload, or a ``Response`` to serve as is (an error status).
+    """
+
+    issue: object
+    comments: list[dict] = field(default_factory=list)
+    events: list[dict] = field(default_factory=list)
+
+
 class FakeClient:
     """A routed fake for the read-only client surface."""
 
@@ -60,8 +72,7 @@ class FakeClient:
         diff: str = "",
         contents: dict[str, Any] | None = None,
         tree: object = None,
-        issues: dict[int, object] | None = None,
-        issue_comments: dict[int, list[dict]] | None = None,
+        issues: dict[int, IssueThread] | None = None,
         errors: dict[str, Exception] | None = None,
     ) -> None:
         self.pr = pull_request() if pr is None else pr
@@ -72,7 +83,6 @@ class FakeClient:
         self.contents = contents or {}
         self.tree = {"sha": "base-sha", "tree": [], "truncated": False} if tree is None else tree
         self.issues = issues or {}
-        self.issue_comments = issue_comments or {}
         self.errors = errors or {}
         self.calls: list[Call] = []
 
@@ -89,35 +99,49 @@ class FakeClient:
             if accept == DIFF_ACCEPT:
                 return text_response(self.diff)
             return json_response(self.pr)
-        if path == FILES_PATH:
-            return _page(self.file_pages, params)
-        if path == COMMENTS_PATH:
-            return _page(self.comment_pages, params)
-        if path == REVIEWS_PATH:
-            return _page(self.review_pages, params)
+        paged = {
+            FILES_PATH: self.file_pages,
+            COMMENTS_PATH: self.comment_pages,
+            REVIEWS_PATH: self.review_pages,
+        }
+        if path in paged:
+            return _page(paged[path], params)
         if path == TREE_PATH:
             if params != {"recursive": "1"}:
                 raise AssertionError("the base tree must be fetched recursively")
             return json_response(self.tree)
         if path.startswith(CONTENTS_PREFIX):
-            content_path = path[len(CONTENTS_PREFIX) :]
-            handler = self.contents.get(content_path)
-            if handler is None:
-                raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
-            return (
-                handler
-                if isinstance(handler, pr_github_client.Response)
-                else json_response(handler)
-            )
-        if path.startswith(ISSUES_PREFIX) and path[len(ISSUES_PREFIX) :].isdigit():
-            issue = self.issues.get(int(path[len(ISSUES_PREFIX) :]))
-            if issue is None:
-                raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
-            return issue if isinstance(issue, pr_github_client.Response) else json_response(issue)
-        number, _, rest = path[len(ISSUES_PREFIX) :].partition("/")
-        if path.startswith(ISSUES_PREFIX) and number.isdigit() and rest == "comments":
-            return _page((self.issue_comments.get(int(number), []),), params)
+            return self._get_contents(path)
+        if path.startswith(ISSUES_PREFIX):
+            return self._get_issue_thread(path, params)
         raise AssertionError(f"unexpected GET {path}")
+
+    def _get_contents(self, path: str) -> pr_github_client.Response:
+        """A base file's contents; 404 for a path the fake does not hold."""
+        handler = self.contents.get(path[len(CONTENTS_PREFIX) :])
+        if handler is None:
+            raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
+        if isinstance(handler, pr_github_client.Response):
+            return handler
+        return json_response(handler)
+
+    def _get_issue_thread(self, path: str, params: dict) -> pr_github_client.Response:
+        """An issue, its comments or its events; 404 for an issue the fake does not hold."""
+        number, _, rest = path[len(ISSUES_PREFIX) :].partition("/")
+        if not number.isdigit():
+            raise AssertionError(f"unexpected GET {path}")
+        thread = self.issues.get(int(number))
+        if thread is None:
+            raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
+        if rest == "comments":
+            return _page((thread.comments,), params)
+        if rest == "events":
+            return _page((thread.events,), params)
+        if rest:
+            raise AssertionError(f"unexpected GET {path}")
+        if isinstance(thread.issue, pr_github_client.Response):
+            return thread.issue
+        return json_response(thread.issue)
 
     def issue_calls(self) -> list[Call]:
         return [

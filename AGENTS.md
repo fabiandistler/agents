@@ -176,7 +176,10 @@ the 8th and the 22nd of each month, with two catch-up days each that its model-f
 most-changed ones) against `docs/agents/skill-audit-checklist.md`. Findings
 land in one rolling `skill-audit` issue; mechanical fixes in one
 `claude/skill-audit-<date>` PR. Record a finding you decide to keep under the
-issue's *Accepted* section so the audit stops reporting it.
+issue's *Accepted* section so the audit stops reporting it. Each skill with an
+open `error` or `warn` finding outside its description also gets one
+`audit-finding` issue; adding `ready-for-agent` to it hands it to the
+implementer (`docs/adr/0020-audit-finding-issues.md`).
 
 ### Retro
 
