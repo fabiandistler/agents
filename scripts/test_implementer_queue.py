@@ -61,6 +61,8 @@ class QueueFake:
     ``working`` maps an in-progress run id to its jobs; ``runs`` is the run
     listing, newest first. ``branches`` names the issues whose branch exists.
     ``listed_total``, when set, is the ``total_count`` the working-run and job listings report.
+    ``events`` maps a number to its issue events; ``collaborators`` maps a login
+    to the base role the permission endpoint reports.
     """
 
     issues: dict[int, dict] = field(default_factory=dict)
@@ -75,6 +77,8 @@ class QueueFake:
     writes: list[tuple[str, str, dict]] = field(default_factory=list)
     workflow_file: str = "implementer.yml"
     listed_total: int | None = None
+    events: dict[int, list[dict]] = field(default_factory=dict)
+    collaborators: dict[str, str] = field(default_factory=dict)
 
     def get(
         self, path: str, params: dict | None = None, accept: str | None = None
@@ -84,6 +88,47 @@ class QueueFake:
         self.reads.append(path)
         params = params or {}
         later_page = params.get("page", 1) != 1
+        if path.startswith(f"/repos/{REPO}/actions/"):
+            return self._get_actions(path, params)
+        if path == f"/repos/{REPO}/issues":
+            return json_response([] if later_page else self._waiting_listing(params))
+        if path == f"/repos/{REPO}/pulls":
+            return json_response([] if later_page else self.pulls)
+        if path == f"/repos/{REPO}":
+            return json_response({"default_branch": "trunk"})
+        routes = (
+            (rf"/repos/{REPO}/git/ref/heads/agent/issue-(\d+)", self._get_branch),
+            (rf"/repos/{REPO}/issues/(\d+)(/.*)?", self._get_issue),
+            (rf"/repos/{REPO}/collaborators/([^/]+)/permission", self._get_permission),
+        )
+        for pattern, handler in routes:
+            if (found := re.fullmatch(pattern, path)) is not None:
+                return handler(found, later_page)
+        raise AssertionError(f"unexpected GET {path}")
+
+    def _get_branch(self, found: re.Match, later_page: bool) -> pr_github_client.Response:
+        """The agent branch of an issue in ``branches``; 404 for any other."""
+        if int(found[1]) not in self.branches:
+            raise http_error(404, found[0])
+        return json_response({"object": {"sha": "b" * 40}})
+
+    def _get_permission(self, found: re.Match, later_page: bool) -> pr_github_client.Response:
+        """A login's repository permission; 404 for a login the fake does not know."""
+        if found[1] not in self.collaborators:
+            raise http_error(404, found[0])
+        return json_response({"permission": self.collaborators[found[1]]})
+
+    def _waiting_listing(self, params: dict) -> list[dict[str, object]]:
+        """The open issues labelled `ready-for-agent`, as the issue listing returns them."""
+        assert params.get("state") == "open", "only open issues wait"
+        assert params.get("labels") == "ready-for-agent"
+        listed: list[dict[str, object]] = [
+            {"number": number} for number in self.labelled if self.issues[number]["state"] == "open"
+        ]
+        return listed + [{"number": n, "pull_request": {}} for n in self.pull_requests_in_listing]
+
+    def _get_actions(self, path: str, params: dict) -> pr_github_client.Response:
+        """The implementer's run listings and a working run's jobs."""
         if path == f"/repos/{REPO}/actions/workflows/{self.workflow_file}/runs":
             if params.get("status") == "in_progress":
                 listed = [{"id": run_id} for run_id in self.working]
@@ -94,32 +139,18 @@ class QueueFake:
             jobs = self.working[int(found[1])]
             total = len(jobs) if self.listed_total is None else self.listed_total
             return json_response({"total_count": total, "jobs": jobs})
-        if path == f"/repos/{REPO}/issues":
-            assert params.get("state") == "open", "only open issues wait"
-            assert params.get("labels") == "ready-for-agent"
-            listed: list[dict[str, object]] = [
-                {"number": number}
-                for number in self.labelled
-                if self.issues[number]["state"] == "open"
-            ]
-            listed += [{"number": n, "pull_request": {}} for n in self.pull_requests_in_listing]
-            return json_response([] if later_page else listed)
-        if path == f"/repos/{REPO}/pulls":
-            return json_response([] if later_page else self.pulls)
-        if path == f"/repos/{REPO}":
-            return json_response({"default_branch": "trunk"})
-        if found := re.fullmatch(rf"/repos/{REPO}/git/ref/heads/agent/issue-(\d+)", path):
-            if int(found[1]) not in self.branches:
-                raise http_error(404, path)
-            return json_response({"object": {"sha": "b" * 40}})
-        if (found := re.fullmatch(rf"/repos/{REPO}/issues/(\d+)(/.*)?", path)) is not None:
-            if found[2] in ("/comments", "/dependencies/blocked_by"):
-                return json_response([])
-            number = int(found[1])
-            if found[2] is None and number in self.issues:
-                return json_response(self.issues[number])
-            raise http_error(404, path)
         raise AssertionError(f"unexpected GET {path}")
+
+    def _get_issue(self, found: re.Match, later_page: bool) -> pr_github_client.Response:
+        """An issue, its comments, blockers or events; 404 for an issue the fake does not hold."""
+        number, rest, path = int(found[1]), found[2], found[0]
+        if rest in ("/comments", "/dependencies/blocked_by"):
+            return json_response([])
+        if rest == "/events":
+            return json_response([] if later_page else self.events.get(number, []))
+        if rest is None and number in self.issues:
+            return json_response(self.issues[number])
+        raise http_error(404, path)
 
     def post(self, path: str, payload: dict | None = None) -> pr_github_client.Response:
         self.writes.append(("POST", path, payload or {}))
@@ -221,6 +252,33 @@ def test_an_issue_without_a_contract_is_skipped():
     outcome = start(fake)
     assert dispatched_issue(fake) == 13
     assert outcome.skipped == [implementer_queue.Skip(12, "no-contract")]
+
+
+def audit_finding() -> dict:
+    """An open audit-finding issue the App filed."""
+    return {
+        **ticket("AUDIT FINDINGS", association="CONTRIBUTOR"),
+        "user": {"login": "claude[bot]", "type": "Bot"},
+        "labels": [{"name": "audit-finding"}, {"name": "ready-for-agent"}],
+    }
+
+
+@pytest.mark.parametrize(
+    ("adder", "picked"),
+    [(("User", "maintainer"), 12), (("Bot", "claude[bot]"), 13), (("User", "triager"), 13)],
+    ids=["writer-release-picks", "bot-label-skips", "read-role-skips"],
+)
+def test_an_audit_finding_is_picked_only_once_a_writer_released_it(adder, picked):
+    fake = waiting(12, 13)
+    fake.issues[12] = audit_finding()
+    actor_type, login = adder
+    release = {"type": actor_type, "login": login}
+    fake.events[12] = [{"event": "labeled", "label": {"name": "ready-for-agent"}, "actor": release}]
+    fake.collaborators = {"maintainer": "write", "triager": "read"}
+    outcome = start(fake)
+    assert dispatched_issue(fake) == picked
+    if picked == 13:
+        assert outcome.skipped == [implementer_queue.Skip(12, "no-contract")]
 
 
 @pytest.mark.parametrize(

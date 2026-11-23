@@ -293,15 +293,23 @@ def audit_finding(number: int, *, labels: tuple[str, ...] = ("audit-finding",)) 
     return issue
 
 
-def labeled(name: str, actor_type: str) -> dict:
-    return {"event": "labeled", "label": {"name": name}, "actor": {"type": actor_type}}
+def labeled(name: str, actor_type: str = "User", login: str = "maintainer") -> dict:
+    actor = {"type": actor_type, "login": login}
+    return {"event": "labeled", "label": {"name": name}, "actor": actor}
 
 
-def test_an_audit_finding_a_person_released_is_shown():
-    client = FakeClient(
+def linked_audit_finding(
+    events: list[dict], labels: tuple[str, ...] = ("audit-finding",)
+) -> FakeClient:
+    return FakeClient(
         FakePullRequest(pull_request(body="Closes #7")),
-        issues={7: IssueThread(audit_finding(7), events=[labeled("ready-for-agent", "User")])},
+        issues={7: IssueThread(audit_finding(7, labels=labels), events=events)},
+        collaborators={"maintainer": "admin", "triager": "read"},
     )
+
+
+def test_an_audit_finding_a_writer_released_is_shown():
+    client = linked_audit_finding([labeled("ready-for-agent")])
 
     linked = fetch_linked(client)["linked_issues"][0]
 
@@ -312,23 +320,24 @@ def test_an_audit_finding_a_person_released_is_shown():
     ("labels", "events"),
     [
         # Released by a bot only.
-        (("audit-finding",), [labeled("ready-for-agent", "Bot")]),
-        # A person's release, then the label again from a bot.
+        (("audit-finding",), [labeled("ready-for-agent", "Bot", "claude[bot]")]),
+        # A writer's release, then the label again from a bot.
         (
             ("audit-finding",),
-            [labeled("ready-for-agent", "User"), labeled("ready-for-agent", "Bot")],
+            [labeled("ready-for-agent"), labeled("ready-for-agent", "Bot", "claude[bot]")],
         ),
+        # Released by a person without write access.
+        (("audit-finding",), [labeled("ready-for-agent", login="triager")]),
+        # Released by an account the repository does not know.
+        (("audit-finding",), [labeled("ready-for-agent", login="gone")]),
         # Not released at all.
-        (("audit-finding",), [labeled("audit-finding", "User")]),
+        (("audit-finding",), [labeled("audit-finding")]),
         # Released, but not filed as an audit finding.
-        ((), [labeled("ready-for-agent", "User")]),
+        ((), [labeled("ready-for-agent")]),
     ],
 )
-def test_an_audit_finding_without_a_persons_release_carries_no_text(labels, events):
-    client = FakeClient(
-        FakePullRequest(pull_request(body="Closes #7")),
-        issues={7: IssueThread(audit_finding(7, labels=labels), events=events)},
-    )
+def test_an_audit_finding_without_a_writers_release_carries_no_text(labels, events):
+    client = linked_audit_finding(events, labels)
 
     context = fetch_linked(client)
 

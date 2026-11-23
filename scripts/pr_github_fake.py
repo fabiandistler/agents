@@ -25,6 +25,7 @@ REVIEWS_PATH = f"{PR_PATH}/reviews"
 CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
 TREE_PATH = f"/repos/{REPO}/git/trees/base-sha"
 ISSUES_PREFIX = f"/repos/{REPO}/issues/"
+COLLABORATORS_PREFIX = f"/repos/{REPO}/collaborators/"
 
 SCRIPT = Path(__file__).resolve().parent / "pr_github.py"
 DIFF_ACCEPT = "application/vnd.github.v3.diff"
@@ -95,11 +96,14 @@ class FakeClient:
         *,
         base: FakeBaseCommit | None = None,
         issues: dict[int, IssueThread] | None = None,
+        collaborators: dict[str, str] | None = None,
         errors: dict[str, Exception] | None = None,
     ) -> None:
         self.pr = pr or FakePullRequest()
         self.base = base or FakeBaseCommit()
         self.issues = issues or {}
+        # A login's base role, as the collaborator permission endpoint reports it.
+        self.collaborators = collaborators or {}
         self.errors = errors or {}
         self.calls: list[Call] = []
 
@@ -131,6 +135,8 @@ class FakeClient:
             return self._get_contents(path)
         if path.startswith(ISSUES_PREFIX):
             return self._get_issue_thread(path, params)
+        if path.startswith(COLLABORATORS_PREFIX):
+            return self._get_permission(path)
         raise AssertionError(f"unexpected GET {path}")
 
     def _get_contents(self, path: str) -> pr_github_client.Response:
@@ -141,6 +147,15 @@ class FakeClient:
         if isinstance(handler, pr_github_client.Response):
             return handler
         return json_response(handler)
+
+    def _get_permission(self, path: str) -> pr_github_client.Response:
+        """A login's repository permission; 404 for a login the fake does not know."""
+        login, _, rest = path[len(COLLABORATORS_PREFIX) :].partition("/")
+        if rest != "permission":
+            raise AssertionError(f"unexpected GET {path}")
+        if login not in self.collaborators:
+            raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
+        return json_response({"permission": self.collaborators[login]})
 
     def _get_issue_thread(self, path: str, params: dict) -> pr_github_client.Response:
         """An issue, its comments or its events; 404 for an issue the fake does not hold."""

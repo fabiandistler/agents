@@ -7,10 +7,10 @@ import json
 import implementer_claim
 import pytest
 from test_implementer_briefs import brief
-from test_implementer_claim import ISSUE_PATH, FakeGitHub, claim, run_cli
+from test_implementer_claim import ISSUE_PATH, REPO, FakeGitHub, claim, http_error, run_cli
+from test_implementer_intake_gates import assert_stopped_before_any_branch, blocker
 
 EVENTS_PATH = f"{ISSUE_PATH}/events"
-from test_implementer_intake_gates import assert_stopped_before_any_branch, blocker
 
 
 def contract_of(fake: FakeGitHub) -> str:
@@ -111,33 +111,48 @@ def test_cli_writes_no_contract_when_the_run_stops(monkeypatch, tmp_path, capsys
     assert not (tmp_path / "contract.md").exists()
 
 
+def permission_path(login: str) -> str:
+    return f"/repos/{REPO}/collaborators/{login}/permission"
+
+
 def audit_finding(
-    events: list[dict], *, login: str = "claude[bot]", user_type: str = "Bot"
+    events: list[dict],
+    *,
+    author: dict | None = None,
+    permissions: dict[str, str] | None = None,
 ) -> FakeGitHub:
+    """An App-filed audit-finding issue; ``permissions`` maps a label adder to its role."""
     issue = {
         "body": "AUDIT FINDINGS",
         "author_association": "CONTRIBUTOR",
-        "user": {"login": login, "type": user_type},
+        "user": author or {"login": "claude[bot]", "type": "Bot"},
         "labels": [{"name": "audit-finding"}, {"name": "ready-for-agent"}],
     }
-    return FakeGitHub(canned_payloads={ISSUE_PATH: issue, EVENTS_PATH: events})
+    roles = {"maintainer": "admin", **(permissions or {})}
+    payloads = {permission_path(login): {"permission": role} for login, role in roles.items()}
+    return FakeGitHub(canned_payloads={ISSUE_PATH: issue, EVENTS_PATH: events, **payloads})
 
 
-def labeled(name: str, actor_type: str) -> dict:
-    return {"event": "labeled", "label": {"name": name}, "actor": {"type": actor_type}}
+def labeled(name: str, actor_type: str = "User", login: str = "maintainer") -> dict:
+    actor = {"type": actor_type, "login": login}
+    return {"event": "labeled", "label": {"name": name}, "actor": actor}
 
 
-def test_an_audit_finding_a_person_released_is_the_contract():
-    fake = audit_finding([labeled("audit-finding", "Bot"), labeled("ready-for-agent", "User")])
+@pytest.mark.parametrize("role", ["admin", "write"])
+def test_an_audit_finding_a_writer_released_is_the_contract(role):
+    fake = audit_finding(
+        [labeled("audit-finding", "Bot", "claude[bot]"), labeled("ready-for-agent", login="dev")],
+        permissions={"dev": role},
+    )
     assert "AUDIT FINDINGS" in contract_of(fake)
 
 
 @pytest.mark.parametrize(
     "events",
     [
-        [labeled("ready-for-agent", "Bot")],
-        [labeled("ready-for-agent", "User"), labeled("ready-for-agent", "Bot")],
-        [labeled("audit-finding", "User")],
+        [labeled("ready-for-agent", "Bot", "claude[bot]")],
+        [labeled("ready-for-agent"), labeled("ready-for-agent", "Bot", "claude[bot]")],
+        [labeled("audit-finding")],
         [],
     ],
 )
@@ -147,9 +162,29 @@ def test_an_audit_finding_no_person_released_stops_the_run(events):
     assert_stopped_before_any_branch(fake)
 
 
+# Triage and the other read roles can add labels without write access.
+@pytest.mark.parametrize("role", ["read", "none"])
+def test_an_audit_finding_released_without_write_access_stops_the_run(role):
+    fake = audit_finding(
+        [labeled("ready-for-agent", login="triager")], permissions={"triager": role}
+    )
+    assert claim(fake).outcome == implementer_claim.NO_CONTRACT
+
+
+def test_an_audit_finding_released_by_an_unknown_account_stops_the_run():
+    fake = audit_finding([labeled("ready-for-agent", login="gone")])
+    fake.errors[("GET", permission_path("gone"))] = http_error(404, permission_path("gone"))
+    assert claim(fake).outcome == implementer_claim.NO_CONTRACT
+
+
 @pytest.mark.parametrize(
-    ("login", "user_type"), [("someone[bot]", "Bot"), ("claude[bot]", "User"), ("mallory", "User")]
+    "author",
+    [
+        {"login": "someone[bot]", "type": "Bot"},
+        {"login": "claude[bot]", "type": "User"},
+        {"login": "mallory", "type": "User"},
+    ],
 )
-def test_only_the_apps_own_issue_counts_as_an_audit_finding(login, user_type):
-    fake = audit_finding([labeled("ready-for-agent", "User")], login=login, user_type=user_type)
+def test_only_the_apps_own_issue_counts_as_an_audit_finding(author):
+    fake = audit_finding([labeled("ready-for-agent")], author=author)
     assert claim(fake).outcome == implementer_claim.NO_CONTRACT
