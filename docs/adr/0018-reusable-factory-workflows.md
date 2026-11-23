@@ -189,8 +189,14 @@ Numbered as in #786's "Not verified" list.
    dotfiles (#790, dotfiles#61); and repo-maintenance, which has not run the
    exchange, settled by its own first run (repo-maintenance#153).
 2. **Whether an event policy's workflow file targeting matches the caller's
-   path or the called workflow's path.** Open. Matters only if a target
-   becomes public; settled by a live check before that.
+   path or the called workflow's path.** Settled 2026-11-23 for a call
+   within the repository: the caller's. `agents` has a policy targeting
+   `.github/workflows/pr-review.yml` only; since #856 (2026-11-15) that file
+   calls `./.github/workflows/factory-pr-review.yml`, and *Policy insights*
+   lists no *Would block* entry after 2026-11-14 while `pr-review` ran daily
+   on `pull_request_target` (maintainer screenshot, 2026-11-23). Still open
+   for a cross-repository call (`fabiandistler/agents/...@<sha>`); matters
+   only if a target becomes public, settled by a live check before that.
 3. **Whether `actions/checkout` of the public `agents` repository works with
    a private caller's `GITHUB_TOKEN`.** Open: the probe checked out only the
    caller. The first reusable-workflow run in a target that makes the second
