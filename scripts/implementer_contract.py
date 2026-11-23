@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from datetime import datetime
 
 from agent_brief import is_agent_brief, is_trusted
 from factory_handoff import (
@@ -176,7 +177,8 @@ def is_pinned_since(pin: tuple[str, str] | None, issue: dict, release: dict) -> 
 
     The REST API keeps no body-edit time, so the release marker stands in for
     it: a body the App changed after the release no longer matches. GitHub
-    writes both times as UTC ISO 8601 with a ``Z``, so they compare as text.
+    writes both times as ISO 8601; they are parsed, and an unparsable one
+    counts as not pinned.
     """
     if pin is None:
         return False
@@ -184,7 +186,19 @@ def is_pinned_since(pin: tuple[str, str] | None, issue: dict, release: dict) -> 
     released_at = release.get("created_at")
     if not isinstance(released_at, str) or not released_at or not pinned_at:
         return False
-    return pinned_at >= released_at and pinned_hash == body_hash(issue)
+    try:
+        pinned_time = _parse_timestamp(pinned_at)
+        released_time = _parse_timestamp(released_at)
+    except ValueError:
+        return False
+    return pinned_time >= released_time and pinned_hash == body_hash(issue)
+
+
+def _parse_timestamp(text: str) -> datetime:
+    parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("timestamp has no UTC offset")
+    return parsed
 
 
 def _adds_ready_label(event: dict) -> bool:

@@ -256,3 +256,20 @@ def test_a_release_without_a_time_is_never_pinned():
     release = labeled("ready-for-agent")
     del release["created_at"]
     assert claim(audit_finding([release])).outcome == implementer_claim.NO_CONTRACT
+
+
+def test_timestamps_are_compared_as_instants_not_as_text():
+    from implementer_contract import body_hash, is_pinned_since
+
+    issue = {"body": "finding"}
+    pin = (body_hash(issue), "2026-01-01T10:00:00+00:00")
+    assert is_pinned_since(pin, issue, {"created_at": "2026-01-01T09:59:59Z"})
+    assert not is_pinned_since(pin, issue, {"created_at": "2026-01-01T10:00:01Z"})
+
+
+def test_an_unparsable_pin_time_is_never_pinned():
+    from implementer_contract import body_hash, is_pinned_since
+
+    issue = {"body": "finding"}
+    pin = (body_hash(issue), "yesterday")
+    assert not is_pinned_since(pin, issue, {"created_at": "2026-01-01T10:00:00Z"})
