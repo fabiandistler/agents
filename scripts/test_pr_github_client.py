@@ -12,7 +12,7 @@ from email.message import Message
 import pr_github
 import pr_github_client
 import pytest
-from pr_github_fake import NUMBER, REPO, SCRIPT, FakeClient, api_file, fetch
+from pr_github_fake import NUMBER, REPO, SCRIPT, FakeClient, FakePullRequest, api_file, fetch
 
 
 def test_missing_token_without_an_injected_client_raises_before_any_request(monkeypatch):
@@ -189,8 +189,9 @@ def test_cli_prints_a_bounded_summary_without_output(monkeypatch, capsys):
     # The full context carries the diff (up to 400 KB); stdout gets a summary.
     context = fetch(
         FakeClient(
-            file_pages=([api_file("docs/guide.md")],),
-            diff="+" + "x" * 300_000 + "\n",
+            FakePullRequest(
+                file_pages=([api_file("docs/guide.md")],), diff="+" + "x" * 300_000 + "\n"
+            )
         )
     )
     monkeypatch.setattr(

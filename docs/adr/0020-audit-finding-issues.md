@@ -4,6 +4,11 @@
 
 Accepted (2026-11-23).
 
+Amended 2026-11-23 after the review of #946: the release now needs write
+access, not only a `User` actor. The adder's base role comes from the
+collaborator permission endpoint (`admin` or `write`; it reports triage as
+`read`), which a `GITHUB_TOKEN` can read with its implicit metadata scope.
+
 ## Context
 
 The skill audit ([ADR-0014](0014-agent-runs-in-github-actions.md),
@@ -33,7 +38,9 @@ text by owners, members and collaborators as its contract
    nits included, in the format the runbook gives.
 2. Such an issue's body counts as a contract when the issue was opened by
    `claude[bot]` (type `Bot`), carries `audit-finding`, and the latest
-   `labeled` event for `ready-for-agent` has a `User` actor. The rule lives in
+   `labeled` event for `ready-for-agent` has a `User` actor with write access
+   (`GET /repos/{repo}/collaborators/{login}/permission` answers `admin` or
+   `write`; a 404 counts as no access). The rule lives in
    `implementer_contract.body_is_trusted`, which the implementer claim, the
    implementer queue, Retro and the PR review's linked issues share.
 3. The audit never adds `ready-for-agent` or another state label, and never
@@ -52,9 +59,8 @@ text by owners, members and collaborators as its contract
   A run that edited the body after the release would slip through; the
   runbook forbids that edit, and the implementer usually claims within
   minutes of the label.
-- `actor.type == "User"` stands in for write access. In a personal
-  repository only collaborators can add labels. In an organization, a member
-  with the triage role could release a finding issue without write access.
+- A person with the triage role can add the label, but the permission check
+  turns that release down, so the issue stops with `no-contract`.
 - Description findings wait for a person until the eval prompts
   ([ADR-0006](0006-skill-eval-prompts.md)) run as trigger tests: changing a
   description changes when a skill loads, and no check catches that today.

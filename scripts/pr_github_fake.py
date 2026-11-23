@@ -25,6 +25,7 @@ REVIEWS_PATH = f"{PR_PATH}/reviews"
 CONTENTS_PREFIX = f"/repos/{REPO}/contents/"
 TREE_PATH = f"/repos/{REPO}/git/trees/base-sha"
 ISSUES_PREFIX = f"/repos/{REPO}/issues/"
+COLLABORATORS_PREFIX = f"/repos/{REPO}/collaborators/"
 
 SCRIPT = Path(__file__).resolve().parent / "pr_github.py"
 DIFF_ACCEPT = "application/vnd.github.v3.diff"
@@ -59,30 +60,50 @@ class IssueThread:
     events: list[dict] = field(default_factory=list)
 
 
+@dataclass
+class FakePullRequest:
+    """The pull request as the REST API serves it: its payload, diff, files, comments and reviews.
+
+    The page tuples are what successive ``page=`` requests return.
+    """
+
+    payload: dict = field(default_factory=lambda: pull_request())
+    file_pages: tuple[list[dict], ...] = ([],)
+    comment_pages: tuple[list[dict], ...] = ([],)
+    review_pages: tuple[list[dict], ...] = ([],)
+    diff: str = ""
+
+
+@dataclass
+class FakeBaseCommit:
+    """The base commit as the REST API serves it: its recursive tree and file contents.
+
+    A ``contents`` value is the payload, or a ``Response`` to serve as is.
+    """
+
+    tree: object = field(
+        default_factory=lambda: {"sha": "base-sha", "tree": [], "truncated": False}
+    )
+    contents: dict[str, Any] = field(default_factory=dict)
+
+
 class FakeClient:
     """A routed fake for the read-only client surface."""
 
     def __init__(
         self,
-        pr: dict | None = None,
+        pr: FakePullRequest | None = None,
         *,
-        file_pages: tuple[list[dict], ...] = (),
-        comment_pages: tuple[list[dict], ...] = (),
-        review_pages: tuple[list[dict], ...] = (),
-        diff: str = "",
-        contents: dict[str, Any] | None = None,
-        tree: object = None,
+        base: FakeBaseCommit | None = None,
         issues: dict[int, IssueThread] | None = None,
+        collaborators: dict[str, str] | None = None,
         errors: dict[str, Exception] | None = None,
     ) -> None:
-        self.pr = pull_request() if pr is None else pr
-        self.file_pages = file_pages or ([],)
-        self.comment_pages = comment_pages or ([],)
-        self.review_pages = review_pages or ([],)
-        self.diff = diff
-        self.contents = contents or {}
-        self.tree = {"sha": "base-sha", "tree": [], "truncated": False} if tree is None else tree
+        self.pr = pr or FakePullRequest()
+        self.base = base or FakeBaseCommit()
         self.issues = issues or {}
+        # A login's base role, as the collaborator permission endpoint reports it.
+        self.collaborators = collaborators or {}
         self.errors = errors or {}
         self.calls: list[Call] = []
 
@@ -97,33 +118,44 @@ class FakeClient:
             raise self.errors[error_key]
         if path == PR_PATH:
             if accept == DIFF_ACCEPT:
-                return text_response(self.diff)
-            return json_response(self.pr)
+                return text_response(self.pr.diff)
+            return json_response(self.pr.payload)
         paged = {
-            FILES_PATH: self.file_pages,
-            COMMENTS_PATH: self.comment_pages,
-            REVIEWS_PATH: self.review_pages,
+            FILES_PATH: self.pr.file_pages,
+            COMMENTS_PATH: self.pr.comment_pages,
+            REVIEWS_PATH: self.pr.review_pages,
         }
         if path in paged:
             return _page(paged[path], params)
         if path == TREE_PATH:
             if params != {"recursive": "1"}:
                 raise AssertionError("the base tree must be fetched recursively")
-            return json_response(self.tree)
+            return json_response(self.base.tree)
         if path.startswith(CONTENTS_PREFIX):
             return self._get_contents(path)
         if path.startswith(ISSUES_PREFIX):
             return self._get_issue_thread(path, params)
+        if path.startswith(COLLABORATORS_PREFIX):
+            return self._get_permission(path)
         raise AssertionError(f"unexpected GET {path}")
 
     def _get_contents(self, path: str) -> pr_github_client.Response:
         """A base file's contents; 404 for a path the fake does not hold."""
-        handler = self.contents.get(path[len(CONTENTS_PREFIX) :])
+        handler = self.base.contents.get(path[len(CONTENTS_PREFIX) :])
         if handler is None:
             raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
         if isinstance(handler, pr_github_client.Response):
             return handler
         return json_response(handler)
+
+    def _get_permission(self, path: str) -> pr_github_client.Response:
+        """A login's repository permission; 404 for a login the fake does not know."""
+        login, _, rest = path[len(COLLABORATORS_PREFIX) :].partition("/")
+        if rest != "permission":
+            raise AssertionError(f"unexpected GET {path}")
+        if login not in self.collaborators:
+            raise pr_github_client.FetchError(f"GitHub API returned 404 for {path}", status=404)
+        return json_response({"permission": self.collaborators[login]})
 
     def _get_issue_thread(self, path: str, params: dict) -> pr_github_client.Response:
         """An issue, its comments or its events; 404 for an issue the fake does not hold."""

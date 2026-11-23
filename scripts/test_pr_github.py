@@ -18,7 +18,9 @@ from pr_github_fake import (
     PR_PATH,
     REPO,
     REVIEWS_PATH,
+    FakeBaseCommit,
     FakeClient,
+    FakePullRequest,
     api_file,
     binary_api_file,
     contents_response,
@@ -29,51 +31,57 @@ from pr_github_fake import (
 
 def test_fetch_context_maps_every_contract_field():
     client = FakeClient(
-        pull_request(
-            state="closed",
-            draft=True,
-            mergeable=False,
-            labels=[{"name": "risk:low"}, {"name": "x"}],
+        FakePullRequest(
+            pull_request(
+                state="closed",
+                draft=True,
+                mergeable=False,
+                labels=[{"name": "risk:low"}, {"name": "x"}],
+            ),
+            file_pages=(
+                [
+                    api_file("scripts/modified.py", patch="@@ -1 +1 @@\n"),
+                    binary_api_file("assets/logo.png", additions=5),
+                    api_file("docs/old.md", status="removed", additions=0, deletions=4),
+                    api_file(
+                        "scripts/new_name.py", status="renamed", previous="scripts/old_name.py"
+                    ),
+                    api_file("docs/new.md", status="added", additions=2, patch="@@ -0,0 +1 @@\n"),
+                ],
+            ),
+            comment_pages=(
+                [
+                    {
+                        "id": 1,
+                        "body": "first",
+                        "user": {"login": "someone"},
+                        "author_association": "MEMBER",
+                    },
+                    {"id": 2, "body": None},
+                ],
+            ),
+            review_pages=(
+                [
+                    {
+                        "user": {"login": "a"},
+                        "state": "APPROVED",
+                        "submitted_at": "2026-01-01T00:00:00Z",
+                    },
+                    {
+                        "user": {"login": "b"},
+                        "state": "CHANGES_REQUESTED",
+                        "submitted_at": "2026-01-01T00:00:00Z",
+                    },
+                ],
+            ),
+            diff="diff --git a/x b/x\n",
         ),
-        file_pages=(
-            [
-                api_file("scripts/modified.py", patch="@@ -1 +1 @@\n"),
-                binary_api_file("assets/logo.png", additions=5),
-                api_file("docs/old.md", status="removed", additions=0, deletions=4),
-                api_file("scripts/new_name.py", status="renamed", previous="scripts/old_name.py"),
-                api_file("docs/new.md", status="added", additions=2, patch="@@ -0,0 +1 @@\n"),
-            ],
+        base=FakeBaseCommit(
+            contents={
+                "scripts/modified.py": contents_response("print('x')\n"),
+                "scripts/old_name.py": contents_response("old\n"),
+            }
         ),
-        comment_pages=(
-            [
-                {
-                    "id": 1,
-                    "body": "first",
-                    "user": {"login": "someone"},
-                    "author_association": "MEMBER",
-                },
-                {"id": 2, "body": None},
-            ],
-        ),
-        review_pages=(
-            [
-                {
-                    "user": {"login": "a"},
-                    "state": "APPROVED",
-                    "submitted_at": "2026-01-01T00:00:00Z",
-                },
-                {
-                    "user": {"login": "b"},
-                    "state": "CHANGES_REQUESTED",
-                    "submitted_at": "2026-01-01T00:00:00Z",
-                },
-            ],
-        ),
-        diff="diff --git a/x b/x\n",
-        contents={
-            "scripts/modified.py": contents_response("print('x')\n"),
-            "scripts/old_name.py": contents_response("old\n"),
-        },
     )
 
     context = fetch(client)
@@ -157,7 +165,7 @@ def test_fetch_context_maps_every_contract_field():
 
 def test_non_object_item_in_a_paginated_list_fails_safe():
     malformed_page = cast(list[dict], [api_file("docs/guide.md"), "junk"])
-    client = FakeClient(file_pages=(malformed_page,))
+    client = FakeClient(FakePullRequest(file_pages=(malformed_page,)))
 
     with pytest.raises(pr_github_client.FetchError):
         fetch(client)
@@ -169,18 +177,20 @@ def test_files_comments_and_reviews_are_paginated():
         for index in range(100)
     ]
     client = FakeClient(
-        file_pages=(
-            first_files,
-            [api_file("docs/last.md", status="added", patch="@@ -0,0 +1 @@\n")],
-        ),
-        comment_pages=(
-            [{"id": index, "body": "x"} for index in range(100)],
-            [{"id": 100, "body": "y"}],
-        ),
-        review_pages=(
-            [{"user": {"login": f"u{index}"}, "state": "COMMENTED"} for index in range(100)],
-            [{"user": {"login": "late"}, "state": "CHANGES_REQUESTED"}],
-        ),
+        FakePullRequest(
+            file_pages=(
+                first_files,
+                [api_file("docs/last.md", status="added", patch="@@ -0,0 +1 @@\n")],
+            ),
+            comment_pages=(
+                [{"id": index, "body": "x"} for index in range(100)],
+                [{"id": 100, "body": "y"}],
+            ),
+            review_pages=(
+                [{"user": {"login": f"u{index}"}, "state": "COMMENTED"} for index in range(100)],
+                [{"user": {"login": "late"}, "state": "CHANGES_REQUESTED"}],
+            ),
+        )
     )
 
     context = fetch(client)
@@ -196,7 +206,7 @@ def test_files_comments_and_reviews_are_paginated():
 
 
 def test_raw_diff_is_fetched_with_its_own_accept_header_and_capped():
-    client = FakeClient(diff="a" * 500_000)
+    client = FakeClient(FakePullRequest(diff="a" * 500_000))
 
     context = fetch(client)
 
@@ -211,7 +221,7 @@ def test_a_diff_the_api_refuses_is_reported_unavailable_not_raised():
     # limit; any error on the diff request is handled the same way.
     for status in (406, 500):
         client = FakeClient(
-            file_pages=([api_file("docs/guide.md")],),
+            FakePullRequest(file_pages=([api_file("docs/guide.md")],)),
             errors={PR_PATH + "#diff": pr_github_client.FetchError(str(status), status=status)},
         )
 
@@ -223,8 +233,10 @@ def test_a_diff_the_api_refuses_is_reported_unavailable_not_raised():
 
 
 def test_a_diff_within_the_limit_is_complete_and_a_cut_one_truncated():
-    assert fetch(FakeClient(diff="diff --git a/x b/x\n"))["diff_status"] == "complete"
-    assert fetch(FakeClient(diff="a" * 500_000))["diff_status"] == "truncated"
+    assert (
+        fetch(FakeClient(FakePullRequest(diff="diff --git a/x b/x\n")))["diff_status"] == "complete"
+    )
+    assert fetch(FakeClient(FakePullRequest(diff="a" * 500_000)))["diff_status"] == "truncated"
 
 
 @pytest.mark.parametrize(
@@ -238,7 +250,10 @@ def test_a_diff_within_the_limit_is_complete_and_a_cut_one_truncated():
     ],
 )
 def test_binary_detection_fails_safe_when_the_patch_is_missing(entry, binary):
-    client = FakeClient(file_pages=([entry],), contents={entry["filename"]: contents_response("")})
+    client = FakeClient(
+        FakePullRequest(file_pages=([entry],)),
+        base=FakeBaseCommit(contents={entry["filename"]: contents_response("")}),
+    )
 
     (file,) = fetch(client)["files"]
 
@@ -254,7 +269,7 @@ def test_missing_patch_with_zero_changes_counts_as_binary():
         "additions": 0,
         "deletions": 0,
     }
-    client = FakeClient(file_pages=([entry],))
+    client = FakeClient(FakePullRequest(file_pages=([entry],)))
 
     (file,) = fetch(client)["files"]
 
@@ -269,7 +284,7 @@ def test_pure_rename_without_a_patch_is_not_binary():
         "additions": 0,
         "deletions": 0,
     }
-    client = FakeClient(file_pages=([entry],))
+    client = FakeClient(FakePullRequest(file_pages=([entry],)))
 
     (file,) = fetch(client)["files"]
 
@@ -277,7 +292,7 @@ def test_pure_rename_without_a_patch_is_not_binary():
 
 
 def test_enabled_auto_merge_is_reported_as_active():
-    client = FakeClient(pull_request(auto_merge={"merge_method": "merge"}))
+    client = FakeClient(FakePullRequest(pull_request(auto_merge={"merge_method": "merge"})))
 
     assert fetch(client)["auto_merge_active"] is True
 
@@ -336,7 +351,7 @@ def test_enabled_auto_merge_is_reported_as_active():
     ],
 )
 def test_reviews_use_the_latest_submitted_state_per_user(reviews, changes_requested):
-    client = FakeClient(review_pages=(reviews,))
+    client = FakeClient(FakePullRequest(review_pages=(reviews,)))
 
     assert fetch(client)["reviews"] == {"changes_requested": changes_requested}
 
@@ -350,7 +365,9 @@ def test_reviews_use_the_latest_submitted_state_per_user(reviews, changes_reques
     ],
 )
 def test_fork_is_detected_from_the_head_repository(head_repo, fork):
-    client = FakeClient(pull_request(head={"sha": "abc123", "ref": "fix/x", "repo": head_repo}))
+    client = FakeClient(
+        FakePullRequest(pull_request(head={"sha": "abc123", "ref": "fix/x", "repo": head_repo}))
+    )
 
     assert fetch(client)["fork"] is fork
 
@@ -377,7 +394,7 @@ def test_a_malformed_changed_file_fails_the_fetch(field, value):
         entry[field] = value
 
     with pytest.raises(pr_github_client.FetchError, match=field):
-        fetch(FakeClient(file_pages=([entry],)))
+        fetch(FakeClient(FakePullRequest(file_pages=([entry],))))
 
 
 @pytest.mark.parametrize(
@@ -403,4 +420,4 @@ def test_a_malformed_pull_request_field_fails_the_fetch(field, value):
         payload[field] = value
 
     with pytest.raises(pr_github_client.FetchError, match=field):
-        fetch(FakeClient(payload))
+        fetch(FakeClient(FakePullRequest(payload)))

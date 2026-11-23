@@ -11,7 +11,9 @@ import pytest
 from pr_github_fake import (
     CONTENTS_PREFIX,
     TREE_PATH,
+    FakeBaseCommit,
     FakeClient,
+    FakePullRequest,
     api_file,
     binary_api_file,
     contents_response,
@@ -25,7 +27,9 @@ from pr_github_fake import (
 def test_base_files_are_capped_at_twenty_files():
     files = [api_file(f"scripts/file-{index}.py") for index in range(25)]
     contents = {f"scripts/file-{index}.py": contents_response("x") for index in range(25)}
-    client = FakeClient(file_pages=(files,), contents=contents)
+    client = FakeClient(
+        FakePullRequest(file_pages=(files,)), base=FakeBaseCommit(contents=contents)
+    )
 
     context = fetch(client)
 
@@ -37,16 +41,20 @@ def test_base_files_are_capped_at_twenty_files():
 def test_base_files_stop_at_the_byte_budget():
     limit = 200 * 1024
     client = FakeClient(
-        file_pages=(
-            [
-                api_file("scripts/big.py"),
-                api_file("scripts/one-byte.py"),
-            ],
+        FakePullRequest(
+            file_pages=(
+                [
+                    api_file("scripts/big.py"),
+                    api_file("scripts/one-byte.py"),
+                ],
+            )
         ),
-        contents={
-            "scripts/big.py": contents_response("a" * limit),
-            "scripts/one-byte.py": contents_response("b"),
-        },
+        base=FakeBaseCommit(
+            contents={
+                "scripts/big.py": contents_response("a" * limit),
+                "scripts/one-byte.py": contents_response("b"),
+            }
+        ),
     )
 
     context = fetch(client)
@@ -57,8 +65,10 @@ def test_base_files_stop_at_the_byte_budget():
 
 def test_a_single_file_over_the_byte_budget_is_skipped():
     client = FakeClient(
-        file_pages=([api_file("scripts/huge.py")],),
-        contents={"scripts/huge.py": contents_response("a" * (200 * 1024 + 1))},
+        FakePullRequest(file_pages=([api_file("scripts/huge.py")],)),
+        base=FakeBaseCommit(
+            contents={"scripts/huge.py": contents_response("a" * (200 * 1024 + 1))}
+        ),
     )
 
     assert fetch(client)["base_files"] == {}
@@ -66,15 +76,17 @@ def test_a_single_file_over_the_byte_budget_is_skipped():
 
 def test_removed_binary_and_added_files_are_not_fetched():
     client = FakeClient(
-        file_pages=(
-            [
-                api_file("docs/removed.md", status="removed", deletions=3),
-                binary_api_file("docs/logo.png", additions=2),
-                api_file("docs/added.md", status="added", patch="@@ -0,0 +1 @@\n"),
-                api_file("docs/kept.md"),
-            ],
+        FakePullRequest(
+            file_pages=(
+                [
+                    api_file("docs/removed.md", status="removed", deletions=3),
+                    binary_api_file("docs/logo.png", additions=2),
+                    api_file("docs/added.md", status="added", patch="@@ -0,0 +1 @@\n"),
+                    api_file("docs/kept.md"),
+                ],
+            )
         ),
-        contents={"docs/kept.md": contents_response("kept")},
+        base=FakeBaseCommit(contents={"docs/kept.md": contents_response("kept")}),
     )
 
     context = fetch(client)
@@ -85,8 +97,10 @@ def test_removed_binary_and_added_files_are_not_fetched():
 
 def test_renamed_files_read_the_previous_path_at_the_base_commit():
     client = FakeClient(
-        file_pages=([api_file("scripts/new.py", status="renamed", previous="scripts/old.py")],),
-        contents={"scripts/old.py": contents_response("old")},
+        FakePullRequest(
+            file_pages=([api_file("scripts/new.py", status="renamed", previous="scripts/old.py")],)
+        ),
+        base=FakeBaseCommit(contents={"scripts/old.py": contents_response("old")}),
     )
 
     context = fetch(client)
@@ -109,8 +123,8 @@ def test_renamed_files_read_the_previous_path_at_the_base_commit():
 )
 def test_unusable_base_content_is_skipped(payload):
     client = FakeClient(
-        file_pages=([api_file("scripts/odd.py")],),
-        contents={"scripts/odd.py": payload},
+        FakePullRequest(file_pages=([api_file("scripts/odd.py")],)),
+        base=FakeBaseCommit(contents={"scripts/odd.py": payload}),
     )
 
     assert fetch(client)["base_files"] == {}
@@ -118,7 +132,7 @@ def test_unusable_base_content_is_skipped(payload):
 
 def test_base_file_404_is_skipped_but_other_fetch_errors_propagate():
     missing = FakeClient(
-        file_pages=([api_file("scripts/missing.py")],),
+        FakePullRequest(file_pages=([api_file("scripts/missing.py")],)),
         errors={
             f"{CONTENTS_PREFIX}scripts/missing.py": pr_github_client.FetchError("404", status=404)
         },
@@ -126,7 +140,7 @@ def test_base_file_404_is_skipped_but_other_fetch_errors_propagate():
     assert fetch(missing)["base_files"] == {}
 
     broken = FakeClient(
-        file_pages=([api_file("scripts/broken.py")],),
+        FakePullRequest(file_pages=([api_file("scripts/broken.py")],)),
         errors={
             f"{CONTENTS_PREFIX}scripts/broken.py": pr_github_client.FetchError("500", status=500)
         },
@@ -136,7 +150,9 @@ def test_base_file_404_is_skipped_but_other_fetch_errors_propagate():
 
 
 def test_missing_base_commit_fails_safe():
-    client = FakeClient(pull_request(base={"ref": "main", "repo": {"full_name": "o/r"}}))
+    client = FakeClient(
+        FakePullRequest(pull_request(base={"ref": "main", "repo": {"full_name": "o/r"}}))
+    )
 
     with pytest.raises(pr_github_client.FetchError):
         fetch(client)
@@ -144,17 +160,19 @@ def test_missing_base_commit_fails_safe():
 
 def test_base_tree_paths_list_every_blob_at_the_base_commit():
     client = FakeClient(
-        tree={
-            "sha": "base-sha",
-            "tree": [
-                tree_entry("scripts", type_="tree"),
-                tree_entry("scripts/pr_review.py"),
-                tree_entry("docs/guide.md"),
-                tree_entry("vendor/lib", type_="commit"),
-                tree_entry("README.md"),
-            ],
-            "truncated": False,
-        }
+        base=FakeBaseCommit(
+            tree={
+                "sha": "base-sha",
+                "tree": [
+                    tree_entry("scripts", type_="tree"),
+                    tree_entry("scripts/pr_review.py"),
+                    tree_entry("docs/guide.md"),
+                    tree_entry("vendor/lib", type_="commit"),
+                    tree_entry("README.md"),
+                ],
+                "truncated": False,
+            }
+        )
     )
 
     context = fetch(client)
@@ -165,7 +183,11 @@ def test_base_tree_paths_list_every_blob_at_the_base_commit():
 
 
 def test_base_tree_paths_keep_the_truncated_flag_github_reports():
-    client = FakeClient(tree={"sha": "base-sha", "tree": [tree_entry("a.md")], "truncated": True})
+    client = FakeClient(
+        base=FakeBaseCommit(
+            tree={"sha": "base-sha", "tree": [tree_entry("a.md")], "truncated": True}
+        )
+    )
 
     context = fetch(client)
 
@@ -177,7 +199,11 @@ def test_base_tree_paths_are_capped_and_marked_truncated():
     limit = pr_github.BASE_PATH_LIMIT
     entries = [tree_entry(f"docs/page-{index:05d}.md") for index in range(limit + 5)]
 
-    context = fetch(FakeClient(tree={"sha": "base-sha", "tree": entries, "truncated": False}))
+    context = fetch(
+        FakeClient(
+            base=FakeBaseCommit(tree={"sha": "base-sha", "tree": entries, "truncated": False})
+        )
+    )
 
     assert len(context["base_paths"]) == limit
     assert context["base_paths"][-1] == f"docs/page-{limit - 1:05d}.md"
@@ -195,4 +221,4 @@ def test_base_tree_paths_are_capped_and_marked_truncated():
 )
 def test_malformed_base_tree_fails_safe(tree):
     with pytest.raises(pr_github_client.FetchError):
-        fetch(FakeClient(tree=tree))
+        fetch(FakeClient(base=FakeBaseCommit(tree=tree)))

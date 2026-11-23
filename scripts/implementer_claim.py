@@ -55,6 +55,7 @@ from implementer_setup import (
     workflow_file,
 )
 from pr_github_client import (
+    HTTP_NOT_FOUND,
     REPO_PATTERN,
     FetchError,
     GitHubClient,
@@ -66,7 +67,6 @@ from pr_github_client import (
 from ticket_blockers import declared_blockers
 
 MAIN_BRANCH = "main"
-HTTP_NOT_FOUND = 404
 HTTP_GONE = 410
 HTTP_UNPROCESSABLE = 422
 
