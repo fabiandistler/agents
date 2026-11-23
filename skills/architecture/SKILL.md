@@ -21,11 +21,12 @@ one. Do not answer an architecture or design question from this file alone.
    If your agent also lists them as skills, still route through this table.
    The file carries the real workflow, references, and scripts — this router
    only points the way.
-3. If two rows seem to apply, apply the tie-break below and read the default
-   member; read a second member only if the first points to it. If none fit,
-   use your general knowledge and say the catalogue had no dedicated
-   sub-skill. Plain table/index design has no member — answer directly and
-   say so.
+3. When the table does not give exactly one row:
+   - Two rows apply: take the default member from the tie-breaks below; read
+     a second member only if the first points to it.
+   - No row fits: use your general knowledge and say the catalogue has no
+     dedicated sub-skill.
+   - Plain table or index design has no member: answer directly and say so.
 
 The sub-skills are nested under this router's `members/` directory, so they load
 only when routed to (progressive disclosure) rather than each competing for the

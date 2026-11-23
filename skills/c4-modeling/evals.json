@@ -6,7 +6,7 @@
   ],
   "should_not_trigger": [
     "decompose this feature into components",
-    "ER diagram for my schema"
+    "which of our modules are too tightly coupled?"
   ],
-  "expected_behavior": "Drafts the C4 model interview-style and renders Mermaid diagrams; routes component decomposition to logical-component-design and data-model diagrams elsewhere."
+  "expected_behavior": "Drafts the C4 model interview-style and renders Mermaid diagrams; routes component decomposition to logical-component-design and coupling measurement to coupling-cohesion."
 }
