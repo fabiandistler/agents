@@ -18,6 +18,7 @@ from pr_github_fake import (
     REPO,
     SCRIPT,
     FakeClient,
+    FakePullRequest,
     IssueThread,
     api_comment,
     api_issue,
@@ -33,7 +34,9 @@ def fetch_linked(client: FakeClient) -> dict:
 
 
 def test_without_the_flag_the_context_has_no_field_and_fetches_no_issue():
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7))})
+    client = FakeClient(
+        FakePullRequest(pull_request(body="Closes #7")), issues={7: IssueThread(api_issue(7))}
+    )
 
     context = fetch(client)
 
@@ -43,7 +46,9 @@ def test_without_the_flag_the_context_has_no_field_and_fetches_no_issue():
 
 def test_a_same_repository_closing_reference_carries_number_title_and_body():
     issue = api_issue(7, title="Add the flag", body="The ticket text.")
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(issue)})
+    client = FakeClient(
+        FakePullRequest(pull_request(body="Closes #7")), issues={7: IssueThread(issue)}
+    )
 
     context = fetch_linked(client)
 
@@ -63,7 +68,7 @@ def test_a_same_repository_closing_reference_carries_number_title_and_body():
 
 def test_references_to_other_repositories_are_not_fetched():
     body = "Closes other/repo#8\nFixes https://github.com/other/repo/issues/9"
-    client = FakeClient(pull_request(body=body))
+    client = FakeClient(FakePullRequest(pull_request(body=body)))
 
     context = fetch_linked(client)
 
@@ -74,7 +79,7 @@ def test_references_to_other_repositories_are_not_fetched():
 def test_a_reference_that_names_a_pull_request_is_not_an_issue():
     pull = {**api_issue(10), "pull_request": {"url": "https://api.github.com/x"}}
     client = FakeClient(
-        pull_request(body="Closes #10, closes #11"),
+        FakePullRequest(pull_request(body="Closes #10, closes #11")),
         issues={10: IssueThread(pull), 11: IssueThread(api_issue(11))},
     )
 
@@ -84,7 +89,7 @@ def test_a_reference_that_names_a_pull_request_is_not_an_issue():
 
 
 def test_a_pull_request_without_a_closing_reference_gets_an_empty_list():
-    client = FakeClient(pull_request(body="Mentions #7 but closes nothing."))
+    client = FakeClient(FakePullRequest(pull_request(body="Mentions #7 but closes nothing.")))
 
     context = fetch_linked(client)
 
@@ -95,7 +100,8 @@ def test_a_pull_request_without_a_closing_reference_gets_an_empty_list():
 def test_references_are_deduplicated_ascending_and_at_most_three():
     body = "Closes #9, closes #2\nFixes #5\nResolves #2\nCloses #1"
     client = FakeClient(
-        pull_request(body=body), issues={n: IssueThread(api_issue(n)) for n in (1, 2, 5, 9)}
+        FakePullRequest(pull_request(body=body)),
+        issues={n: IssueThread(api_issue(n)) for n in (1, 2, 5, 9)},
     )
 
     context = fetch_linked(client)
@@ -109,7 +115,9 @@ def test_references_are_deduplicated_ascending_and_at_most_three():
 @pytest.mark.parametrize("association", ["CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", "NONE", None])
 def test_an_issue_by_an_outside_author_carries_no_text(association):
     issue = api_issue(7, title="OUTSIDE-TITLE", body="OUTSIDE-BODY", association=association)
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(issue)})
+    client = FakeClient(
+        FakePullRequest(pull_request(body="Closes #7")), issues={7: IssueThread(issue)}
+    )
 
     context = fetch_linked(client)
 
@@ -122,7 +130,7 @@ def test_an_issue_by_an_outside_author_carries_no_text(association):
 @pytest.mark.parametrize("association", ["OWNER", "MEMBER", "COLLABORATOR"])
 def test_an_issue_by_a_trusted_author_is_shown(association):
     client = FakeClient(
-        pull_request(body="Closes #7"),
+        FakePullRequest(pull_request(body="Closes #7")),
         issues={7: IssueThread(api_issue(7, association=association))},
     )
 
@@ -148,7 +156,9 @@ def test_a_failed_issue_fetch_marks_it_unavailable_and_logs_number_and_status(
         errors[f"{ISSUES_PREFIX}7"] = response
     elif response is not None:
         issues[7] = IssueThread(response)
-    client = FakeClient(pull_request(body="Closes #7, closes #8"), issues=issues, errors=errors)
+    client = FakeClient(
+        FakePullRequest(pull_request(body="Closes #7, closes #8")), issues=issues, errors=errors
+    )
 
     context = fetch_linked(client)
 
@@ -176,7 +186,8 @@ def test_the_latest_trusted_agent_brief_is_the_issue_brief():
         api_comment("## Agent Brief\n\nBOT draft.", association=None, login="github-actions[bot]"),
     ]
     client = FakeClient(
-        pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7), comments=comments)}
+        FakePullRequest(pull_request(body="Closes #7")),
+        issues={7: IssueThread(api_issue(7), comments=comments)},
     )
 
     assert fetch_linked(client)["linked_issues"][0]["brief"] == BRIEF
@@ -185,7 +196,8 @@ def test_the_latest_trusted_agent_brief_is_the_issue_brief():
 def test_a_heading_inside_a_code_block_is_no_brief():
     comment = api_comment("```\n## Agent Brief\n```")
     client = FakeClient(
-        pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7), comments=[comment])}
+        FakePullRequest(pull_request(body="Closes #7")),
+        issues={7: IssueThread(api_issue(7), comments=[comment])},
     )
 
     assert fetch_linked(client)["linked_issues"][0]["brief"] == ""
@@ -194,7 +206,7 @@ def test_a_heading_inside_a_code_block_is_no_brief():
 def test_an_outside_authors_issue_keeps_a_trusted_brief_but_no_title_or_body():
     issue = api_issue(7, title="OUTSIDE-TITLE", body="OUTSIDE-BODY", association="NONE")
     client = FakeClient(
-        pull_request(body="Closes #7"),
+        FakePullRequest(pull_request(body="Closes #7")),
         issues={7: IssueThread(issue, comments=[api_comment(BRIEF)])},
     )
 
@@ -206,7 +218,7 @@ def test_an_outside_authors_issue_keeps_a_trusted_brief_but_no_title_or_body():
 def test_a_failed_comment_fetch_marks_the_issue_unavailable(capsys):
     error = pr_github_client.FetchError("GitHub API returned 502", status=502)
     client = FakeClient(
-        pull_request(body="Closes #7"),
+        FakePullRequest(pull_request(body="Closes #7")),
         issues={7: IssueThread(api_issue(7))},
         errors={f"{ISSUES_PREFIX}7/comments": error},
     )
@@ -217,7 +229,8 @@ def test_a_failed_comment_fetch_marks_the_issue_unavailable(capsys):
 
 def test_other_exceptions_from_the_issue_fetch_are_not_caught():
     client = FakeClient(
-        pull_request(body="Closes #7"), errors={f"{ISSUES_PREFIX}7": RuntimeError("bug")}
+        FakePullRequest(pull_request(body="Closes #7")),
+        errors={f"{ISSUES_PREFIX}7": RuntimeError("bug")},
     )
 
     with pytest.raises(RuntimeError, match="bug"):
@@ -227,7 +240,7 @@ def test_other_exceptions_from_the_issue_fetch_are_not_caught():
 def test_the_cli_passes_the_flag_and_exits_zero_on_an_unavailable_issue(
     tmp_path, monkeypatch, capsys
 ):
-    client = FakeClient(pull_request(body="Closes #7"))
+    client = FakeClient(FakePullRequest(pull_request(body="Closes #7")))
     monkeypatch.setattr(pr_github, "GitHubClient", lambda token: client)
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     output = tmp_path / "context.json"
@@ -245,7 +258,9 @@ def test_the_cli_passes_the_flag_and_exits_zero_on_an_unavailable_issue(
 
 
 def test_the_cli_without_the_flag_writes_no_field(tmp_path, monkeypatch, capsys):
-    client = FakeClient(pull_request(body="Closes #7"), issues={7: IssueThread(api_issue(7))})
+    client = FakeClient(
+        FakePullRequest(pull_request(body="Closes #7")), issues={7: IssueThread(api_issue(7))}
+    )
     monkeypatch.setattr(pr_github, "GitHubClient", lambda token: client)
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
     output = tmp_path / "context.json"
@@ -284,7 +299,7 @@ def labeled(name: str, actor_type: str) -> dict:
 
 def test_an_audit_finding_a_person_released_is_shown():
     client = FakeClient(
-        pull_request(body="Closes #7"),
+        FakePullRequest(pull_request(body="Closes #7")),
         issues={7: IssueThread(audit_finding(7), events=[labeled("ready-for-agent", "User")])},
     )
 
@@ -311,7 +326,7 @@ def test_an_audit_finding_a_person_released_is_shown():
 )
 def test_an_audit_finding_without_a_persons_release_carries_no_text(labels, events):
     client = FakeClient(
-        pull_request(body="Closes #7"),
+        FakePullRequest(pull_request(body="Closes #7")),
         issues={7: IssueThread(audit_finding(7, labels=labels), events=events)},
     )
 
