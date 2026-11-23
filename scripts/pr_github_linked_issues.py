@@ -14,6 +14,7 @@ import sys
 
 from agent_brief import is_agent_brief, is_trusted
 from check_pr_issue_links import closing_references
+from implementer_contract import body_is_trusted
 from pr_github_client import FetchError, ReadClient, get_json, paginate
 
 LINKED_ISSUE_LIMIT = 3
@@ -65,9 +66,10 @@ def _linked_issue(client: ReadClient, repo: str, number: int) -> dict | None:
         if "pull_request" in issue:
             return None
         brief = _latest_brief(paginate(client, f"{path}/comments"))
+        trusted_body = body_is_trusted(client, repo, number, issue)
     except FetchError as error:
         return _unavailable(number, error.status if error.status is not None else "none")
-    if not is_trusted(issue):
+    if not trusted_body:
         return {
             "number": number,
             "status": "outside_author",

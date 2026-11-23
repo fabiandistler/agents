@@ -62,6 +62,7 @@ class FakeClient:
         tree: object = None,
         issues: dict[int, object] | None = None,
         issue_comments: dict[int, list[dict]] | None = None,
+        issue_events: dict[int, list[dict]] | None = None,
         errors: dict[str, Exception] | None = None,
     ) -> None:
         self.pr = pull_request() if pr is None else pr
@@ -73,6 +74,7 @@ class FakeClient:
         self.tree = {"sha": "base-sha", "tree": [], "truncated": False} if tree is None else tree
         self.issues = issues or {}
         self.issue_comments = issue_comments or {}
+        self.issue_events = issue_events or {}
         self.errors = errors or {}
         self.calls: list[Call] = []
 
@@ -117,6 +119,8 @@ class FakeClient:
         number, _, rest = path[len(ISSUES_PREFIX) :].partition("/")
         if path.startswith(ISSUES_PREFIX) and number.isdigit() and rest == "comments":
             return _page((self.issue_comments.get(int(number), []),), params)
+        if path.startswith(ISSUES_PREFIX) and number.isdigit() and rest == "events":
+            return _page((self.issue_events.get(int(number), []),), params)
         raise AssertionError(f"unexpected GET {path}")
 
     def issue_calls(self) -> list[Call]:

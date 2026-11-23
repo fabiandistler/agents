@@ -50,6 +50,10 @@ READY_FOR_HUMAN = "ready-for-human"
 WONTFIX = "wontfix"
 STATE_LABELS = (NEEDS_TRIAGE, NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX)
 
+# Not a state label: it marks an issue an audit run filed as the App, whose body
+# counts as a contract once a person adds ready-for-agent (implementer_contract).
+AUDIT_FINDING = "audit-finding"
+
 _HEAD = r"[0-9a-f]{40}"
 _POSITIVE = r"[1-9][0-9]*"
 _FAILURE_HASH = r"[0-9a-f]{16}"

@@ -3,9 +3,16 @@
 Anyone can write on a public issue, and the model that reads the contract holds
 a write token. So only text by the repository's owner, members and
 collaborators can be the contract: the latest comment by one of them that
-contains a `## Agent Brief` heading, or without one a trusted author's issue
-body and the trusted comments. Text by anyone else stays data. What counts as
-a brief and as a trusted author is in ``agent_brief.py``.
+contains a `## Agent Brief` heading, or without one a trusted body and the
+trusted comments. Text by anyone else stays data. What counts as a brief and as
+a trusted author is in ``agent_brief.py``.
+
+A body is trusted when its author is, or when it is an audit finding a person
+released: an issue the Claude GitHub App opened under the `audit-finding`
+label, whose latest `ready-for-agent` label a person (not a bot) added. The
+audit that files it already writes pull requests with the same App token, so
+trusting its issue grants it nothing new; the person's label is the gate
+(ADR-0020).
 
 Standard library only. Errors name the API call, never issue text.
 """
@@ -15,6 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent_brief import is_agent_brief, is_trusted
+from factory_handoff import APP_LOGIN, AUDIT_FINDING, READY_FOR_AGENT
 from pr_github_client import FetchError, ReadClient, get_json, paginate
 
 NO_CONTRACT_COMMENT = """\
@@ -61,7 +69,46 @@ def read_ticket(client: ReadClient, repo: str, issue: int) -> Ticket:
         else:
             trusted_comments.append(text)
     brief = briefs[-1] if briefs else None
-    return Ticket(body, is_trusted(ticket), brief, tuple(trusted_comments))
+    return Ticket(
+        body, body_is_trusted(client, repo, issue, ticket), brief, tuple(trusted_comments)
+    )
+
+
+def body_is_trusted(client: ReadClient, repo: str, number: int, issue: dict) -> bool:
+    """Whether the issue body may be a contract: a trusted author's, or a released audit finding."""
+    if is_trusted(issue):
+        return True
+    return _is_audit_finding(issue) and _released_by_a_person(client, repo, number)
+
+
+def _is_audit_finding(issue: dict) -> bool:
+    user = issue.get("user")
+    labels = issue.get("labels")
+    if not isinstance(user, dict) or not isinstance(labels, list):
+        return False
+    names = {label.get("name") for label in labels if isinstance(label, dict)}
+    return user.get("login") == APP_LOGIN and user.get("type") == "Bot" and AUDIT_FINDING in names
+
+
+def _released_by_a_person(client: ReadClient, repo: str, number: int) -> bool:
+    """Whether a person, not a bot, added the latest `ready-for-agent` label.
+
+    The App can label its own issue too, and the implementer queue dispatches
+    any labelled issue, so without this check nobody would stand between an
+    audit run and an implementer run.
+    """
+    path = f"/repos/{repo}/issues/{number}/events"
+    latest_actor_type = None
+    for event in paginate(client, path):
+        if not isinstance(event, dict):
+            raise FetchError(f"GitHub API returned a malformed event for {path}")
+        label = event.get("label")
+        if event.get("event") != "labeled" or not isinstance(label, dict):
+            continue
+        if label.get("name") == READY_FOR_AGENT:
+            actor = event.get("actor")
+            latest_actor_type = actor.get("type") if isinstance(actor, dict) else None
+    return latest_actor_type == "User"
 
 
 def contract_text(ticket: Ticket, issue: int) -> str | None:

@@ -263,3 +263,55 @@ def test_the_usage_documents_the_flag_and_the_field():
     assert "--linked-issues" in result.stdout
     assert '"linked_issues"' in result.stdout
     assert "outside_author" in result.stdout
+
+
+def audit_finding(number: int, *, labels: tuple[str, ...] = ("audit-finding",)) -> dict:
+    issue = api_issue(number, title="AUDIT-TITLE", body="AUDIT-BODY", association="CONTRIBUTOR")
+    issue["user"] = {"login": "claude[bot]", "type": "Bot"}
+    issue["labels"] = [{"name": name} for name in labels]
+    return issue
+
+
+def labeled(name: str, actor_type: str) -> dict:
+    return {"event": "labeled", "label": {"name": name}, "actor": {"type": actor_type}}
+
+
+def test_an_audit_finding_a_person_released_is_shown():
+    client = FakeClient(
+        pull_request(body="Closes #7"),
+        issues={7: audit_finding(7)},
+        issue_events={7: [labeled("ready-for-agent", "User")]},
+    )
+
+    linked = fetch_linked(client)["linked_issues"][0]
+
+    assert (linked["status"], linked["body"]) == ("ok", "AUDIT-BODY")
+
+
+@pytest.mark.parametrize(
+    ("labels", "events"),
+    [
+        # Released by a bot only.
+        (("audit-finding",), [labeled("ready-for-agent", "Bot")]),
+        # A person's release, then the label again from a bot.
+        (
+            ("audit-finding",),
+            [labeled("ready-for-agent", "User"), labeled("ready-for-agent", "Bot")],
+        ),
+        # Not released at all.
+        (("audit-finding",), [labeled("audit-finding", "User")]),
+        # Released, but not filed as an audit finding.
+        ((), [labeled("ready-for-agent", "User")]),
+    ],
+)
+def test_an_audit_finding_without_a_persons_release_carries_no_text(labels, events):
+    client = FakeClient(
+        pull_request(body="Closes #7"),
+        issues={7: audit_finding(7, labels=labels)},
+        issue_events={7: events},
+    )
+
+    context = fetch_linked(client)
+
+    assert context["linked_issues"][0]["status"] == "outside_author"
+    assert "AUDIT-" not in json.dumps(context)
