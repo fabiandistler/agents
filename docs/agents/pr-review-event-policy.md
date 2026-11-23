@@ -60,8 +60,18 @@ JSON
   after the policy's creation as blocked or would-be-blocked.
 - The policy is listed by
   `gh api -H 'X-GitHub-Api-Version: 2026-03-10' repos/fabiandistler/agents/actions/policies`.
-- During the brownout on 2026-11-16, 16:00–18:00 UTC, a push to an open pull
-  request starts a normal `pr-review` run.
+- From 2026-12-02, the first `pr-review` run on `pull_request_target`
+  concludes `success`. A blocked run fails with an error annotation and runs
+  no job, and the runs API shows both, so an agent can check this one:
+  `gh api 'repos/fabiandistler/agents/actions/workflows/pr-review.yml/runs?created=>=2026-12-02&per_page=5' --jq '.workflow_runs[] | "\(.created_at) \(.event) \(.conclusion)"'`.
+
+Only the first check is decisive before 2026-12-02: the API check needs the
+policies endpoint, which agents cannot read, and the run check fires only once
+enforcement starts. Neither brownout tested the policy: no workflow run of
+this repository started in either window (2026-11-09 and 2026-11-16, 16:00–18:00 UTC).
+Run results do not show it either. In evaluate mode, the `pr-review` runs of
+2026-11-10, before the policy existed, carry no check-run annotation about
+the event rule, so a run without one does not mean the policy matched.
 
 ## Sources and limits
 
@@ -89,5 +99,5 @@ API were not readable from an agent session:
 - whether such a policy already exists;
 - that the event allowlist also blocks `workflow_dispatch` when it is left
   out (read from the docs' allowlist wording, not observed);
-- the effect of the first brownout: no `pr-review` run started between
-  16:00 and 18:00 UTC on 2026-11-09.
+- the effect of either brownout: no `pr-review` run started between
+  16:00 and 18:00 UTC on 2026-11-09 or 2026-11-16 (checked 2026-11-23).
