@@ -70,7 +70,9 @@ def pin_release(client: GitHubClient, repo: str, number: int) -> tuple[str, str 
     """Post the release marker when a person released this open audit finding.
 
     Returns the outcome and the pinned hash. Running it twice posts one
-    marker: the second run finds it.
+    marker: the second run finds it. Two runs at the same moment can both post
+    one, because the read and the post are not atomic; the latest marker
+    decides, so the extra comment only clutters the issue.
     """
     issue_path = f"/repos/{repo}/issues/{number}"
     issue = get_json(client, issue_path)
