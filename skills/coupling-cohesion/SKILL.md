@@ -24,6 +24,18 @@ mode file only when the answer needs it — for example, a Mode B hotspot
 whose one suspicious dependency you then weigh with Mode C. Script paths in
 the mode files are relative to this skill's directory.
 
+The mode files send you on to four deeper references at the step that needs
+them; open one only then:
+
+- [references/metrics.md](references/metrics.md) — how each Mode B number is
+  derived, and the limits that make a flagged zone a prompt, not a verdict.
+- [references/remediation.md](references/remediation.md) — once Mode B has
+  flagged a component off the Main Sequence and you need the fix per zone.
+- [references/balanced-coupling-model.md](references/balanced-coupling-model.md)
+  — the strength, distance and volatility scales behind Mode C's balance rule.
+- [references/rebalancing.md](references/rebalancing.md) — once Mode C has
+  flagged a dependency as imbalanced and you need one of the three exits.
+
 Modes B and C are complementary halves of a coupling audit: the metrics (B) find
 the hotspots, the balance model (C) explains and fixes a specific relationship.
 Mode A is the cohesion half of the same law. The per-scale expressions and the
@@ -46,9 +58,8 @@ decomposition (use `logical-component-design`).
 
 Every answer uses the same shape — verdict first, evidence second, concrete
 next step third — with a per-mode template in each mode file. Report at most the top 3
-findings with seam and fix; summarize the remainder in one line. Leave with
-reason is a first-class, valuable verdict — saying "leave it" with the reason
-is success, not a non-answer. Keep it proportional: a clean module needs a
+findings with seam and fix; summarize the remainder in one line. Leaving the
+code alone, with the reason, is a first-class verdict, not a non-answer. Keep it proportional: a clean module needs a
 sentence, not a report.
 
 `scripts/test_*.py` are the bundled scripts' own tests; they are not part of

@@ -56,7 +56,7 @@ Once chosen, document it. Write an ADR capturing context, the decision drivers f
 - **New repo:** generate the folder/file skeleton from the annotated example tree for the chosen pattern in [references/pattern-catalog.md](references/pattern-catalog.md), adapted to the repo name and language.
 - **Existing repo:** produce an **incremental migration plan** (strangler-fig): smallest first move, what moves where, keeping the build green at every step. Never a big-bang rewrite.
 - Apply deep-module thinking when shaping boundaries: narrow interface, deep implementation (Ousterhout) — small interfaces hiding complexity.
-- Add a boundary check to the target repo that fails CI when a module reaches into another module's internals (Python: import-linter contract, Tach as alternative; Java: ArchUnit test, Spring Modulith as alternative in Spring apps; JavaScript/TypeScript: dependency-cruiser rule). For the check shape see `members/fitness-functions/SKILL.md`, read via the `architecture` router.
+- Make the new boundaries enforceable: read `members/fitness-functions/SKILL.md` (via the `architecture` router) and add one check that fails CI when a module reaches into another module's internals. That skill picks the tool for the ecosystem and proves the check can fail; do not choose the tool here.
 
 ### 6. Verify
 

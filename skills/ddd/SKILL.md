@@ -9,7 +9,7 @@ metadata:
 
 # DDD
 
-Strategic design decides *where* to invest; tactical design decides *how* to build. Match the investment to the value — over-engineering a Supporting subdomain and under-investing a Core one are both failures of the same discipline.
+Strategic design decides *where* to invest; tactical design decides *how* to build.
 
 ## When to use
 
@@ -26,8 +26,9 @@ the code-review checklist while writing.
 
 A subdomain's strategic classification
 (Core / Generic / Supporting) should drive both *how much* engineering effort
-it gets and *which tactical pattern* implements it. Never let architectural
-enthusiasm outrun the subdomain's actual importance.
+it gets and *which tactical pattern* implements it. Over-engineering a
+Supporting subdomain and under-investing a Core one are the same failure:
+architectural enthusiasm outrunning the subdomain's actual importance.
 
 ## Decision path
 

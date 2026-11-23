@@ -6,7 +6,8 @@
   ],
   "should_not_trigger": [
     "reduce cyclomatic complexity of this function",
-    "design components for a new app"
+    "design components for a new app",
+    "should we split this into microservices or keep a monolith?"
   ],
-  "expected_behavior": "Routes grab-bag questions to Mode A cohesion, Pain-zone questions to Mode B metrics, and shared-entity questions to Mode C balanced coupling; stays silent on single-function complexity and greenfield decomposition (logical-component-design)."
+  "expected_behavior": "Routes grab-bag questions to Mode A cohesion, Pain-zone questions to Mode B metrics, and shared-entity questions to Mode C balanced coupling; stays silent on single-function complexity, greenfield decomposition (logical-component-design), and monolith-vs-microservices choices (architecture-pattern-advisor)."
 }

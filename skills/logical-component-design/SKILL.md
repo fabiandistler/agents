@@ -42,8 +42,7 @@ Trap — even without naming the book. Not for analyzing existing code
 
 Sibling sub-skills, each read via the `architecture` router:
 - `members/ddd/SKILL.md` — aggregates live inside components, and bounded contexts group
-  components. The Entity Trap below is about naming components after nouns,
-  not about modeling domain entities.
+  components.
 - `members/architecture-pattern-advisor/SKILL.md` — use it for the top-level
   domain-vs-technical partition; this skill decomposes within that split.
 - `members/c4-modeling/SKILL.md` — render the final component list as a C4 Component view.
@@ -81,9 +80,9 @@ generate the initial buckets — and avoid a third that looks tempting.
   component that is hard to test and deploy. Red-flag suffixes: **Manager,
   Supervisor, Controller, Handler, Engine, Processor**. A name passes when
   its role statement names one job — changing the suffix alone is not a fix;
-  the suffixes are only a prompt to write the role statement. `Inventory
-  Management` passes because its role names a single responsibility: stock
-  levels. Prefer role names that
+  the suffixes are only a prompt to write the role statement. `Stock Level
+  Tracking` passes because its role names a single responsibility: keeping
+  stock levels current. Prefer role names that
   say what the component *does* — `Validate Order`, not `Order Manager`.
   *(Escape hatch: if the system truly is CRUD over entities with no real logic,
   it doesn't need an architecture at all — reach for a CRUD/low-code framework.)*

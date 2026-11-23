@@ -1,7 +1,7 @@
 # Fitness-Function Tooling Catalog
 
 Implementation options per ecosystem, starting with the three examples from
-the source chapter, then modern equivalents. Pick the tool that already fits
+the source chapter, then newer equivalents. Pick the tool that already fits
 the project's test stack — a fitness function developers can read and run
 locally beats a more powerful one bolted on from outside.
 
@@ -25,7 +25,7 @@ tolerance.
 
 Recommended default: **ArchUnit**.
 
-**ArchUnit** — the modern special-purpose choice; JUnit-ecosystem tests with
+**ArchUnit** — the special-purpose choice; JUnit-ecosystem tests with
 predefined governance rules. Layer governance (Example 6-4):
 
 ```java
@@ -93,7 +93,36 @@ as the code is cleaned up.
 
 ## .NET
 
-Recommended default: **ArchUnitNET**.
+Recommended default: **ArchUnitNET** — a .NET port of ArchUnit with the same
+rule vocabulary, including layered-architecture and cycle rules. With xUnit,
+install `TngTech.ArchUnitNET.xUnit` (NUnit and MSTest have their own
+extension packages):
+
+```csharp
+using ArchUnitNET.Domain;
+using ArchUnitNET.Loader;
+using ArchUnitNET.Fluent;
+using Xunit;
+using static ArchUnitNET.Fluent.ArchRuleDefinition;
+
+public class LayerRules
+{
+    // Load once per test class; loading is the slow part.
+    private static readonly Architecture Architecture =
+        new ArchLoader().LoadAssemblies(typeof(Program).Assembly).Build();
+
+    private static readonly IObjectProvider<IType> Presentation =
+        Types().That().ResideInNamespace("MyApp.Presentation").As("Presentation");
+    private static readonly IObjectProvider<IType> Data =
+        Types().That().ResideInNamespace("MyApp.Data").As("Data");
+
+    [Fact]
+    public void PresentationDoesNotUseData() =>
+        Types().That().Are(Presentation).Should().NotDependOnAny(Data)
+            .Because("presentation goes through the service layer")
+            .Check(Architecture);
+}
+```
 
 **NetArchTest** — fluent layer/dependency rules as ordinary unit tests
 (Example 6-5):
@@ -109,10 +138,9 @@ var result = Types.InCurrentDomain()
     .IsSuccessful;
 ```
 
-**ArchUnitNET** — a .NET port of ArchUnit with the same rule vocabulary,
-including layered-architecture and cycle rules. Teams already on NetArchTest
-can compare it with **NetArchTest.eNhancedEdition** against their project's
-current support and compatibility needs.
+Teams already on NetArchTest can keep it, or compare it with
+**NetArchTest.eNhancedEdition** against their project's current support and
+compatibility needs.
 
 Baselining legacy code: commit the current violation list and fail only on
 entries not already on it, shrinking the list as violations are fixed.
@@ -139,9 +167,8 @@ module.exports = {
 **eslint-plugin-boundaries** / **import/no-cycle** — same governance expressed
 inside an existing ESLint setup; good when the team already treats lint
 failures as build failures. **ArchUnitTS** (npm `archunit`) offers
-ArchUnit-style assertions
-(`filesOfProject().inFolder("ui").shouldNot().dependOnFiles().inFolder("db")`)
-inside Jest/Vitest. **ts-arch** covers the same ground; compare it with the
+ArchUnit-style assertions inside Jest or Vitest:
+`await expect(projectFiles().inFolder("src/ui/**").shouldNot().dependOnFiles().inFolder("src/db/**")).toPassAsync()`. **ts-arch** covers the same ground; compare it with the
 project's existing lint and test setup before choosing another dependency.
 
 Baselining legacy code: generate a known-violations file (`depcruise-baseline`
@@ -198,7 +225,8 @@ works as a quick cycle gate.
 
 **tach** — component boundaries declared in `tach.toml`, enforced by a
 Rust-backed CLI. `tach check` fails the build on undeclared cross-module
-imports, `tach check-external` does the same for third-party packages, and
+imports, `tach check-external` fails on third-party imports that `pyproject.toml` or
+`requirements.txt` does not declare, and
 `tach sync` writes the dependencies a codebase already has back into the
 config — so an existing project can be pinned as-is and tightened later. It is
 closer to modular-monolith governance than to a pure import contract; choose it
@@ -229,11 +257,11 @@ by a CLI:
 ```yaml
 # .go-arch-lint.yml
 version: 3
-workdir: internal
+workdir: internal              # component paths below are relative to it
 components:
-  handler:    { in: internal/handler }
-  service:    { in: internal/service }
-  repository: { in: internal/repository }
+  handler:    { in: handler }
+  service:    { in: service }
+  repository: { in: repository }
 deps:
   handler:    { mayDependOn: [service] }
   service:    { mayDependOn: [repository] }
@@ -310,8 +338,8 @@ when it grows, tightening the allowed set as violations are fixed.
 Modeled on Netflix's Simian Army — governance of characteristics that only
 exist in a running system:
 
-- **Chaos engineering** (Chaos Monkey, Latency Monkey, Chaos Kong; today:
-  Chaos Toolkit, AWS Fault Injection Service, Gremlin, LitmusChaos) —
+- **Chaos engineering** (Chaos Monkey, Latency Monkey, Chaos Kong; current
+  options include Chaos Toolkit, AWS Fault Injection Service, Gremlin, LitmusChaos) —
   resilience is verified by injecting the failure before reality does. The
   perspective shift: not *if* something breaks, but *when*.
 - **Conformity checks** (Conformity Monkey) — continuously assert deployed

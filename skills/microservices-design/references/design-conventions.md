@@ -4,7 +4,7 @@
 > Generic best practice ("loose coupling good", "write tests", "monitor everything", ACID definitions) is assumed and omitted.
 > These are design-principle rules, not project rules — nothing here is specific to any codebase.
 > Chapter references in `(ch N)` instead of rationale.
-> Named tools and spec versions (AsyncAPI 3.x; Temporal, Restate, DBOS) are examples and will date; the rule around them is the durable part.
+> Named tools and spec versions (AsyncAPI; Temporal, Restate, DBOS) are examples and will date; the rule around them is the durable part.
 
 ## Service Boundaries
 
@@ -38,7 +38,7 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 - **Gate CI on a schema-diff *compatibility* check that fails the build on breaking changes,** not one that merely reports a diff (Protolock / json-schema-diff-validator / openapi-diff; Confluent Schema Registry). (ch5)
 - **When a breaking change is unavoidable, coexist the old and new endpoints inside one service and let consumers migrate,** then delete the old. Avoid lockstep deploys; avoid running two whole service versions side-by-side for anything longer than a canary. (ch5)
 - **Gate provider deploys on consumer contract verification (Pact `can-i-deploy`, or bi-directional contracts checked against the OpenAPI spec) when an API has two or more consumers.** (ch5, ch9)
-- **Describe event contracts in AsyncAPI 3.x and run them through the same breaking-change gate as synchronous interfaces.** (ch5, ch9)
+- **Describe event contracts in AsyncAPI and run them through the same breaking-change gate as synchronous interfaces.** (ch5, ch9)
 
 ## Code Reuse
 
@@ -52,7 +52,7 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 - **Model any multi-service business process as an explicit saga with compensating transactions.** You get no cross-service ACID atomicity; compensations are *semantic* rollbacks (you can't un-send an email — send a correcting one). (ch6)
 - **Order saga steps so the most-likely-to-fail steps run first,** so fewer already-committed steps need compensating. (ch6)
 - **Use sagas to recover from *business* failures only** (e.g. insufficient funds); handle *technical* failures (timeouts, 5xx) with the resiliency patterns below. (ch6)
-- **Run an orchestrated saga on a durable-execution engine (Temporal, Restate, or DBOS if Postgres-only with no new infra — examples, not endorsements; post-2021 practice). Hand-roll a saga state machine (ad-hoc timers and retries) only if no durable-execution engine can be adopted.** (ch6)
+- **Run an orchestrated saga on a durable-execution engine (Temporal, Restate, or DBOS if Postgres-only with no new infra — examples, not endorsements). Hand-roll a saga state machine (ad-hoc timers and retries) only if no durable-execution engine can be adopted.** (ch6)
 - **Default to orchestration for a saga — durable execution keeps it cheap even across teams; choose choreography only when no single team can own the orchestrator.** (ch6)
 - **Propagate W3C `traceparent` via OpenTelemetry through every call and message header in a workflow** — mandatory for choreographed sagas to reconstruct state. (ch6)
 
