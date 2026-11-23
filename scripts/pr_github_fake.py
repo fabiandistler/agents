@@ -15,6 +15,7 @@ from typing import Any
 
 import pr_github
 import pr_github_client
+from implementer_contract import release_marker
 
 REPO = "fabiandistler/agents"
 NUMBER = 42
@@ -275,6 +276,16 @@ def api_issue(number: int, *, title: str = "", body: str = "", association: str 
         "title": title or f"Issue {number}",
         "body": body or f"Body of issue {number}",
         "author_association": association,
+    }
+
+
+def release_pin(body: str, *, at: str, login: str = "github-actions[bot]") -> dict:
+    """An issue comment holding the audit release marker for ``body``, posted at ``at``."""
+    return {
+        "body": release_marker({"body": body}) + "\nReleased.",
+        "user": {"login": login, "type": "Bot"},
+        "created_at": at,
+        "author_association": "NONE",
     }
 
 

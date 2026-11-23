@@ -131,8 +131,10 @@ Per run, at most:
      open one with the body below.
    - **Keep the released text fixed.** If the issue's events show
      `ready-for-agent` was ever added, never edit its body: a person released
-     exactly that text as the contract. Post the changed keys as a comment
-     instead, and file nothing new for the skill. Otherwise rewrite the body
+     exactly that text as the contract, and the workflow pinned its hash
+     (`<!-- audit-release sha256:… -->`); an edited body stops the implementer
+     with `no-contract`. Post the changed keys as a comment instead, and file
+     nothing new for the skill. Otherwise rewrite the body
      when its keys differ from the rolling issue's.
    - **Close what is done.** Close an open, never-released finding issue as
      completed, with a one-line comment, when its skill has no open `error` or

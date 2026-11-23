@@ -57,6 +57,7 @@ AUDIT_FINDING = "audit-finding"
 _HEAD = r"[0-9a-f]{40}"
 _POSITIVE = r"[1-9][0-9]*"
 _FAILURE_HASH = r"[0-9a-f]{16}"
+_SHA256 = r"[0-9a-f]{64}"
 _RUN_NAME = "implementer: issue #{issue}"
 _RUN_NAME_PATTERN = re.compile(rf"implementer: issue #(?P<issue>{_POSITIVE})")
 # A GitHub expression, as the implementer caller's `run-name` writes the issue.
@@ -83,6 +84,10 @@ def _head(value: object) -> bool:
 
 def _failure_hash(value: object) -> bool:
     return isinstance(value, str) and re.fullmatch(_FAILURE_HASH, value) is not None
+
+
+def _sha256(value: object) -> bool:
+    return isinstance(value, str) and re.fullmatch(_SHA256, value) is not None
 
 
 @dataclass(frozen=True)
@@ -145,6 +150,16 @@ FIX_RUN = MarkerKind(
     ),
     fields={"run_id": _positive, "attempt": _positive},
     parsers={"run_id": int, "attempt": int},
+)
+
+# `<!-- audit-release sha256:<hex> -->`: the hash of an audit finding's body at
+# the moment a person released it; only that text is the contract (ADR-0020).
+AUDIT_RELEASE = MarkerKind(
+    name="audit release",
+    template="<!-- audit-release sha256:{sha256} -->",
+    pattern=re.compile(rf"<!-- audit-release sha256:(?P<sha256>{_SHA256}) -->"),
+    fields={"sha256": _sha256},
+    parsers={"sha256": str},
 )
 
 
