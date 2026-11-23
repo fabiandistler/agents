@@ -9,6 +9,10 @@ Before making an optional tool a blocking CI dependency, check its current
 maintenance activity, support options, and adoption against the project's risk
 tolerance.
 
+As of 2026-11: the ArchUnitTS limits in the JavaScript / TypeScript section
+were reproduced with `archunit` 2.5.5 and Vitest 3.2.4; re-check them before
+relying on a newer release.
+
 ## Contents
 
 - [Java](#java)
@@ -168,7 +172,12 @@ module.exports = {
 inside an existing ESLint setup; good when the team already treats lint
 failures as build failures. **ArchUnitTS** (npm `archunit`) offers
 ArchUnit-style assertions inside Jest or Vitest:
-`await expect(projectFiles().inFolder("src/ui/**").shouldNot().dependOnFiles().inFolder("src/db/**")).toPassAsync()`. **ts-arch** covers the same ground; compare it with the
+`await expect(projectFiles().inFolder("src/ui/**").shouldNot().dependOnFiles().inFolder("src/db/**")).toPassAsync()`.
+Two limits: it loads only with `test.globals: true` in the Vitest config, and
+its dependency rules see `import` statements but not re-exports
+(`export * from`, `export { x } from`) or dynamic `import()`, which pass
+unchecked. Prefer dependency-cruiser when those forms occur; otherwise plant
+one violation of each form the codebase uses before trusting the rule. **ts-arch** covers the same ground; compare it with the
 project's existing lint and test setup before choosing another dependency.
 
 Baselining legacy code: generate a known-violations file (`depcruise-baseline`
