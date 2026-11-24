@@ -9,6 +9,15 @@ access, not only a `User` actor. The adder's base role comes from the
 collaborator permission endpoint (`admin` or `write`; it reports triage as
 `read`), which a `GITHUB_TOKEN` can read with its implicit metadata scope.
 
+Amended 2026-11-23 for #950: the release also pins the released text. When a
+person adds `ready-for-agent` to an open audit finding,
+`scripts/audit_release_pin.py`, running as `github-actions[bot]`, posts a
+comment holding `<!-- audit-release sha256:<hash> -->`, the SHA-256 of the
+body at that moment. The body counts as a contract only while it hashes to the
+latest such marker by the workflow bot, posted at or after the latest release
+event. The REST API keeps no body-edit time, and `updated_at` moves on every
+comment and label, so the marker stands in for it.
+
 ## Context
 
 The skill audit ([ADR-0014](0014-agent-runs-in-github-actions.md),
@@ -40,7 +49,9 @@ text by owners, members and collaborators as its contract
    `claude[bot]` (type `Bot`), carries `audit-finding`, and the latest
    `labeled` event for `ready-for-agent` has a `User` actor with write access
    (`GET /repos/{repo}/collaborators/{login}/permission` answers `admin` or
-   `write`; a 404 counts as no access). The rule lives in
+   `write`; a 404 counts as no access), and the body's SHA-256 equals the
+   hash in the workflow bot's latest `audit-release` marker, posted at or
+   after that event. The rule lives in
    `implementer_contract.body_is_trusted`, which the implementer claim, the
    implementer queue, Retro and the PR review's linked issues share.
 3. The audit never adds `ready-for-agent` or another state label, and never
@@ -55,10 +66,18 @@ text by owners, members and collaborators as its contract
   added the label.
 - The person's label is the only gate. A finding's text comes from a model
   that read skill files and web pages, so read the issue before you label it.
-- The rule checks the label's latest adder, not when the body last changed.
-  A run that edited the body after the release would slip through; the
-  runbook forbids that edit, and the implementer usually claims within
-  minutes of the label.
+- The rule checks the label's latest adder and the text pinned at that
+  release. An App edit after the pin makes the claim, the queue and the PR
+  review's linked issues refuse the body (`no-contract`) until a person adds
+  `ready-for-agent` again, which pins the new text. The runbook still forbids
+  the edit. An edit in the seconds between the label and the pin step is
+  pinned with it; nothing on GitHub tells the two apart.
+- Without the pin step no audit finding is a contract. The step must run on
+  the label event, before the implementer or a later queue dispatch reads the
+  issue, with `issues: write` on the workflow's own token: a job in
+  `factory-implementer.yml` that the `implement` job needs. The implementer
+  cannot edit `.github/workflows/`, so a person adds it; callers in other
+  repositories get it only at a newer pinned SHA (ADR-0018).
 - A person with the triage role can add the label, but the permission check
   turns that release down, so the issue stops with `no-contract`.
 - Description findings wait for a person until the eval prompts

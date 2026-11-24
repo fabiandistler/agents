@@ -25,6 +25,7 @@ from pr_github_fake import (
     fetch,
     json_response,
     pull_request,
+    release_pin,
     text_response,
 )
 
@@ -295,15 +296,25 @@ def audit_finding(number: int, *, labels: tuple[str, ...] = ("audit-finding",)) 
 
 def labeled(name: str, actor_type: str = "User", login: str = "maintainer") -> dict:
     actor = {"type": actor_type, "login": login}
-    return {"event": "labeled", "label": {"name": name}, "actor": actor}
+    return {
+        "event": "labeled",
+        "label": {"name": name},
+        "actor": actor,
+        "created_at": "2026-11-23T10:00:00Z",
+    }
 
 
 def linked_audit_finding(
-    events: list[dict], labels: tuple[str, ...] = ("audit-finding",)
+    events: list[dict],
+    labels: tuple[str, ...] = ("audit-finding",),
+    pinned_body: str = "AUDIT-BODY",
 ) -> FakeClient:
+    """Audit finding #7, its body pinned as ``pinned_body`` after the release."""
+    pin = release_pin(pinned_body, at="2026-11-23T10:00:05Z")
+    thread = IssueThread(audit_finding(7, labels=labels), comments=[pin], events=events)
     return FakeClient(
         FakePullRequest(pull_request(body="Closes #7")),
-        issues={7: IssueThread(audit_finding(7, labels=labels), events=events)},
+        issues={7: thread},
         collaborators={"maintainer": "admin", "triager": "read"},
     )
 
@@ -338,6 +349,15 @@ def test_an_audit_finding_a_writer_released_is_shown():
 )
 def test_an_audit_finding_without_a_writers_release_carries_no_text(labels, events):
     client = linked_audit_finding(events, labels)
+
+    context = fetch_linked(client)
+
+    assert context["linked_issues"][0]["status"] == "outside_author"
+    assert "AUDIT-" not in json.dumps(context)
+
+
+def test_an_audit_finding_edited_after_its_release_carries_no_text():
+    client = linked_audit_finding([labeled("ready-for-agent")], pinned_body="RELEASED-TEXT")
 
     context = fetch_linked(client)
 

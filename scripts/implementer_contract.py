@@ -9,20 +9,30 @@ a trusted author is in ``agent_brief.py``.
 
 A body is trusted when its author is, or when it is an audit finding a person
 released: an issue the Claude GitHub App opened under the `audit-finding`
-label, whose latest `ready-for-agent` label a person with write access added. The
-audit that files it already writes pull requests with the same App token, so
-trusting its issue grants it nothing new; the person's label is the gate
-(ADR-0020).
+label, whose latest `ready-for-agent` label a person with write access added,
+and whose body still hashes to the release marker the workflow bot posted after
+that label. The audit that files it already writes pull requests with the same
+App token, so trusting its issue grants it nothing new; the person's label is
+the gate, and the marker pins the text they released (ADR-0020).
 
 Standard library only. Errors name the API call, never issue text.
 """
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
+from datetime import datetime
 
 from agent_brief import is_agent_brief, is_trusted
-from factory_handoff import APP_LOGIN, AUDIT_FINDING, READY_FOR_AGENT
+from factory_handoff import (
+    APP_LOGIN,
+    AUDIT_FINDING,
+    AUDIT_RELEASE,
+    READY_FOR_AGENT,
+    format_marker,
+    read_markers,
+)
 from pr_github_client import HTTP_NOT_FOUND, FetchError, ReadClient, get_json, paginate
 
 NO_CONTRACT_COMMENT = """\
@@ -78,10 +88,16 @@ def body_is_trusted(client: ReadClient, repo: str, number: int, issue: dict) -> 
     """Whether the issue body may be a contract: a trusted author's, or a released audit finding."""
     if is_trusted(issue):
         return True
-    return _is_audit_finding(issue) and _released_by_a_person(client, repo, number)
+    if not is_audit_finding(issue):
+        return False
+    release = person_release(client, repo, number)
+    if release is None:
+        return False
+    return is_pinned_since(latest_release_pin(client, repo, number), issue, release)
 
 
-def _is_audit_finding(issue: dict) -> bool:
+def is_audit_finding(issue: dict) -> bool:
+    """Whether the Claude GitHub App opened ``issue`` under the `audit-finding` label."""
     user = issue.get("user")
     labels = issue.get("labels")
     if not isinstance(user, dict) or not isinstance(labels, list):
@@ -95,25 +111,94 @@ def _is_audit_finding(issue: dict) -> bool:
 WRITE_PERMISSIONS = frozenset({"admin", "write"})
 
 
-def _released_by_a_person(client: ReadClient, repo: str, number: int) -> bool:
-    """Whether a person with write access added the latest `ready-for-agent` label.
+def person_release(client: ReadClient, repo: str, number: int) -> dict | None:
+    """The latest `ready-for-agent` label event, when a person with write access added it.
 
     The App can label its own issue too, and the implementer queue dispatches
     any labelled issue, so without this check nobody would stand between an
     audit run and an implementer run. A label event carries no author
     association, so the adder's permission is asked for separately.
     """
-    actor = _latest_ready_label_actor(client, repo, number)
-    if not isinstance(actor, dict) or actor.get("type") != "User":
-        return False
-    login = actor.get("login")
-    return isinstance(login, str) and _has_write_access(client, repo, login)
-
-
-def _latest_ready_label_actor(client: ReadClient, repo: str, number: int) -> object:
     path = f"/repos/{repo}/issues/{number}/events"
     releases = [event for event in paginate(client, path) if _adds_ready_label(event)]
-    return releases[-1].get("actor") if releases else None
+    if not releases:
+        return None
+    actor = releases[-1].get("actor")
+    if not isinstance(actor, dict) or actor.get("type") != "User":
+        return None
+    login = actor.get("login")
+    if not (isinstance(login, str) and _has_write_access(client, repo, login)):
+        return None
+    return releases[-1]
+
+
+def body_hash(issue: dict) -> str:
+    """The SHA-256 of the issue body as the API sends it; a null body hashes as empty."""
+    body = issue.get("body") or ""
+    if not isinstance(body, str):
+        raise FetchError("GitHub API returned a malformed issue body")
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def release_marker(issue: dict) -> str:
+    """The audit release marker that pins ``issue``'s current body."""
+    return format_marker(AUDIT_RELEASE, sha256=body_hash(issue))
+
+
+def latest_release_pin(client: ReadClient, repo: str, number: int) -> tuple[str, str] | None:
+    """The hash and creation time of the workflow bot's latest audit release marker.
+
+    The App can comment too, so ``read_markers`` counts only the workflow
+    bot's comments; a marker a person or the App quotes is just text.
+    """
+    path = f"/repos/{repo}/issues/{number}/comments"
+    entries = [_marker_entry(comment) for comment in paginate(client, path)]
+    pins = [
+        (str(marker["sha256"]), str(read.entry["created_at"]))
+        for read in read_markers(AUDIT_RELEASE, entries)
+        for marker in read.markers
+    ]
+    return pins[-1] if pins else None
+
+
+def _marker_entry(comment: dict) -> dict:
+    user = comment.get("user")
+    login = user.get("login") if isinstance(user, dict) else None
+    created_at = comment.get("created_at")
+    return {
+        "author": login if isinstance(login, str) else "",
+        "body": comment.get("body"),
+        "created_at": created_at if isinstance(created_at, str) else "",
+    }
+
+
+def is_pinned_since(pin: tuple[str, str] | None, issue: dict, release: dict) -> bool:
+    """Whether ``pin`` holds ``issue``'s current body hash and was posted at or after ``release``.
+
+    The REST API keeps no body-edit time, so the release marker stands in for
+    it: a body the App changed after the release no longer matches. GitHub
+    writes both times as ISO 8601; they are parsed, and an unparsable one
+    counts as not pinned.
+    """
+    if pin is None:
+        return False
+    pinned_hash, pinned_at = pin
+    released_at = release.get("created_at")
+    if not isinstance(released_at, str) or not released_at or not pinned_at:
+        return False
+    try:
+        pinned_time = _parse_timestamp(pinned_at)
+        released_time = _parse_timestamp(released_at)
+    except ValueError:
+        return False
+    return pinned_time >= released_time and pinned_hash == body_hash(issue)
+
+
+def _parse_timestamp(text: str) -> datetime:
+    parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("timestamp has no UTC offset")
+    return parsed
 
 
 def _adds_ready_label(event: dict) -> bool:

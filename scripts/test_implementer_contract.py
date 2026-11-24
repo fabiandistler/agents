@@ -6,6 +6,7 @@ import json
 
 import implementer_claim
 import pytest
+from pr_github_fake import release_pin
 from test_implementer_briefs import brief
 from test_implementer_claim import ISSUE_PATH, REPO, FakeGitHub, claim, http_error, run_cli
 from test_implementer_intake_gates import assert_stopped_before_any_branch, blocker
@@ -115,27 +116,47 @@ def permission_path(login: str) -> str:
     return f"/repos/{REPO}/collaborators/{login}/permission"
 
 
+AUDIT_BODY = "AUDIT FINDINGS"
+RELEASED_AT = "2026-11-23T10:00:00Z"
+
+
+def pin(body: str = AUDIT_BODY, *, at: str = "2026-11-23T10:00:05Z", **author: str) -> dict:
+    """A release marker comment; the workflow bot's unless ``login`` says otherwise."""
+    return release_pin(body, at=at, **author)
+
+
 def audit_finding(
     events: list[dict],
     *,
     author: dict | None = None,
     permissions: dict[str, str] | None = None,
+    pins: list[dict] | None = None,
+    body: str = AUDIT_BODY,
 ) -> FakeGitHub:
-    """An App-filed audit-finding issue; ``permissions`` maps a label adder to its role."""
+    """An App-filed audit-finding issue; ``permissions`` maps a label adder to its role.
+
+    ``pins`` are its comments, by default one marker for ``AUDIT_BODY`` posted
+    after the release.
+    """
     issue = {
-        "body": "AUDIT FINDINGS",
+        "body": body,
         "author_association": "CONTRIBUTOR",
         "user": author or {"login": "claude[bot]", "type": "Bot"},
         "labels": [{"name": "audit-finding"}, {"name": "ready-for-agent"}],
     }
     roles = {"maintainer": "admin", **(permissions or {})}
     payloads = {permission_path(login): {"permission": role} for login, role in roles.items()}
-    return FakeGitHub(canned_payloads={ISSUE_PATH: issue, EVENTS_PATH: events, **payloads})
+    return FakeGitHub(
+        canned_payloads={ISSUE_PATH: issue, EVENTS_PATH: events, **payloads},
+        issue_comments=[pin()] if pins is None else pins,
+    )
 
 
-def labeled(name: str, actor_type: str = "User", login: str = "maintainer") -> dict:
+def labeled(
+    name: str, actor_type: str = "User", login: str = "maintainer", at: str = RELEASED_AT
+) -> dict:
     actor = {"type": actor_type, "login": login}
-    return {"event": "labeled", "label": {"name": name}, "actor": actor}
+    return {"event": "labeled", "label": {"name": name}, "actor": actor, "created_at": at}
 
 
 @pytest.mark.parametrize("role", ["admin", "write"])
@@ -188,3 +209,67 @@ def test_an_audit_finding_released_by_an_unknown_account_stops_the_run():
 def test_only_the_apps_own_issue_counts_as_an_audit_finding(author):
     fake = audit_finding([labeled("ready-for-agent")], author=author)
     assert claim(fake).outcome == implementer_claim.NO_CONTRACT
+
+
+def test_the_release_marker_is_not_part_of_the_contract():
+    fake = audit_finding([labeled("ready-for-agent")])
+    assert "audit-release" not in contract_of(fake)
+
+
+def test_an_unchanged_body_pinned_again_after_a_later_release_is_the_contract():
+    fake = audit_finding(
+        [labeled("ready-for-agent"), labeled("ready-for-agent", at="2026-11-24T09:00:00Z")],
+        pins=[pin("OLD TEXT"), pin(at="2026-11-24T09:00:04Z")],
+    )
+    assert AUDIT_BODY in contract_of(fake)
+
+
+@pytest.mark.parametrize(
+    "pins",
+    [
+        # The App edited the body after the release was pinned.
+        [pin("THE TEXT THE PERSON RELEASED")],
+        # A later marker pinned other text, so the latest one decides.
+        [pin(), pin("OTHER TEXT", at="2026-11-23T10:00:09Z")],
+        # The only marker predates the latest release.
+        [pin(at="2026-11-23T09:59:59Z")],
+        # The App, a person or an outsider quoted the right marker.
+        [pin(login="claude[bot]"), pin(login="maintainer")],
+        # Never pinned: the release step did not run.
+        [],
+    ],
+    ids=[
+        "edited-after-release",
+        "latest-marker-differs",
+        "marker-before-release",
+        "quoted-marker",
+        "no-marker",
+    ],
+)
+def test_an_audit_finding_without_a_matching_pin_since_the_release_stops_the_run(pins):
+    fake = audit_finding([labeled("ready-for-agent")], pins=pins)
+    assert claim(fake).outcome == implementer_claim.NO_CONTRACT
+    assert_stopped_before_any_branch(fake)
+
+
+def test_a_release_without_a_time_is_never_pinned():
+    release = labeled("ready-for-agent")
+    del release["created_at"]
+    assert claim(audit_finding([release])).outcome == implementer_claim.NO_CONTRACT
+
+
+def test_timestamps_are_compared_as_instants_not_as_text():
+    from implementer_contract import body_hash, is_pinned_since
+
+    issue = {"body": "finding"}
+    pin = (body_hash(issue), "2026-01-01T10:00:00+00:00")
+    assert is_pinned_since(pin, issue, {"created_at": "2026-01-01T09:59:59Z"})
+    assert not is_pinned_since(pin, issue, {"created_at": "2026-01-01T10:00:01Z"})
+
+
+def test_an_unparsable_pin_time_is_never_pinned():
+    from implementer_contract import body_hash, is_pinned_since
+
+    issue = {"body": "finding"}
+    pin = (body_hash(issue), "yesterday")
+    assert not is_pinned_since(pin, issue, {"created_at": "2026-01-01T10:00:00Z"})

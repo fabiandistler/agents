@@ -13,6 +13,7 @@ import pr_github_client
 import pytest
 from implementer_setup import DEFAULT_SETUP
 from pr_github_client import GitHubClient
+from pr_github_fake import release_pin
 from test_implementer_claim import (
     REPO,
     RUN_ID,
@@ -79,6 +80,7 @@ class QueueFake:
     listed_total: int | None = None
     events: dict[int, list[dict]] = field(default_factory=dict)
     collaborators: dict[str, str] = field(default_factory=dict)
+    comments: dict[int, list[dict]] = field(default_factory=dict)
 
     def get(
         self, path: str, params: dict | None = None, accept: str | None = None
@@ -144,7 +146,9 @@ class QueueFake:
     def _get_issue(self, found: re.Match, later_page: bool) -> pr_github_client.Response:
         """An issue, its comments, blockers or events; 404 for an issue the fake does not hold."""
         number, rest, path = int(found[1]), found[2], found[0]
-        if rest in ("/comments", "/dependencies/blocked_by"):
+        if rest == "/comments":
+            return json_response([] if later_page else self.comments.get(number, []))
+        if rest == "/dependencies/blocked_by":
             return json_response([])
         if rest == "/events":
             return json_response([] if later_page else self.events.get(number, []))
@@ -264,16 +268,31 @@ def audit_finding() -> dict:
 
 
 @pytest.mark.parametrize(
-    ("adder", "picked"),
-    [(("User", "maintainer"), 12), (("Bot", "claude[bot]"), 13), (("User", "triager"), 13)],
-    ids=["writer-release-picks", "bot-label-skips", "read-role-skips"],
+    ("adder", "pinned_body", "picked"),
+    [
+        (("User", "maintainer"), "AUDIT FINDINGS", 12),
+        (("Bot", "claude[bot]"), "AUDIT FINDINGS", 13),
+        (("User", "triager"), "AUDIT FINDINGS", 13),
+        (("User", "maintainer"), "THE TEXT THE PERSON RELEASED", 13),
+    ],
+    ids=["writer-release-picks", "bot-label-skips", "read-role-skips", "edited-after-pin-skips"],
 )
-def test_an_audit_finding_is_picked_only_once_a_writer_released_it(adder, picked):
+def test_an_audit_finding_is_picked_only_once_a_writer_released_its_body(
+    adder, pinned_body, picked
+):
     fake = waiting(12, 13)
     fake.issues[12] = audit_finding()
     actor_type, login = adder
     release = {"type": actor_type, "login": login}
-    fake.events[12] = [{"event": "labeled", "label": {"name": "ready-for-agent"}, "actor": release}]
+    fake.events[12] = [
+        {
+            "event": "labeled",
+            "label": {"name": "ready-for-agent"},
+            "actor": release,
+            "created_at": "2026-11-23T10:00:00Z",
+        }
+    ]
+    fake.comments[12] = [release_pin(pinned_body, at="2026-11-23T10:00:05Z")]
     fake.collaborators = {"maintainer": "write", "triager": "read"}
     outcome = start(fake)
     assert dispatched_issue(fake) == picked
