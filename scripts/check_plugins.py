@@ -19,6 +19,9 @@ Checked invariants:
     are the Claude distribution.
   - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
     `name:` (matching the filename stem) and `description:`.
+  - A read-only agent (`READ_ONLY_AGENTS`) exists and has a `tools:` list
+    drawn only from `READ_ONLY_TOOLS`: no write tool, no forge tool, and no
+    missing list, which would inherit every tool of the session.
   - A hook plugin (`HOOK_PLUGINS`: `merge-guard`, `secret-guard`) has a parsable
     `hooks/hooks.json` and ships no skills or agents.
 
@@ -36,6 +39,7 @@ import sys
 from pathlib import Path
 
 from catalogue import entries_for_target, load_catalogue, top_level_entries
+from plugin_agents import parse_agent_source
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PLUGINS_DIR = REPO_ROOT / "plugins"
@@ -43,6 +47,13 @@ MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 # Plugins that ship only hooks, outside the one-plugin-per-category scheme, so
 # installing one stays a choice of its own.
 HOOK_PLUGINS = frozenset({"merge-guard", "secret-guard"})
+# Agents that read untrusted text (a diff, an issue) and so may only read. The
+# pin lives here, not in the agent file, so an edit to that file cannot drop
+# it. Paths are relative to plugins/.
+READ_ONLY_AGENTS = ("workflow/agents/review-decisions-classifier.md",)
+# An allowlist, not a denylist of write and forge tools: a tool added later
+# (a new MCP server, a new write tool) fails until someone adds it here.
+READ_ONLY_TOOLS = frozenset({"Read", "Grep", "Glob", "Bash"})
 
 
 def check_marketplace(errors: list[str]) -> list[str]:
@@ -128,6 +139,34 @@ def check_agents(plugin: str, errors: list[str]) -> None:
             errors.append(f"{rel}: frontmatter has no 'description'")
 
 
+def check_read_only_agents(plugins_dir: Path, errors: list[str]) -> None:
+    """Each pinned agent exists and lists only read-only tools."""
+    for rel in READ_ONLY_AGENTS:
+        md = plugins_dir / rel
+        label = f"plugins/{rel}"
+        if not md.is_file():
+            errors.append(f"{label}: missing, but READ_ONLY_AGENTS pins it read-only")
+            continue
+        try:
+            fields, _ = parse_agent_source(md)
+        except ValueError as e:
+            errors.append(f"{label}: {e}")
+            continue
+        tools = [tool.strip() for tool in fields["tools"].split(",") if tool.strip()]
+        if not tools:
+            errors.append(
+                f"{label}: frontmatter has no 'tools' list, so the agent inherits "
+                "every tool; pin it to read-only tools"
+            )
+            continue
+        extra = [tool for tool in tools if tool not in READ_ONLY_TOOLS]
+        if extra:
+            errors.append(
+                f"{label}: pinned read-only, but lists {', '.join(extra)}; "
+                f"allowed: {', '.join(sorted(READ_ONLY_TOOLS))}"
+            )
+
+
 def check_hook_plugin(plugin: str, errors: list[str]) -> None:
     """A hook plugin ships hooks/hooks.json and no skills or agents."""
     root = PLUGINS_DIR / plugin
@@ -156,6 +195,7 @@ def main() -> int:
             if child.is_dir() and child.name not in plugins:
                 errors.append(f"plugins/{child.name}/ exists but is not in marketplace.json")
 
+    check_read_only_agents(PLUGINS_DIR, errors)
     for plugin in plugins:
         if plugin in HOOK_PLUGINS:
             check_hook_plugin(plugin, errors)
