@@ -83,9 +83,36 @@ On a runtime without that subagent, start a fresh agent with no session
 history and give it the instructions from the classifier's definition and the
 same file paths.
 
+## Queue
+
+Put the classifier's decisions into one queue, ordered by the cost of undoing
+them after the merge:
+
+1. deviations from the issue;
+2. public surface: APIs, command-line options, config keys and defaults,
+   option names, log and metric formats, new dependencies;
+3. schema and data;
+4. behaviour;
+5. tests, with a deleted or weakened test first in the group.
+
+Keep the classifier's order inside a group. Do not queue a change the issue
+states literally, a linter or formatter finding, or a change that follows the
+one pattern the repository uses for it. Do queue a choice between two patterns
+the repository already uses. When unsure, queue it.
+
+**No issue.** Without an issue the deviation group is unchecked, not empty.
+Say so before the first decision, and record it as `deviation: unchecked` in
+the protocol rather than leaving the group out.
+
+**Early stop.** When the reviewer rejects a decision that later ones depend on
+(the classifier marks them `depends on`, or the rejection replaces the
+approach they build on), stop the queue. Name the rejected decision, say why
+the rest is moot, and list the remaining decisions as not reviewed. Do not
+present them.
+
 ## Answer
 
-Return the classifier's list of review decisions, one line each with file,
+Return the queue in order, one line each with category, file,
 line and what the author chose. Add only:
 
 - the line that deviations were not checked, when no issue was supplied;
