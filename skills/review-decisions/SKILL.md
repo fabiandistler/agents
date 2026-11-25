@@ -113,6 +113,40 @@ approach they build on), stop the queue. Name the rejected decision, say why
 the rest is moot, and list the remaining decisions as not reviewed. Do not
 present them.
 
+## Not queued
+
+A file outside the queue is not a checked file. Label it "skim is enough"
+only with proof, and otherwise send the reviewer to it. Run
+`python3 scripts/skim_proof.py --repo <repo-root> --base <base-ref> --inputs
+<scratch-dir>/inputs.json` (drop `--inputs` when there is no manifest). For
+each changed file its JSON gives `skim`, a `proof` and a one-line `reason`:
+
+- `rename`: moved or renamed with identical content;
+- `formatting`: only trailing whitespace or line endings changed;
+- `ci-green`: `ci.json` says green for the commit checked out here.
+
+Its `ci` entry says whether green CI is a proof and why not. Without a CI
+status (fallback input, or none in the manifest) only `rename` and
+`formatting` can prove anything; say so with the other unchecked inputs.
+Indentation, spacing inside a line, a mode change or a binary file is never
+formal.
+
+Label each file:
+
+- **queued**: it holds a card; name the cards.
+- **skim is enough**: not queued and `skim` is true; give the proof.
+- **you look at this in the PR**: every other file, with the script's
+  reason.
+
+The script never decides that a file is queued, and its proof never takes a
+file out of the queue. When unsure whether a file holds a review decision,
+queue it rather than label it "skim is enough".
+
+Show the list before the first card and write it to the protocol header
+under `Files:`, one line each: `- <path>: <label>: <reason>`. When the
+reviewer asks to look at a named file, add it to the queue as a new card at
+the end, change its line to queued, and keep going.
+
 ## Protocol
 
 Every answer goes into a protocol file outside the repository, so no verdict
