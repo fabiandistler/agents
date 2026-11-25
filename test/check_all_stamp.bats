@@ -235,6 +235,7 @@ assert_checks_ran() {
 }
 
 @test "a prek pre-push hook hands check_all.sh the pushed commit, so --skip-passed skips" {
+  command -v prek >/dev/null || skip "prek is not installed"
   make_stamp_checkout
   cat >"$bare_checkout/.pre-commit-config.yaml" <<'YAML'
 repos:

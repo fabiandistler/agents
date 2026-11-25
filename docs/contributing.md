@@ -185,7 +185,8 @@ on a clean work tree, with `HEAD` unmoved, writes `<tree> <checks>` to
 `--skip-passed` then exits 0 with one `skipped: tree ...` line only if that
 tree is `HEAD`'s and the pushed commit's (prek exports it as
 `PRE_COMMIT_TO_REF`), the work tree is still clean, and the stamp lists every
-check the hook selects; otherwise the checks run. CI never passes the flag.
+check the hook selects; otherwise the checks run. A clean work tree ignores
+gitignored files, so the skip holds only for checks that read tracked content. CI never passes the flag.
 The `check-file-tokens` hook blocks a commit that stages a text file over 5000
 tokens (bytes / 4, so over 20000 bytes) and prints how to split it along its
 seams; mark a generated file `linguist-generated` in `.gitattributes` instead.

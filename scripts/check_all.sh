@@ -49,7 +49,9 @@ $(git rev-parse --git-path check_all-pass); every other run removes it.
 --skip-passed prints `skipped: tree <sha> passed <checks> (<stamp>)` and exits 0
 only if the stamp's tree is HEAD's and the pushed commit's (PRE_COMMIT_TO_REF,
 set by prek's pre-push hook), the work tree is clean, and the stamp lists every
-selected check. In any other case it runs the checks as usual.
+selected check. In any other case it runs the checks as usual. A clean work
+tree ignores gitignored files, so the skip assumes the checks read only
+tracked content.
 Exit: 0 all passed, 1 a check failed, 2 usage error,
       3 nothing failed but a check could not run (tool missing),
       4 PYTHON is missing or older than 3.11.
@@ -69,8 +71,7 @@ needs() {
     prek) echo "prek" ;;
     zizmor) echo "zizmor" ;;
     # The install.sh suites run quick_validate.py, which imports yaml.
-    # test/check_all.bats pushes through a real prek pre-push hook.
-    bats) echo "bash $PY pyyaml prek bats-submodules" ;;
+    bats) echo "bash $PY pyyaml bats-submodules" ;;
     mermaid) echo "npx" ;;
     *) echo "$PY" ;;
   esac
@@ -281,7 +282,8 @@ for name in "${CHECKS[@]}"; do selected "$name" && wanted+=("$name"); done
 stamp_path="$(git rev-parse --path-format=absolute --git-path check_all-pass 2>/dev/null)" || stamp_path=""
 
 # No staged, unstaged or untracked non-ignored file. A failing git status
-# counts as dirty.
+# counts as dirty. Ignored files are not looked at, so the skip is sound only
+# for checks that read tracked content.
 work_tree_clean() {
   local changes
   changes="$(git status --porcelain 2>/dev/null)" || return 1
