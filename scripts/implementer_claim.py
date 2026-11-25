@@ -38,6 +38,7 @@ import json
 import os
 import sys
 from dataclasses import asdict, dataclass
+from functools import partial
 from pathlib import Path
 
 from agent_run_report import FAILED_PREFIX
@@ -56,7 +57,12 @@ from implementer_setup import (
     optional_workflow_file,
     workflow_file,
 )
-from implementer_waiting import blocked_comment, capacity_comment, require_active_queue
+from implementer_waiting import (
+    WaitingComment,
+    blocked_comment,
+    capacity_comment,
+    require_active_queue,
+)
 from pr_github_client import (
     HTTP_NOT_FOUND,
     REPO_PATTERN,
@@ -239,15 +245,19 @@ def _stop_at_gate(
     actions_client: ReadClient,
     repo: str,
     issue: int,
-    comment: str,
     queue_workflow: str | None,
+    comment_for: WaitingComment,
 ) -> None:
-    """Park the ticket in the caller's queue, checked only here (implementer_waiting.py)."""
+    """Park the ticket in the caller's queue, or release it when the caller has none.
+
+    That one test picks both the comment and the label, so the text never promises
+    a wait the label does not keep. The queue is read only here (implementer_waiting.py).
+    """
     if queue_workflow is None:
-        _release_ticket(client, repo, issue, comment)
+        _release_ticket(client, repo, issue, comment_for(waits=False))
         return
     require_active_queue(actions_client, repo, queue_workflow)
-    _comment(client, repo, issue, comment)
+    _comment(client, repo, issue, comment_for(waits=True))
 
 
 def _closed_as_completed(issue: object, path: str) -> bool:
@@ -330,7 +340,6 @@ def claim_branch(
     ``queue_workflow`` is the caller's queue, or None: only with one do the
     blocked and at-capacity gates leave the ticket waiting, and only they read it.
     """
-    waits = queue_workflow is not None
     branch = setup.branch(issue)
     holding_pull_request = pull_request_holding_issue(client, repo, issue, branch)
     if holding_pull_request is not None:
@@ -344,13 +353,12 @@ def claim_branch(
     blockers, unresolved = find_blockers(client, repo, issue, ticket)
     if blockers or unresolved:
         # With a queue the ticket waits: implementer_queue.py starts it once unblocked.
-        comment = blocked_comment(blockers, unresolved, waits=waits)
-        _stop_at_gate(client, actions_client, repo, issue, comment, queue_workflow)
+        comment_for = partial(blocked_comment, blockers, unresolved)
+        _stop_at_gate(client, actions_client, repo, issue, queue_workflow, comment_for)
         return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
     if runs_working_ahead(actions_client, repo, run_id, setup) >= MAX_WORKING_RUNS:
         # With a queue the ticket waits: implementer_queue.py starts it when no run works.
-        comment = capacity_comment(waits=waits)
-        _stop_at_gate(client, actions_client, repo, issue, comment, queue_workflow)
+        _stop_at_gate(client, actions_client, repo, issue, queue_workflow, capacity_comment)
         return ClaimOutcome(AT_CAPACITY, branch)
 
     main_sha = _read_ref_sha(client, repo, MAIN_BRANCH)

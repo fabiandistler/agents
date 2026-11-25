@@ -12,17 +12,22 @@ stop a run that has free capacity.
 from __future__ import annotations
 
 import json
+from functools import partial
+from typing import cast
 
 import implementer_claim
 import pr_github_client
 import pytest
+from implementer_waiting import blocked_comment, capacity_comment
 from test_implementer_claim import (
     COMMENTS,
     ISSUE,
     OLD_SHA,
     PULLS,
     QUEUE,
+    QUEUE_WORKFLOW,
     REMOVE_LABEL,
+    REPO,
     RUN_ID,
     FakeGitHub,
     claim,
@@ -100,6 +105,20 @@ def test_without_a_queue_no_workflow_is_looked_up(gate):
     fake = FakeGitHub() if gate == "claimed" else stopped_fake(gate)
     assert claim(fake, queue_workflow=None).outcome == gate
     assert QUEUE not in fake.reads
+
+
+@pytest.mark.parametrize("queue_workflow", [None, QUEUE_WORKFLOW])
+@pytest.mark.parametrize("comment_for", [capacity_comment, partial(blocked_comment, (7,), 0)])
+def test_one_decision_picks_the_comment_and_the_label(queue_workflow, comment_for):
+    # The comment promises what happens to the label: kept for the queue, or removed.
+    fake = FakeGitHub()
+    client = cast(pr_github_client.GitHubClient, fake)
+    implementer_claim._stop_at_gate(
+        client, client, REPO, ISSUE, queue_workflow=queue_workflow, comment_for=comment_for
+    )
+    removed = ("DELETE", REMOVE_LABEL) in [write[:2] for write in fake.writes]
+    assert removed is (queue_workflow is None)
+    assert ("keeps `ready-for-agent`" in one_line(fake.writes[0][2]["body"])) is not removed
 
 
 # A named queue is read only where the claim parks a ticket, and must be active there.

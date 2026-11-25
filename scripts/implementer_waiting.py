@@ -1,4 +1,4 @@
-"""What the claim tells a ticket it stops as `blocked` or `at-capacity`, and whether it waits.
+"""What the claim tells a ticket it stops as `blocked` or `at-capacity`, and the queue check.
 
 Both gates stop a run before any branch exists. A stopped ticket waits only
 for a queue the caller has: the claim's --queue-workflow names it (the
@@ -7,7 +7,9 @@ run from it, dispatches the next waiting ticket when a run ends or a blocker
 closes. Such a ticket keeps `ready-for-agent`. Without a queue nothing would
 ever start it (fabiandistler/repo-maintenance#205), so the claim removes the
 label, since adding one the issue still carries fires no event, and the
-comment says when to add it again.
+comment says when to add it again. The claim's `_stop_at_gate` decides once
+whether the ticket waits and passes that to the comment (`WaitingComment`),
+so the text and the label never disagree.
 
 Only a claim that parks a ticket reads the named queue, just before its
 comment (`require_active_queue`). There a queue that is no active workflow of
@@ -22,6 +24,8 @@ Standard library only.
 """
 
 from __future__ import annotations
+
+from typing import Protocol
 
 from implementer_capacity import MAX_WORKING_RUNS
 from pr_github_client import HTTP_NOT_FOUND, FetchError, ReadClient, get_json
@@ -64,6 +68,12 @@ RELEASED = (
     "again {restart}: the label is removed now, because adding one the issue still "
     "carries starts no run."
 )
+
+
+class WaitingComment(Protocol):
+    """A stopped ticket's comment: ``capacity_comment``, or ``blocked_comment`` with blockers."""
+
+    def __call__(self, *, waits: bool) -> str: ...
 
 
 def require_active_queue(client: ReadClient, repo: str, queue_workflow: str) -> None:
