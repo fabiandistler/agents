@@ -61,6 +61,11 @@ def workflow_file(option: str | None) -> str:
                 f"{WORKFLOW_REF_VARIABLE} is not owner/repo/.github/workflows/<file>@<ref>"
             )
         source, file_name = WORKFLOW_REF_VARIABLE, match["file"]
+    return _plain_workflow_file(source, file_name)
+
+
+def _plain_workflow_file(source: str, file_name: str) -> str:
+    """``file_name`` if it is a file name under .github/workflows/; ``source`` names its origin."""
     if not WORKFLOW_FILE_PATTERN.fullmatch(file_name):
         raise FetchError(f"{source} does not name a plain *.yml or *.yaml file")
     return file_name
