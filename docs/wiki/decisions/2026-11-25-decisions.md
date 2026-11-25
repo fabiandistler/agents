@@ -42,3 +42,11 @@
   classifier because it planned a `--force-with-lease` push. That was not
   needed: the merged branch had been deleted on the remote and held no
   unmerged commits.
+- Afternoon of 2026-11-25: #965, repo-maintenance#209 and dotfiles#84 merged at
+  11:14 UTC. Each merge's `push` run started its queue at 11:14 [read]. #954's
+  agent part merged as #966 and closed #954, but nothing applied or tracked its
+  hook part. The session applied it in #971: push gates went from 2m37s to
+  0.12s on a passed tree, with a full run on a changed tree. The cause went to
+  #972 (the implementer always writes `Closes #n`; proposal: a post-merge step
+  opens a `ready-for-human` follow-up). Plugin-drift gaps went to agents#969 and
+  repo-maintenance#211. The cross-repo blocker that #956 hit went to #964.
