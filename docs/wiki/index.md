@@ -21,7 +21,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-13 triage decisions](decisions/2026-11-13-triage-decisions.md) — reopen #783, queue issue #801, #769 script-only, YAML tickets in interactive sessions.
 - [2026-11-18 decisions](decisions/2026-11-18-decisions.md) — `PR_AUTO_MERGE=true`; high-risk zones already in `pr_risk.py`, no issue; #877 lists all repos.
 - [2026-11-19 tools decisions](decisions/2026-11-19-tools-decisions.md) — tools gallery: deploy gate first, line limit reframed, fix high+med, skill rules, one branch per package.
-- [2026-11-25 decisions](decisions/2026-11-25-decisions.md) — repo-maintenance#205: option 2, queue callers in both consumers plus a claim that promises the queue only when one is configured.
+- [2026-11-25 decisions](decisions/2026-11-25-decisions.md) — repo-maintenance#205: option 2, queue callers in both consumers plus a claim that promises the queue only when one is configured; queue check only where the claim parks (option B).
 - [2026-11-20 decisions](decisions/2026-11-20-decisions.md) — #905/#907, #908, #909/#910, repo-maintenance#174; Opus and bootstrap on the agents and dotfiles routines; dotfiles twice a week for three weeks; maintenance stays in routines (option B); routine edits by hand.
 
 ## Recurring problems
@@ -50,6 +50,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [runs without a trace](problems/runs-without-trace.md) — the 2026-11-16 maintenance run, the retro on PR #873 and the #763 check ended with no artifact and no trace in the repos; status fields read success (2026-11-20); repo-maintenance#174 retries the classifier outage, agents and dotfiles only after their bootstrap switch; dropped Actions schedules leave no failed run.
 - [listing-tool cost](problems/listing-tool-cost.md) — on 2026-11-20 `list_triggers` returned 34 stored prompts (+101k tokens) and `list_pull_requests` 8 pages (+120k); use `get_trigger` with known ids and one `gh api search/issues` query; an `analyst` agent type is planned, PR pending.
 - [consumers without a queue caller](problems/consumers-without-queue.md) — repo-maintenance and dotfiles parked issues "in the queue" with no queue caller since 2026-11-15; #200, dotfiles#79/#80 stuck on 2026-11-25; fixes agents#953, repo-maintenance#206, dotfiles#82.
+- [rm guard and restricted PATH](problems/rm-guard-restricted-path.md) — Claude Code's `rm` guard fails 15 dotfiles Bats tests locally with a fake `command not found`; no repo fix, CI passes (2026-11-25).
 
 ## User preferences
 
@@ -73,3 +74,4 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-19 tools audit](snapshots/2026-11-19-tools-audit.md) — 13 files, 104 bugs, 94 rule violations; issues tools#11–#16.
 - [2026-11-20 status](snapshots/2026-11-20-status.md) — agents, repo-maintenance, dotfiles: human items with deadlines 2026-11-22 to 2026-12-02, broken items, no agent work queued.
 - [2026-11-20 maintenance cadence](snapshots/2026-11-20-maintenance-cadence.md) — capacity 1 slot a week against demand 2.2–3.4 runs, yield per job, cost per run by model, five levers.
+- [2026-11-25 retro of #953](snapshots/2026-11-25-retro-953.md) — issues #954–#958 from the retro, plus #959 (triage cannot read the factory) and #960 (partial review: base-content cap in path order).

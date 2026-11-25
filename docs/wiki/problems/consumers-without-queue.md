@@ -87,7 +87,15 @@ dotfiles never start, because neither repo has a queue caller.
   2026-11-25). [inferred] The limit is the triage run's tooling: its App token
   is sandboxed to the current repository
   ([cross-repo token exchange](cross-repo-token-exchange.md)), not the repo's
-  visibility. No issue yet.
+  visibility. No issue yet. *Superseded later on 2026-11-25:* the inference
+  was wrong. [read] The triage model runs `claude -p` in `--restricted` mode
+  with Read, Grep and Glob only, and has no network, MCP server or GitHub token
+  (`scripts/pr_review_claude.py:31,47-50,60-61,70`,
+  `.github/workflows/factory-issue-triage.yml:179-183,238-239`,
+  `fabiandistler/agents@f5c2f16`). The job already fetches agents at
+  `job.workflow_sha` into `$RUNNER_TEMP/factory` "so the model never sees it"
+  (`:22-26,192-202`). Issue agents#959 proposes passing that copy as
+  `--add-dir`.
 
 Related: [implementer-queue page guard](implementer-queue-page-guard.md),
 [no agent consumer outside agents](no-agent-consumer-outside-agents.md),

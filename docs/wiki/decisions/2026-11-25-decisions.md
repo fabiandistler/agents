@@ -15,3 +15,13 @@
 - The session did not dispatch repo-maintenance#200 or dotfiles#79/#80 by
   hand (its own call, not the maintainer's): once the callers merge, the hourly
   queue schedule is expected to start them [inferred].
+- Later on 2026-11-25, the maintainer chose option B for agents#953's queue
+  check. Option A checked on every claim. Option B checks only where the
+  claim would park the issue, so a disabled queue fails no run with free
+  capacity. Reason: GitHub disables scheduled workflows in public repositories
+  after 60 days without activity (docs.github.com, read 2026-11-25), and
+  agents is public. A rework of #953 was delegated the same day.
+- The same reply said "ja" to filing two issues: triage in consumer repos
+  cannot read agents, and 15 dotfiles Bats tests fail locally with
+  `rm: command not found`. The session read "ja" as covering both and had the
+  `rm` cause diagnosed before choosing the repo.
