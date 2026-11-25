@@ -68,7 +68,7 @@ undoing the choice after the merge, most expensive first:
    surface it already has.
 5. **Tests**: what is tested and how. A deleted test, a weakened assertion, a
    skipped or loosened check goes first in this group: it can make CI green by
-   removing the check.
+   removing the check. Start its criterion with `deleted or weakened test:`.
 
 When a decision fits two categories, take the earlier one. Within a category,
 put first the decision the later ones build on.
