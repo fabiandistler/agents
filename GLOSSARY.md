@@ -183,3 +183,14 @@ it.
 
 Not a synonym for an artifact: artifacts carry data inside one run's jobs, the
 handoff protocol carries facts between runs.
+
+## Review decision
+
+A place in a change where its author chose between several defensible options
+that neither the originating issue nor the repo's conventions settle, and
+where undoing the choice after the merge is costly. A deviation from the issue
+counts as one too. A reviewer must judge it; what a linter catches, what
+follows an existing pattern, or what the issue states literally is not one.
+
+Not a synonym for a finding: a finding is a defect, a review decision is a
+choice. Settling every review decision of a change is not a defect review.
