@@ -178,6 +178,14 @@ rather than landing on `main`. The same install adds a commit-msg hook that
 rejects subjects outside Conventional Commits and two pre-push hooks: one runs
 `check_all.sh` without its prek, mermaid and bats checks, the other runs just
 the bats check (export `PYTHON=` as above, or the push stops with exit 4).
+A pre-push hook that passes `--skip-passed` skips its checks when
+`check_all.sh` just passed them on the tree being pushed. A run that exits 0
+on a clean work tree, with `HEAD` unmoved, writes `<tree> <checks>` to
+`$(git rev-parse --git-path check_all-pass)`, and every other run removes it.
+`--skip-passed` then exits 0 with one `skipped: tree ...` line only if that
+tree is `HEAD`'s and the pushed commit's (prek exports it as
+`PRE_COMMIT_TO_REF`), the work tree is still clean, and the stamp lists every
+check the hook selects; otherwise the checks run. CI never passes the flag.
 The `check-file-tokens` hook blocks a commit that stages a text file over 5000
 tokens (bytes / 4, so over 20000 bytes) and prints how to split it along its
 seams; mark a generated file `linguist-generated` in `.gitattributes` instead.

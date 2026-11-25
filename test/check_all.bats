@@ -3,24 +3,17 @@
 # and the pre-push hooks rely on. The checks themselves are tested elsewhere.
 
 load test_helper
+load check_all_helper
 
 setup() {
   common_setup
   CHECK_ALL="$REPO_ROOT/scripts/check_all.sh"
 }
 
-# A checkout with nothing but check_all.sh and its sourced helper: every check
-# that needs a repo file fails there, and the Bats submodules are missing.
-make_bare_checkout() {
-  bare_checkout="$(mktemp -d)"
-  mkdir "$bare_checkout/scripts"
-  cp "$CHECK_ALL" "$REPO_ROOT/scripts/require_python.sh" "$bare_checkout/scripts/"
-}
-
 # A bare checkout whose Bats runner only sets up a scratch repo the way the
 # suites' fixtures do: `git init` in a temp dir, then `git config` in it.
 make_checkout_with_scratch_repo_runner() {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   local bats_dir="$bare_checkout/test/bats"
   mkdir -p "$bats_dir/bats-core/bin" "$bats_dir/bats-support" "$bats_dir/bats-assert"
   touch "$bats_dir/bats-support/load.bash" "$bats_dir/bats-assert/load.bash"
@@ -37,7 +30,7 @@ EOF
 
 # A bare checkout whose Bats runner writes its arguments to $runner_args.
 make_checkout_with_recording_runner() {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   local bats_dir="$bare_checkout/test/bats"
   mkdir -p "$bats_dir/bats-core/bin" "$bats_dir/bats-support" "$bats_dir/bats-assert"
   touch "$bats_dir/bats-support/load.bash" "$bats_dir/bats-assert/load.bash"
@@ -64,7 +57,7 @@ stub_parallel() {
 # does, a diff of more than 40 lines last; then it exits 1. With $1 = pass it
 # prints a Passed line and exits 0.
 make_checkout_with_stub_prek() {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   printf 'line\n' >"$bare_checkout/formatted.py"
   git -C "$bare_checkout" init -q
   git -C "$bare_checkout" add formatted.py
@@ -187,7 +180,7 @@ decoy_config() {
 }
 
 @test "a failing check prints FAIL with its output, writes --output, and exits 1" {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   run "$bare_checkout/scripts/check_all.sh" --only instructions --output "$bare_checkout/full.log"
   assert_failure 1
   assert_line 'FAIL instructions (exit 2)'
@@ -205,7 +198,7 @@ decoy_config() {
 }
 
 @test "missing Bats submodules report MISSING with the fix and exit 3" {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   run "$bare_checkout/scripts/check_all.sh" --only bats
   assert_failure 3
   assert_line 'MISSING bats: not installed: bats-submodules (git submodule update --init)'
@@ -226,7 +219,7 @@ fix: $bare_python -m pip install -r scripts/check_all.requirements.txt"
 }
 
 @test "each missing tool gets its own fix, once per run" {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/bare"
   bare_python="$BATS_TEST_TMPDIR/bare/bin/python3"
   run env PYTHON="$bare_python" "$bare_checkout/scripts/check_all.sh" --only pytest,bats
@@ -238,7 +231,7 @@ fix: $bare_python -m pip install -r scripts/check_all.requirements.txt"
 }
 
 @test "a failed check does not print the exit 3 explanation" {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   run "$bare_checkout/scripts/check_all.sh" --only instructions,bats
   assert_failure 1
   refute_output --partial 'exit 3:'
@@ -295,7 +288,7 @@ fix: $bare_python -m pip install -r scripts/check_all.requirements.txt"
 # A tracked repo with the instruction-unicode check and the files its --include
 # list names; $1 is written into the skill reference and the review prompt.
 make_unicode_checkout() {
-  make_bare_checkout
+  bare_checkout="$(make_bare_checkout)"
   cp "$REPO_ROOT/scripts/maintenance-instruction-unicode.py" "$bare_checkout/scripts/"
   mkdir -p "$bare_checkout/skills/demo/references" "$bare_checkout/skills/demo/agents"
   printf '# Demo\n' >"$bare_checkout/skills/demo/SKILL.md"

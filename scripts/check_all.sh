@@ -28,10 +28,12 @@ CHECKS=(manifest routers descriptions docs plugins instructions python-baseline 
 
 usage() {
   cat <<'EOF'
-Usage: scripts/check_all.sh [--only A,B] [--skip A,B] [--tail N] [--output FILE] [--list]
+Usage: scripts/check_all.sh [--only A,B] [--skip A,B] [--skip-passed] [--tail N] [--output FILE] [--list]
 Runs every CI check from the repo root; one PASS/FAIL/MISSING line per check.
   --only A,B     run only these checks (names from --list)
   --skip A,B     run all checks except these
+  --skip-passed  exit 0 without running a check if the pass stamp shows that
+                 the selected checks passed on this tree (for pre-push hooks)
   --tail N       lines of a failing check's output to show (default 40, 0 = all)
   --output FILE  also write every check's full output to FILE
   --list         print the check names with the tools each needs, then exit
@@ -41,12 +43,20 @@ and the secret scan at the versions pinned in .pre-commit-config.yaml; its
 hooks may rewrite files (ruff --fix, shfmt, whitespace). A failing prek check
 prints each hook's result, then `git diff --stat` of the work tree (up to 10
 files); run `git diff` for the full change.
+Pass stamp: a run that exits 0, starts and ends with no staged, unstaged or
+untracked file, and leaves HEAD where it was writes `<tree> <checks>` to
+$(git rev-parse --git-path check_all-pass); every other run removes it.
+--skip-passed prints `skipped: tree <sha> passed <checks> (<stamp>)` and exits 0
+only if the stamp's tree is HEAD's and the pushed commit's (PRE_COMMIT_TO_REF,
+set by prek's pre-push hook), the work tree is clean, and the stamp lists every
+selected check. In any other case it runs the checks as usual.
 Exit: 0 all passed, 1 a check failed, 2 usage error,
       3 nothing failed but a check could not run (tool missing),
       4 PYTHON is missing or older than 3.11.
 Examples:
   scripts/check_all.sh
   scripts/check_all.sh --only prek,pytest --tail 0
+  scripts/check_all.sh --only bats --skip-passed
 EOF
 }
 
@@ -59,7 +69,8 @@ needs() {
     prek) echo "prek" ;;
     zizmor) echo "zizmor" ;;
     # The install.sh suites run quick_validate.py, which imports yaml.
-    bats) echo "bash $PY pyyaml bats-submodules" ;;
+    # test/check_all.bats pushes through a real prek pre-push hook.
+    bats) echo "bash $PY pyyaml prek bats-submodules" ;;
     mermaid) echo "npx" ;;
     *) echo "$PY" ;;
   esac
@@ -191,7 +202,7 @@ run_check() {
   esac
 }
 
-only="" skip="" tail_n=40 output=""
+only="" skip="" tail_n=40 output="" skip_passed=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --only)
@@ -207,6 +218,10 @@ while [ $# -gt 0 ]; do
         usage >&2
         exit 2
       }
+      ;;
+    --skip-passed)
+      skip_passed=1
+      shift
       ;;
     --tail)
       tail_n="${2:-}"
@@ -258,6 +273,51 @@ selected() {
 
 cd "$REPO_ROOT" || exit 2
 
+wanted=()
+for name in "${CHECKS[@]}"; do selected "$name" && wanted+=("$name"); done
+
+# The pass stamp: `<tree sha> <checks that passed>`, per worktree and outside
+# the tree. Empty outside a git checkout, where no run stamps or skips.
+stamp_path="$(git rev-parse --path-format=absolute --git-path check_all-pass 2>/dev/null)" || stamp_path=""
+
+# No staged, unstaged or untracked non-ignored file. A failing git status
+# counts as dirty.
+work_tree_clean() {
+  local changes
+  changes="$(git status --porcelain 2>/dev/null)" || return 1
+  [ -z "$changes" ]
+}
+
+# Succeeds, printing the skip line, only if the stamp shows that every selected
+# check passed on the tree of HEAD, of the work tree and of the pushed commit.
+stamp_covers_push() {
+  [ -n "$stamp_path" ] && [ -f "$stamp_path" ] || return 1
+  local line stamp_tree stamp_checks head_tree pushed_tree name
+  IFS= read -r line <"$stamp_path" || [ -n "$line" ] || return 1
+  [[ "$line" =~ ^([0-9a-f]{40}|[0-9a-f]{64})\ ([a-z0-9-]+(,[a-z0-9-]+)*)$ ]] || return 1
+  stamp_tree="${BASH_REMATCH[1]}" stamp_checks="${BASH_REMATCH[2]}"
+  head_tree="$(git rev-parse -q --verify 'HEAD^{tree}')" || return 1
+  [ "$stamp_tree" = "$head_tree" ] || return 1
+  [ -n "${PRE_COMMIT_TO_REF:-}" ] || return 1
+  pushed_tree="$(git rev-parse -q --verify "${PRE_COMMIT_TO_REF}^{tree}")" || return 1
+  [ "$stamp_tree" = "$pushed_tree" ] || return 1
+  work_tree_clean || return 1
+  for name in "${wanted[@]}"; do
+    case ",$stamp_checks," in *",$name,"*) ;; *) return 1 ;; esac
+  done
+  echo "skipped: tree $stamp_tree passed $stamp_checks ($stamp_path)"
+}
+
+if [ -n "$skip_passed" ] && stamp_covers_push; then exit 0; fi
+
+# From here on only a run that meets every stamp condition leaves a stamp.
+start_head="" start_clean=""
+if [ -n "$stamp_path" ]; then
+  rm -f "$stamp_path"
+  start_head="$(git rev-parse -q --verify HEAD)"
+  work_tree_clean && start_clean=1
+fi
+
 # Stop before the first check on an old interpreter; a pre-push run with the
 # system python3 would otherwise end in MISSING lines or tomllib tracebacks.
 # shellcheck source=scripts/require_python.sh
@@ -276,9 +336,7 @@ log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
 failed=() missing=() missing_tools=""
-for name in "${CHECKS[@]}"; do
-  selected "$name" || continue
-
+for name in "${wanted[@]}"; do
   absent="" fixes=""
   for tool in $(needs "$name"); do
     have "$tool" && continue
@@ -326,5 +384,15 @@ if [ ${#missing[@]} -gt 0 ]; then
     echo "fix: $fix"
   done
   exit 3
+fi
+# Every selected check passed. A check that rewrote a file or moved HEAD
+# leaves no stamp: the tree that passed is then not the one in HEAD.
+if [ -n "$start_clean" ] && [ -n "$start_head" ] && [ ${#wanted[@]} -gt 0 ] &&
+  [ "$(git rev-parse -q --verify HEAD)" = "$start_head" ] && work_tree_clean; then
+  stamp_tmp="$stamp_path.$$"
+  printf '%s %s\n' "$(git rev-parse 'HEAD^{tree}')" "$(
+    IFS=,
+    echo "${wanted[*]}"
+  )" >"$stamp_tmp" && mv -f "$stamp_tmp" "$stamp_path"
 fi
 exit 0
