@@ -150,6 +150,9 @@ repos:
   # runs, and bats, which has a push gate of its own: a clone without the
   # test/bats/ submodules stops there with exit 3 and the line
   # `MISSING bats: ... (git submodule update --init)`.
+  # Both push gates pass --skip-passed: they exit 0 with one `skipped:` line
+  # when check_all.sh just passed their checks on the pushed tree (the pass
+  # stamp in $(git rev-parse --git-path check_all-pass)). CI never passes it.
   - repo: local
     hooks:
       - id: conventional-commit-msg
@@ -160,7 +163,7 @@ repos:
       - id: check-all-pre-push
         name: scripts/check_all.sh (without prek, mermaid, bats)
         language: system
-        entry: bash scripts/check_all.sh --skip prek,mermaid,bats
+        entry: bash scripts/check_all.sh --skip prek,mermaid,bats --skip-passed
         pass_filenames: false
         always_run: true
         stages: [pre-push]
@@ -173,7 +176,7 @@ repos:
       - id: bats-pre-push
         name: bats test/ (shell script tests)
         language: system
-        entry: bash scripts/check_all.sh --only bats
+        entry: bash scripts/check_all.sh --only bats --skip-passed
         pass_filenames: false
         files: ^(install(-wizard)?\.sh|\.gitmodules|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|(scripts|test|skills|plugins|instructions|\.claude/hooks)/.*)$
         stages: [pre-push]
