@@ -146,14 +146,25 @@ Any other reply is a question about the card.
 
 ## Close
 
-When every card has `ok` or `change`, or the reviewer stops, end the protocol
-with the line `Review decisions settled, no defect review.` and print its full
-path again. If the reviewer stops with cards still open, write the line only
+When every card has `ok` or `change`, or the reviewer stops, add the line
+"The code-review skill was not run; this review does not depend on it." Then
+end the protocol with the line `Review decisions settled, no defect review.`
+and print its full path again. If the reviewer stops with cards still open, write the line only
 when they confirm; otherwise leave the protocol open for a later run to
 resume. Add the line that deviations were not checked when no issue was
 supplied.
 
 After an early stop, mark each card not shown with `- Not reviewed: moot after
 card <n>` and close the protocol the same way.
+
+Then offer the combined review comment: run
+`python3 scripts/protocol.py comment <protocol-file>` and show its output in
+one fenced block for the reviewer to copy. It joins the drafts of the `change`
+cards in card order. Exit 5 means no card asked for a change: say there is no
+comment to post. Exit 3 names a `change` card without a draft: write the
+draft, record it, and run the command again.
+
+The reviewer posts the comment. Never post it, approve or merge, on any forge,
+with any tool, even when asked to: hand the text over and stop.
 
 Nothing else: no verdict on the change and no claim that it is correct.

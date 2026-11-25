@@ -132,3 +132,84 @@ def test_resume_rejects_a_missing_protocol(tmp_path):
     proc = run("resume", str(tmp_path / "missing.md"))
 
     assert proc.returncode == 2
+
+
+ANSWERED = """\
+# Review decisions protocol
+
+A defect review was not run.
+
+## Card 1 of 3
+
+- Location: `src/config.py:12`
+- Answer: change
+- Draft comment: `src/config.py:12`: keep `timeout` in seconds; the new
+  `timeout_ms` key breaks existing config files.
+
+## Card 2 of 3
+
+- Location: `src/app.py:40`
+- Answer: ok
+
+## Card 3 of 3
+
+- Location: `tests/test_app.py:8`
+- Question: why was this test removed?
+- Reply: the diff does not say.
+- Answer: change
+- Draft comment: `tests/test_app.py:8`: restore the deleted retry test.
+
+Review decisions settled, no defect review.
+"""
+
+
+def test_comment_combines_the_change_drafts_in_card_order(tmp_path):
+    path = tmp_path / "p.md"
+    path.write_text(ANSWERED)
+
+    proc = run("comment", str(path))
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout == (
+        "1. `src/config.py:12`: keep `timeout` in seconds; the new\n"
+        "   `timeout_ms` key breaks existing config files.\n"
+        "2. `tests/test_app.py:8`: restore the deleted retry test.\n"
+        "\n"
+        "This comment covers review decisions only; no defect review was done.\n"
+    )
+
+
+def test_comment_rejects_a_change_without_a_draft(tmp_path):
+    path = protocol(tmp_path, ["- Answer: ok", "- Answer: change", "- Answer: ok"])
+
+    proc = run("comment", str(path))
+
+    assert proc.returncode == 3
+    assert "card 2" in proc.stderr
+    assert proc.stdout == ""
+
+
+def test_comment_reports_when_no_card_asks_for_a_change(tmp_path):
+    path = protocol(tmp_path, ["- Answer: ok", "- Answer: later", "- Answer: ok"])
+
+    proc = run("comment", str(path))
+
+    assert proc.returncode == 5
+    assert proc.stdout == ""
+
+
+def test_comment_leaves_out_a_draft_whose_answer_changed_to_ok(tmp_path):
+    path = protocol(
+        tmp_path,
+        [
+            "- Answer: change\n- Draft comment: `a.py:1`: rename the flag.",
+            "- Draft comment: `src/app.py:2`: drop the new key.\n- Answer: ok",
+            "- Answer: ok",
+        ],
+    )
+
+    proc = run("comment", str(path))
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.splitlines()[0] == "1. `a.py:1`: rename the flag."
+    assert "drop the new key" not in proc.stdout
