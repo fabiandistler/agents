@@ -206,8 +206,8 @@ only. GitHub refuses to start the run if the cap is lower, so a caller that
 pins a commit from before #863 with `actions: read` must raise it in the same
 pull request that bumps the pin. `queue_workflow` names the queue caller
 below: only with it does a `blocked` or `at-capacity` issue keep
-`ready-for-agent` and wait, and a name that is no active workflow of the
-target fails the run. `fix_task_workflow` names the Fix caller; the
+`ready-for-agent` and wait, and only such a run fails if the queue is
+missing or not active. `fix_task_workflow` names the Fix caller; the
 `follow-up` job dispatches both after a run the queue started.
 
 ```yaml

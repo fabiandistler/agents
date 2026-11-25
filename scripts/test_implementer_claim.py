@@ -76,6 +76,7 @@ class FakeGitHub:
     ``branch`` and ``workflow_file`` are the names the routes expect.
     ``listed_total``, when set, is the ``total_count`` every Actions listing reports.
     ``queue_state`` is the state of the caller's queue workflow; None answers 404.
+    ``reads`` records every GET path, in order.
     """
 
     pulls: list[dict] = field(default_factory=list)
@@ -90,6 +91,7 @@ class FakeGitHub:
     errors: dict[tuple[str, str], Exception] = field(default_factory=dict)
     canned_payloads: dict[str, object] = field(default_factory=dict)
     writes: list[tuple[str, str, dict]] = field(default_factory=list)
+    reads: list[str] = field(default_factory=list)
     compared: list[str] = field(default_factory=list)
     branch: str = BRANCH
     workflow_file: str = "implementer.yml"
@@ -103,6 +105,7 @@ class FakeGitHub:
     def get(
         self, path: str, params: dict | None = None, accept: str | None = None
     ) -> pr_github_client.Response:
+        self.reads.append(path)
         self._fail_if_routed("GET", path)
         if path in self.canned_payloads:
             first_page = (params or {}).get("page", 1) == 1

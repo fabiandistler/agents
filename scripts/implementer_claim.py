@@ -14,7 +14,7 @@ contract written by a person with write access, a ticket whose blockers are not
 done, and a run while another one is working. Each comments. A ticket with no
 contract loses `ready-for-agent`, because only a person's brief can restart it.
 A blocked ticket and one stopped at capacity keep the label and wait in the
-queue --queue-workflow names, which must be an active workflow of the
+queue --queue-workflow names, checked only then to be an active workflow of the
 repository; with an empty --queue-workflow they lose it too
 (implementer_waiting.py).
 
@@ -125,11 +125,12 @@ outcomes and exit codes:
   5 blocked      a declared blocker is not closed as completed; commented, kept the label (waits)
   6 at-capacity  another implementer run is working; commented, kept the label (waits)
                  with --queue-workflow '' both remove the label instead: no queue would start them
+                 a queue that is no active workflow of --repo fails both (1) before the comment
   7 no-contract  no contract by a person with write access; commented, removed the label
   1 failed       any other API error; wrote "RUN FAILED: claim (<reason>)" to --summary
   2              usage error
 An invalid --workflow-file, --branch-prefix, --queue-workflow or GITHUB_WORKFLOW_REF fails (1)
-before any call; a --queue-workflow that is no active workflow of --repo, before any write.
+before any call. Only blocked and at-capacity read the --queue-workflow (implementer_waiting.py).
 env: GH_TOKEN (the App token inside claude-code-action), ACTIONS_READ_TOKEN, GITHUB_RUN_ID,
      GITHUB_WORKFLOW_REF (names the caller's workflow file when run as a reusable workflow).
 
@@ -233,12 +234,20 @@ def _release_ticket(client: GitHubClient, repo: str, issue: int, comment: str) -
         remove_ready_label(client, f"/repos/{repo}/issues/{issue}")
 
 
-def _stop_at_gate(client: GitHubClient, repo: str, issue: int, comment: str, waits: bool) -> None:
-    """A ticket that waits keeps `ready-for-agent` for the queue; any other is released."""
-    if waits:
-        _comment(client, repo, issue, comment)
-    else:
+def _stop_at_gate(
+    client: GitHubClient,
+    actions_client: ReadClient,
+    repo: str,
+    issue: int,
+    comment: str,
+    queue_workflow: str | None,
+) -> None:
+    """Park the ticket in the caller's queue, checked only here (implementer_waiting.py)."""
+    if queue_workflow is None:
         _release_ticket(client, repo, issue, comment)
+        return
+    require_active_queue(actions_client, repo, queue_workflow)
+    _comment(client, repo, issue, comment)
 
 
 def _closed_as_completed(issue: object, path: str) -> bool:
@@ -319,10 +328,8 @@ def claim_branch(
     """Decide this run's claim on the issue's branch and make the writes it needs.
 
     ``queue_workflow`` is the caller's queue, or None: only with one do the
-    blocked and at-capacity gates leave the ticket waiting.
+    blocked and at-capacity gates leave the ticket waiting, and only they read it.
     """
-    if queue_workflow is not None:
-        require_active_queue(actions_client, repo, queue_workflow)
     waits = queue_workflow is not None
     branch = setup.branch(issue)
     holding_pull_request = pull_request_holding_issue(client, repo, issue, branch)
@@ -338,11 +345,12 @@ def claim_branch(
     if blockers or unresolved:
         # With a queue the ticket waits: implementer_queue.py starts it once unblocked.
         comment = blocked_comment(blockers, unresolved, waits=waits)
-        _stop_at_gate(client, repo, issue, comment, waits)
+        _stop_at_gate(client, actions_client, repo, issue, comment, queue_workflow)
         return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
     if runs_working_ahead(actions_client, repo, run_id, setup) >= MAX_WORKING_RUNS:
         # With a queue the ticket waits: implementer_queue.py starts it when no run works.
-        _stop_at_gate(client, repo, issue, capacity_comment(waits=waits), waits)
+        comment = capacity_comment(waits=waits)
+        _stop_at_gate(client, actions_client, repo, issue, comment, queue_workflow)
         return ClaimOutcome(AT_CAPACITY, branch)
 
     main_sha = _read_ref_sha(client, repo, MAIN_BRANCH)

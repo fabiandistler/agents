@@ -2,8 +2,11 @@
 
 `blocked` and `at-capacity` keep `ready-for-agent` for the queue that
 --queue-workflow names. Without one nothing would ever start the ticket, so the
-claim releases it and says how to restart it; a named queue that is no active
-workflow of the repository fails the claim before any write.
+claim releases it and says how to restart it. Only a claim that parks a ticket
+reads the named queue, just before its comment, and fails if it is no active
+workflow of the repository: GitHub disables a scheduled workflow, as the queue
+is, after 60 days without activity in a public repository, and that must not
+stop a run that has free capacity.
 """
 
 from __future__ import annotations
@@ -15,7 +18,8 @@ import pr_github_client
 import pytest
 from test_implementer_claim import (
     COMMENTS,
-    CREATE_REF,
+    ISSUE,
+    OLD_SHA,
     PULLS,
     QUEUE,
     REMOVE_LABEL,
@@ -23,12 +27,14 @@ from test_implementer_claim import (
     FakeGitHub,
     claim,
     http_error,
+    pull_request,
     run_cli,
     run_main,
 )
 from test_implementer_intake_gates import stopped_fake
 
 GATES = ("blocked", "at-capacity")
+NOT_ACTIVE = ("disabled_manually", "disabled_inactivity", "deleted")
 RESTART = {
     "blocked": "Add `ready-for-agent` again once every blocker is done",
     "at-capacity": "Add `ready-for-agent` again once the working run has ended",
@@ -89,19 +95,55 @@ def test_without_a_queue_a_label_already_gone_is_tolerated():
     assert claim(fake, queue_workflow=None).outcome == implementer_claim.AT_CAPACITY
 
 
-def test_without_a_queue_no_workflow_is_looked_up():
-    fake = FakeGitHub(errors={("GET", QUEUE): AssertionError("there is no queue to look up")})
-    assert claim(fake, queue_workflow=None).outcome == implementer_claim.CLAIMED
-
-
-# A named queue must be an active workflow of the repository.
-
-
 @pytest.mark.parametrize("gate", ["claimed", *GATES])
-def test_a_queue_the_repository_lacks_fails_before_any_other_call(gate):
+def test_without_a_queue_no_workflow_is_looked_up(gate):
     fake = FakeGitHub() if gate == "claimed" else stopped_fake(gate)
+    assert claim(fake, queue_workflow=None).outcome == gate
+    assert QUEUE not in fake.reads
+
+
+# A named queue is read only where the claim parks a ticket, and must be active there.
+
+
+def parks_nothing_fake(outcome: str) -> FakeGitHub:
+    """A claim that builds, or stops for a reason no queue serves."""
+    if outcome == "reclaimed":
+        return FakeGitHub(branch_sha=OLD_SHA)
+    if outcome == "pr-exists":
+        return FakeGitHub(pulls=[pull_request(body=f"Closes #{ISSUE}")])
+    if outcome == "no-contract":
+        return stopped_fake("no-contract")
+    return FakeGitHub()
+
+
+def assert_read_at_the_gate(fake: FakeGitHub) -> None:
+    """The gate decided before the queue was read, and nothing was read after it."""
+    assert fake.reads[0] == PULLS, "the queue is no longer checked first"
+    assert fake.reads.index(QUEUE) == len(fake.reads) - 1
+
+
+@pytest.mark.parametrize("queue_state", [None, *NOT_ACTIVE])
+@pytest.mark.parametrize("outcome", ["claimed", "reclaimed", "pr-exists", "no-contract"])
+def test_a_claim_that_parks_nothing_never_reads_the_queue(outcome, queue_state):
+    # A quiet public repository's queue is disabled after 60 days; free work still starts.
+    fake = parks_nothing_fake(outcome)
+    fake.queue_state = queue_state
+    assert claim(fake).outcome == outcome
+    assert QUEUE not in fake.reads
+
+
+@pytest.mark.parametrize("gate", GATES)
+def test_a_parking_claim_reads_the_queue_just_before_its_comment(gate):
+    fake = stopped_fake(gate)
+    assert claim(fake).outcome == gate
+    assert_read_at_the_gate(fake)
+    assert [write[:2] for write in fake.writes] == [("POST", COMMENTS)]
+
+
+@pytest.mark.parametrize("gate", GATES)
+def test_a_parking_claim_fails_on_a_queue_the_repository_lacks(gate):
+    fake = stopped_fake(gate)
     fake.queue_state = None
-    fake.errors[("GET", PULLS)] = AssertionError("the queue is checked first")
     with pytest.raises(pr_github_client.FetchError) as caught:
         claim(fake)
     assert caught.value.status == 404
@@ -109,22 +151,26 @@ def test_a_queue_the_repository_lacks_fails_before_any_other_call(gate):
         "--queue-workflow names no workflow of the repository "
         f"(GitHub API returned 404 for {QUEUE})"
     )
-    assert fake.writes == []
+    assert_read_at_the_gate(fake)
+    assert fake.writes == [], "no comment and no released label: the Fix task sees a red run"
 
 
-@pytest.mark.parametrize("state", ["disabled_manually", "disabled_inactivity", "deleted"])
-def test_a_queue_that_is_not_active_fails_before_any_write(state):
-    fake = stopped_fake("at-capacity")
+@pytest.mark.parametrize("state", NOT_ACTIVE)
+@pytest.mark.parametrize("gate", GATES)
+def test_a_parking_claim_fails_on_a_queue_that_is_not_active(gate, state):
+    fake = stopped_fake(gate)
     fake.queue_state = state
     with pytest.raises(pr_github_client.FetchError) as caught:
         claim(fake)
     assert str(caught.value) == f"--queue-workflow names a workflow that is {state}: {QUEUE}"
+    assert_read_at_the_gate(fake)
     assert fake.writes == []
 
 
 @pytest.mark.parametrize("status", [403, 500])
 def test_an_unreadable_queue_propagates_without_writes(status):
-    fake = FakeGitHub(errors={("GET", QUEUE): http_error(status, QUEUE)})
+    fake = stopped_fake("at-capacity")
+    fake.errors[("GET", QUEUE)] = http_error(status, QUEUE)
     with pytest.raises(pr_github_client.FetchError) as caught:
         claim(fake)
     assert caught.value.status == status
@@ -133,7 +179,8 @@ def test_an_unreadable_queue_propagates_without_writes(status):
 
 @pytest.mark.parametrize("payload", [[], {"path": "x"}, {"state": 1}])
 def test_a_malformed_queue_payload_is_an_api_error(payload):
-    fake = FakeGitHub(canned_payloads={QUEUE: payload})
+    fake = stopped_fake("blocked")
+    fake.canned_payloads[QUEUE] = payload
     with pytest.raises(pr_github_client.FetchError, match="malformed workflow"):
         claim(fake)
     assert fake.writes == []
@@ -154,12 +201,32 @@ def test_cli_with_an_empty_queue_workflow_releases(
     assert not summary.exists(), "a released ticket is no failed claim"
 
 
-def test_cli_turns_a_missing_queue_red(monkeypatch, tmp_path, capsys):
-    fake = FakeGitHub(queue_state=None)
+@pytest.mark.parametrize("queue_state", [None, "disabled_inactivity"])
+def test_cli_builds_beside_a_missing_or_disabled_queue(monkeypatch, tmp_path, capsys, queue_state):
+    fake = FakeGitHub(queue_state=queue_state)
+    code, summary = run_cli(monkeypatch, tmp_path, fake)
+    assert code == implementer_claim.EXIT_CONTINUE
+    assert json.loads(capsys.readouterr().out)["outcome"] == "claimed"
+    assert not summary.exists()
+
+
+@pytest.mark.parametrize(
+    ("queue_state", "reason_start"),
+    [
+        (None, "--queue-workflow names no workflow"),
+        ("disabled_inactivity", "--queue-workflow names a workflow that is disabled_inactivity"),
+    ],
+)
+@pytest.mark.parametrize("gate", GATES)
+def test_cli_turns_a_parking_claim_red_on_a_missing_or_disabled_queue(
+    monkeypatch, tmp_path, capsys, gate, queue_state, reason_start
+):
+    fake = stopped_fake(gate)
+    fake.queue_state = queue_state
     code, summary = run_cli(monkeypatch, tmp_path, fake)
     reason = json.loads(capsys.readouterr().out)["reason"]
     assert code == implementer_claim.EXIT_FAILED
-    assert reason.startswith("--queue-workflow names no workflow")
+    assert reason.startswith(reason_start)
     assert summary.read_text(encoding="utf-8") == f"RUN FAILED: claim ({reason})\n"
     assert fake.writes == []
 
@@ -181,12 +248,15 @@ def test_cli_rejects_a_queue_that_is_no_file_name_before_any_call(
 def test_cli_looks_the_queue_up_with_the_job_token(monkeypatch, tmp_path, capsys):
     # The App token cannot be shown to read Actions (ADR-0014); the job token can.
     app_fake = FakeGitHub(errors={("GET", QUEUE): http_error(403, QUEUE)})
-    job_fake = FakeGitHub(errors={("POST", CREATE_REF): AssertionError("job token wrote")})
+    job_fake = stopped_fake("at-capacity")
+    job_fake.errors[("POST", COMMENTS)] = AssertionError("job token wrote")
     fakes = {"app-token": app_fake, "job-token": job_fake}
     monkeypatch.setenv("GH_TOKEN", "app-token")
     monkeypatch.setenv("ACTIONS_READ_TOKEN", "job-token")
     monkeypatch.setenv("GITHUB_RUN_ID", str(RUN_ID))
     monkeypatch.setattr(implementer_claim, "GitHubClient", lambda token: fakes[token])
     code, _ = run_main(monkeypatch, tmp_path)
-    assert code == implementer_claim.EXIT_CONTINUE
-    assert json.loads(capsys.readouterr().out)["outcome"] == "claimed"
+    assert code == implementer_claim.EXIT_AT_CAPACITY
+    assert json.loads(capsys.readouterr().out)["outcome"] == "at-capacity"
+    assert QUEUE in job_fake.reads
+    assert [write[:2] for write in app_fake.writes] == [("POST", COMMENTS)]

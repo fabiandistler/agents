@@ -9,9 +9,14 @@ ever start it (fabiandistler/repo-maintenance#205), so the claim removes the
 label, since adding one the issue still carries fires no event, and the
 comment says when to add it again.
 
-A queue that is named but is no active workflow of the repository fails the
-claim before any write (`require_active_queue`): a promise the claim cannot
-keep is no fallback.
+Only a claim that parks a ticket reads the named queue, just before its
+comment (`require_active_queue`). There a queue that is no active workflow of
+the repository fails the claim before any write: a promise the claim cannot
+keep is no fallback, so the Fix task sees a red run instead of a released
+label. A claim that parks nothing does not read it: in a public repository
+GitHub disables a scheduled workflow, as the queue is, after 60 days without
+activity (https://docs.github.com/actions/using-workflows/disabling-and-enabling-a-workflow),
+and that must not stop a run that has free capacity.
 
 Standard library only.
 """

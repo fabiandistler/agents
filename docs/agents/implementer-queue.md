@@ -19,10 +19,16 @@ the caller's file. It matches the job by `--job-name` also as
 with `--branch-prefix`, which the reusable workflow passes from its
 `branch_prefix` input; the defaults are `implementer.yml`, `implement` and
 `agent/issue-`. `--queue-workflow` is the reusable workflow's `queue_workflow`
-input, the caller's queue: empty when it has none. A named queue that is not
-an active workflow of the repository (Actions API) fails the claim before any
-write, so a renamed or disabled queue turns the run red instead of leaving
-issues waiting for nothing. The outcomes:
+input, the caller's queue: empty when it has none. Only a claim that would
+leave the issue waiting (`blocked`, `at-capacity`) reads it, just before its
+comment: a named queue that is not an active workflow of the repository
+(Actions API) then fails the claim before any write, so a renamed or disabled
+queue turns the run red instead of leaving the issue waiting for nothing. A
+claim that leaves nothing waiting does not read it, because GitHub disables a
+scheduled workflow, as the queue is, after 60 days without activity in a
+public repository
+([GitHub docs](https://docs.github.com/actions/using-workflows/disabling-and-enabling-a-workflow)).
+The outcomes:
 
 | Situation | Outcome | What the run does | Who acts next |
 | --- | --- | --- | --- |

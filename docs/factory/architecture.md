@@ -154,10 +154,10 @@ own commit, renders both guards, and starts `claude-code-action`, which
 trades the OIDC token for the App token. The model's first write is
 `implementer_claim.py`, which stops with `pr-exists`,
 `no-contract`, `blocked` or `at-capacity`, in that order, before any branch
-exists (`implementer_claim.py:324-346`). Otherwise it creates the branch at
+exists (`implementer_claim.py:335-354`). Otherwise it creates the branch at
 `main`. An existing branch (422) without commits of its own is
 fast-forwarded to `main` (`reclaimed`); one with commits goes to a person
-(`needs-human`, `:348-370`). The model builds, runs the caller's
+(`needs-human`, `:356-378`). The model builds, runs the caller's
 `check_command` and opens a ready-for-review pull request. In the PR review,
 `assess` fetches the context and classifies the risk, `review` asks the
 model without tools, and `publish` re-fetches, aborts on a moved head
@@ -176,7 +176,7 @@ issue would become a merged change. Each brake stops one path:
 | Brake | What it stops | Where |
 | --- | --- | --- |
 | Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml:76-82`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
-| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:309-370`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
+| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:318-378`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
 | Merge guard | An agent merging or enabling auto-merge | `pr_merge_guard.py`, loaded by `agent_run_settings.json` and `.claude/settings.json` |
 | Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:224`) |
 | Prompt hard limits | Labels, branches and files outside the task | the `prompt:` of each model step |
