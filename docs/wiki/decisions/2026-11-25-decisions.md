@@ -25,3 +25,20 @@
   cannot read agents, and 15 dotfiles Bats tests fail locally with
   `rm: command not found`. The session read "ja" as covering both and had the
   `rm` cause diagnosed before choosing the repo.
+- Triage of #954–#961, the maintainer's choice "wie empfohlen" (as
+  recommended):
+  - #957, #958 (with `.github/pull_request_template.md`), #960 (option 1:
+    base content counts as context) and #954 (agent part, `Blocked by #957`)
+    became `ready-for-agent`.
+  - #955, #959 and #961 became `ready-for-human`.
+  - #956 lost its upstream part to repo-maintenance#208. It has no label
+    until #208 closes, because a native cross-repo dependency did not block
+    its claim (run 45591673371 stopped `at-capacity`). Issue #964 covers that.
+  - #957 merged the same day as PR #962.
+- The same day this interactive session did #955 and #961 (agents#965) and
+  carried #961 to the consumers (repo-maintenance#209, dotfiles#84). Bats in a
+  4-core cloud session took 241 s serial and 81 s with `--jobs 4` [read,
+  subagent report]. The first brief for #965 was refused by the auto-mode
+  classifier because it planned a `--force-with-lease` push. That was not
+  needed: the merged branch had been deleted on the remote and held no
+  unmerged commits.
