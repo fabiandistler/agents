@@ -70,9 +70,11 @@ sees only the repos attached to its task; these pointers do not attach one.
   plugin marketplace in Claude Code, claude.ai, Claude Desktop, and
   Cowork. The `architecture` plugin additionally ships two read-only
   analysis subagents (`coupling-analyst`, `cohesion-analyst`); the
-  `workflow` plugin ships two tool-restricted subagents: `browser-worker`
-  for browser audits and test-first fixes that end in a pull request, and
-  the read-only `analyst` for status sweeps and analyses. The
+  `workflow` plugin ships three tool-restricted subagents: `browser-worker`
+  for browser audits and test-first fixes that end in a pull request,
+  the read-only `analyst` for status sweeps and analyses, and
+  `review-decisions-classifier`, whose read-only tool list
+  `scripts/check_plugins.py` pins (`READ_ONLY_AGENTS`). The
   hook-only `merge-guard` and `secret-guard` plugins carry the PR merge
   guard and the secret read guard as `PreToolUse` hooks in `hooks/hooks.json`.
 - `.claude/` makes the same skills, subagents and instruction fragments
