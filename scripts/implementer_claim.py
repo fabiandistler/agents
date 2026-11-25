@@ -13,9 +13,10 @@ Before any branch exists, three intake gates can stop the run: a ticket with no
 contract written by a person with write access, a ticket whose blockers are not
 done, and a run while another one is working. Each comments. A ticket with no
 contract loses `ready-for-agent`, because only a person's brief can restart it.
-A blocked ticket and one stopped at capacity keep the label and wait:
-implementer_queue.py dispatches the next waiting ticket when a run ends or a
-blocker closes.
+A blocked ticket and one stopped at capacity keep the label and wait in the
+queue --queue-workflow names, which must be an active workflow of the
+repository; with an empty --queue-workflow they lose it too
+(implementer_waiting.py).
 
 The contract is what the run builds; implementer_contract.py decides whose text
 it is. The script writes it to --contract, so the run works from a file fixed
@@ -52,9 +53,10 @@ from implementer_setup import (
     WORKFLOW_REF_VARIABLE,
     ImplementerSetup,
     branch_prefix,
+    queue_workflow_file,
     workflow_file,
 )
-from implementer_waiting import CAPACITY_COMMENT, blocked_comment
+from implementer_waiting import blocked_comment, capacity_comment, require_active_queue
 from pr_github_client import (
     HTTP_NOT_FOUND,
     REPO_PATTERN,
@@ -122,18 +124,21 @@ outcomes and exit codes:
   4 needs-human  branch has commits and no open PR; commented and set ready-for-human
   5 blocked      a declared blocker is not closed as completed; commented, kept the label (waits)
   6 at-capacity  another implementer run is working; commented, kept the label (waits)
+                 with --queue-workflow '' both remove the label instead: no queue would start them
   7 no-contract  no contract by a person with write access; commented, removed the label
   1 failed       any other API error; wrote "RUN FAILED: claim (<reason>)" to --summary
   2              usage error
-An invalid --workflow-file, --branch-prefix or GITHUB_WORKFLOW_REF fails (1) before any call.
+An invalid --workflow-file, --branch-prefix, --queue-workflow or GITHUB_WORKFLOW_REF fails (1)
+before any call; a --queue-workflow that is no active workflow of --repo, before any write.
 env: GH_TOKEN (the App token inside claude-code-action), ACTIONS_READ_TOKEN, GITHUB_RUN_ID,
      GITHUB_WORKFLOW_REF (names the caller's workflow file when run as a reusable workflow).
 
 examples:
   implementer_claim.py --repo owner/repo --issue 42 --summary "$RUNNER_TEMP/run-summary.md" \\
-      --contract "$RUNNER_TEMP/contract.md"
+      --contract "$RUNNER_TEMP/contract.md" --queue-workflow implementer-queue.yml
   implementer_claim.py --repo owner/repo --issue 42 --summary s.md --contract c.md \\
-      --workflow-file agent.yml --job-name implement --branch-prefix factory/issue-
+      --queue-workflow '' --workflow-file agent.yml --job-name implement \\
+      --branch-prefix factory/issue-
   implementer_claim.py --help
 """
 
@@ -228,6 +233,14 @@ def _release_ticket(client: GitHubClient, repo: str, issue: int, comment: str) -
         remove_ready_label(client, f"/repos/{repo}/issues/{issue}")
 
 
+def _stop_at_gate(client: GitHubClient, repo: str, issue: int, comment: str, waits: bool) -> None:
+    """A ticket that waits keeps `ready-for-agent` for the queue; any other is released."""
+    if waits:
+        _comment(client, repo, issue, comment)
+    else:
+        _release_ticket(client, repo, issue, comment)
+
+
 def _closed_as_completed(issue: object, path: str) -> bool:
     """Only a completed issue counts: not planned still blocks, and a PR has no such state."""
     if not isinstance(issue, dict) or not isinstance(issue.get("state"), str):
@@ -300,8 +313,17 @@ def claim_branch(
     issue: int,
     run_id: int,
     setup: ImplementerSetup = DEFAULT_SETUP,
+    *,
+    queue_workflow: str | None,
 ) -> ClaimOutcome:
-    """Decide this run's claim on the issue's branch and make the writes it needs."""
+    """Decide this run's claim on the issue's branch and make the writes it needs.
+
+    ``queue_workflow`` is the caller's queue, or None: only with one do the
+    blocked and at-capacity gates leave the ticket waiting.
+    """
+    if queue_workflow is not None:
+        require_active_queue(actions_client, repo, queue_workflow)
+    waits = queue_workflow is not None
     branch = setup.branch(issue)
     holding_pull_request = pull_request_holding_issue(client, repo, issue, branch)
     if holding_pull_request is not None:
@@ -314,12 +336,13 @@ def claim_branch(
         return ClaimOutcome(NO_CONTRACT, branch)
     blockers, unresolved = find_blockers(client, repo, issue, ticket)
     if blockers or unresolved:
-        # The ticket keeps `ready-for-agent`: implementer_queue.py starts it once unblocked.
-        _comment(client, repo, issue, blocked_comment(blockers, unresolved))
+        # With a queue the ticket waits: implementer_queue.py starts it once unblocked.
+        comment = blocked_comment(blockers, unresolved, waits=waits)
+        _stop_at_gate(client, repo, issue, comment, waits)
         return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
     if runs_working_ahead(actions_client, repo, run_id, setup) >= MAX_WORKING_RUNS:
-        # The ticket keeps `ready-for-agent`: implementer_queue.py starts it when no run works.
-        _comment(client, repo, issue, CAPACITY_COMMENT)
+        # With a queue the ticket waits: implementer_queue.py starts it when no run works.
+        _stop_at_gate(client, repo, issue, capacity_comment(waits=waits), waits)
         return ClaimOutcome(AT_CAPACITY, branch)
 
     main_sha = _read_ref_sha(client, repo, MAIN_BRANCH)
@@ -402,16 +425,29 @@ def main(argv: list[str] | None = None) -> int:
         default=BRANCH_PREFIX,
         help="branch name before the issue number; ends in / or - (default: %(default)s)",
     )
+    parser.add_argument(
+        "--queue-workflow",
+        required=True,
+        help="the caller's queue workflow file, in which blocked and at-capacity tickets wait; "
+        "'' for none, which removes their label",
+    )
     args = parser.parse_args(argv)
 
     try:
         setup = ImplementerSetup(
             workflow_file(args.workflow_file), args.job_name, branch_prefix(args.branch_prefix)
         )
+        queue = queue_workflow_file(args.queue_workflow)
         client = GitHubClient(_required_token("GH_TOKEN"))
         actions_client = GitHubClient(_required_token(ACTIONS_TOKEN_VARIABLE))
         claim = claim_branch(
-            client, actions_client, args.repo, args.issue, _workflow_run_id(), setup
+            client,
+            actions_client,
+            args.repo,
+            args.issue,
+            _workflow_run_id(),
+            setup,
+            queue_workflow=queue,
         )
     except FetchError as error:
         reason = str(error)

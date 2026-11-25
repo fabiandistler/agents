@@ -38,7 +38,7 @@ is watching. So check each layer before you push:
    `RUN FAILED: <reason>` into its run summary, is followed by an
    `agent_run_report.py` step, and loads both guards as the implementer does:
    `agent_run_settings.py` renders `agent_run_settings.json` for the action's
-   `settings` input (`factory-implementer.yml:179-219`). The older
+   `settings` input (`factory-implementer.yml:184-224`). The older
    agents-only tasks rely on the ruleset instead of the push guard; a new
    task should not.
 7. **Roll out.** `pull_request_target` runs `main`'s pipeline, so a pull

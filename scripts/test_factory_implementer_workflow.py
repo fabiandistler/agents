@@ -28,6 +28,7 @@ from agent_run_workflow_testkit import (
     workflow,
 )
 from factory_handoff import implementer_run_name
+from pr_github_client import FetchError
 
 
 def test_the_factory_is_fetched_at_the_workflows_own_commit_without_a_token():
@@ -134,14 +135,15 @@ def test_factory_run_steps_take_values_through_env_only():
         assert "${{" not in step.get("run", ""), f"{step.get('name')}: interpolate through env"
 
 
-def _run_validation(**values: str) -> subprocess.CompletedProcess:
+def _run_validation(output: str = os.devnull, **values: str) -> subprocess.CompletedProcess:
     step = step_with_id(agent_job(FACTORY_IMPLEMENTER), "setup")
     env = {"BRANCH_PREFIX": "agent/issue-", "MODEL": "opus", "CHECK_COMMAND": "make check"}
+    env["QUEUE_WORKFLOW"] = ""
     assert set(step["env"]) == set(env)
     env.update(values)
     return subprocess.run(  # noqa: S603 -- runs the workflow's own validation step.
         ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
-        env={**env, "GITHUB_OUTPUT": os.devnull, "PATH": os.environ["PATH"]},
+        env={**env, "GITHUB_OUTPUT": output, "PATH": os.environ["PATH"]},
         capture_output=True,
         text=True,
         check=False,
@@ -156,6 +158,8 @@ def _run_validation(**values: str) -> subprocess.CompletedProcess:
         {"BRANCH_PREFIX": "agent/"},
         {"MODEL": "claude-opus-4-8[1m]"},
         {"MODEL": "sonnet"},
+        {"QUEUE_WORKFLOW": "implementer-queue.yml"},
+        {"QUEUE_WORKFLOW": "queue.yaml"},
     ],
 )
 def test_validation_accepts_good_inputs(values):
@@ -172,6 +176,9 @@ def test_validation_accepts_good_inputs(values):
         {"MODEL": "opus --dangerously-skip-permissions"},
         {"MODEL": ""},
         {"CHECK_COMMAND": "  "},
+        {"QUEUE_WORKFLOW": "../queue.yml"},
+        {"QUEUE_WORKFLOW": "queue.yml -f x=y"},
+        {"QUEUE_WORKFLOW": "queue.json"},
     ],
 )
 def test_validation_rejects_bad_inputs(values):
@@ -185,6 +192,39 @@ def test_validation_and_the_claim_agree_on_the_branch_prefix(prefix):
     shell_ok = _run_validation(BRANCH_PREFIX=prefix).returncode == 0
     python_ok = implementer_setup.BRANCH_PREFIX_PATTERN.fullmatch(prefix) is not None
     assert shell_ok == python_ok
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", "implementer-queue.yml", "q.yaml", "../q.yml", ".github/workflows/q.yml", "a b.yml"],
+)
+def test_validation_and_the_claim_agree_on_the_queue_workflow(value):
+    shell_ok = _run_validation(QUEUE_WORKFLOW=value).returncode == 0
+    try:
+        implementer_setup.queue_workflow_file(value)
+    except FetchError:
+        python_ok = False
+    else:
+        python_ok = True
+    assert shell_ok == python_ok
+
+
+@pytest.mark.parametrize("value", ["implementer-queue.yml", ""])
+def test_the_claim_gets_the_caller_queue_from_the_validation_step(tmp_path, value):
+    # A lost value would release every waiting ticket of a caller that has a queue.
+    output = tmp_path / "output"
+    assert _run_validation(str(output), QUEUE_WORKFLOW=value).returncode == 0
+    assert f"queue_workflow={value}" in output.read_text(encoding="utf-8").splitlines()
+    prompt = model_step(agent_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
+    assert '--queue-workflow "${{ steps.setup.outputs.queue_workflow }}"' in prompt
+    assert "inputs.queue_workflow" not in prompt
+
+
+def test_the_prompt_promises_the_queue_only_with_one():
+    prompt = model_step(agent_job(FACTORY_IMPLEMENTER))["with"]["prompt"]
+    gates = prompt[prompt.index('- "blocked", "at-capacity"') : prompt.index('- "failed"')]
+    assert "the others keep it and wait in the queue" not in gates
+    assert 'only with a non-empty `--queue-workflow` do "blocked" and "at-capacity"' in gates
 
 
 def test_model_and_prefix_come_from_the_validation_step():

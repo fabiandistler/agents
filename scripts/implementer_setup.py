@@ -6,7 +6,8 @@ because "the github context is always associated with the caller workflow"
 (GitHub docs, "Reusing workflow configurations"). That file is the target
 repository's choice, so it comes from --workflow-file or GITHUB_WORKFLOW_REF.
 The job matches by its plain name or, inside a called workflow, by its
-composed name (`agent_run_capacity.is_job`).
+composed name (`agent_run_capacity.is_job`). The caller's queue workflow, if
+it has one, comes from --queue-workflow (implementer_waiting.py).
 
 Every value here goes into an API path or a branch name, so each is checked
 before the first call; a bad one is a FetchError, which fails the claim.
@@ -62,6 +63,13 @@ def workflow_file(option: str | None) -> str:
             )
         source, file_name = WORKFLOW_REF_VARIABLE, match["file"]
     return _plain_workflow_file(source, file_name)
+
+
+def queue_workflow_file(option: str) -> str | None:
+    """--queue-workflow: the caller's queue workflow file, or None for '' (it has none)."""
+    if option == "":
+        return None
+    return _plain_workflow_file("--queue-workflow", option)
 
 
 def _plain_workflow_file(source: str, file_name: str) -> str:

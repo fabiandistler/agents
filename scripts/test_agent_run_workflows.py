@@ -38,10 +38,12 @@ from agent_run_workflow_testkit import (
 
 PROMPT_EXPRESSIONS = {"steps.issue.outputs.number", "github.repository"}
 # The reusable implementer adds the factory checkout's path and the branch
-# prefix its validation step passed; no caller input reaches the prompt raw.
+# prefix and queue workflow its validation step passed; no caller input
+# reaches the prompt raw.
 FACTORY_PROMPT_EXPRESSIONS = PROMPT_EXPRESSIONS | {
     "steps.factory.outputs.dir",
     "steps.setup.outputs.branch_prefix",
+    "steps.setup.outputs.queue_workflow",
 }
 
 
@@ -213,7 +215,8 @@ def test_implementer_claims_through_the_script_before_anything_else():
         "--repo ${{ github.repository }} "
         '--issue ${{ steps.issue.outputs.number }} --summary "$RUNNER_TEMP/run-summary.md" '
         '--contract "$RUNNER_TEMP/contract.md" --job-name implement '
-        "--branch-prefix ${{ steps.setup.outputs.branch_prefix }}"
+        "--branch-prefix ${{ steps.setup.outputs.branch_prefix }} "
+        '--queue-workflow "${{ steps.setup.outputs.queue_workflow }}"'
     )
     assert command in prompt
     assert prompt.index("1. If issue") < prompt.index(command) < prompt.index("3. Contract:")

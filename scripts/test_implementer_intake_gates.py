@@ -17,6 +17,7 @@ from test_implementer_claim import (
     ISSUE,
     ISSUE_PATH,
     JOB_START,
+    QUEUE_WORKFLOW,
     REMOVE_LABEL,
     REPO,
     RUN_ID,
@@ -325,7 +326,9 @@ def test_a_later_working_run_does_not_count():
 def test_equal_starts_are_broken_by_the_run_id(own_id, other_id, outcome):
     fake = FakeGitHub(jobs={own_id: [working_job()], other_id: [working_job()]})
     client = cast(GitHubClient, fake)
-    claimed = implementer_claim.claim_branch(client, client, REPO, ISSUE, own_id)
+    claimed = implementer_claim.claim_branch(
+        client, client, REPO, ISSUE, own_id, queue_workflow=QUEUE_WORKFLOW
+    )
     assert claimed.outcome == outcome
 
 
@@ -339,14 +342,20 @@ def test_of_two_simultaneous_runs_exactly_one_proceeds(first_start, second_start
     outcomes = []
     for run_id in jobs:
         client = cast(GitHubClient, FakeGitHub(jobs=jobs))
-        outcomes.append(implementer_claim.claim_branch(client, client, REPO, ISSUE, run_id).outcome)
+        claimed = implementer_claim.claim_branch(
+            client, client, REPO, ISSUE, run_id, queue_workflow=QUEUE_WORKFLOW
+        )
+        outcomes.append(claimed.outcome)
     assert sorted(outcomes) == ["at-capacity", "claimed"]
 
 
 def test_a_rerun_keeps_its_old_id_but_waits_for_the_newer_run_already_working():
     fake = FakeGitHub(jobs={100: [working_job(LATER)], RUN_ID: [working_job(EARLIER)]})
     client = cast(GitHubClient, fake)
-    assert implementer_claim.claim_branch(client, client, REPO, ISSUE, 100).outcome == "at-capacity"
+    claimed = implementer_claim.claim_branch(
+        client, client, REPO, ISSUE, 100, queue_workflow=QUEUE_WORKFLOW
+    )
+    assert claimed.outcome == "at-capacity"
 
 
 @pytest.mark.parametrize(
