@@ -110,7 +110,8 @@ model and no write scope, `publish` with write scopes and no model token) and
 model-free `follow-up` job). **`rework.yml`,
 `fix-task.yml`, `retro.yml` and `skill-audit.yml`** run in agents only and
 read `scripts/` from their own checkout; Fix watches seven workflows by name
-(`fix-task.yml:16`). **`scripts/`** holds the model-free logic: the claim,
+(`fix-task.yml`, trigger `workflow_run`). **`scripts/`** holds the
+model-free logic: the claim,
 `pr_risk.py`, `pr_publish.py`, the gates and the two guards.
 `implementer_queue.py` (#847) dispatches the next waiting issue from
 `implementer-queue.yml`, which calls the reusable
@@ -149,21 +150,22 @@ sequenceDiagram
 ```
 
 Text equivalent: a person's label starts the implement job
-(`factory-implementer.yml:76-82`). It fetches the scripts at the workflow's
+(`factory-implementer.yml`, job `implement`, `if:`). It fetches the
+scripts at the workflow's
 own commit, renders both guards, and starts `claude-code-action`, which
 trades the OIDC token for the App token. The model's first write is
 `implementer_claim.py`, which stops with `pr-exists`,
 `no-contract`, `blocked` or `at-capacity`, in that order, before any branch
-exists (`implementer_claim.py:344-362`). Otherwise it creates the branch at
+exists (`implementer_claim.claim_branch`). Otherwise it creates the branch at
 `main`. An existing branch (422) without commits of its own is
 fast-forwarded to `main` (`reclaimed`); one with commits goes to a person
-(`needs-human`, `:364-386`). The model builds, runs the caller's
+(`needs-human`). The model builds, runs the caller's
 `check_command` and opens a ready-for-review pull request. In the PR review,
 `assess` fetches the context and classifies the risk, `review` asks the
 model without tools, and `publish` re-fetches, aborts on a moved head
 or a closed pull request, and otherwise writes labels, the sticky comment,
 the reviewer, any auto-merge change and, last, `pr-review/verdict`
-(`pr_plan.py:280-291`). The status goes last so a merge waits until the
+(`pr_plan.plan_publish`). The status goes last so a merge waits until the
 verdict is visible; when an earlier write fails, `publish` withholds it and
 turns red.
 
@@ -175,18 +177,18 @@ issue would become a merged change. Each brake stops one path:
 
 | Brake | What it stops | Where |
 | --- | --- | --- |
-| Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml:76-82`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
-| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:328-386`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
+| Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml`, job `implement`, `if:`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
+| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.claim_branch`; `implementer_capacity.MAX_WORKING_RUNS` |
 | Merge guard | An agent merging or enabling auto-merge | `pr_merge_guard.py`, loaded by `agent_run_settings.json` and `.claude/settings.json` |
-| Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:224`) |
+| Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml`, `settings:` of step *Implement the issue*) |
 | Prompt hard limits | Labels, branches and files outside the task | the `prompt:` of each model step |
 | App token | Writes to `.github/workflows/` | the App's permissions (ADR-0014) |
 | Headless Claude Code | Writes to `.claude/` and `.pre-commit-config.yaml` | observed, cause inferred ([wiki](../wiki/problems/implementer-write-limits.md)) |
 | Credential split | A model holding a write token in the review or the triage | separate jobs joined by artifacts |
-| Risk labels | Auto-merge of anything but low-risk docs | `PATH_RULES`, `pr_risk.py:30`; the model may only raise the risk |
-| Verdict status | A merge before the head's review is published | `pr_verdict_status.py:15`; green for any verdict |
+| Risk labels | Auto-merge of anything but low-risk docs | `pr_risk.PATH_RULES`; the model may only raise the risk |
+| Verdict status | A merge before the head's review is published | `pr_verdict_status.CONTEXT`; green for any verdict |
 | Ruleset | A merge on red checks, a push to `main` | ruleset `default`, agents only |
-| Rework cap | Endless fix rounds | `MAX_REWORK_ROUNDS`, `rework_policy.py:25` |
+| Rework cap | Endless fix rounds | `rework_policy.MAX_REWORK_ROUNDS` |
 | Human merge | Everything above failing at once | the maintainer |
 
 Why the App token at all: pushes and pull requests made with `GITHUB_TOKEN`
@@ -225,7 +227,7 @@ stateDiagram-v2
 ```
 
 Text equivalent: an issue holds at most one of the five state labels
-(`STATE_LABELS`, `factory_handoff.py:50`); the handoff protocol module owns
+(`factory_handoff.STATE_LABELS`); the handoff protocol module owns
 them, and every task imports them from there. The triage label task, and the
 Fix task for its own issues, start it in `needs-triage`. The triage bot may
 move it to `needs-info`, and the reporter's answer moves it back (in a
@@ -257,7 +259,7 @@ A runner keeps nothing, so every fact one run hands the next lives on GitHub:
 | Labels `retro:done`, `auto-merge:bot` | Retro gate; `publish` | Retro gate (counter); `hold`, `publish` (ownership) |
 | Status `pr-review/verdict` | `publish` | the ruleset |
 | Issue state labels (`needs-triage` … `wontfix`) | triage `publish`, Fix task, implementer claim, Rework gate, all with the names from the handoff protocol module (`factory_handoff.py`) | triage `assess`, implementer claim and queue, onboarding check, through the module's names and its `state_labels` picker |
-| Run name `implementer: issue #<n>` | `implementer.yml:17`, as the handoff protocol module (`factory_handoff.py`) formats it; a structure test ties the two | Fix task, implementer queue, Retro gate, through the module's parser |
+| Run name `implementer: issue #<n>` | the `run-name` of `implementer.yml`, as the handoff protocol module (`factory_handoff.py`) formats it; a structure test ties the two | Fix task, implementer queue, Retro gate, through the module's parser |
 | `RUN FAILED: <reason>` in the run summary | model step | `agent_run_report.py`, whose `::error::` becomes the Fix task's signature |
 
 Only markers in comments by `github-actions[bot]` count, so quoting one
@@ -276,12 +278,13 @@ replaces the waiting one, which is never filed ([ADR-0016](../adr/0016-fix-task.
   ([onboarding](../agents/factory-onboarding.md#one-sha-for-all-callers)).
 - **Anonymous fetch.** Every reusable job but the triage label's fetches
   `job.workflow_repository` at `job.workflow_sha` into `$RUNNER_TEMP/factory`
-  without a credential (`factory-implementer.yml:154-167`), even when agents
+  without a credential (`factory-implementer.yml`, step *Fetch the factory
+  scripts*), even when agents
   calls with `./`. agents must stay public: private, all those fetches fail,
   and on the owner's plan agents would lose its ruleset too.
 - **Caller's context.** `github` and `vars` are the caller's, so
   `PR_AUTO_MERGE` and the model variables are set per repository
-  (`factory-pr-review.yml:30-32`).
+  (`factory-pr-review.yml`, header note *Contexts*).
 - **Private targets.** No rulesets on GitHub Free: nothing can be required,
   the push guard stops pushes to the default branch, and the maintainer
   merges only on green ([wiki](../wiki/problems/private-repos-no-rulesets.md)).
@@ -309,7 +312,7 @@ reusable workflows over copies ([0018](../adr/0018-reusable-factory-workflows.md
 Known weaknesses, as of 2026-11-15: a failed run leaves
 `ready-for-agent`, and the queue skips it, so nothing retries; the claim
 branches from `main`, not the caller's default branch
-(`implementer_claim.py:78`); the Fix task watches agents' runs only. Still
+(`implementer_claim.MAIN_BRANCH`); the Fix task watches agents' runs only. Still
 open (ADR-0018): whether Dependabot bumps the callers' agents pins
 (question 5), and how an event policy targets a caller, which matters only
 if a target goes public (question 2).

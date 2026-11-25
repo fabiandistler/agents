@@ -20,7 +20,8 @@ is watching. So check each layer before you push:
    does.
 3. **Pins.** Every `uses:` names a 40-hex SHA with a `# vX.Y.Z` comment
    (`test_workflow_action_pins.py`). The Claude Code CLI is pinned exactly
-   (`factory-pr-review.yml:275`); rerun ADR-0013's sandbox check before a bump.
+   (`factory-pr-review.yml`, step *Install Claude Code*); rerun ADR-0013's
+   sandbox check before a bump.
 4. **Event text stays data.** Event values reach shells through `env:`, and
    prompts only as validated values and the repository name.
 5. **Names are interfaces.** The claim counts runs by the called job's name,
@@ -33,12 +34,13 @@ is watching. So check each layer before you push:
    state label; every task imports it from there.
 6. **A new task** gets `permissions: {}`, the narrowest job scopes, a
    structure test, and its workflow name in `fix-task.yml` plus its path in
-   `WATCHED_WORKFLOWS` (`factory_failure_policy.py:49`). A model step that
+   `factory_failure_policy.WATCHED_WORKFLOWS`. A model step that
    pushes uses `claude-code-action` without `github_token`, writes
    `RUN FAILED: <reason>` into its run summary, is followed by an
    `agent_run_report.py` step, and loads both guards as the implementer does:
    `agent_run_settings.py` renders `agent_run_settings.json` for the action's
-   `settings` input (`factory-implementer.yml:184-224`). The older
+   `settings` input (`factory-implementer.yml`, steps *Prepare the check
+   command and the guards* and *Implement the issue*). The older
    agents-only tasks rely on the ruleset instead of the push guard; a new
    task should not.
 7. **Roll out.** `pull_request_target` runs `main`'s pipeline, so a pull
