@@ -71,6 +71,44 @@ reason, and what that removes: without the issue, deviations from it were
 not checked; without CI, no change is marked as proven by green CI. Record
 the same lines in the protocol header.
 
+## Large diffs
+
+Split every diff by file before classifying; a small one comes back as a single
+batch:
+
+```bash
+python3 scripts/batches.py split <scratch>/diff.patch --out <scratch>/batches
+```
+
+Its JSON lists the batches; every file lands in exactly one. Classify each
+batch as its own run (see Classify), with `batch-<k>.diff` as the diff file and
+the same other input files. Save each answer verbatim as
+`<scratch>/batches/batch-<k>.answer.md`. A batch marked `oversize` is one file
+over the size limit: classify it anyway, and when the run fails, save no answer
+for it.
+
+Then merge the answers into one queue:
+
+```bash
+python3 scripts/batches.py merge <scratch>/batches
+```
+
+Its `cards` are already in the Queue order. With more than one batch:
+
+- Write the `boundaries` lines into the protocol header, so the reviewer knows
+  which files were seen together.
+- On each card with `unchecked_across_batches: true`, add the line
+  `- Unchecked across batches: yes` and show it on the card under
+  `Why queued`. These are deviations, public surface, schema and data, and
+  decisions that depend on a file in another batch: their other half may sit
+  in a batch the classifier did not see.
+- Name every file in `unclassified` with its reason before the first card, and
+  list them in the protocol header as `Not classified: <file>: <reason>`. Never
+  drop a file without saying so. The reviewer reads these files in the PR or
+  asks to classify them again.
+
+Use `deviation` from the merge for the No-issue rule in Queue.
+
 ## Classify
 
 Start the `review-decisions-classifier` subagent in a fresh context. Pass it
