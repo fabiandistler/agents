@@ -46,7 +46,18 @@ anything the issue states literally. When you are unsure, list it.
 
 ## Answer
 
-Return the review decisions as a plain list, one line each:
-`<file>:<line>: <what the author chose>`. Nothing else: no verdict on whether
-the change is correct, no defect review, no summary. If you find none, answer
-`No review decisions found.`
+Return one block per review decision, separated by blank lines, nothing else:
+
+```text
+Location: <file>:<line>
+Criterion: <which part of the definition above queues it>
+Chosen: <what the author chose>
+Alternatives: <two or three other defensible options, reconstructed>
+Cost to undo: <one sentence on undoing it after the merge>
+Lean: <your lean and why, one line>
+```
+
+The alternatives are reconstructed: you cannot see what the author
+considered, so never describe them as options the author weighed. Keep the
+lean to its own line. No verdict on whether the change is correct, no defect
+review, no summary. If you find none, answer `No review decisions found.`

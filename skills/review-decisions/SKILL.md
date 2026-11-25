@@ -4,8 +4,8 @@ category: workflow
 activation: command
 disable-model-invocation: true
 environments: coding
-argument-hint: "[<base-ref>]"
-description: Lists the review decisions in an agent-generated change, the choices only a human reviewer can settle, from a local diff and the issue text. Never posts, approves or merges.
+argument-hint: "[<base-ref> | <protocol-file>]"
+description: Walks a reviewer through the review decisions in an agent-generated change, the choices only a human can settle, one card per turn, and keeps a protocol outside the repo. Never posts, approves or merges.
 metadata:
   opencode/slash: "true"
   opencode/autoinvoke: "false"
@@ -57,12 +57,73 @@ On a runtime without that subagent, start a fresh agent with no session
 history and give it the instructions from the classifier's definition and the
 same file paths.
 
-## Answer
+## Protocol
 
-Return the classifier's list of review decisions, one line each with file,
-line and what the author chose. Add only:
+Every answer goes into a protocol file outside the repository, so no verdict
+lands in the working tree. Before the first card, get its path from
+`python3 scripts/protocol.py path --repo <repo-root>` (exit 4: the state
+directory lies inside the repository; set `XDG_STATE_HOME` elsewhere) and
+print the full path to the reviewer.
 
-- the line that deviations were not checked, when no issue was supplied;
-- the closing line `Review decisions listed, no defect review.`
+Write the protocol before showing the first card: a header with the
+repository, the base ref, the input files and the line "A defect review was
+not run.", then one section per card in queue order, each starting
+`## Card <n> of <total>` and holding the card's fields. Record each answer the
+turn it is given, as `- Answer: ok`, `- Answer: change` or `- Answer: later`;
+add `- Draft comment:` after a `change`, and `- Question:` and `- Reply:`
+lines for each question.
 
-Nothing else: no verdict, no summary of the change, no review comment.
+To resume, the reviewer passes a protocol file instead of a base ref. Run
+`python3 scripts/protocol.py resume <protocol-file>`: its JSON names the first
+card without an answer (`next`) and the cards set aside (`later`). Skip
+gathering inputs and classifying; continue at `next` with the cards as the
+protocol holds them.
+Exit 3 means the file is not a protocol this skill wrote; say so and stop.
+
+## Cards
+
+Show one card per turn and wait for the answer. Keep it short enough to read
+on a phone screen without scrolling far:
+
+```text
+Card <n> of <total>: <file>:<line>
+Why queued: <the criterion that put it in the queue>
+Chosen: <what the author chose>
+Alternatives (reconstructed, not what the author considered):
+- <alternative>
+- <alternative>
+Cost to undo after merge: <one sentence>
+
+Lean: <the skill's lean, and why, in one line>
+
+Answer: ok / change / question / later
+```
+
+The alternatives are the classifier's guesses. Never word them as options the
+author weighed or rejected: you cannot see what the author considered. Keep
+the lean below the finding, so an opinion never reads as a fact.
+
+The reviewer answers with one word, or a word and a note:
+
+- `ok`: the choice stands. Record it and show the next card.
+- `change`: draft a review comment that names the location, what to change
+  and why, using the reviewer's note when there is one. Show the draft, record
+  it under the card, then show the next card.
+- `question`: answer the question from the diff, the issue and the
+  repository, and say when the answer rests on a guess. Record both. The card
+  stays open: show it again and wait for `ok`, `change` or `later`.
+- `later`: set the card aside. After the last card, show the cards set aside
+  again, once each.
+
+Any other reply is a question about the card.
+
+## Close
+
+When every card has `ok` or `change`, or the reviewer stops, end the protocol
+with the line `Review decisions settled, no defect review.` and print its full
+path again. If the reviewer stops with cards still open, write the line only
+when they confirm; otherwise leave the protocol open for a later run to
+resume. Add the line that deviations were not checked when no issue was
+supplied.
+
+Nothing else: no verdict on the change and no claim that it is correct.

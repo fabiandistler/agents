@@ -155,7 +155,7 @@ still listed here.
 | `skills/pypet-snippets/` | Curating pypet command snippets — creating, finding, editing, running and aliasing them on request, or proposing one for recurring terminal commands. |
 | `skills/release-pr/` | Turning the current branch into a release PR for an R or Python package — confirmed version bump, NEWS.md/CHANGELOG.md, checks, PR body — and, after merge, tagging and publishing the release (GitHub, Azure Repos, GitLab). |
 | `skills/repo-status/` | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
-| `skills/review-decisions/` | Before reading an agent-generated change in full: listing its review decisions, the choices neither the issue nor the repo conventions settle, from a local diff and supplied issue text (command; never posts or merges). |
+| `skills/review-decisions/` | Before reading an agent-generated change in full: walking through its review decisions, the choices neither the issue nor the repo conventions settle, one card per turn, with a resumable protocol kept outside the repo (command; never posts or merges). |
 
 ### Communication & writing (`communication`)
 
