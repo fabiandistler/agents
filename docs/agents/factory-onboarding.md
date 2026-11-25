@@ -310,79 +310,15 @@ jobs:
 
 ## Inputs and secret
 
-Every `workflow_call` input and secret, with its default and an example value.
-The examples come from the first targets (fabiandistler/dotfiles#61 and
-fabiandistler/repo-maintenance#153).
-
-`factory-implementer.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `issue` | `""` | `${{ inputs.issue }}` |
-| `check_command` | required | `scripts/maintenance-baseline.sh` |
-| `setup_command` | `""` | `pip install -r requirements-dev.txt` |
-| `submodules` | `false` | `true` (dotfiles) |
-| `python_version` | `"3.12"` | `"3.12"` (dotfiles) |
-| `model` | `opus` | `opus` |
-| `branch_prefix` | `agent/issue-` | `agent/issue-` |
-| `queue_workflow` | `""` | `implementer-queue.yml` (agents; only with a queue caller) |
-| `fix_task_workflow` | `""` | `fix-task.yml` (agents; only with a queue caller) |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
+Every `workflow_call` input and secret, with its default and an example value,
+and the caller's optional repository variables are in
+[factory workflow inputs](factory-inputs.md).
 
 `factory-implementer-queue.yml` has no template here: as of 2026-11-20 only
 agents calls it. A target that adds a queue caller passes it
 `fix_task_workflow` as well, the same file as the implementer caller's, so a
 failed queue run that the `follow-up` job dispatched reaches the Fix task
 (#909).
-
-`factory-pr-review.yml`; the effect of each input is in the
-[input table](pr-review-reusable-workflow.md):
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `pr` | `""` | `${{ inputs.pr \|\| '' }}` |
-| `dry_run` | `true` | `${{ inputs.dry_run != false }}` |
-| `skip_head_prefixes` | `""` | `maintenance/` (repo-maintenance) |
-| `standards_path` | `""` | `instructions/review-standards.md` (repo-maintenance) |
-| `fail_on_unavailable` | `false` | `true` (dotfiles) |
-| `quiet_logs` | `false` | `true` (dotfiles) |
-| `setup_command` | `""` | `scripts/install-runner-standards.sh` (dotfiles) |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
-
-`factory-issue-triage.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `issue` | `""` | `${{ inputs.issue }}` |
-| `dry_run` | `true` | `${{ github.event_name != 'workflow_dispatch' \|\| inputs.dry_run }}` |
-| `setup_command` | `""` | `pip install -r requirements-dev.txt` |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
-
-`factory-rework.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `pr` | `""` | `${{ inputs.pr }}` |
-| `check_command` | required | the implementer caller's value |
-| `setup_command` | `""` | the implementer caller's value |
-| `submodules` | `false` | `true` (dotfiles) |
-| `python_version` | `"3.12"` | `"3.12"` |
-| `model` | `sonnet` | `${{ vars.REWORK_MODEL \|\| 'sonnet' }}` |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
-
-`factory-fix-task.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `run_id` | `""` | `${{ inputs.run_id }}` |
-| `dry_run` | `true` | `${{ inputs.dry_run != false }}` |
-
-`factory-triage-label.yml` takes no input and no secret.
-
-Optional repository variables of the caller: `PR_REVIEW_MODEL` (the PR
-review's model) and `ISSUE_TRIAGE_MODEL` (the triage's model). Leave
-`PR_AUTO_MERGE` unset in a target: auto-merge is this repository's alone
-(ADR-0011, ADR-0018).
 
 ## One SHA for all callers
 

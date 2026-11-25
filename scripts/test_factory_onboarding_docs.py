@@ -11,6 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 RUNBOOK = (ROOT / "docs" / "agents" / "factory-onboarding.md").read_text(encoding="utf-8")
+INPUTS = (ROOT / "docs" / "agents" / "factory-inputs.md").read_text(encoding="utf-8")
 FACTORY_FILES = (
     "factory-implementer.yml",
     "factory-pr-review.yml",
@@ -33,12 +34,18 @@ def required(block: dict | None) -> tuple[str, ...]:
 
 
 @pytest.mark.parametrize("name", FACTORY_FILES)
-def test_runbook_names_every_input_and_secret(name):
+def test_inputs_page_names_every_input_and_secret(name):
     call = workflow_call(name)
     names = [*(call.get("inputs") or {}), *(call.get("secrets") or {})]
 
-    absent = [item for item in names if f"`{item}`" not in RUNBOOK]
+    assert f"`{name}`" in INPUTS
+    absent = [item for item in names if f"`{item}`" not in INPUTS]
     assert absent == [], f"{name}: {absent}"
+
+
+def test_runbook_and_inputs_page_link_each_other():
+    assert "[factory workflow inputs](factory-inputs.md)" in RUNBOOK
+    assert "(factory-onboarding.md#caller-templates)" in INPUTS
 
 
 def test_requirements_constant_matches_the_workflow_files():
