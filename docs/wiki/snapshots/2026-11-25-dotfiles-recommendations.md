@@ -33,4 +33,13 @@ Unverified items: the Workbench git version, NFS home, bwrap, rig stable version
 
 ## Status
 
-On 2026-11-25 the recommendations went to the user, who had not decided. No issues were filed.
+On 2026-11-25 the recommendations went to the user, who had not decided. No issues were filed. *Superseded* later the same day:
+
+Later on 2026-11-25 the user approved sections 1 and 2 plus delta, zoxide and direnv. A subagent filed dotfiles#85–#100 (excluding #89, #95 and #99, which are PRs):
+- ready-for-agent: #85 common.sh, #86 login PATH, #88 fzf/bat, #90 PATH guards, #91 preexec order, #93 Claude deny for secrets, #97 zoxide, #98 direnv.
+- ready-for-human: #87, #92 LC_ALL, #94 chezmoi add without gitleaks, #96 age vs. password manager.
+  #87 is new: the workflows (`ci.yml:31-32`, `implementer.yml:73-74`, `rework.yml:71-72`) read every `.chezmoiexternal.toml` entry as the gitleaks pin, so a second external breaks CI.
+  It blocks #97, #98 and #100.
+- #100 delta: needs-triage. Add ready-for-agent on or after 2026-11-30 (cooldown).
+- The implementer opened PRs #89 (#85), #95 (#86) and #99 (#93) right away.
+- Verified in a scratch HOME: W1 and W5. Not verified: asset names and sha256 of the externals, the Claude `Read(~/...)` rule syntax, and whether chezmoi autoCommit runs hooks.
