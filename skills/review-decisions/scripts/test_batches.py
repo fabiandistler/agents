@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("batches.py")
+# The batch size limit batches.py documents; a diff line below is LINE_BYTES long.
+LIMIT = 200_000
+LINE_BYTES = 100
 
 
 def run(*args):
@@ -18,7 +21,7 @@ def run(*args):
 
 
 def file_diff(path: str, lines: int) -> str:
-    body = "".join(f"+line {i}\n" for i in range(lines))
+    body = ("+" + "x" * (LINE_BYTES - 2) + "\n") * lines
     return (
         f"diff --git a/{path} b/{path}\n"
         "index 0000000..1111111 100644\n"
@@ -35,48 +38,48 @@ def write_diff(tmp_path: Path, *files: tuple[str, int]) -> Path:
     return diff
 
 
-def split(tmp_path: Path, diff: Path, max_bytes: int) -> dict:
+def split(tmp_path: Path, diff: Path) -> dict:
     out = tmp_path / "batches"
-    proc = run("split", str(diff), "--out", str(out), "--max-bytes", str(max_bytes))
+    proc = run("split", str(diff), "--out", str(out))
     assert proc.returncode == 0, proc.stderr
     return json.loads(proc.stdout)
 
 
 def test_split_puts_every_file_in_exactly_one_batch_under_the_limit(tmp_path):
-    diff = write_diff(tmp_path, ("a.py", 40), ("b.py", 40), ("c.py", 40), ("d.py", 40))
-    limit = 2 * len(file_diff("a.py", 40).encode()) + 10
+    diff = write_diff(tmp_path, ("a.py", 900), ("b.py", 900), ("c.py", 900), ("d.py", 900))
 
-    manifest = split(tmp_path, diff, max_bytes=limit)
+    manifest = split(tmp_path, diff)
 
     assert [b["paths"] for b in manifest["batches"]] == [["a.py", "b.py"], ["c.py", "d.py"]]
     out = tmp_path / "batches"
     texts = [(out / b["file"]).read_text(encoding="utf-8") for b in manifest["batches"]]
     assert "".join(texts) == diff.read_text(encoding="utf-8")
-    assert all(len(text.encode()) <= limit for text in texts)
+    assert all(len(text.encode()) <= LIMIT for text in texts)
+    assert manifest["max_bytes"] == LIMIT
 
 
 def test_split_keeps_a_small_diff_in_one_batch(tmp_path):
     diff = write_diff(tmp_path, ("a.py", 3), ("b.py", 3))
 
-    manifest = split(tmp_path, diff, max_bytes=100_000)
+    manifest = split(tmp_path, diff)
 
     assert [b["paths"] for b in manifest["batches"]] == [["a.py", "b.py"]]
 
 
 def test_split_gives_a_file_over_the_limit_its_own_batch_and_flags_it(tmp_path):
-    diff = write_diff(tmp_path, ("small.py", 2), ("huge.py", 500), ("tail.py", 2))
+    diff = write_diff(tmp_path, ("small.py", 2), ("huge.py", 2100), ("tail.py", 2))
 
-    manifest = split(tmp_path, diff, max_bytes=2_000)
+    manifest = split(tmp_path, diff)
 
     assert [b["paths"] for b in manifest["batches"]] == [["small.py"], ["huge.py"], ["tail.py"]]
     assert [b["oversize"] for b in manifest["batches"]] == [False, True, False]
 
 
 def test_split_is_deterministic(tmp_path):
-    diff = write_diff(tmp_path, ("a.py", 30), ("b.py", 5), ("c.py", 30))
+    diff = write_diff(tmp_path, ("a.py", 1500), ("b.py", 100), ("c.py", 1500))
 
-    first = split(tmp_path, diff, max_bytes=1_500)
-    second = split(tmp_path, diff, max_bytes=1_500)
+    first = split(tmp_path, diff)
+    second = split(tmp_path, diff)
 
     assert first == second
 
@@ -97,9 +100,17 @@ def test_split_names_renamed_and_deleted_files_by_their_path(tmp_path):
         encoding="utf-8",
     )
 
-    manifest = split(tmp_path, diff, max_bytes=100_000)
+    manifest = split(tmp_path, diff)
 
     assert manifest["batches"][0]["paths"] == ["new name.py", "gone.py"]
+
+
+def test_split_takes_no_size_option(tmp_path):
+    diff = write_diff(tmp_path, ("a.py", 3))
+
+    proc = run("split", str(diff), "--out", str(tmp_path / "batches"), "--max-bytes", "10")
+
+    assert proc.returncode == 1
 
 
 def test_split_rejects_text_that_is_not_a_git_diff(tmp_path):
@@ -128,8 +139,8 @@ def block(
 
 
 def two_batches(tmp_path: Path) -> Path:
-    diff = write_diff(tmp_path, ("api.py", 40), ("cli.py", 40), ("test_api.py", 40))
-    split(tmp_path, diff, max_bytes=len(file_diff("api.py", 40).encode()) * 2 + 10)
+    diff = write_diff(tmp_path, ("api.py", 900), ("cli.py", 900), ("test_api.py", 900))
+    split(tmp_path, diff)
     return tmp_path / "batches"
 
 
@@ -216,7 +227,7 @@ def test_merge_marks_decisions_that_may_span_batches(tmp_path):
 
 def test_merge_marks_nothing_across_batches_for_a_single_batch(tmp_path):
     diff = write_diff(tmp_path, ("api.py", 3))
-    split(tmp_path, diff, max_bytes=100_000)
+    split(tmp_path, diff)
     out = tmp_path / "batches"
     answer(out, 1, block("Public surface", "api.py:1"))
 
@@ -268,8 +279,8 @@ def test_merge_reads_an_answer_wrapped_in_a_code_fence(tmp_path):
 
 
 def test_merge_names_the_size_of_an_oversize_batch_without_an_answer(tmp_path):
-    diff = write_diff(tmp_path, ("small.py", 3), ("big.py", 400))
-    split(tmp_path, diff, max_bytes=2_000)
+    diff = write_diff(tmp_path, ("small.py", 3), ("big.py", 2100))
+    split(tmp_path, diff)
     out = tmp_path / "batches"
     answer(out, 1, "No review decisions found.")
     size = json.loads((out / "batches.json").read_text())["batches"][1]["bytes"]
@@ -280,7 +291,9 @@ def test_merge_names_the_size_of_an_oversize_batch_without_an_answer(tmp_path):
         {
             "path": "big.py",
             "batch": 2,
-            "reason": f"no classifier answer; one file of {size} bytes, over the 2000-byte limit",
+            "reason": (
+                f"no classifier answer; one file of {size} bytes, over the {LIMIT}-byte limit"
+            ),
         }
     ]
 

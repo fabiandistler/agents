@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Split a diff too large for one classifier context into batches by file, and merge the answers.
 
-usage: batches.py split DIFF --out DIR [--max-bytes N] | batches.py merge DIR
+usage: batches.py split DIFF --out DIR | batches.py merge DIR
 
   split DIFF --out DIR  Cut a `git diff` into one chunk per file, pack the chunks
-                        in diff order into batches of at most N bytes (default
-                        200000), write DIR/batch-<k>.diff and DIR/batches.json,
-                        and print that JSON: {"max_bytes", "batches": [{"batch",
-                        "file", "paths", "bytes", "oversize"}]}. Every file lands
-                        in exactly one batch; a file over N gets a batch of its
-                        own with "oversize": true.
+                        in diff order into batches of at most 200000 bytes,
+                        write DIR/batch-<k>.diff and DIR/batches.json, and print
+                        that JSON: {"max_bytes", "batches": [{"batch", "file",
+                        "paths", "bytes", "oversize"}]}. Every file lands in
+                        exactly one batch; a file over the limit gets a batch of
+                        its own with "oversize": true.
   merge DIR             Read the classifier's answer per batch from
                         DIR/batch-<k>.answer.md and print one queue as JSON:
                         {"boundaries", "deviation", "cards", "unclassified"}.
@@ -34,7 +34,7 @@ import re
 import sys
 from pathlib import Path
 
-DEFAULT_MAX_BYTES = 200_000
+MAX_BYTES = 200_000
 FILE_HEADER = "diff --git "
 HEADER_PATHS = re.compile(r"^diff --git a/(.*) b/(.*)$")
 
@@ -94,12 +94,12 @@ def chunk_path(chunk: str) -> str:
     return header.group(2)
 
 
-def pack(chunks: list[tuple[str, str]], max_bytes: int) -> list[list[tuple[str, str]]]:
+def pack(chunks: list[tuple[str, str]]) -> list[list[tuple[str, str]]]:
     batches: list[list[tuple[str, str]]] = []
     size = 0
     for path, chunk in chunks:
         chunk_bytes = len(chunk.encode())
-        if not batches or size + chunk_bytes > max_bytes:
+        if not batches or size + chunk_bytes > MAX_BYTES:
             batches.append([])
             size = 0
         batches[-1].append((path, chunk))
@@ -107,10 +107,10 @@ def pack(chunks: list[tuple[str, str]], max_bytes: int) -> list[list[tuple[str, 
     return batches
 
 
-def split(diff_file: Path, out: Path, max_bytes: int) -> dict:
+def split(diff_file: Path, out: Path) -> dict:
     if not diff_file.is_file():
         raise BatchError(2, "DIFF not found")
-    batches = pack(file_chunks(diff_file.read_text(encoding="utf-8")), max_bytes)
+    batches = pack(file_chunks(diff_file.read_text(encoding="utf-8")))
     out.mkdir(parents=True, exist_ok=True)
     entries = []
     for number, batch in enumerate(batches, start=1):
@@ -124,10 +124,10 @@ def split(diff_file: Path, out: Path, max_bytes: int) -> dict:
                 "file": name,
                 "paths": [path for path, _ in batch],
                 "bytes": size,
-                "oversize": size > max_bytes,
+                "oversize": size > MAX_BYTES,
             }
         )
-    manifest = {"max_bytes": max_bytes, "batches": entries}
+    manifest = {"max_bytes": MAX_BYTES, "batches": entries}
     (out / "batches.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest
 
@@ -249,7 +249,7 @@ class Parser(argparse.ArgumentParser):
 def main(argv: list[str]) -> int:
     parser = Parser(
         prog="batches.py",
-        usage="batches.py split DIFF --out DIR [--max-bytes N] | batches.py merge DIR",
+        usage="batches.py split DIFF --out DIR | batches.py merge DIR",
         description=__doc__.split("\n", 3)[3],
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -257,13 +257,12 @@ def main(argv: list[str]) -> int:
     split_cmd = commands.add_parser("split")
     split_cmd.add_argument("diff", type=Path)
     split_cmd.add_argument("--out", required=True, type=Path)
-    split_cmd.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES)
     merge_cmd = commands.add_parser("merge")
     merge_cmd.add_argument("dir", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "split":
-            print(json.dumps(split(args.diff, args.out, args.max_bytes)))
+            print(json.dumps(split(args.diff, args.out)))
         else:
             print(json.dumps(merge(args.dir)))
     except BatchError as err:
