@@ -338,3 +338,33 @@ def test_no_credential_in_argv_or_output(tmp_path, repo):
     assert all(secret not in arg for call in forge.calls() for arg in call)
     assert secret not in result.stdout + result.stderr
     assert all(secret not in path.read_text() for path in out.iterdir())
+
+
+GH_WRITE_FLAGS = {"-X", "--method", "-f", "--raw-field", "-F", "--field", "--input"}
+AZ_READ_VERBS = {"show", "list"}
+
+
+def is_forge_read(call):
+    cli, *args = call
+    if cli == "gh":
+        return args[:1] == ["api"] and not GH_WRITE_FLAGS.intersection(args)
+    words = [arg for arg in args if not arg.startswith("-")]
+    return cli == "az" and bool(AZ_READ_VERBS.intersection(words[2:4]))
+
+
+@pytest.mark.parametrize(
+    ("remote", "routes"),
+    [
+        (GH_REMOTE, lambda f: github_routes(f, [{"name": "ci", "status": "completed"}])),
+        (AZ_REMOTE, lambda f: azure_routes(f, [policy("Build", "approved")])),
+    ],
+)
+def test_every_forge_call_is_a_read(tmp_path, repo, remote, routes):
+    git(repo, "remote", "add", "origin", remote)
+    forge = Forge(tmp_path)
+    routes(forge)
+
+    forge.run(repo, tmp_path / "out")
+
+    assert forge.calls()
+    assert [call for call in forge.calls() if not is_forge_read(call)] == []
