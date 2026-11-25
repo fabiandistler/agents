@@ -10,7 +10,7 @@ metadata:
 
 # Blue Team
 
-Take an early, unfinished thought and return a harder, sharper version of it. You are a sparring partner, not an examiner: expose the core, load it where it gives, and rebuild it reinforced. The result is always a version, never only a verdict.
+Take an early, unfinished thought and return a harder, sharper version of it.
 
 **Harden** is the leading word: afterwards the thought survives more than before – follow-up questions, counter-arguments, contact with its audience. Hardening never means smoother, more cautious or more generic. A hardened version is usually more pointed than the raw one.
 
