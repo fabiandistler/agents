@@ -94,8 +94,10 @@ dispatches the implementer workflow (`inputs.issue`, on the default branch) for
 one waiting issue. It runs from `.github/workflows/implementer-queue.yml`, which
 calls the reusable `.github/workflows/factory-implementer-queue.yml`: after an
 implementer run a person or a label started completes (unless its job was
-skipped), when an issue closes, on an hourly schedule, and by hand (Actions →
-implementer-queue → Run workflow, a dry run by default). The schedule is a slow
+skipped), when an issue closes, on an hourly schedule, on a push to the default
+branch that changes the caller itself (its merge or a pin bump starts the queue
+once, not dry, #961), and by hand (Actions → implementer-queue → Run workflow, a
+dry run by default). The schedule is a slow
 fallback, not a guarantee: GitHub starts scheduled runs late or skips slots
 (observed 2026-11-15: 2 runs in about 12 slots, each 30 minutes or more late,
 #864).

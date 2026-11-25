@@ -48,12 +48,23 @@ else
   log "MISSING go; the gitleaks hook cannot be built (use SKIP=gitleaks)"
 fi
 
-# 3. The pinned Bats checkouts under test/bats/, which the bats check and its
+# 3. GNU parallel, so the bats check runs one job per core (#721, #955):
+# 241 s serial against 81 s with --jobs 4 in a 4-core cloud session. The
+# image ships empty apt lists; without parallel the check runs serially.
+case "$(parallel --version 2>/dev/null)" in
+  "GNU parallel"*) ;;
+  *)
+    { apt-get update -qq && apt-get install -y -qq parallel; } >/dev/null 2>&1 ||
+      log "could not install GNU parallel; the bats check runs serially"
+    ;;
+esac
+
+# 4. The pinned Bats checkouts under test/bats/, which the bats check and its
 # pre-push hook need; a clone without them gets MISSING bats (exit 3).
 git submodule update --init --quiet >&2 ||
   log "could not fetch the test/bats/ submodules; the bats check will report MISSING"
 
-# 4. Git hook plus every hook environment (ruff, ty, shellcheck, shfmt,
+# 5. Git hook plus every hook environment (ruff, ty, shellcheck, shfmt,
 # gitleaks at the revs in .pre-commit-config.yaml), so the first commit is fast.
 # Last, because without go the gitleaks build fails and ends the script here.
 if command -v prek >/dev/null 2>&1; then

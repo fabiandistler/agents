@@ -8,9 +8,11 @@
 # `workflow_run` chain stops or a closing starts no run (an issue a
 # GITHUB_TOKEN merge closes may not): GitHub starts it late or skips slots
 # (observed 2026-11-15: 2 runs in about 12 slots, each 30 min or more late,
-# #864); a manual run, dry by default. A run this queue dispatched starts no
-# workflow_run, so the implementer's follow-up job dispatches this workflow
-# with dry_run false after it (#863). Such a queue run starts none either, so
+# #864); a push to main that changes this file, so the caller's own merge or a
+# pin bump starts the queue once, not dry (#961); a manual run, dry by
+# default. A run this queue dispatched starts no workflow_run, so the
+# implementer's follow-up job dispatches this workflow with dry_run false after
+# it (#863). Such a queue run starts none either, so
 # the called workflow's report-failure job dispatches fix-task.yml with its run
 # id when its starter fails (#909); fix-task.yml watches every other run.
 name: implementer-queue
@@ -23,6 +25,9 @@ on:
     types: [closed]
   schedule:
     - cron: "17 * * * *"
+  push:
+    branches: [main]
+    paths: [.github/workflows/implementer-queue.yml]
   workflow_dispatch:
     inputs:
       dry_run:

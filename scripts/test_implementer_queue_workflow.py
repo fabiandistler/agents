@@ -91,7 +91,7 @@ def test_every_action_is_sha_pinned_and_no_model_runs():
 
 def test_the_queue_starts_when_capacity_may_have_freed_up():
     triggers = workflow(QUEUE)[True]  # PyYAML reads the bare `on` key as boolean True.
-    assert set(triggers) == {"workflow_run", "issues", "schedule", "workflow_dispatch"}
+    assert set(triggers) == {"workflow_run", "issues", "schedule", "workflow_dispatch", "push"}
     assert triggers["workflow_run"] == {
         "workflows": [workflow(IMPLEMENTER)["name"]],
         "types": ["completed"],
@@ -99,7 +99,28 @@ def test_the_queue_starts_when_capacity_may_have_freed_up():
     assert triggers["issues"] == {"types": ["closed"]}, "a closed issue may free a blocked one"
     assert triggers["schedule"], "the fallback when a workflow_run chain stops"
     assert triggers["workflow_dispatch"]["inputs"]["dry_run"]["default"] is True
+    # The caller's own merge or change starts the queue once, so a merge that
+    # closes no issue does not wait for a schedule slot GitHub may drop (#961).
+    assert triggers["push"] == {
+        "branches": ["main"],
+        "paths": [f".github/workflows/{QUEUE.name}"],
+    }
     assert set(workflow(FACTORY_QUEUE)[True]) == {"workflow_call"}
+
+
+def test_a_push_of_the_caller_starts_a_real_queue_run():
+    # The merge is the maintainer's go-ahead, so a push run dispatches.
+    push = {
+        "github.event_name": "push",
+        "github.event.workflow_run.conclusion": "",
+        "inputs.dry_run": "",
+    }
+    job = single_job(QUEUE)
+    assert evaluate(job["if"], "||", push), "the start-next guard admits a push run"
+    (dry_run,) = EXPRESSION.findall(job["with"]["dry_run"])
+    assert not evaluate(dry_run, "&&", push)
+    dispatch = {**push, "github.event_name": "workflow_dispatch", "inputs.dry_run": "true"}
+    assert evaluate(dry_run, "&&", dispatch), "a manual run stays dry by default"
 
 
 def test_a_skipped_implementer_run_starts_no_queue_job():
@@ -145,6 +166,24 @@ PERSON = "maintainer"
 CLAUSE = re.compile(r"(?P<context>[\w.-]+) (?P<operator>==|!=) '(?P<value>[^']*)'")
 
 
+def evaluate(expression: str, operator: str, context: dict[str, str]) -> bool:
+    """Evaluate string comparisons joined by one ``operator`` (`&&` or `||`).
+
+    A clause that is a bare context name reads it as a boolean; any other shape
+    fails here instead of being misread.
+    """
+    values = []
+    for clause in (part.strip() for part in expression.split(operator)):
+        match = CLAUSE.fullmatch(clause)
+        if match:
+            equal = context[match["context"]] == match["value"]
+            values.append(equal == (match["operator"] == "=="))
+        else:
+            assert re.fullmatch(r"[\w.-]+", clause), f"unexpected clause: {clause!r}"
+            values.append(context[clause] == "true")
+    return all(values) if operator == "&&" else any(values)
+
+
 def report_failure_clauses() -> list[str]:
     return [clause.strip() for clause in factory_job(REPORT_FAILURE)["if"].split("&&")]
 
@@ -157,13 +196,7 @@ def report_runs(context: dict[str, str]) -> bool:
     """
     first, *comparisons = report_failure_clauses()
     assert first == "always()", "a failed starter must not skip the report job"
-    for clause in comparisons:
-        match = CLAUSE.fullmatch(clause)
-        assert match, f"unexpected clause in the report job's if: {clause!r}"
-        equal = context[match["context"]] == match["value"]
-        if equal != (match["operator"] == "=="):
-            return False
-    return True
+    return evaluate(" && ".join(comparisons), "&&", context)
 
 
 def queue_run(**overrides: str) -> dict[str, str]:
