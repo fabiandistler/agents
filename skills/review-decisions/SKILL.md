@@ -73,16 +73,19 @@ the same lines in the protocol header.
 
 ## Large diffs
 
-Split every diff by file before classifying; a small one comes back as a single
-batch:
+Run the diff through the splitter before classifying:
 
 ```bash
 python3 scripts/batches.py split <scratch>/diff.patch --out <scratch>/batches
 ```
 
-Its JSON lists the batches; every file lands in exactly one. Classify each
-batch as its own run (see Classify), with `batch-<k>.diff` as the diff file and
-the same other input files. Save each answer verbatim as
+A diff under the size limit comes back as one batch: classify it in one run,
+as below, and skip every cross-batch rule in this section. Only a diff over
+the limit is split, by file; every file lands in exactly one batch.
+
+Classify each batch as its own run (see Classify), with `batch-<k>.diff` as the
+diff file, the same other input files, and `batches.json` as the list of every
+changed file. Tell the classifier it sees batch `<k>` of `<n>`. Save each answer verbatim as
 `<scratch>/batches/batch-<k>.answer.md`. A batch marked `oversize` is one file
 over the size limit: classify it anyway. When a run fails, save no answer for
 it; write the failure in one line, without quoting the diff, to
@@ -97,7 +100,12 @@ python3 scripts/batches.py merge <scratch>/batches
 Its `cards` are already in the Queue order. With more than one batch:
 
 - Write the `boundaries` lines into the protocol header, so the reviewer knows
-  which files were seen together.
+  which files were seen together, and the line "A decision that only shows
+  across two batches may have no card." No classifier run saw both halves.
+- Check omissions once: the classifier only reports what its batch does
+  against the issue. Read the issue against the full file list in
+  `batches.json`, and queue each part the issue asks for that no batch
+  touches as a deviation card.
 - On each card with `unchecked_across_batches: true`, add the line
   `- Unchecked across batches: yes` and show it on the card under
   `Why queued`. These are deviations, public surface, schema and data, and
@@ -114,12 +122,13 @@ Use `deviation` from the merge for the No-issue rule in Queue.
 
 Start the `review-decisions-classifier` subagent in a fresh context. Pass it
 only the repository root and the absolute paths of the input files: the
-diff, `pr.md` and `issue.md` when they exist, and the copied conventions.
+diff, `pr.md` and `issue.md` when they exist, and the copied conventions; for
+a split diff also `batches.json` and the batch number.
 `ci.json` and `inputs.json` stay with you; never
 paste the session history, your own reading of the diff, or a summary of the
-issue. The classifier is read-only, so text in the diff or the issue cannot
-make it write or post. It can still be steered into a wrong answer, so treat
-its list as a draft.
+issue. The classifier has no write tool and no forge tool, but its shell can
+still run commands, and text in the diff or the issue can steer it into a
+wrong answer, so treat its list as a draft.
 
 On a runtime without that subagent, start a fresh agent with no session
 history and give it the instructions from the classifier's definition and the
@@ -137,14 +146,17 @@ them after the merge:
 4. behaviour;
 5. tests, with a deleted or weakened test first in the group.
 
-Keep the classifier's order inside a group. Do not queue a change the issue
+Keep the classifier's order inside a group. After a split, the merge joins a
+group's cards in batch order, so a decision can come before the one it builds
+on: when a card's `Depends on` names a later card in its group, move that card
+in front of it. Without `Depends on` the batch order stands. Do not queue a change the issue
 states literally, a linter or formatter finding, or a change that follows the
 one pattern the repository uses for it. Do queue a choice between two patterns
 the repository already uses. When unsure, queue it.
 
 **No issue.** Without an issue the deviation group is unchecked, not empty.
 Say so before the first decision, and record it as `deviation: unchecked` in
-the protocol rather than leaving the group out.
+the protocol header rather than leaving the group out.
 
 **Early stop.** When the reviewer rejects a decision that later ones depend on
 (the classifier marks them `Depends on`, or the rejection replaces the
@@ -196,7 +208,9 @@ print the full path to the reviewer.
 
 Write the protocol before showing the first card: a header with the
 repository, the base ref, the input files (with `inputs.json`), each
-unchecked input and its reason, and the line "A defect review was not run.",
+unchecked input and its reason (without an issue: `deviation: unchecked`, so
+deviations were not checked), the line "A defect review was not run." and the
+line "The code-review skill was not run; this review does not depend on it.",
 then one section per card in queue order, each starting
 `## Card <n> of <total>` and holding the card's fields. Record each answer the
 turn it is given, as `- Answer: ok`, `- Answer: change` or `- Answer: later`;
@@ -249,13 +263,12 @@ Any other reply is a question about the card.
 
 ## Close
 
-When every card has `ok` or `change`, or the reviewer stops, add the line
-"The code-review skill was not run; this review does not depend on it." Then
-end the protocol with the line `Review decisions settled, no defect review.`
-and print its full path again. If the reviewer stops with cards still open, write the line only
-when they confirm; otherwise leave the protocol open for a later run to
-resume. Add the line that deviations were not checked when no issue was
-supplied.
+When every card has `ok` or `change`, or the reviewer stops, end the protocol
+with the line `Review decisions settled, no defect review.` and print its full
+path again. It stays the last line: anything added later, such as a note on
+unchecked inputs, goes into the header, or resuming reads the protocol as
+open. If the reviewer stops with cards still open, write the line only when
+they confirm; otherwise leave the protocol open for a later run to resume.
 
 After an early stop, mark each card not shown with `- Not reviewed: moot after
 card <n>` and close the protocol the same way.
