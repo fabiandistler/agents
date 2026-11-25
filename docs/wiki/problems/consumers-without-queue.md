@@ -100,3 +100,29 @@ dotfiles never start, because neither repo has a queue caller.
 Related: [implementer-queue page guard](implementer-queue-page-guard.md),
 [no agent consumer outside agents](no-agent-consumer-outside-agents.md),
 [2026-11-11 factory rollout](../decisions/2026-11-11-factory-rollout.md).
+
+## After the merges (2026-11-25)
+
+- [read] repo-maintenance#206 and dotfiles#82 merged at about 07:04 UTC. In
+  repo-maintenance, #206 closed #205, and the `issues: closed` trigger started
+  the queue (run 45565352754, 07:04:52). The queue dispatched #200, whose
+  implementer opened repo-maintenance#207, merged at 07:32. The follow-up
+  dispatch (45567223515, 07:19) and #200's closing (45569003635, 07:32) ran the
+  queue again. No schedule run appeared in either repo for the 07:17 or 08:17
+  slot.
+- [read] dotfiles: the queue workflow had been registered and `active` since
+  07:04:28, but by 08:28 it had never run. No issue closed there (#82 used
+  `No issue:`), so only the schedule could have started it, and that schedule
+  dropped two slots (compare [runs without a trace](runs-without-trace.md) and
+  #864). At 08:28 the session dispatched `implementer-queue.yml` with
+  `dry_run: false` by hand. This reverses its earlier call not to dispatch
+  ([2026-11-25 decisions](../decisions/2026-11-25-decisions.md)). It was
+  justified because the maintainer had labelled #79 and #80
+  `ready-for-agent` that morning.
+- [inferred] A new queue caller whose merge closes no issue waits for a
+  schedule that GitHub may drop. An onboarding step that dispatches the queue
+  once after the caller merges would close that gap. No issue filed.
+- agents#953 [read, subagent reports]: rebuilt to option B (head 30c4111).
+  An independent review found 0 important defects, 8 nits and 2 pre-existing
+  ones. Everything except P1 (the `--help` length) was fixed at head 8f85b72,
+  with `check_all.sh` 25/25.
