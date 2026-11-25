@@ -5,6 +5,7 @@ Run from the repo root with: python3 -m pytest skills/review-decisions/scripts/
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -79,8 +80,15 @@ class Forge:
 
     def run(self, repo, out, *args, extra_env=None):
         self.routes_file.write_text(json.dumps(self.routes))
+        # Only the fake CLIs and git: a gh or az installed on the machine
+        # (GitHub runners have both) must not answer for a missing fake.
+        git_bin = shutil.which("git")
+        assert git_bin, "git is needed to run these tests"
+        link = self.bin / "git"
+        if not link.exists():
+            link.symlink_to(git_bin)
         env = {
-            "PATH": f"{self.bin}{os.pathsep}/usr/bin{os.pathsep}/bin",
+            "PATH": str(self.bin),
             "HOME": os.environ["HOME"],
             "FAKE_LOG": str(self.log),
             "FAKE_ROUTES": str(self.routes_file),
@@ -225,7 +233,16 @@ def test_failing_cli_falls_back(tmp_path, repo, remote):
     assert_fallback(result, out, "failed (exit 1)")
 
 
-@pytest.mark.parametrize("remote", ["https://gitlab.com/acme/widget.git", None])
+@pytest.mark.parametrize(
+    "remote",
+    [
+        "https://gitlab.com/acme/widget.git",
+        "https://evil.example/github.com/acme/widget.git",
+        "https://github.com.evil.example/acme/widget.git",
+        "https://evil.example/dev.azure.com/acme/_git/widget",
+        None,
+    ],
+)
 def test_unsupported_or_missing_remote_falls_back(tmp_path, repo, remote):
     if remote:
         git(repo, "remote", "add", "origin", remote)
@@ -403,3 +420,35 @@ def test_a_directory_outside_git_exits_2(tmp_path):
 
     assert result.returncode == 2
     assert not (tmp_path / "out" / "inputs.json").exists()
+
+
+@pytest.mark.parametrize(
+    "remote",
+    [
+        "git@github.com:acme/widget.git",
+        "ssh://git@github.com/acme/widget.git",
+        "git@ssh.dev.azure.com:v3/acme/widget/widget",
+        "https://acme.visualstudio.com/widget/_git/widget",
+    ],
+)
+def test_ssh_and_legacy_remotes_are_recognised(tmp_path, repo, remote):
+    git(repo, "remote", "add", "origin", remote)
+    forge = Forge(tmp_path, clis=())
+    out = tmp_path / "out"
+
+    result = forge.run(repo, out)
+
+    assert_fallback(result, out, "is not installed")
+
+
+def test_no_pull_request_for_the_branch_points_to_pr_for_forks(tmp_path, repo):
+    git(repo, "remote", "add", "origin", GH_REMOTE)
+    forge = Forge(tmp_path)
+    forge.route("pulls?head=acme:feature", [])
+    out = tmp_path / "out"
+
+    result = forge.run(repo, out)
+
+    assert result.returncode == 3, result.stderr
+    reasons = [u["reason"] for u in manifest(out)["unchecked"]]
+    assert all("--pr" in reason for reason in reasons)

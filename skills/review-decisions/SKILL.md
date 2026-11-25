@@ -38,7 +38,8 @@ file in a new scratch directory outside the repository (`mktemp -d`):
 
 1. **Forge inputs**: run `python3 scripts/gather_inputs.py --repo <repo-root>
    --out <scratch-dir>`, adding `--pr <number>` when the reviewer named the
-   pull request. It detects the forge from the `origin` remote (GitHub or
+   pull request or it comes from a fork (the branch lookup only finds pull
+   requests from the same repository). It detects the forge from the `origin` remote (GitHub or
    Azure DevOps) and reads, through that forge's own CLI and login, the PR
    text into `pr.md`, the linked issue or work items into `issue.md` and the
    CI status into `ci.json`. It prints the manifest `inputs.json`: the files

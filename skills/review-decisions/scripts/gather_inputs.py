@@ -33,6 +33,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import cli
 
@@ -64,13 +65,21 @@ def run_cli(repo: Path, argv: list[str]) -> Any:
         raise ForgeError(f"{' '.join(argv[:3])} returned no JSON") from err
 
 
+def remote_host(url: str) -> str:
+    """The host of a git remote: https://host/..., ssh://user@host/..., or user@host:path."""
+    if "://" in url:
+        return (urlsplit(url).hostname or "").lower()
+    match = re.match(r"^[^@/]+@([^:/]+):", url)
+    return match.group(1).lower() if match else ""
+
+
 def detect_forge(url: str) -> str:
-    lowered = url.lower()
-    if not lowered:
+    if not url:
         return "none"
-    if "github.com" in lowered:
+    host = remote_host(url)
+    if host == "github.com":
         return "github"
-    if re.search(r"dev\.azure\.com|visualstudio\.com|/_git/", lowered):
+    if host in ("dev.azure.com", "ssh.dev.azure.com") or host.endswith(".visualstudio.com"):
         return "azure"
     return "unknown"
 
@@ -129,7 +138,10 @@ class GitHub:
             return self.api(f"pulls/{number}")
         pulls = self.api(f"pulls?head={self.owner}:{branch}&state=open")
         if not pulls:
-            raise ForgeError("no open pull request for the current branch")
+            raise ForgeError(
+                "no open pull request for the current branch in this repository;"
+                " for a pull request from a fork, pass --pr N"
+            )
         return pulls[0]
 
     @staticmethod
