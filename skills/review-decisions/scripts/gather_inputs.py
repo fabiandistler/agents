@@ -23,6 +23,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import cli
+
 USAGE_EPILOG = """\
 files in --out: inputs.json (manifest, also printed), pr.md, issue.md, ci.json
   ci.json: {"state": "green"|"failing"|"pending"|"none", "checks": [{name, state}]}
@@ -34,7 +36,7 @@ exit: 0 all three inputs read | 1 usage error | 2 not a git repository |
       3 manifest written, some input unchecked (see "unchecked")
 """
 
-EXIT_OK, EXIT_USAGE, EXIT_NOT_GIT, EXIT_UNCHECKED = 0, 1, 2, 3
+EXIT_OK, EXIT_NOT_GIT, EXIT_UNCHECKED = 0, 2, 3
 
 # GitHub closing keywords; the issue the PR claims to implement.
 CLOSING = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)\b", re.IGNORECASE)
@@ -60,16 +62,6 @@ def run_cli(repo: Path, argv: list[str]) -> Any:
         return json.loads(proc.stdout)
     except json.JSONDecodeError as err:
         raise ForgeError(f"{' '.join(argv[:3])} returned no JSON") from err
-
-
-def git(repo: Path, *args: str) -> str:
-    proc = subprocess.run(  # noqa: S603 -- read-only git argv, no shell.
-        ["git", "-C", str(repo), *args],  # noqa: S607 -- git from PATH.
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return proc.stdout.strip() if proc.returncode == 0 else ""
 
 
 def detect_forge(url: str) -> str:
@@ -281,14 +273,8 @@ def gather(forge: GitHub | Azure, branch: str, pr_number: int | None, inputs: In
         inputs.write("ci", "ci.json", json.dumps(ci, indent=2) + "\n")
 
 
-class Parser(argparse.ArgumentParser):
-    def error(self, message: str):
-        self.print_usage(sys.stderr)
-        self.exit(EXIT_USAGE, f"gather_inputs.py: {message}\n")
-
-
 def main(argv: list[str] | None = None) -> int:
-    parser = Parser(
+    parser = cli.Parser(
         prog="gather_inputs.py",
         description="Fetch PR text, linked issue and CI status for review-decisions.",
         epilog=USAGE_EPILOG,
@@ -302,16 +288,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     repo = Path(args.repo).resolve()
-    if not git(repo, "rev-parse", "--git-dir"):
+    if cli.git(repo, "rev-parse", "--git-dir") is None:
         print(f"error: not a git repository: {repo}", file=sys.stderr)
         return EXIT_NOT_GIT
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    url = git(repo, "remote", "get-url", "origin")
+    url = (cli.git(repo, "remote", "get-url", "origin") or "").strip()
     kind = detect_forge(url)
     inputs = Inputs(out, kind)
-    branch = git(repo, "branch", "--show-current")
+    branch = (cli.git(repo, "branch", "--show-current") or "").strip()
     try:
         forge = GitHub(repo, url) if kind == "github" else Azure(repo) if kind == "azure" else None
     except ForgeError as err:

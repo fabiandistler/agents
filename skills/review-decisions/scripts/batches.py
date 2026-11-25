@@ -28,11 +28,13 @@ examples:
 
 from __future__ import annotations
 
-import argparse
 import json
 import re
 import sys
 from pathlib import Path
+
+import cli
+from cli import ScriptError
 
 MAX_BYTES = 200_000
 FILE_HEADER = "diff --git "
@@ -59,12 +61,6 @@ NONE_FOUND = "No review decisions found."
 DEVIATION_UNCHECKED = "Deviation: unchecked (no issue)."
 
 
-class BatchError(Exception):
-    def __init__(self, code: int, message: str):
-        super().__init__(message)
-        self.code = code
-
-
 class MalformedAnswerError(Exception):
     pass
 
@@ -72,7 +68,7 @@ class MalformedAnswerError(Exception):
 def file_chunks(diff: str) -> list[tuple[str, str]]:
     """Return (path, chunk) per file, in diff order; the chunks rebuild the diff."""
     if not diff.startswith(FILE_HEADER):
-        raise BatchError(3, "DIFF does not start with a `diff --git` header")
+        raise ScriptError(3, "DIFF does not start with a `diff --git` header")
     starts = [m.start() for m in re.finditer(r"^diff --git ", diff, flags=re.MULTILINE)]
     ends = [*starts[1:], len(diff)]
     return [(chunk_path(diff[s:e]), diff[s:e]) for s, e in zip(starts, ends, strict=True)]
@@ -90,7 +86,7 @@ def chunk_path(chunk: str) -> str:
             return line[len("--- a/") :]
     header = HEADER_PATHS.match(lines[0])
     if header is None:
-        raise BatchError(3, "a `diff --git` header names no a/ and b/ path")
+        raise ScriptError(3, "a `diff --git` header names no a/ and b/ path")
     return header.group(2)
 
 
@@ -109,7 +105,7 @@ def pack(chunks: list[tuple[str, str]]) -> list[list[tuple[str, str]]]:
 
 def split(diff_file: Path, out: Path) -> dict:
     if not diff_file.is_file():
-        raise BatchError(2, "DIFF not found")
+        raise ScriptError(2, "DIFF not found")
     batches = pack(file_chunks(diff_file.read_text(encoding="utf-8")))
     out.mkdir(parents=True, exist_ok=True)
     entries = []
@@ -188,7 +184,7 @@ def queue_key(card: dict) -> tuple[int, int]:
 def merge(out: Path) -> dict:
     manifest_file = out / "batches.json"
     if not manifest_file.is_file():
-        raise BatchError(2, "DIR holds no batches.json; run split first")
+        raise ScriptError(2, "DIR holds no batches.json; run split first")
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     batches = manifest["batches"]
     total = len(batches)
@@ -240,19 +236,8 @@ def merge(out: Path) -> dict:
     }
 
 
-class Parser(argparse.ArgumentParser):
-    def error(self, message: str):
-        self.print_usage(sys.stderr)
-        self.exit(1, f"batches.py: {message}\n")
-
-
 def main(argv: list[str]) -> int:
-    parser = Parser(
-        prog="batches.py",
-        usage="batches.py split DIFF --out DIR | batches.py merge DIR",
-        description=__doc__.split("\n", 3)[3],
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+    parser = cli.parser(__doc__, "batches.py")
     commands = parser.add_subparsers(dest="command", required=True, metavar="{split,merge}")
     split_cmd = commands.add_parser("split")
     split_cmd.add_argument("diff", type=Path)
@@ -260,15 +245,9 @@ def main(argv: list[str]) -> int:
     merge_cmd = commands.add_parser("merge")
     merge_cmd.add_argument("dir", type=Path)
     args = parser.parse_args(argv)
-    try:
-        if args.command == "split":
-            print(json.dumps(split(args.diff, args.out)))
-        else:
-            print(json.dumps(merge(args.dir)))
-    except BatchError as err:
-        print(f"batches.py: {err}", file=sys.stderr)
-        return err.code
-    return 0
+    if args.command == "split":
+        return cli.run("batches.py", lambda: print(json.dumps(split(args.diff, args.out))))
+    return cli.run("batches.py", lambda: print(json.dumps(merge(args.dir))))
 
 
 if __name__ == "__main__":
