@@ -238,3 +238,41 @@ def test_diff_coverage_counts_a_file_whose_header_is_cut_in_half_as_not_shown() 
 
     assert last_full == "a.py"
     assert not_in_full == ("b.py",)
+
+
+def test_a_renamed_file_counts_its_base_content_under_its_new_path() -> None:
+    # The fetcher keys a renamed file's base content by its new path
+    # (test_renamed_files_read_the_previous_path_at_the_base_commit).
+    renamed = changed_file("scripts/new.py") | {
+        "status": "renamed",
+        "renamed_from": "scripts/old.py",
+    }
+    context = base_context(files=[renamed], base_files={"scripts/new.py": "old\n"})
+
+    sent = pr_review_coverage.cap_base_files(context["base_files"])
+
+    assert pr_review_coverage.missing_base_content(context, sent) == ()
+    assert pr_review_coverage.missing_base_content(context, []) == ("scripts/new.py",)
+
+
+def test_a_multibyte_diff_cut_by_the_total_cap_fits_and_names_what_it_shows() -> None:
+    # The diff fits its own caps; dropping all base content and cutting the
+    # diff, whose notes then grow, must still end within the budget.
+    files = overfull_context()["files"]
+    diff = "".join(
+        f"diff --git a/{item['path']} b/{item['path']}\n" + ("+" + "ü" * 50 + "\n") * 4
+        for item in files
+    )
+    assert pr_review._cap_diff(diff) == (diff, False)
+
+    request, coverage = pr_review.build_request(overfull_context(diff=diff))
+
+    payload = user_payload(request)
+    budget = pr_review.MAX_TOTAL_BYTES - len(request["messages"][0]["content"].encode("utf-8"))
+    assert len(payload.encode("utf-8")) <= budget
+    shown = payload.split("\nDIFF:\n", 1)[1].split("\n=== END OF DIFF ===", 1)[0]
+    assert coverage.diff_cut is True
+    assert coverage.diff_files_not_in_full
+    assert (coverage.diff_last_full_file, coverage.diff_files_not_in_full) == (
+        pr_review_coverage.diff_coverage(files, shown)
+    )
