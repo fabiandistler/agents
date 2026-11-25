@@ -36,14 +36,27 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import cli
 from cli import ScriptError, git
 
 
-def changed_files(repo: Path, base: str) -> list[dict]:
-    listing = git(repo, "diff", "-z", "--name-status", "-M", f"{base}...HEAD")
+@dataclass(frozen=True)
+class BranchDiff:
+    """What HEAD changed since it left the base ref, in one repository."""
+
+    repo: Path
+    base: str
+
+    def diff(self, *options: str, paths: tuple[str, ...] = ()) -> str | None:
+        limit = ("--", *paths) if paths else ()
+        return git(self.repo, "diff", *options, f"{self.base}...HEAD", *limit)
+
+
+def changed_files(branch: BranchDiff) -> list[dict]:
+    listing = branch.diff("-z", "--name-status", "-M")
     if listing is None:
         raise ScriptError(2, "cannot diff --base against HEAD (unknown ref?)")
     fields = listing.split("\0")
@@ -60,18 +73,9 @@ def changed_files(repo: Path, base: str) -> list[dict]:
     return entries
 
 
-def only_eol_whitespace(repo: Path, base: str, entry: dict) -> bool:
-    paths = [entry["old_path"], entry["path"]] if "old_path" in entry else [entry["path"]]
-    patch = git(
-        repo,
-        "diff",
-        "-M",
-        "--ignore-space-at-eol",
-        "--ignore-cr-at-eol",
-        f"{base}...HEAD",
-        "--",
-        *paths,
-    )
+def only_eol_whitespace(branch: BranchDiff, entry: dict) -> bool:
+    paths = (entry["old_path"], entry["path"]) if "old_path" in entry else (entry["path"],)
+    patch = branch.diff("-M", "--ignore-space-at-eol", "--ignore-cr-at-eol", paths=paths)
     if patch is None:
         raise ScriptError(2, "cannot diff a changed file against --base")
     markers = ("@@", "old mode", "new mode", "Binary files", "GIT binary patch")
@@ -114,10 +118,10 @@ def ci_proof(repo: Path, inputs: Path | None) -> dict:
     return {"proof": True, "reason": f"CI is green for {local[:12]}"}
 
 
-def judge(repo: Path, base: str, entry: dict, ci: dict) -> None:
+def judge(branch: BranchDiff, entry: dict, ci: dict) -> None:
     if entry["status"] == "R100":
         entry.update(skim=True, proof="rename", reason="renamed or moved, content identical")
-    elif entry["status"][0] in "MR" and only_eol_whitespace(repo, base, entry):
+    elif entry["status"][0] in "MR" and only_eol_whitespace(branch, entry):
         entry.update(
             skim=True,
             proof="formatting",
@@ -133,9 +137,10 @@ def report(repo: Path, base: str, inputs: Path | None) -> None:
     if git(repo, "rev-parse", "--git-dir") is None:
         raise ScriptError(2, "--repo is not inside a git repository")
     ci = ci_proof(repo, inputs)
-    files = changed_files(repo, base)
+    branch = BranchDiff(repo, base)
+    files = changed_files(branch)
     for entry in files:
-        judge(repo, base, entry, ci)
+        judge(branch, entry, ci)
     print(json.dumps({"ci": ci, "files": files}, indent=2))
 
 
