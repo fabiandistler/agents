@@ -64,8 +64,8 @@ starts the implementer. Its claim either stops the run or creates branch
 `agent/issue-<n>` and builds a ready-for-review pull request that closes
 the issue. A run stopped as `blocked` or `at-capacity` keeps
 `ready-for-agent` and waits in the implementer queue, which starts it once
-no run works and its blockers are done (in a repository without a queue
-caller it loses the label instead); one stopped as `no-contract` loses
+no run works and its blockers are done (where the implementer caller passes
+no `queue_workflow`, it loses the label instead); one stopped as `no-contract` loses
 the label until you add it again. The PR review labels the risk and the verdict, keeps
 one sticky comment and sets the `pr-review/verdict` status. A `concerns` or
 `block` verdict on an `agent/issue-<n>` pull request starts up to two Rework
