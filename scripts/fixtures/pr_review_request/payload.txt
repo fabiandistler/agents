@@ -17,14 +17,14 @@ BASE TREE PATHS (files at the base commit, changed directories first):
 - README.md
 - scripts/tool.py
 
-BASE FILE CONTENTS (at the base commit):
-=== docs/review.md (base) ===
-Old line
-
-=== end docs/review.md ===
-
 DIFF:
 diff --git a/docs/review.md b/docs/review.md
 +New line
 
 === END OF DIFF ===
+
+BASE FILE CONTENTS (at the base commit):
+=== docs/review.md (base) ===
+Old line
+
+=== end docs/review.md ===

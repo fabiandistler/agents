@@ -39,7 +39,7 @@ def test_base_files_are_capped_at_twenty_files():
 
 
 def test_base_files_stop_at_the_byte_budget():
-    limit = 200 * 1024
+    limit = pr_github.BASE_BYTES_LIMIT
     client = FakeClient(
         FakePullRequest(
             file_pages=(
@@ -67,7 +67,7 @@ def test_a_single_file_over_the_byte_budget_is_skipped():
     client = FakeClient(
         FakePullRequest(file_pages=([api_file("scripts/huge.py")],)),
         base=FakeBaseCommit(
-            contents={"scripts/huge.py": contents_response("a" * (200 * 1024 + 1))}
+            contents={"scripts/huge.py": contents_response("a" * (pr_github.BASE_BYTES_LIMIT + 1))}
         ),
     )
 

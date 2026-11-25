@@ -67,8 +67,9 @@ prompt describes no kind of repository; the file can. Its text goes verbatim
 into the system prompt, after the bundled prompt, under the heading
 `## Repository standards` and one fixed sentence that keeps the untrusted-input
 rules and the output format in force. It never enters the payload, and its
-bytes come out of the 300,000-byte total budget, so a long file can cut the
-payload (the review is then marked partial). This repository's own workflow
+bytes come out of the 300,000-byte total budget, so a long file first drops
+base content and then can cut the diff (only a diff cut marks the review
+partial). This repository's own workflow
 passes no standards file; a caller passes one with the `standards_path` input.
 
 - **One file, from the runner.** The file must come from the runner: a base

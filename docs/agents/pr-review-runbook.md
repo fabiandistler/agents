@@ -261,7 +261,8 @@ fresh data and plans exactly what a write run would, then writes nothing.
 
 `pr_github.py --linked-issues` adds up to three same-repository issues the
 pull request body closes (`Closes #n`) to the context, as the field
-`linked_issues`. `pr_review.py` renders them after the diff, in the room the
+`linked_issues`. `pr_review.py` renders them after the diff and the base file
+contents, in the room the
 capped payload leaves, without marking the review partial; only issues by an
 owner, member or collaborator show their text. Fields, caps, failure handling
 and framing: [pr-review-linked-issues.md](pr-review-linked-issues.md).
@@ -308,10 +309,25 @@ pin loses its exact version.
 
 ## Quota and cost
 
-- One review job makes one single-turn `claude -p` call: input capped (diff
-  2000 lines or 200 KB, request 300 KB, roughly 75k tokens), 300-second
+- One review job makes one single-turn `claude -p` call with a 300-second
   timeout. Label events, drafts and forks make none. A newer push cancels the
-  run for the old head.
+  run for the old head. The input is capped:
+
+  | Cap | Limit | Effect |
+  |---|---|---|
+  | Diff fetched | 400 KiB | partial |
+  | Diff | 2000 lines, 200,000 bytes | partial |
+  | Base contents, fetched and sent | 20 files, 100,000 bytes | files named |
+  | Base tree paths | 5000 fetched, 20,000 bytes sent | list cut |
+  | Title, body | 500, 50,000 bytes | noted |
+  | Linked issue | title 500, body or brief 20,000 bytes | noted |
+  | Comment | 10,000 bytes | older ones dropped |
+  | Standards file | 65,536 bytes | run stops |
+  | Request total | 300,000 bytes, about 75k tokens | see below |
+
+  Only a diff cut is partial. Over the total, base contents go first. The
+  payload and comment name the files sent without base content and, on a diff
+  cut, the last file shown in full and the files not shown.
 - Each review draws on the maintainer's Claude subscription usage limits,
   shared with interactive Claude Code use. No extra money is charged. Fork
   pull requests are never reviewed, so outside contributors cannot spend the
@@ -353,7 +369,8 @@ ruleset, or merges wait.
   disables it moments later.
 - **Fork pull requests are never reviewed by the model,** including those
   from the maintainer's own fork.
-- **Partial reviews never auto-merge.** A capped diff, or hidden markup
-  (HTML comments, hidden elements, zero-width characters, base64 blobs)
-  removed from the diff, marks the review partial in the comment. A docs
+- **Partial reviews never auto-merge.** A capped or unavailable diff, or
+  hidden markup (HTML comments, hidden elements, zero-width characters,
+  base64 blobs) removed from the diff, marks the review partial in the
+  comment. Base contents cut to the cap do not. A docs
   pull request that adds a Markdown comment therefore waits for a human.

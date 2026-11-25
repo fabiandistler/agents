@@ -67,6 +67,35 @@ def base_context(**overrides: object) -> dict:
     return context
 
 
+def changed_file(path: str) -> dict:
+    return {
+        "path": path,
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "binary": False,
+        "renamed_from": None,
+    }
+
+
+def overfull_context(**overrides: object) -> dict:
+    """A context whose diff, within its own caps, does not fit the total budget.
+
+    The capped body, the full tree list and 300 long file paths leave the diff
+    less room than its 200,000 bytes, after all base content is dropped.
+    """
+    files = [changed_file(f"src/{'p' * 90}-{number:03d}.py") for number in range(300)]
+    context = base_context(
+        files=files,
+        diff="\n".join("~" * 99 for _ in range(2000)) + "\n",
+        base_files={item["path"]: "y " * 2500 for item in files[:20]},
+        base_paths=[f"lib/{'q' * 60}-{number:04d}.py" for number in range(5000)],
+        body="B " * 25_000,
+    )
+    context.update(overrides)
+    return context
+
+
 # A stand-in for the subscription token; tests check that it is never echoed.
 FAKE_TOKEN = "sk-test-secret-value"  # noqa: S105
 

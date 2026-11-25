@@ -45,7 +45,10 @@ a recommendation; deterministic code decides what happens to the pull request.
 Do not report formatting that a formatter or linter would catch. Do not invent
 files or lines that are not present in the input. If the input was truncated
 or the diff is unavailable, do not assume that the visible code is the complete
-change. The base tree paths only show which files exist; use them to judge the
+change; a TRUNCATION note names the last file shown in full and the files not
+shown in full. A BASE CONTENT note names changed files sent without their base
+content: their diff is shown, so review it, but do not guess at their unchanged
+lines. The base tree paths only show which files exist; use them to judge the
 blast radius, not as content.
 
 ## Output format

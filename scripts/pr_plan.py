@@ -74,6 +74,24 @@ def validate_assessment(assessment: object) -> dict:
     return assessment
 
 
+def _is_path_list(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(path, str) for path in value)
+
+
+def _validate_omissions(omissions: object) -> None:
+    """The optional record of what the review model was not shown."""
+    if not isinstance(omissions, dict):
+        raise ArtifactError("review omissions must be an object")
+    for field in ("diff_cut", "diff_markup_removed"):
+        if not isinstance(omissions.get(field, False), bool):
+            raise ArtifactError(f"review omissions {field} must be a boolean")
+    if not isinstance(omissions.get("diff_last_full_file"), (str, type(None))):
+        raise ArtifactError("review omissions diff_last_full_file must be a string or null")
+    for field in ("diff_files_not_in_full", "base_content_missing"):
+        if not _is_path_list(omissions.get(field, [])):
+            raise ArtifactError(f"review omissions {field} must be a list of strings")
+
+
 def validate_review(review: object) -> dict:
     review = _require_mapping(review, "review")
     status = review.get("status")
@@ -89,6 +107,7 @@ def validate_review(review: object) -> dict:
             raise ArtifactError("review verdict must be pass, concerns or block")
     if not isinstance(review.get("partial", False), bool):
         raise ArtifactError("review partial must be a boolean")
+    _validate_omissions(review.get("omissions", {}))
     findings = review.get("findings", [])
     if not isinstance(findings, list) or not all(isinstance(item, dict) for item in findings):
         raise ArtifactError("review findings must be a list of objects")

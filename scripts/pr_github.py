@@ -34,8 +34,11 @@ from pr_github_linked_issues import fetch_linked_issues
 SCHEMA_VERSION = 1
 DIFF_ACCEPT = "application/vnd.github.v3.diff"
 DIFF_LIMIT = 400 * 1024
+# The one cap on base contents: this fetcher stops at it and the review
+# request (`pr_review.py`) keeps at most this much, so nothing is fetched only
+# to be dropped.
 BASE_FILE_LIMIT = 20
-BASE_BYTES_LIMIT = 200 * 1024
+BASE_BYTES_LIMIT = 100_000
 BASE_PATH_LIMIT = 5000
 STATUS_ALIASES = {"copied": "added", "changed": "modified", "unchanged": "modified"}
 
@@ -153,6 +156,11 @@ def _labels(pull: dict, pr_path: str) -> list[str]:
     return names
 
 
+def wants_base_content(entry: dict) -> bool:
+    """Whether a changed-file entry is one whose base content the review is sent."""
+    return entry.get("status") in {"modified", "renamed"} and not entry.get("binary")
+
+
 def _base_files(
     client: ReadClient,
     repo: str,
@@ -164,7 +172,7 @@ def _base_files(
     for entry in files:
         if len(base_files) >= BASE_FILE_LIMIT:
             break
-        if entry["status"] not in {"modified", "renamed"} or entry["binary"]:
+        if not wants_base_content(entry):
             continue
         source_path = entry["renamed_from"] or entry["path"]
         quoted = urllib.parse.quote(source_path, safe="/")

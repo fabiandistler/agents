@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 from factory_handoff import REVIEW_STICKY, format_marker, read_markers
-from pr_review_response import SEVERITIES
+from pr_review_response import SEVERITIES, name_paths
 
 COMMENT_MARKER = format_marker(REVIEW_STICKY)
 
@@ -32,6 +32,44 @@ def _render_finding(finding: dict) -> str:
     if suggestion:
         rendered += f"\n  - Fix: {suggestion}"
     return rendered
+
+
+def _code_path(path: str) -> str:
+    plain = _single_line(path).replace("`", "'")
+    return f"`{plain}`"
+
+
+def _partial_notice(omissions: dict) -> str:
+    reasons = []
+    if omissions.get("diff_cut") is True:
+        last = omissions.get("diff_last_full_file")
+        reason = "the diff was cut to the review limits or is unavailable"
+        if last:
+            reason += f"; the last file shown in full is {_code_path(last)}"
+        not_in_full = omissions.get("diff_files_not_in_full") or []
+        if not_in_full:
+            reason += f"; not shown in full: {name_paths(not_in_full, _code_path)}"
+        reasons.append(reason)
+    if omissions.get("diff_markup_removed") is True:
+        reasons.append("hidden markup was removed from the diff")
+    cause = (
+        "; and ".join(reasons)
+        if reasons
+        else "the input was truncated or hidden markup was removed from the diff"
+    )
+    return (
+        f"> **Partial review.** Parts of the diff were not reviewed: {cause}. Auto-merge stays off."
+    )
+
+
+def _base_missing_notice(missing: list[str], partial: bool) -> str:
+    named = name_paths(missing, _code_path)
+    complete = "" if partial else " The diff was reviewed in full."
+    return (
+        f"> **Sent without base content:** {named}. It did not fit the review limits or "
+        f"could not be fetched.{complete} Findings that depend on the unchanged lines of "
+        "these files may be missing."
+    )
 
 
 def fenced_block(text: str) -> list[str]:
@@ -76,14 +114,13 @@ def _render_comment(
             "",
             *fenced_block(raw),
         ]
-    if review.get("partial") is True:
-        lines += [
-            "",
-            (
-                "> **Partial review.** The input was truncated or hidden markup was removed "
-                "from the diff, so parts of it were not reviewed. Auto-merge stays off."
-            ),
-        ]
+    omissions = review.get("omissions") or {}
+    partial = review.get("partial") is True
+    if partial:
+        lines += ["", _partial_notice(omissions)]
+    missing = omissions.get("base_content_missing") or []
+    if missing:
+        lines += ["", _base_missing_notice(missing, partial)]
 
     if auto_merge_state == "refused":
         lines += [
