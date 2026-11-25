@@ -133,13 +133,15 @@ def test_runbook_templates_pass_the_check():
         for line in template.splitlines():
             match = factory_onboarding_check.USES_LINE.match(line)
             if match:
+                # The file name the runbook gives each template.
+                path = f".github/workflows/{match['file'].removeprefix('factory-')}"
                 callers[match["file"]] = factory_onboarding_check.Caller(
-                    "x.yml", match["ref"], template
+                    path, match["ref"], template
                 )
 
     assert sorted(callers) == sorted(FACTORY_FILES)
-    for name, caller in callers.items():
-        status, _, detail = factory_onboarding_check.caller_line(name, caller, "main")
+    for name in callers:
+        status, _, detail = factory_onboarding_check.caller_line(name, callers, "main")
         assert status == "OK", detail
 
 

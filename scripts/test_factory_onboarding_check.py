@@ -212,6 +212,19 @@ def test_an_implementer_without_a_queue_caller_is_missing(capsys, monkeypatch):
     )
 
 
+def test_queue_workflow_may_quote_the_queue_callers_own_file_name(capsys, monkeypatch):
+    with_block = f'{IMPLEMENTER_WITH}      queue_workflow: "queue.yml" # the queue\n'
+    workflows = all_callers(
+        **{"implementer.yml": caller("factory-implementer.yml", with_block=with_block)}
+    )
+    workflows["queue.yml"] = workflows.pop("implementer-queue.yml")
+
+    code, lines, _ = run(RoutedFake(workflows=workflows), capsys, monkeypatch)
+
+    assert code == 0
+    assert lines["caller:factory-implementer.yml"][0] == "OK"
+
+
 def test_one_missing_caller(capsys, monkeypatch):
     workflows = all_callers()
     del workflows["implementer.yml"]
@@ -251,6 +264,18 @@ def test_one_missing_caller(capsys, monkeypatch):
             "implementer.yml",
             caller("factory-implementer.yml", with_block=IMPLEMENTER_WITH),
             "does not pass input queue_workflow",
+        ),
+        # An empty queue releases every parked ticket; another file fails each parking claim.
+        *(
+            (
+                "implementer.yml",
+                caller(
+                    "factory-implementer.yml",
+                    with_block=f"{IMPLEMENTER_WITH}      queue_workflow: {value}\n",
+                ),
+                "input queue_workflow does not name .github/workflows/implementer-queue.yml",
+            )
+            for value in ('""', "''", "other-queue.yml", "${{ inputs.queue }}")
         ),
     ],
 )

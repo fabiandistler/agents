@@ -36,6 +36,7 @@ import sys
 import urllib.parse
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import NoReturn
 
 from factory_handoff import STATE_LABELS
@@ -60,10 +61,13 @@ REQUIREMENTS: dict[str, dict[str, tuple[str, ...]]] = {
     "factory-fix-task.yml": {"inputs": (), "secrets": ()},
 }
 
-# Inputs onboarding requires though the workflow gives them a default: the
-# implementer caller names its queue caller's file, which the claim checks
-# against the Actions API on every run (scripts/implementer_waiting.py).
-ONBOARDING_INPUTS: dict[str, tuple[str, ...]] = {"factory-implementer.yml": ("queue_workflow",)}
+# Inputs onboarding requires though the workflow gives them a default, each
+# with the factory workflow whose caller's file name it must be: the
+# implementer caller names its queue caller, which the claim checks against
+# the Actions API only when it would park a ticket (scripts/implementer_waiting.py).
+ONBOARDING_INPUTS: dict[str, dict[str, str]] = {
+    "factory-implementer.yml": {"queue_workflow": "factory-implementer-queue.yml"}
+}
 
 OK = "OK"
 MISSING = "MISSING"
@@ -82,7 +86,8 @@ USES_LINE = re.compile(
 TOP_LEVEL_EMPTY_PERMISSIONS = re.compile(r"^permissions:\s*\{\s*\}\s*(#.*)?$", re.MULTILINE)
 SECRETS_INHERIT = re.compile(r"^\s*secrets:\s*inherit\s*(#.*)?$", re.MULTILINE)
 BLOCK_START = re.compile(r"^(?P<indent>\s*)(?P<block>with|secrets):\s*(#.*)?$")
-BLOCK_KEY = re.compile(r"^(?P<indent>\s*)(?P<key>[A-Za-z0-9_-]+):\s*\S")
+BLOCK_KEY = re.compile(r"^(?P<indent>\s*)(?P<key>[A-Za-z0-9_-]+):\s*(?P<value>\S.*)$")
+YAML_COMMENT = re.compile(r"\s+#.*$")
 
 HELP = """\
 usage: factory_onboarding_check.py --repo OWNER/NAME
@@ -227,9 +232,17 @@ def find_callers(client: ReadClient, repo: str, branch: str) -> dict[str, Caller
     return callers
 
 
-def _passed_keys(text: str) -> dict[str, set[str]]:
-    """The keys under every `with:` and `secrets:` block, by block name."""
-    passed: dict[str, set[str]] = {"with": set(), "secrets": set()}
+def _scalar(value: str) -> str:
+    """A plain or quoted one-line YAML value, without its comment or quotes."""
+    value = YAML_COMMENT.sub("", value).strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
+def _passed_keys(text: str) -> dict[str, dict[str, str]]:
+    """Key -> value under every `with:` and `secrets:` block, by block name; first wins."""
+    passed: dict[str, dict[str, str]] = {"with": {}, "secrets": {}}
     block: str | None = None
     block_indent = 0
     for line in text.splitlines():
@@ -239,7 +252,7 @@ def _passed_keys(text: str) -> dict[str, set[str]]:
         if block is not None and indent > block_indent:
             key = BLOCK_KEY.match(line)
             if key:
-                passed[block].add(key["key"])
+                passed[block].setdefault(key["key"], _scalar(key["value"]))
             continue
         block = None
         start = BLOCK_START.match(line)
@@ -248,8 +261,9 @@ def _passed_keys(text: str) -> dict[str, set[str]]:
     return passed
 
 
-def caller_line(factory_file: str, caller: Caller | None, branch: str) -> tuple[str, str, str]:
+def caller_line(factory_file: str, callers: dict[str, Caller], branch: str) -> tuple[str, str, str]:
     item = f"caller:{factory_file}"
+    caller = callers.get(factory_file)
     if caller is None:
         return _line(MISSING, item, f"no workflow on {branch} calls it")
     problems: list[str] = []
@@ -262,9 +276,16 @@ def caller_line(factory_file: str, caller: Caller | None, branch: str) -> tuple[
     for secret in required["secrets"]:
         if secret not in passed["secrets"]:
             problems.append(f"does not pass secret {secret}")
-    for name in (*required["inputs"], *ONBOARDING_INPUTS.get(factory_file, ())):
+    onboarding = ONBOARDING_INPUTS.get(factory_file, {})
+    for name in (*required["inputs"], *onboarding):
         if name not in passed["with"]:
             problems.append(f"does not pass input {name}")
+    for name, named_file in onboarding.items():
+        # Without that caller its own line is MISSING; the value is never printed.
+        named = callers.get(named_file)
+        value = passed["with"].get(name)
+        if named is not None and value is not None and value != PurePosixPath(named.path).name:
+            problems.append(f"input {name} does not name {named.path}")
     if problems:
         return _line(MISSING, item, f"{caller.path}: " + "; ".join(problems))
     return _line(OK, item, caller.path)
@@ -317,7 +338,7 @@ def check(client: ReadClient, repo: str) -> Iterator[tuple[str, str, str]]:
     yield from manual_lines(repo)
     callers = find_callers(client, repo, branch)
     for factory_file in REQUIREMENTS:
-        yield caller_line(factory_file, callers.get(factory_file), branch)
+        yield caller_line(factory_file, callers, branch)
     yield pin_line(client, callers)
 
 
