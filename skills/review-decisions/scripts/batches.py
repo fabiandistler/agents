@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import cli
@@ -59,10 +60,6 @@ FIELDS = {
 FIELD_LINE = re.compile(r"^(" + "|".join(FIELDS) + r"):[ \t]*(.*)$")
 NONE_FOUND = "No review decisions found."
 DEVIATION_UNCHECKED = "Deviation: unchecked (no issue)."
-
-
-class MalformedAnswerError(Exception):
-    pass
 
 
 def file_chunks(diff: str) -> list[tuple[str, str]]:
@@ -128,8 +125,46 @@ def split(diff_file: Path, out: Path) -> dict:
     return manifest
 
 
-def category_of(card: dict) -> str:
-    return card.get("category", "").strip().lower().replace("behavior", "behaviour")
+@dataclass
+class Decision:
+    """One review decision from a classifier answer, as merge prints it."""
+
+    category: str = ""
+    location: str = ""
+    criterion: str = ""
+    chosen: str = ""
+    alternatives: str = ""
+    cost_to_undo: str = ""
+    lean: str = ""
+    depends_on: str | None = None
+    batch: int = field(default=0, init=False)
+    unchecked_across_batches: bool = field(default=False, init=False)
+
+    @property
+    def kind(self) -> str:
+        return self.category.strip().lower().replace("behavior", "behaviour")
+
+    def queue_key(self) -> tuple[int, int]:
+        weakened = self.criterion.lower().startswith(WEAKENED_TEST)
+        return CATEGORIES.index(self.kind), 0 if weakened else 1
+
+    def may_span(self, batch_of: dict[str, int]) -> bool:
+        """Whether the decision's other half may sit in a batch other than its own."""
+        if self.kind in SPAN_CATEGORIES:
+            return True
+        if self.depends_on is None:
+            return False
+        return batch_of.get(location_file(self.depends_on), self.batch) != self.batch
+
+    def as_json(self) -> dict:
+        fields = asdict(self)
+        if self.depends_on is None:
+            del fields["depends_on"]
+        return fields
+
+
+class UnclassifiedBatchError(Exception):
+    """A batch has no usable classifier answer; the message is the reason."""
 
 
 def strip_fence(text: str) -> list[str]:
@@ -140,45 +175,73 @@ def strip_fence(text: str) -> list[str]:
     return lines
 
 
-def parse_answer(text: str) -> tuple[list[dict], bool]:
-    """Return one classifier answer's decision blocks and whether deviations were unchecked."""
-    cards: list[dict] = []
-    unchecked = False
-    current: dict | None = None
-    last_key: str | None = None
+def answer_blocks(text: str) -> list[list[str]]:
+    """The answer's runs of non-blank lines."""
+    blocks: list[list[str]] = [[]]
     for raw in strip_fence(text):
         line = raw.rstrip()
-        if not line:
-            current = None
-        elif line == DEVIATION_UNCHECKED:
-            unchecked = True
-        elif line == NONE_FOUND:
-            continue
-        elif field := FIELD_LINE.match(line):
-            if current is None:
-                current = {}
-                cards.append(current)
-            last_key = FIELDS[field.group(1)]
-            current[last_key] = field.group(2)
-        elif current is not None and last_key is not None:
-            current[last_key] += "\n" + line
+        if line:
+            blocks[-1].append(line)
+        elif blocks[-1]:
+            blocks.append([])
+    return [block for block in blocks if block]
+
+
+def parse_decision(lines: list[str]) -> Decision:
+    fields: dict[str, str] = {}
+    key: str | None = None
+    for line in lines:
+        if field_line := FIELD_LINE.match(line):
+            key = FIELDS[field_line.group(1)]
+            fields[key] = field_line.group(2)
+        elif key is None:
+            raise UnclassifiedBatchError(
+                "classifier answer malformed: text outside a decision block"
+            )
         else:
-            raise MalformedAnswerError("text outside a decision block")
-    for card in cards:
-        if category_of(card) not in CATEGORIES:
-            raise MalformedAnswerError("unknown category")
-        if not card.get("location"):
-            raise MalformedAnswerError("decision without a location")
-    return cards, unchecked
+            fields[key] += "\n" + line
+    decision = Decision(**fields)
+    if decision.kind not in CATEGORIES:
+        raise UnclassifiedBatchError("classifier answer malformed: unknown category")
+    if not decision.location:
+        raise UnclassifiedBatchError("classifier answer malformed: decision without a location")
+    return decision
+
+
+def parse_answer(text: str) -> tuple[list[Decision], bool]:
+    """Return one classifier answer's decisions and whether deviations were unchecked."""
+    decisions = []
+    unchecked = False
+    for block in answer_blocks(text):
+        unchecked = unchecked or DEVIATION_UNCHECKED in block
+        lines = [line for line in block if line not in (DEVIATION_UNCHECKED, NONE_FOUND)]
+        if lines:
+            decisions.append(parse_decision(lines))
+    return decisions, unchecked
 
 
 def location_file(location: str) -> str:
     return re.sub(r":\d+$", "", location.strip())
 
 
-def queue_key(card: dict) -> tuple[int, int]:
-    weakened = card.get("criterion", "").lower().startswith(WEAKENED_TEST)
-    return CATEGORIES.index(category_of(card)), 0 if weakened else 1
+def read_batch_answer(out: Path, batch: dict, max_bytes: int) -> tuple[list[Decision], bool]:
+    """The decisions of one batch, or UnclassifiedBatchError naming why there are none."""
+    number = batch["batch"]
+    failed_file = out / f"batch-{number}.failed"
+    answer_file = out / f"batch-{number}.answer.md"
+    if failed_file.is_file():
+        failure = failed_file.read_text(encoding="utf-8").strip().splitlines()
+        reason = failure[0][:200] if failure else "no reason given"
+        raise UnclassifiedBatchError(f"classifier run failed: {reason}")
+    if not answer_file.is_file():
+        reason = "no classifier answer"
+        if batch["oversize"]:
+            reason += f"; one file of {batch['bytes']} bytes, over the {max_bytes}-byte limit"
+        raise UnclassifiedBatchError(reason)
+    decisions, unchecked = parse_answer(answer_file.read_text(encoding="utf-8"))
+    for decision in decisions:
+        decision.batch = number
+    return decisions, unchecked
 
 
 def merge(out: Path) -> dict:
@@ -189,49 +252,28 @@ def merge(out: Path) -> dict:
     batches = manifest["batches"]
     total = len(batches)
     batch_of = {path: b["batch"] for b in batches for path in b["paths"]}
-    cards: list[dict] = []
+    decisions: list[Decision] = []
     unclassified: list[dict] = []
     deviation = "checked"
     for batch in batches:
-        number = batch["batch"]
-        answer_file = out / f"batch-{number}.answer.md"
-        failed_file = out / f"batch-{number}.failed"
-        if failed_file.is_file():
-            failure = failed_file.read_text(encoding="utf-8").strip().splitlines()
-            reason = f"classifier run failed: {failure[0][:200] if failure else 'no reason given'}"
-        elif not answer_file.is_file():
-            reason = "no classifier answer"
-            if batch["oversize"]:
-                reason += (
-                    f"; one file of {batch['bytes']} bytes,"
-                    f" over the {manifest['max_bytes']}-byte limit"
-                )
-        else:
-            try:
-                found, unchecked = parse_answer(answer_file.read_text(encoding="utf-8"))
-                reason = None
-            except MalformedAnswerError as err:
-                reason = f"classifier answer malformed: {err}"
-        if reason is not None:
-            unclassified += [{"path": p, "batch": number, "reason": reason} for p in batch["paths"]]
+        try:
+            found, unchecked = read_batch_answer(out, batch, manifest["max_bytes"])
+        except UnclassifiedBatchError as err:
+            unclassified += [
+                {"path": path, "batch": batch["batch"], "reason": str(err)}
+                for path in batch["paths"]
+            ]
             continue
         if unchecked:
             deviation = "unchecked"
-        for card in found:
-            depends = card.get("depends_on")
-            depends_elsewhere = (
-                depends is not None and batch_of.get(location_file(depends), number) != number
-            )
-            card["batch"] = number
-            card["unchecked_across_batches"] = total > 1 and (
-                category_of(card) in SPAN_CATEGORIES or depends_elsewhere
-            )
-            cards.append(card)
-    cards.sort(key=queue_key)
+        for decision in found:
+            decision.unchecked_across_batches = total > 1 and decision.may_span(batch_of)
+        decisions += found
+    decisions.sort(key=Decision.queue_key)
     return {
         "boundaries": [f"Batch {b['batch']} of {total}: {', '.join(b['paths'])}" for b in batches],
         "deviation": deviation,
-        "cards": cards,
+        "cards": [decision.as_json() for decision in decisions],
         "unclassified": unclassified,
     }
 
