@@ -20,6 +20,7 @@ import pr_github_client
 import pytest
 from implementer_waiting import blocked_comment, capacity_comment
 from test_implementer_claim import (
+    AHEAD_SHA,
     COMMENTS,
     ISSUE,
     OLD_SHA,
@@ -135,6 +136,8 @@ def parks_nothing_fake(outcome: str) -> FakeGitHub:
         return FakeGitHub(pulls=[pull_request(body=f"Closes #{ISSUE}")])
     if outcome == "no-contract":
         return stopped_fake("no-contract")
+    if outcome == "needs-human":
+        return FakeGitHub(branch_sha=AHEAD_SHA, ahead_by=1)
     return FakeGitHub()
 
 
@@ -145,7 +148,9 @@ def assert_read_at_the_gate(fake: FakeGitHub) -> None:
 
 
 @pytest.mark.parametrize("queue_state", [None, *NOT_ACTIVE])
-@pytest.mark.parametrize("outcome", ["claimed", "reclaimed", "pr-exists", "no-contract"])
+@pytest.mark.parametrize(
+    "outcome", ["claimed", "reclaimed", "pr-exists", "no-contract", "needs-human"]
+)
 def test_a_claim_that_parks_nothing_never_reads_the_queue(outcome, queue_state):
     # A quiet public repository's queue is disabled after 60 days; free work still starts.
     fake = parks_nothing_fake(outcome)
