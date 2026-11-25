@@ -7,8 +7,11 @@ text files, the linked issues and the comments by people with write access. It
 never reads a checkout of the pull request head. Before assembly it strips HTML
 comments, CSS-hidden elements, zero-width characters and long base64 blobs from
 the untrusted text, then caps the diff, the base content and the total payload.
-A capped request, or one whose diff lost hidden markup, is marked `partial`,
-which the publisher uses to keep auto-merge off.
+The diff comes before the base content, so the total cap drops base content
+first. A request in which some diff line was not seen (a cut or unavailable
+diff, or hidden markup removed from it) is marked `partial`, which the
+publisher uses to keep auto-merge off. Files sent without their base content
+are named in the payload and the artifact but leave the review complete.
 
 The model is reached through the unmodified Claude Code CLI (`claude -p`) in
 `pr_review_claude.py`, which holds the subscription-token and tool-less call
@@ -24,6 +27,7 @@ standard library only.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import posixpath
 import sys
@@ -34,8 +38,21 @@ import pr_cli
 from pr_github import is_line_count
 from pr_review_claude import TOKEN_ENV, ProviderError, run_claude
 from pr_review_comments import render_comments, validate_comments
+from pr_review_coverage import (
+    TEXT_CUT_NOTE,
+    cap_base_files,
+    coverage_notes,
+    diff_coverage,
+    missing_base_content,
+)
 from pr_review_linked_issues import render_linked_issues, validate_linked_issues
-from pr_review_response import ContextError, build_artifact, parse_response, validate_identity
+from pr_review_response import (
+    ContextError,
+    InputCoverage,
+    build_artifact,
+    parse_response,
+    validate_identity,
+)
 from pr_review_sanitize import (
     sanitize_diff,
     sanitize_text,
@@ -49,8 +66,6 @@ MODEL_ENV = "PR_REVIEW_MODEL"
 
 MAX_DIFF_LINES = 2000
 MAX_DIFF_BYTES = 200_000
-MAX_BASE_FILES = 20
-MAX_BASE_BYTES = 100_000
 MAX_TOTAL_BYTES = 300_000
 MAX_TITLE_BYTES = 500
 MAX_BODY_BYTES = 50_000
@@ -60,15 +75,7 @@ MAX_TREE_BYTES = 20_000
 MAX_STANDARDS_BYTES = 65_536
 DIFF_STATUSES = ("complete", "truncated", "unavailable")
 
-TRUNCATION_NOTE = (
-    "TRUNCATION: The input was truncated to fit the review limits.\n"
-    "Missing parts cannot be reviewed; do not assume the shown code is complete."
-)
-SANITIZED_NOTE = (
-    "SANITIZED: Hidden markup was removed from the diff (HTML comments, hidden elements,\n"
-    "zero-width characters or base64 blobs). The removed parts cannot be reviewed."
-)
-
+TOTAL_CUT_NOTE = "\n\n[Input truncated to the total review limit.]\n"
 STANDARDS_SECTION = (
     "\n## Repository standards\n\n"
     "The operator of this review supplied the following standards for this repository.\n"
@@ -199,22 +206,6 @@ def _cap_diff(diff: str) -> tuple[str, bool]:
     return capped, truncated or bytes_cut
 
 
-def _cap_base_files(base_files: dict) -> tuple[list[tuple[str, str]], bool]:
-    entries: list[tuple[str, str]] = []
-    used = 0
-    truncated = False
-    for raw_path, raw_content in base_files.items():
-        path = single_line(_as_text(raw_path), 300)
-        content = sanitize_text(_as_text(raw_content))
-        size = len(content.encode("utf-8"))
-        if len(entries) >= MAX_BASE_FILES or used + size > MAX_BASE_BYTES:
-            truncated = True
-            continue
-        entries.append((path, content))
-        used += size
-    return entries, truncated
-
-
 def _render_payload(
     context: dict,
     title: str,
@@ -245,51 +236,80 @@ def _render_payload(
         "BASE TREE PATHS (files at the base commit, changed directories first):",
         *_render_base_paths(context),
         "",
+        "DIFF:",
+        diff,
+        "=== END OF DIFF ===",
+        "",
         "BASE FILE CONTENTS (at the base commit):",
     ]
     for path, content in base_entries:
         lines += [f"=== {path} (base) ===", content, f"=== end {path} ==="]
     if not base_entries:
         lines.append("(no base content provided)")
-    lines += ["", "DIFF:", diff, "=== END OF DIFF ==="]
     return "\n".join(lines) + "\n"
 
 
-def build_request(context: dict, standards: str | None = None) -> tuple[dict, bool]:
-    """Assemble the model request for `context` and report whether it was capped.
+def build_request(context: dict, standards: str | None = None) -> tuple[dict, InputCoverage]:
+    """Assemble the model request for `context` and report what it leaves out.
 
     ``standards`` is operator text from ``read_standards``; it goes into the
     system prompt only, and its bytes come out of the payload budget.
     """
     _validate_context(context)
     system_prompt = _system_prompt(standards)
+    budget = MAX_TOTAL_BYTES - len(system_prompt.encode("utf-8"))
     title, title_cut = truncate_text(
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
     )
     body, body_cut = truncate_text(sanitize_text(_as_text(context.get("body"))), MAX_BODY_BYTES)
-    sanitized_diff, diff_removed = sanitize_diff(context["diff"])
-    diff, diff_cut = _cap_diff(sanitized_diff)
-    if context["diff_status"] == "unavailable":
-        diff = "(The diff is unavailable: GitHub did not return it. Only the file list is known.)"
-    base_entries, base_cut = _cap_base_files(context["base_files"])
-    notes = []
-    if title_cut or body_cut or diff_cut or base_cut or context["diff_status"] != "complete":
-        notes.append(TRUNCATION_NOTE)
+    text_notes = [TEXT_CUT_NOTE] if title_cut or body_cut else []
+    diff_unavailable = context["diff_status"] == "unavailable"
     # Removed diff lines were never reviewed, so the review is partial; markup
     # in the title or body (templates carry HTML comments) is not code.
-    if diff_removed:
-        notes.append(SANITIZED_NOTE)
-    partial = bool(notes)
-    payload = _render_payload(context, title, body, diff, base_entries, notes)
+    sanitized_diff, diff_removed = sanitize_diff(context["diff"])
+    diff, diff_cut = _cap_diff(sanitized_diff)
+    diff_cut = diff_cut or context["diff_status"] != "complete"
+    if diff_unavailable:
+        diff = "(The diff is unavailable: GitHub did not return it. Only the file list is known.)"
+    base_entries = cap_base_files(context["base_files"])
 
-    budget = MAX_TOTAL_BYTES - len(system_prompt.encode("utf-8"))
-    if len(payload.encode("utf-8")) > budget:
-        partial = True
-        note = "\n\n[Input truncated to the total review limit.]\n"
-        room = budget - len(note.encode("utf-8"))
-        payload = (
-            truncate_bytes(payload, room) + note if room > 0 else truncate_bytes(payload, budget)
+    # Over the total budget, drop base content from the end first; only a
+    # payload without any base content left cuts the diff.
+    while True:
+        last_full, not_in_full = diff_coverage(context["files"], diff) if diff_cut else (None, ())
+        coverage = InputCoverage(
+            diff_cut=diff_cut,
+            diff_markup_removed=diff_removed,
+            diff_last_full_file=last_full,
+            diff_files_not_in_full=not_in_full,
+            base_content_missing=missing_base_content(context, base_entries),
         )
+        notes = text_notes + coverage_notes(coverage, diff_unavailable)
+        payload = _render_payload(context, title, body, diff, base_entries, notes)
+        overflow = len(payload.encode("utf-8")) - budget
+        if overflow <= 0:
+            break
+        if base_entries:
+            base_entries = base_entries[:-1]
+        elif diff:
+            diff = truncate_bytes(diff, len(diff.encode("utf-8")) - overflow)
+            diff_cut = True
+        else:
+            # Only metadata too large for the budget gets here; none of the
+            # diff is shown.
+            coverage = dataclasses.replace(
+                coverage,
+                diff_cut=True,
+                diff_last_full_file=None,
+                diff_files_not_in_full=tuple(item["path"] for item in context["files"]),
+            )
+            room = budget - len(TOTAL_CUT_NOTE.encode("utf-8"))
+            payload = (
+                truncate_bytes(payload, room) + TOTAL_CUT_NOTE
+                if room > 0
+                else truncate_bytes(payload, budget)
+            )
+            break
     # Last, into the room left, so issue and comment text never displaces a
     # diff line; the issue's contract comes before the discussion.
     payload += render_linked_issues(
@@ -304,7 +324,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, bo
             {"role": "user", "content": payload},
         ],
     }
-    return request, partial
+    return request, coverage
 
 
 # --- Review entry points -----------------------------------------------------
@@ -357,20 +377,20 @@ def _skipped_artifact(context: dict, reason: str) -> dict:
     return build_artifact(context, "skipped", summary=summary)
 
 
-def _unavailable_artifact(context: dict, summary: str, partial: bool) -> dict:
-    return build_artifact(context, "unavailable", risk="high", summary=summary, partial=partial)
+def _unavailable_artifact(context: dict, summary: str, coverage: InputCoverage) -> dict:
+    return build_artifact(context, "unavailable", risk="high", summary=summary, coverage=coverage)
 
 
 def _review_with(
-    context: dict, respond: Callable[[dict, bool], dict], standards: str | None
+    context: dict, respond: Callable[[dict, InputCoverage], dict], standards: str | None
 ) -> dict:
     """Skip a draft or fork; otherwise build the request and let ``respond`` answer it."""
     _validate_context(context)
     reason = _skipped_reason(context)
     if reason is not None:
         return _skipped_artifact(context, reason)
-    request, partial = build_request(context, standards)
-    return respond(request, partial)
+    request, coverage = build_request(context, standards)
+    return respond(request, coverage)
 
 
 def review(
@@ -382,19 +402,19 @@ def review(
     `standards` is the operator text for the system prompt (see build_request).
     """
 
-    def respond(request: dict, partial: bool) -> dict:
+    def respond(request: dict, coverage: InputCoverage) -> dict:
         oauth_token = token if token is not None else os.environ.get(TOKEN_ENV)
         if not oauth_token:
-            return _unavailable_artifact(context, MISSING_KEY_SUMMARY, partial)
+            return _unavailable_artifact(context, MISSING_KEY_SUMMARY, coverage)
         try:
             text = run_claude(request, oauth_token) if transport is None else transport(request)
         except (ProviderError, TimeoutError) as error:
             # The run stays green on a failed call, so this line is the only trace of why.
             print(f"pr_review.py: {error}", file=sys.stderr)
-            return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
+            return _unavailable_artifact(context, PROVIDER_SUMMARY, coverage)
         if not isinstance(text, str) or not text.strip():
-            return _unavailable_artifact(context, PROVIDER_SUMMARY, partial)
-        return parse_response(text, context, partial=partial)
+            return _unavailable_artifact(context, PROVIDER_SUMMARY, coverage)
+        return parse_response(text, context, coverage=coverage)
 
     return _review_with(context, respond, standards)
 
@@ -403,7 +423,7 @@ def _review_canned(context: dict, text: str, standards: str | None) -> dict:
     """Parse a canned response without a key or a provider call."""
     return _review_with(
         context,
-        lambda _request, partial: parse_response(text, context, partial=partial),
+        lambda _request, coverage: parse_response(text, context, coverage=coverage),
         standards,
     )
 
@@ -411,7 +431,7 @@ def _review_canned(context: dict, text: str, standards: str | None) -> dict:
 # --- CLI ---------------------------------------------------------------------
 
 
-def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
+def _emit_dry_run(request: dict, coverage: InputCoverage, output: str | None) -> int:
     """Print a bounded summary; the full request (up to ~300 KB) goes to `output`."""
     if output is not None and not pr_cli.write_json_file(
         "pr_review.py", "--output", output, request
@@ -421,7 +441,7 @@ def _emit_dry_run(request: dict, partial: bool, output: str | None) -> int:
     pr_cli.print_json(
         {
             "model": request["model"],
-            "partial": partial,
+            "partial": coverage.partial,
             "system_bytes": len(system),
             "user_bytes": len(user),
             "output": output,
@@ -447,8 +467,8 @@ def _parse_arguments(argv: list[str]) -> dict | None:
 
 def _run(options: dict, context: dict, standards: str | None) -> int:
     if options["dry_run"] is True:
-        request, partial = build_request(context, standards)
-        return _emit_dry_run(request, partial, options["output"])
+        request, coverage = build_request(context, standards)
+        return _emit_dry_run(request, coverage, options["output"])
     if options["response"] is None:
         pr_cli.print_json(review(context, standards=standards))
         return pr_cli.EXIT_OK

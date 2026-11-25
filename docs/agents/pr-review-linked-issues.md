@@ -35,7 +35,7 @@ risk are unchanged. The jobs and the security model are in the
   fetched)`, with one stderr line naming the issue number and HTTP status,
   never its text. No retry; the context fetch still exits 0.
 - **In the payload.** A `LINKED ISSUES (untrusted: ...)` section after
-  `=== END OF DIFF ===`, each issue between `=== issue #n ===` and
+  the diff and the base file contents, each issue between `=== issue #n ===` and
   `=== end issue #n ===`. Title, body and brief are sanitized like the pull
   request text; the title is capped at 500 bytes, the body or brief at 20,000
   bytes. The

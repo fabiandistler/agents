@@ -6,13 +6,16 @@ import json
 
 import pr_review
 import pr_review_claude
+import pr_review_coverage
 import pr_review_linked_issues as linked
 import pr_risk
 import pytest
-from pr_review_testkit import base_context, run_cli, user_payload, write_context
+from pr_review_testkit import base_context, overfull_context, run_cli, user_payload, write_context
 from pr_risk_testkit import make_context
 
 END_OF_DIFF = "=== END OF DIFF ==="
+# The base content follows the diff; the base context has one base file.
+END_OF_BASE = "=== end docs/review.md ==="
 TOTAL_NOTE = "[Input truncated to the total review limit.]"
 
 
@@ -28,15 +31,15 @@ def issue(
     }
 
 
-def build(**overrides: object) -> tuple[dict, bool]:
+def build(**overrides: object) -> tuple[dict, pr_review.InputCoverage]:
     return pr_review.build_request(base_context(**overrides))
 
 
 def test_a_linked_issue_appears_after_the_diff_between_its_markers():
-    request, partial = build(linked_issues=[issue(7, "Add the flag", "The ticket text.")])
+    request, coverage = build(linked_issues=[issue(7, "Add the flag", "The ticket text.")])
 
     payload = user_payload(request)
-    after_diff = payload.split(END_OF_DIFF, 1)[1]
+    after_diff = payload.split(END_OF_BASE, 1)[1]
     assert after_diff == (
         "\n\n"
         f"{linked.LINKED_ISSUES_HEADER}\n"
@@ -46,16 +49,16 @@ def test_a_linked_issue_appears_after_the_diff_between_its_markers():
         "The ticket text.\n"
         "=== end issue #7 ===\n"
     )
-    assert partial is False
+    assert coverage.partial is False
 
 
 @pytest.mark.parametrize("field", [{}, {"linked_issues": []}])
 def test_no_linked_issue_leaves_the_request_identical(field):
-    plain, plain_partial = build()
-    request, partial = build(**field)
+    plain, plain_coverage = build()
+    request, coverage = build(**field)
 
     assert request == plain
-    assert partial is plain_partial
+    assert coverage.partial is plain_coverage.partial
     assert "LINKED ISSUES" not in user_payload(request)
 
 
@@ -70,9 +73,9 @@ BRIEF = "## Agent Brief\n\nBuild the flag; leave the docs alone."
 
 
 def test_an_issue_with_a_brief_shows_it_as_the_contract_instead_of_the_body():
-    request, partial = build(linked_issues=[issue(7, "Add the flag", "OLD-BODY", brief=BRIEF)])
+    request, coverage = build(linked_issues=[issue(7, "Add the flag", "OLD-BODY", brief=BRIEF)])
 
-    after_diff = user_payload(request).split(END_OF_DIFF, 1)[1]
+    after_diff = user_payload(request).split(END_OF_BASE, 1)[1]
     assert after_diff == (
         "\n\n"
         f"{linked.LINKED_ISSUES_HEADER}\n"
@@ -82,7 +85,7 @@ def test_an_issue_with_a_brief_shows_it_as_the_contract_instead_of_the_body():
         f"{BRIEF}\n"
         "=== end issue #7 ===\n"
     )
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_a_trusted_brief_on_an_outside_authors_issue_is_shown_without_title_or_body():
@@ -109,7 +112,7 @@ def test_the_brief_is_sanitized_and_capped_into_the_room_left():
 
 
 def test_unavailable_and_outside_author_issues_render_without_text():
-    request, partial = build(
+    request, coverage = build(
         linked_issues=[issue(3, status="unavailable"), issue(4, status="outside_author")]
     )
 
@@ -118,24 +121,24 @@ def test_unavailable_and_outside_author_issues_render_without_text():
     assert (
         "=== issue #4 ===\n(issue #4 is not shown: outside author)\n=== end issue #4 ===" in payload
     )
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_issue_text_is_sanitized_without_marking_the_review_partial():
     body = "Visible <!-- HIDDEN-COMMENT --> text\u200b here"
-    request, partial = build(linked_issues=[issue(7, "Title <!-- HIDDEN-TITLE -->", body)])
+    request, coverage = build(linked_issues=[issue(7, "Title <!-- HIDDEN-TITLE -->", body)])
 
     payload = user_payload(request)
     assert "HIDDEN-" not in payload
     assert "\u200b" not in payload
     assert "Visible" in payload
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_issue_title_and_body_are_capped_without_marking_the_review_partial():
     title = "T" * 2000
     body = "\n".join("b" * 99 for _ in range(400))  # 40,000 bytes
-    request, partial = build(linked_issues=[issue(7, title, body)])
+    request, coverage = build(linked_issues=[issue(7, title, body)])
 
     section = user_payload(request).split(END_OF_DIFF, 1)[1]
     title_line = next(line for line in section.splitlines() if line.startswith("TITLE: "))
@@ -143,8 +146,8 @@ def test_issue_title_and_body_are_capped_without_marking_the_review_partial():
     body_text = section.split("BODY:\n", 1)[1].split(linked.ISSUE_TRUNCATED, 1)[0]
     assert len(body_text.encode("utf-8")) <= linked.MAX_ISSUE_BODY_BYTES + 1
     assert f"{linked.ISSUE_TRUNCATED}\n=== end issue #7 ===" in section
-    assert partial is False
-    assert pr_review.TRUNCATION_NOTE not in user_payload(request)
+    assert coverage.partial is False
+    assert pr_review_coverage.TRUNCATION_PREFIX not in user_payload(request)
 
 
 def test_issues_beyond_the_room_left_never_displace_the_diff_or_set_partial():
@@ -154,16 +157,16 @@ def test_issues_beyond_the_room_left_never_displace_the_diff_or_set_partial():
     base_files = {f"docs/file-{n:02d}.md": "y " * 2_450 for n in range(20)}
     issues = [issue(n, body="\n".join("b" * 99 for _ in range(200))) for n in (1, 2, 3)]
     context = base_context(diff=diff, base_files=base_files, linked_issues=issues)
-    plain, plain_partial = pr_review.build_request(base_context(diff=diff, base_files=base_files))
-    request, partial = pr_review.build_request(context)
+    plain, plain_coverage = pr_review.build_request(base_context(diff=diff, base_files=base_files))
+    request, coverage = pr_review.build_request(context)
 
-    assert plain_partial is False
-    assert partial is False
+    assert plain_coverage.partial is False
+    assert coverage.partial is False
     payload = user_payload(request)
     assert payload.startswith(user_payload(plain))
     assert "+line 1899" in payload
     assert TOTAL_NOTE not in payload
-    assert pr_review.TRUNCATION_NOTE not in payload
+    assert pr_review_coverage.TRUNCATION_PREFIX not in payload
     budget = pr_review.MAX_TOTAL_BYTES - len(request["messages"][0]["content"].encode("utf-8"))
     assert len(payload.encode("utf-8")) <= budget
     assert len(payload.encode("utf-8")) > budget - 200  # the room left is used, not dropped
@@ -171,15 +174,10 @@ def test_issues_beyond_the_room_left_never_displace_the_diff_or_set_partial():
 
 
 def test_a_payload_cut_by_the_total_limit_leaves_no_room_for_issues():
-    context = base_context(
-        diff="\n".join("~" * 100 for _ in range(2000)),
-        base_files={f"docs/file-{n}.md": "y " * 2500 for n in range(20)},
-        body="B " * 1000,
-        linked_issues=[issue(7, body="ISSUE-BODY")],
-    )
-    request, partial = pr_review.build_request(context)
+    context = overfull_context(linked_issues=[issue(7, body="ISSUE-BODY")])
+    request, coverage = pr_review.build_request(context)
 
-    assert partial is True
+    assert coverage.partial is True
     assert "ISSUE-BODY" not in user_payload(request)
     assert len(user_payload(request).encode("utf-8")) <= pr_review.MAX_TOTAL_BYTES
 

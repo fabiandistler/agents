@@ -8,24 +8,25 @@ import pr_review_claude
 import pr_review_comments as comments
 import pytest
 from factory_handoff import WORKFLOW_BOT_LOGIN
-from pr_review_testkit import base_context, run_cli, user_payload, write_context
+from pr_review_testkit import base_context, overfull_context, run_cli, user_payload, write_context
 
-END_OF_DIFF = "=== END OF DIFF ==="
+# The base content follows the diff; the base context has one base file.
+END_OF_BASE = "=== end docs/review.md ==="
 
 
 def comment(body: str, association: str = "MEMBER", author: str = "maintainer") -> dict:
     return {"id": 1, "body": body, "author": author, "author_association": association}
 
 
-def build(*entries: dict, **overrides: object) -> tuple[dict, bool]:
+def build(*entries: dict, **overrides: object) -> tuple[dict, pr_review.InputCoverage]:
     return pr_review.build_request(base_context(comments=list(entries), **overrides))
 
 
 @pytest.mark.parametrize("association", ["OWNER", "MEMBER", "COLLABORATOR"])
 def test_a_trusted_comment_appears_after_the_diff_between_its_markers(association):
-    request, partial = build(comment("The finding is wrong: see line 3.", association))
+    request, coverage = build(comment("The finding is wrong: see line 3.", association))
 
-    after_diff = user_payload(request).split(END_OF_DIFF, 1)[1]
+    after_diff = user_payload(request).split(END_OF_BASE, 1)[1]
     assert after_diff == (
         "\n\n"
         f"{comments.COMMENTS_HEADER}\n"
@@ -33,7 +34,7 @@ def test_a_trusted_comment_appears_after_the_diff_between_its_markers(associatio
         "The finding is wrong: see line 3.\n"
         "=== end comment ===\n"
     )
-    assert partial is False
+    assert coverage.partial is False
 
 
 @pytest.mark.parametrize("association", ["CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", "NONE", ""])
@@ -77,24 +78,24 @@ def test_comments_come_after_the_linked_issues_oldest_first():
 
 
 def test_comment_text_is_sanitized_without_marking_the_review_partial():
-    request, partial = build(comment("Visible <!-- HIDDEN-COMMENT --> text\u200b here"))
+    request, coverage = build(comment("Visible <!-- HIDDEN-COMMENT --> text\u200b here"))
 
     payload = user_payload(request)
     assert "HIDDEN-COMMENT" not in payload
     assert "\u200b" not in payload
     assert "Visible" in payload
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_a_long_comment_is_capped_without_marking_the_review_partial():
     body = "\n".join("c" * 99 for _ in range(400))  # 40,000 bytes
-    request, partial = build(comment(body))
+    request, coverage = build(comment(body))
 
     section = user_payload(request).split("=== comment by maintainer ===\n", 1)[1]
     text = section.split(f"\n{comments.COMMENT_TRUNCATED}", 1)[0]
     assert len(text.encode("utf-8")) <= comments.MAX_COMMENT_BYTES
     assert f"{comments.COMMENT_TRUNCATED}\n=== end comment ===" in section
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_newer_comments_win_the_room_and_the_dropped_ones_are_counted():
@@ -110,15 +111,10 @@ def test_newer_comments_win_the_room_and_the_dropped_ones_are_counted():
 
 
 def test_a_full_payload_leaves_no_room_for_comments_and_stays_in_budget():
-    context = base_context(
-        diff="\n".join("~" * 100 for _ in range(2000)),
-        base_files={f"docs/file-{n}.md": "y " * 2500 for n in range(20)},
-        body="B " * 1000,
-        comments=[comment("LATE-COMMENT")],
-    )
-    request, partial = pr_review.build_request(context)
+    context = overfull_context(comments=[comment("LATE-COMMENT")])
+    request, coverage = pr_review.build_request(context)
 
-    assert partial is True
+    assert coverage.partial is True
     payload = user_payload(request)
     assert "LATE-COMMENT" not in payload
     budget = pr_review.MAX_TOTAL_BYTES - len(request["messages"][0]["content"].encode("utf-8"))

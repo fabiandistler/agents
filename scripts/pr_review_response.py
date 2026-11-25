@@ -5,11 +5,15 @@ The parser accepts only the documented header block (see
 risk, verdict or severity, or without findings becomes `verdict: concerns`
 and `risk: high` with the raw text retained. The artifact shape is shared
 with ``pr_review.py``, which builds the skipped and unavailable artifacts.
+``InputCoverage`` is the part of that shape that says what the model was not
+shown; the request builder fills it and the sticky comment names it.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from pr_risk import RISK_ORDER
 
@@ -35,6 +39,49 @@ _FINDING_RE = re.compile(
     r"\[(?P<severity>[A-Za-z]+)\][ \t]*(?P<message>.*)$"
 )
 _FIX_RE = re.compile(r"\s*\|\s*fix\s*:\s*", re.IGNORECASE)
+
+
+# The payload note and the sticky comment name at most this many files per list.
+NAMED_PATHS_LIMIT = 20
+
+
+def name_paths(paths: list[str] | tuple[str, ...], render: Callable[[str], str]) -> str:
+    """``paths`` as a comma list of at most NAMED_PATHS_LIMIT, then how many more."""
+    named = ", ".join(render(path) for path in paths[:NAMED_PATHS_LIMIT])
+    rest = len(paths) - NAMED_PATHS_LIMIT
+    return f"{named} and {rest} more" if rest > 0 else named
+
+
+@dataclass(frozen=True)
+class InputCoverage:
+    """What of a pull request the review model was not shown.
+
+    The review is partial only when a diff line was not seen: the diff was cut
+    or unavailable, or hidden markup was removed from it. Base content is
+    context, so files sent without it are named but leave the review complete.
+    """
+
+    diff_cut: bool = False
+    diff_markup_removed: bool = False
+    diff_last_full_file: str | None = None
+    diff_files_not_in_full: tuple[str, ...] = ()
+    base_content_missing: tuple[str, ...] = ()
+
+    @property
+    def partial(self) -> bool:
+        return self.diff_cut or self.diff_markup_removed
+
+    def omissions(self) -> dict:
+        return {
+            "diff_cut": self.diff_cut,
+            "diff_markup_removed": self.diff_markup_removed,
+            "diff_last_full_file": self.diff_last_full_file,
+            "diff_files_not_in_full": list(self.diff_files_not_in_full),
+            "base_content_missing": list(self.base_content_missing),
+        }
+
+
+COMPLETE_INPUT = InputCoverage()
 
 
 class ContextError(ValueError):
@@ -100,7 +147,7 @@ def build_artifact(
     verdict: str | None = None,
     summary: str = "",
     findings: list[dict] | None = None,
-    partial: bool = False,
+    coverage: InputCoverage = COMPLETE_INPUT,
     raw: str | None = None,
 ) -> dict:
     return {
@@ -112,12 +159,13 @@ def build_artifact(
         "verdict": verdict,
         "summary": summary,
         "findings": findings if findings is not None else [],
-        "partial": partial,
+        "partial": coverage.partial,
+        "omissions": coverage.omissions(),
         "raw": raw,
     }
 
 
-def parse_response(text: str, context: dict, partial: bool = False) -> dict:
+def parse_response(text: str, context: dict, coverage: InputCoverage = COMPLETE_INPUT) -> dict:
     """Turn a model response into the review artifact, failing safe."""
     validate_identity(context)
     if not isinstance(text, str):
@@ -160,7 +208,7 @@ def parse_response(text: str, context: dict, partial: bool = False) -> dict:
             verdict="concerns",
             summary="",
             findings=[],
-            partial=partial,
+            coverage=coverage,
             raw=text,
         )
     return build_artifact(
@@ -170,5 +218,5 @@ def parse_response(text: str, context: dict, partial: bool = False) -> dict:
         verdict=verdict,
         summary=summary,
         findings=findings,
-        partial=partial,
+        coverage=coverage,
     )

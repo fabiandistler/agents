@@ -60,17 +60,17 @@ def write_standards(tmp_path: Path, content: bytes | str) -> Path:
 
 
 def test_without_standards_the_system_prompt_is_the_bundled_prompt() -> None:
-    request, partial = pr_review.build_request(base_context())
+    request, coverage = pr_review.build_request(base_context())
     assert system_prompt(request) == bundled_prompt()
     assert user_payload(request) == pinned_payload()
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_standards_follow_the_bundled_prompt_under_a_fixed_heading() -> None:
-    request, partial = pr_review.build_request(base_context(), STANDARDS)
+    request, coverage = pr_review.build_request(base_context(), STANDARDS)
     assert system_prompt(request) == bundled_prompt() + SECTION + STANDARDS
     assert user_payload(request) == pinned_payload()
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_the_standards_text_never_reaches_the_payload() -> None:
@@ -88,18 +88,18 @@ def test_the_payload_budget_shrinks_by_exactly_the_standards_bytes(monkeypatch) 
     exact_fit = size(bundled_prompt()) + size(pinned_payload())
 
     monkeypatch.setattr(pr_review, "MAX_TOTAL_BYTES", exact_fit)
-    request, partial = pr_review.build_request(base_context())
-    assert (user_payload(request), partial) == (pinned_payload(), False)
-    _, partial = pr_review.build_request(base_context(), STANDARDS)
-    assert partial is True
+    request, coverage = pr_review.build_request(base_context())
+    assert (user_payload(request), coverage.partial) == (pinned_payload(), False)
+    _, coverage = pr_review.build_request(base_context(), STANDARDS)
+    assert coverage.partial is True
 
     monkeypatch.setattr(pr_review, "MAX_TOTAL_BYTES", exact_fit + extra)
-    request, partial = pr_review.build_request(base_context(), STANDARDS)
-    assert (user_payload(request), partial) == (pinned_payload(), False)
+    request, coverage = pr_review.build_request(base_context(), STANDARDS)
+    assert (user_payload(request), coverage.partial) == (pinned_payload(), False)
 
     monkeypatch.setattr(pr_review, "MAX_TOTAL_BYTES", exact_fit + extra - 1)
-    _, partial = pr_review.build_request(base_context(), STANDARDS)
-    assert partial is True
+    _, coverage = pr_review.build_request(base_context(), STANDARDS)
+    assert coverage.partial is True
 
 
 def test_the_total_cap_holds_with_a_maximal_standards_file() -> None:
@@ -109,8 +109,8 @@ def test_the_total_cap_holds_with_a_maximal_standards_file() -> None:
         base_files={f"docs/file-{number}.md": "y " * 2500 for number in range(20)},
         body="B " * 1000,
     )
-    request, partial = pr_review.build_request(context, standards)
-    assert partial is True
+    request, coverage = pr_review.build_request(context, standards)
+    assert coverage.partial is True
     total = size(system_prompt(request)) + size(user_payload(request))
     assert total <= pr_review.MAX_TOTAL_BYTES
 

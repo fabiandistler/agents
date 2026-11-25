@@ -70,7 +70,7 @@ SNAPSHOT = Path(__file__).resolve().parent / "fixtures" / "pr_review_request"
 
 def test_the_base_request_matches_the_pinned_snapshot(monkeypatch) -> None:
     monkeypatch.delenv(pr_review.MODEL_ENV, raising=False)
-    request, partial = pr_review.build_request(base_context())
+    request, coverage = pr_review.build_request(base_context())
     assert request == {
         "model": "sonnet",
         "messages": [
@@ -78,26 +78,26 @@ def test_the_base_request_matches_the_pinned_snapshot(monkeypatch) -> None:
             {"role": "user", "content": (SNAPSHOT / "payload.txt").read_text(encoding="utf-8")},
         ],
     }
-    assert partial is False
+    assert coverage.partial is False
 
 
 # --- Base tree paths and diff status -----------------------------------------
 
 
 def test_base_tree_paths_list_changed_directories_first() -> None:
-    request, partial = pr_review.build_request(
+    request, coverage = pr_review.build_request(
         base_context(base_paths=["README.md", "a/x.md", "docs/other.md", "docs/review.md"])
     )
     payload = user_payload(request)
     section = payload.split("BASE TREE PATHS", 1)[1].split("BASE FILE CONTENTS", 1)[0]
     listed = [line[2:] for line in section.splitlines() if line.startswith("- ")]
     assert listed == ["docs/other.md", "docs/review.md", "README.md", "a/x.md"]
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_base_tree_paths_are_bounded_and_say_what_is_missing() -> None:
     paths = [f"lib/module-{number:05d}.py" for number in range(5000)]
-    request, partial = pr_review.build_request(
+    request, coverage = pr_review.build_request(
         base_context(base_paths=paths, base_paths_truncated=True)
     )
     payload = user_payload(request)
@@ -106,7 +106,7 @@ def test_base_tree_paths_are_bounded_and_say_what_is_missing() -> None:
     assert "more paths not shown" in payload
     assert "incomplete" in payload
     assert len(payload.encode("utf-8")) < 30_000
-    assert partial is False
+    assert coverage.partial is False
 
 
 def test_base_tree_paths_are_sanitized() -> None:
@@ -119,14 +119,14 @@ def test_base_tree_paths_are_sanitized() -> None:
 
 
 def test_an_unavailable_diff_marks_the_review_partial() -> None:
-    request, partial = pr_review.build_request(base_context(diff="", diff_status="unavailable"))
-    assert partial is True
+    request, coverage = pr_review.build_request(base_context(diff="", diff_status="unavailable"))
+    assert coverage.partial is True
     assert "diff is unavailable" in user_payload(request).lower()
 
 
 def test_a_diff_truncated_upstream_marks_the_review_partial() -> None:
-    _, partial = pr_review.build_request(base_context(diff_status="truncated"))
-    assert partial is True
+    _, coverage = pr_review.build_request(base_context(diff_status="truncated"))
+    assert coverage.partial is True
 
 
 @pytest.mark.parametrize(
@@ -136,8 +136,8 @@ def test_a_diff_truncated_upstream_marks_the_review_partial() -> None:
 def test_markup_removed_from_the_diff_marks_the_review_partial(hidden: str) -> None:
     # The removed part was never reviewed, so auto-merge must stay off.
     diff = f"diff --git a/docs/review.md b/docs/review.md\n+Visible {hidden}\n"
-    request, partial = pr_review.build_request(base_context(diff=diff))
-    assert partial is True
+    request, coverage = pr_review.build_request(base_context(diff=diff))
+    assert coverage.partial is True
     assert "hidden markup was removed from the diff" in user_payload(request).lower()
 
 
@@ -147,9 +147,9 @@ def test_an_html_comment_in_a_code_file_reaches_the_model_visible_and_inert() ->
         "diff --git a/scripts/rework.py b/scripts/rework.py\n"
         '+MARKER = "<!-- rework-round:{n} -->"\n'
     )
-    request, partial = pr_review.build_request(base_context(diff=diff))
+    request, coverage = pr_review.build_request(base_context(diff=diff))
     payload = user_payload(request)
-    assert partial is False
+    assert coverage.partial is False
     assert '+MARKER = "<!\u2212\u2212 rework-round:{n} \u2212\u2212>"' in payload
     assert "<!--" not in payload and "-->" not in payload
     assert "hidden markup was removed" not in payload.lower()
@@ -157,8 +157,8 @@ def test_an_html_comment_in_a_code_file_reaches_the_model_visible_and_inert() ->
 
 def test_an_unclosed_comment_in_a_code_file_does_not_hide_the_next_file() -> None:
     diff = 'diff --git a/a.py b/a.py\n+OPEN = "<!--"\ndiff --git a/b.py b/b.py\n+NEXT = 1\n'
-    request, partial = pr_review.build_request(base_context(diff=diff))
-    assert partial is False
+    request, coverage = pr_review.build_request(base_context(diff=diff))
+    assert coverage.partial is False
     assert "+NEXT = 1" in user_payload(request)
 
 
@@ -166,17 +166,17 @@ def test_an_unclosed_comment_in_a_code_file_does_not_hide_the_next_file() -> Non
 def test_an_html_comment_in_a_markdown_file_is_still_removed(header: str) -> None:
     # Markdown renders the comment invisible, so the text stays out of review.
     diff = f"diff --git {header}\n+Visible <!-- SECRET -->\n"
-    request, partial = pr_review.build_request(base_context(diff=diff))
+    request, coverage = pr_review.build_request(base_context(diff=diff))
     payload = user_payload(request)
-    assert partial is True
+    assert coverage.partial is True
     assert "SECRET" not in payload
     assert "hidden markup was removed from the diff" in payload.lower()
 
 
 def test_other_hidden_markup_in_a_code_file_is_still_removed() -> None:
     diff = "diff --git a/page.html b/page.html\n+<div hidden>SECRET</div>\n"
-    request, partial = pr_review.build_request(base_context(diff=diff))
-    assert partial is True
+    request, coverage = pr_review.build_request(base_context(diff=diff))
+    assert coverage.partial is True
     assert "SECRET" not in user_payload(request)
 
 
@@ -187,17 +187,17 @@ def test_an_html_comment_in_a_code_file_neither_hides_a_markdown_file() -> None:
         "diff --git a/doc.md b/doc.md\n"
         "+Shown --> Hidden <!-- SECRET -->\n"
     )
-    request, partial = pr_review.build_request(base_context(diff=diff))
+    request, coverage = pr_review.build_request(base_context(diff=diff))
     payload = user_payload(request)
-    assert partial is True
+    assert coverage.partial is True
     assert "+Shown --> Hidden" in payload
     assert "SECRET" not in payload
 
 
 def test_markup_removed_from_the_body_alone_keeps_the_review_complete() -> None:
     # Pull request templates carry HTML comments; the body is not reviewed code.
-    request, partial = pr_review.build_request(base_context(body="Intro <!-- template -->"))
-    assert partial is False
+    request, coverage = pr_review.build_request(base_context(body="Intro <!-- template -->"))
+    assert coverage.partial is False
     assert "hidden markup was removed" not in user_payload(request).lower()
 
 
@@ -215,73 +215,6 @@ def test_markup_removed_from_the_body_alone_keeps_the_review_complete() -> None:
 def test_a_malformed_context_is_rejected(overrides: dict) -> None:
     with pytest.raises(pr_review.ContextError):
         pr_review.build_request(base_context(**overrides))
-
-
-# --- Caps --------------------------------------------------------------------
-
-
-def test_diff_line_cap_truncates_and_marks_partial() -> None:
-    calls: list[dict] = []
-    context = base_context(diff="\n".join(f"+line {number}" for number in range(2500)))
-    artifact = pr_review.review(context, transport=recording_transport(calls), token=FAKE_TOKEN)
-    assert artifact["status"] == "ok"
-    assert artifact["partial"] is True
-    payload = user_payload(calls[0])
-    assert "+line 0" in payload
-    assert "+line 1999" in payload
-    assert "+line 2000" not in payload
-    assert "truncated" in payload.lower()
-
-
-def test_diff_byte_cap_truncates_and_marks_partial() -> None:
-    calls: list[dict] = []
-    context = base_context(diff="\n".join("~" * 400 for _ in range(600)))
-    artifact = pr_review.review(context, transport=recording_transport(calls), token=FAKE_TOKEN)
-    assert artifact["partial"] is True
-    assert len(user_payload(calls[0]).encode("utf-8")) <= pr_review.MAX_TOTAL_BYTES
-
-
-def test_base_content_caps_the_file_count() -> None:
-    calls: list[dict] = []
-    base_files = {f"docs/file-{number:02d}.md": f"CONTENT-{number:02d}" for number in range(25)}
-    artifact = pr_review.review(
-        base_context(base_files=base_files),
-        transport=recording_transport(calls),
-        token=FAKE_TOKEN,
-    )
-    assert artifact["partial"] is True
-    payload = user_payload(calls[0])
-    assert "CONTENT-19" in payload
-    assert "CONTENT-20" not in payload
-
-
-def test_base_content_caps_the_total_bytes() -> None:
-    calls: list[dict] = []
-    base_files = {
-        "docs/huge.md": "~" * 120_000,
-        "docs/small.md": "SMALL-CONTENT",
-    }
-    artifact = pr_review.review(
-        base_context(base_files=base_files),
-        transport=recording_transport(calls),
-        token=FAKE_TOKEN,
-    )
-    assert artifact["partial"] is True
-    payload = user_payload(calls[0])
-    assert "~" * 120_000 not in payload
-    assert "SMALL-CONTENT" in payload
-
-
-def test_total_payload_is_capped() -> None:
-    calls: list[dict] = []
-    context = base_context(
-        diff="\n".join("~" * 100 for _ in range(2000)),
-        base_files={f"docs/file-{number}.md": "y " * 2500 for number in range(20)},
-        body="B " * 1000,
-    )
-    artifact = pr_review.review(context, transport=recording_transport(calls), token=FAKE_TOKEN)
-    assert artifact["partial"] is True
-    assert len(user_payload(calls[0]).encode("utf-8")) <= pr_review.MAX_TOTAL_BYTES
 
 
 # --- Parser ------------------------------------------------------------------
@@ -327,6 +260,13 @@ def test_valid_response_parses_into_the_artifact() -> None:
             },
         ],
         "partial": False,
+        "omissions": {
+            "diff_cut": False,
+            "diff_markup_removed": False,
+            "diff_last_full_file": None,
+            "diff_files_not_in_full": [],
+            "base_content_missing": [],
+        },
         "raw": None,
     }
 

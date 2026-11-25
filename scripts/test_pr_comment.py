@@ -6,6 +6,7 @@ The comment is asserted through the ``upsert_comment`` action of the plan.
 from __future__ import annotations
 
 import pr_plan
+import pytest
 from pr_publish_testkit import (
     BOT_AUTHOR,
     MARKER,
@@ -96,6 +97,68 @@ def test_comment_warns_about_a_partial_review():
     # Partial covers both causes: cut to the limits, or hidden markup removed.
     assert "hidden markup" in comment_body(plan)
     assert actions_of(plan, "enable_auto_merge") == []
+
+
+def omissions(**overrides: object) -> dict:
+    record = {
+        "diff_cut": False,
+        "diff_markup_removed": False,
+        "diff_last_full_file": None,
+        "diff_files_not_in_full": [],
+        "base_content_missing": [],
+    }
+    record.update(overrides)
+    return record
+
+
+def test_comment_names_the_files_sent_without_base_content_on_a_complete_review():
+    missing = ["scripts/implementer_claim.py", "scripts/test_implementer_claim.py"]
+    review = make_review(omissions=omissions(base_content_missing=missing))
+
+    body = comment_body(pr_plan.plan_publish(make_context(), make_assessment(), review))
+
+    assert "Partial review" not in body
+    assert (
+        "> **Sent without base content:** `scripts/implementer_claim.py`, "
+        "`scripts/test_implementer_claim.py`." in body
+    )
+    assert "The diff was reviewed in full." in body
+
+
+def test_comment_names_the_last_file_shown_in_full_and_the_files_not_shown_on_a_diff_cut():
+    review = make_review(
+        partial=True,
+        omissions=omissions(
+            diff_cut=True,
+            diff_last_full_file="scripts/b.py",
+            diff_files_not_in_full=["scripts/c.py", "scripts/d.py"],
+        ),
+    )
+
+    body = comment_body(pr_plan.plan_publish(make_context(), make_assessment(), review))
+
+    assert "> **Partial review.** Parts of the diff were not reviewed" in body
+    assert "the last file shown in full is `scripts/b.py`" in body
+    assert "not shown in full: `scripts/c.py`, `scripts/d.py`" in body
+    assert "hidden markup" not in body
+
+
+def test_comment_bounds_the_named_files_and_counts_the_rest():
+    missing = [f"docs/page-{number:02d}.md" for number in range(25)]
+    review = make_review(omissions=omissions(base_content_missing=missing))
+
+    body = comment_body(pr_plan.plan_publish(make_context(), make_assessment(), review))
+
+    assert "`docs/page-19.md` and 5 more." in body
+    assert "docs/page-20.md" not in body
+
+
+def test_comment_names_removed_markup_as_the_cause_of_a_partial_review():
+    review = make_review(partial=True, omissions=omissions(diff_markup_removed=True))
+
+    body = comment_body(pr_plan.plan_publish(make_context(), make_assessment(), review))
+
+    assert "not reviewed: hidden markup was removed from the diff." in body
 
 
 def test_comment_reports_an_unavailable_review():
@@ -227,3 +290,18 @@ def test_comment_body_does_not_depend_on_the_auto_merge_decision():
     )
 
     assert comment_body(quiet) == comment_body(merging)
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        [],
+        {"diff_cut": "yes"},
+        {"diff_last_full_file": 3},
+        {"diff_files_not_in_full": "scripts/a.py"},
+        {"base_content_missing": [None]},
+    ],
+)
+def test_a_malformed_omissions_record_is_bad_input(record):
+    with pytest.raises(pr_plan.ArtifactError, match="omissions"):
+        pr_plan.plan_publish(make_context(), make_assessment(), make_review(omissions=record))
