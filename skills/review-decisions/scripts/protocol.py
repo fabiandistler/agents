@@ -30,6 +30,7 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -81,23 +82,36 @@ def new_protocol_path(repo: Path) -> Path:
     return directory / f"{slug}-{stamp}.md"
 
 
-def resume_state(text: str) -> dict:
-    answers: dict[int, str | None] = {}
-    current: int | None = None
+@dataclass
+class Card:
+    answer: str | None = None
+
+
+def read_cards(text: str) -> dict[int, Card]:
+    """Map each card number to what the protocol records for it."""
+    cards: dict[int, Card] = {}
+    number = 0
     for line in text.splitlines():
         heading = CARD.match(line)
         if heading:
-            current = int(heading.group(1))
-            answers[current] = None
+            number = int(heading.group(1))
+            cards[number] = Card()
+            continue
+        if number not in cards:
             continue
         answer = ANSWER.match(line)
-        if answer and current is not None:
+        if answer:
             value = answer.group(1)
             if value and value not in ANSWERS:
-                raise ProtocolError(3, f"card {current}: answer must be one of ok, change, later")
-            answers[current] = value or None
-    if not answers:
+                raise ProtocolError(3, f"card {number}: answer must be one of ok, change, later")
+            cards[number].answer = value or None
+    if not cards:
         raise ProtocolError(3, "no `## Card <n>` headings found")
+    return cards
+
+
+def resume_state(text: str) -> dict:
+    answers = {n: card.answer for n, card in read_cards(text).items()}
     undecided = [n for n, a in answers.items() if a is None]
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return {
