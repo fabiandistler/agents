@@ -53,7 +53,7 @@ from implementer_setup import (
     WORKFLOW_REF_VARIABLE,
     ImplementerSetup,
     branch_prefix,
-    queue_workflow_file,
+    optional_workflow_file,
     workflow_file,
 )
 from implementer_waiting import blocked_comment, capacity_comment, require_active_queue
@@ -445,7 +445,7 @@ def main(argv: list[str] | None = None) -> int:
         setup = ImplementerSetup(
             workflow_file(args.workflow_file), args.job_name, branch_prefix(args.branch_prefix)
         )
-        queue = queue_workflow_file(args.queue_workflow)
+        queue = optional_workflow_file("--queue-workflow", args.queue_workflow)
         client = GitHubClient(_required_token("GH_TOKEN"))
         actions_client = GitHubClient(_required_token(ACTIONS_TOKEN_VARIABLE))
         claim = claim_branch(

@@ -6,12 +6,14 @@ factory's scripts come from the workflow's own commit outside the target's
 workspace, and the guards load from there. implementer.yml stays a thin caller.
 """
 
+import argparse
 import json
 import os
 import re
 import subprocess
 
 import agent_run_capacity
+import implementer_follow_up
 import implementer_setup
 import pr_cli
 import pytest
@@ -198,15 +200,21 @@ def test_validation_and_the_claim_agree_on_the_branch_prefix(prefix):
     "value",
     ["", "implementer-queue.yml", "q.yaml", "../q.yml", ".github/workflows/q.yml", "a b.yml"],
 )
-def test_validation_and_the_claim_agree_on_the_queue_workflow(value):
+def test_validation_and_both_scripts_agree_on_the_queue_workflow(value):
     shell_ok = _run_validation(QUEUE_WORKFLOW=value).returncode == 0
     try:
-        implementer_setup.queue_workflow_file(value)
+        implementer_setup.optional_workflow_file("--queue-workflow", value)
     except FetchError:
-        python_ok = False
+        claim_ok = False
     else:
-        python_ok = True
-    assert shell_ok == python_ok
+        claim_ok = True
+    try:
+        implementer_follow_up._workflow(value)
+    except argparse.ArgumentTypeError:
+        follow_up_ok = False
+    else:
+        follow_up_ok = True
+    assert shell_ok == claim_ok == follow_up_ok
 
 
 @pytest.mark.parametrize("value", ["implementer-queue.yml", ""])

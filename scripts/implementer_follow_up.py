@@ -43,7 +43,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Protocol
 
 import pr_cli
-from implementer_setup import WORKFLOW_FILE_PATTERN
+from implementer_setup import optional_workflow_file
 from pr_github_client import FetchError, GitHubClient
 
 SCRIPT = "implementer_follow_up.py"
@@ -127,12 +127,12 @@ def send(client: Dispatcher, repo: str, ref: str, dispatches: list[Dispatch]) ->
 
 
 def _workflow(value: str) -> str | None:
-    """A plain workflow file name, or None for the empty string."""
-    if value == "":
-        return None
-    if not WORKFLOW_FILE_PATTERN.fullmatch(value):
-        raise argparse.ArgumentTypeError("must be a plain *.yml or *.yaml file name, or empty")
-    return value
+    """A plain workflow file name, or None for the empty string, as the claim reads it."""
+    try:
+        return optional_workflow_file("the value", value)
+    except FetchError as error:
+        message = "must be a plain *.yml or *.yaml file name, or empty"
+        raise argparse.ArgumentTypeError(message) from error
 
 
 def main(argv: list[str] | None = None) -> int:

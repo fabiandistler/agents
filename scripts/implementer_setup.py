@@ -65,11 +65,14 @@ def workflow_file(option: str | None) -> str:
     return _plain_workflow_file(source, file_name)
 
 
-def queue_workflow_file(option: str) -> str | None:
-    """--queue-workflow: the caller's queue workflow file, or None for '' (it has none)."""
-    if option == "":
+def optional_workflow_file(source: str, value: str) -> str | None:
+    """A caller's workflow file input, such as --queue-workflow: None for '' (it has none).
+
+    The one parser of these inputs; implementer_follow_up.py uses it too.
+    """
+    if value == "":
         return None
-    return _plain_workflow_file("--queue-workflow", option)
+    return _plain_workflow_file(source, value)
 
 
 def _plain_workflow_file(source: str, file_name: str) -> str:
