@@ -204,3 +204,27 @@ def test_total_payload_is_capped() -> None:
     artifact = pr_review.review(context, transport=recording_transport(calls), token=FAKE_TOKEN)
     assert artifact["partial"] is True
     assert len(user_payload(calls[0]).encode("utf-8")) <= pr_review.MAX_TOTAL_BYTES
+
+
+def test_diff_coverage_counts_the_last_section_as_not_shown_even_at_a_file_header() -> None:
+    files = [changed_file("a.py"), changed_file("b.py")]
+    shown = "diff --git a/a.py b/a.py\n+x\ndiff --git a/b.py b/b.py\n"
+
+    last_full, not_in_full = pr_review_coverage.diff_coverage(files, shown)
+
+    assert last_full == "a.py"
+    assert not_in_full == ("b.py",)
+
+
+def test_diff_coverage_counts_a_file_with_a_quoted_header_as_not_shown() -> None:
+    files = [changed_file("a.py"), changed_file("ü b.py"), changed_file("c.py")]
+    shown = (
+        "diff --git a/a.py b/a.py\n+x\n"
+        'diff --git "a/\\303\\274 b.py" "b/\\303\\274 b.py"\n+y\n'
+        "diff --git a/c.py b/c.py\n+z\n"
+    )
+
+    last_full, not_in_full = pr_review_coverage.diff_coverage(files, shown)
+
+    assert last_full == "a.py"
+    assert not_in_full == ("ü b.py", "c.py")
