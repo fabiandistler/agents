@@ -7,7 +7,7 @@ nothing here describes the present. See [conventions](conventions.md).
 ## Goal and plan
 
 - [goal](goal.md) — the long-running goal, its scope, and the ordering decision (improve before extend).
-- [merge plan](merge-plan.md) — open PRs and their merge-order constraints; on 2026-11-20 none open, the 2026-11-13/14 queue all merged.
+- [merge plan](merge-plan.md) — open PRs and their merge-order constraints; on 2026-11-20 none open; on 2026-11-25 three queue-fix PRs, no order.
 - [schedules](schedules.md) — recurring scheduled tasks and their setup; the #763 brownout check failed (read 2026-11-20); the three maintenance routines as read 2026-11-20, agents cannot edit them (`http_api`), the dotfiles test reverts by hand before 2026-12-16, evaluation task due 2026-12-10.
 
 ## Decisions
@@ -21,6 +21,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-13 triage decisions](decisions/2026-11-13-triage-decisions.md) — reopen #783, queue issue #801, #769 script-only, YAML tickets in interactive sessions.
 - [2026-11-18 decisions](decisions/2026-11-18-decisions.md) — `PR_AUTO_MERGE=true`; high-risk zones already in `pr_risk.py`, no issue; #877 lists all repos.
 - [2026-11-19 tools decisions](decisions/2026-11-19-tools-decisions.md) — tools gallery: deploy gate first, line limit reframed, fix high+med, skill rules, one branch per package.
+- [2026-11-25 decisions](decisions/2026-11-25-decisions.md) — repo-maintenance#205: option 2, queue callers in both consumers plus a claim that promises the queue only when one is configured.
 - [2026-11-20 decisions](decisions/2026-11-20-decisions.md) — #905/#907, #908, #909/#910, repo-maintenance#174; Opus and bootstrap on the agents and dotfiles routines; dotfiles twice a week for three weeks; maintenance stays in routines (option B); routine edits by hand.
 
 ## Recurring problems
@@ -48,6 +49,7 @@ nothing here describes the present. See [conventions](conventions.md).
 - [implementer-queue page guard](problems/implementer-queue-page-guard.md) — four queue runs failed on the one-page guard in `agent_run_capacity.py` (2026-11-18/19); cause unknown, the Fix task does not watch the queue, no issue (2026-11-20); *superseded* the same day: #905 fixed by #907, the queue's failures reach the Fix task (#908, #910).
 - [runs without a trace](problems/runs-without-trace.md) — the 2026-11-16 maintenance run, the retro on PR #873 and the #763 check ended with no artifact and no trace in the repos; status fields read success (2026-11-20); repo-maintenance#174 retries the classifier outage, agents and dotfiles only after their bootstrap switch; dropped Actions schedules leave no failed run.
 - [listing-tool cost](problems/listing-tool-cost.md) — on 2026-11-20 `list_triggers` returned 34 stored prompts (+101k tokens) and `list_pull_requests` 8 pages (+120k); use `get_trigger` with known ids and one `gh api search/issues` query; an `analyst` agent type is planned, PR pending.
+- [consumers without a queue caller](problems/consumers-without-queue.md) — repo-maintenance and dotfiles parked issues "in the queue" with no queue caller since 2026-11-15; #200, dotfiles#79/#80 stuck on 2026-11-25; fixes agents#953, repo-maintenance#206, dotfiles#82.
 
 ## User preferences
 
