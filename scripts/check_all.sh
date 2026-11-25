@@ -24,7 +24,7 @@ MMDLINT="npx -y -p @sysid/mmdlint@0.1.1 -p mermaid@11.17.0 mmdlint"
 # manifest check runs first.
 CHECKS=(manifest routers descriptions docs plugins instructions python-baseline project-claude
   vendor-lock instruction-unicode frontmatter evals vocab gh-graphql skill-refs reference-tocs
-  dated-claims table-width skill-paths secret-argv zizmor pytest prek compileall bats mermaid)
+  dated-claims table-width skill-paths line-cites secret-argv zizmor pytest prek compileall bats mermaid)
 
 usage() {
   cat <<'EOF'
@@ -142,6 +142,8 @@ run_check() {
     dated-claims) "$PY" scripts/check_dated_claims.py ;;
     table-width) "$PY" scripts/check_table_width.py ;;
     skill-paths) "$PY" scripts/check_skill_paths.py ;;
+    # No file:line citations in docs/factory/ and docs/agents/; cite symbols.
+    line-cites) "$PY" scripts/check_line_cites.py ;;
     secret-argv) "$PY" scripts/check_secret_argv.py ;;
     # Workflow security audit, offline (no GitHub API). Deliberate findings are
     # suppressed inline, each with its reason.
