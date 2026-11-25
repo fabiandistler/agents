@@ -25,6 +25,7 @@ from test_implementer_claim import (
     OLD_SHA,
     OWN_WORKFLOW_REF,
     PULLS,
+    QUEUE_WORKFLOW,
     REPO,
     RUN_ID,
     FakeGitHub,
@@ -82,9 +83,10 @@ def test_a_called_job_counts_by_its_own_name(other_job, outcome):
     )
     client = cast(GitHubClient, fake)
     setup = ImplementerSetup(job_name="implement")
-    assert implementer_claim.claim_branch(client, client, REPO, ISSUE, RUN_ID, setup).outcome == (
-        outcome
+    claimed = implementer_claim.claim_branch(
+        client, client, REPO, ISSUE, RUN_ID, setup, queue_workflow=QUEUE_WORKFLOW
     )
+    assert claimed.outcome == outcome
 
 
 def test_the_job_name_option_reaches_the_capacity_gate(monkeypatch, tmp_path, capsys):
@@ -103,12 +105,16 @@ def test_a_job_whose_name_only_ends_like_the_job_name_does_not_count():
     fake = FakeGitHub(jobs={RUN_ID: [called_job("call / reimplement")]})
     client = cast(GitHubClient, fake)
     with pytest.raises(pr_github_client.FetchError, match="no working implement job"):
-        implementer_claim.claim_branch(client, client, REPO, ISSUE, RUN_ID)
+        implementer_claim.claim_branch(
+            client, client, REPO, ISSUE, RUN_ID, queue_workflow=QUEUE_WORKFLOW
+        )
 
 
 def claim_factory(fake: FakeGitHub) -> implementer_claim.ClaimOutcome:
     client = cast(GitHubClient, fake)
-    return implementer_claim.claim_branch(client, client, REPO, ISSUE, RUN_ID, FACTORY)
+    return implementer_claim.claim_branch(
+        client, client, REPO, ISSUE, RUN_ID, FACTORY, queue_workflow=QUEUE_WORKFLOW
+    )
 
 
 def test_the_branch_prefix_names_the_claimed_branch(monkeypatch, tmp_path, capsys):
@@ -208,6 +214,7 @@ def test_the_script_runs_from_another_checkout(tmp_path):
             *(sys.executable, str(SCRIPT), "--repo", REPO, "--issue", str(ISSUE)),
             *("--summary", str(summary), "--contract", str(tmp_path / "contract.md")),
             *("--workflow-file", "agent.yml", "--branch-prefix", "factory/issue-"),
+            *("--queue-workflow", "agent-queue.yml"),
         ],
         cwd=tmp_path,
         env=environment,

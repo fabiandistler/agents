@@ -174,3 +174,14 @@ See [2026-11-20 status sweep](snapshots/2026-11-20-status.md).
   Every agent PR in agents since 2026-11-17 merged: #879 (#877), #881 (#876)
   and #884 (#882) on 2026-11-18; #891–#895 (#886–#890) between 2026-11-18
   20:29 and 2026-11-19 07:38 UTC.
+
+## 2026-11-25 queue fix (repo-maintenance#205)
+
+- 2026-11-25: three PRs opened, no merge order between them [inferred: the
+  consumers pin agents@f5c2f16, which predates agents#953, and already pass
+  `queue_workflow`, so #953's check passes for them once they bump past it].
+  - agents#953: the claim promises the queue only to a caller that has one.
+  - repo-maintenance#206 (`Closes #205`) and dotfiles#82: queue callers, pin
+    f5c2f16. After they merge, the hourly queue run is expected to start
+    repo-maintenance#200, then dotfiles#79 and #80 [inferred, not observed].
+  See [consumers without a queue caller](problems/consumers-without-queue.md).

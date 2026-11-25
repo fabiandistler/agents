@@ -154,10 +154,10 @@ own commit, renders both guards, and starts `claude-code-action`, which
 trades the OIDC token for the App token. The model's first write is
 `implementer_claim.py`, which stops with `pr-exists`,
 `no-contract`, `blocked` or `at-capacity`, in that order, before any branch
-exists (`implementer_claim.py:339-356`). Otherwise it creates the branch at
+exists (`implementer_claim.py:344-362`). Otherwise it creates the branch at
 `main`. An existing branch (422) without commits of its own is
 fast-forwarded to `main` (`reclaimed`); one with commits goes to a person
-(`needs-human`, `:357-380`). The model builds, runs the caller's
+(`needs-human`, `:364-386`). The model builds, runs the caller's
 `check_command` and opens a ready-for-review pull request. In the PR review,
 `assess` fetches the context and classifies the risk, `review` asks the
 model without tools, and `publish` re-fetches, aborts on a moved head
@@ -176,9 +176,9 @@ issue would become a merged change. Each brake stops one path:
 | Brake | What it stops | Where |
 | --- | --- | --- |
 | Trigger filter | A bot, or the run itself, starting a run from a label | `factory-implementer.yml:76-82`; any `workflow_dispatch` passes, and the action admits only people and `allowed_bots: github-actions`, the queue's dispatch (#858) |
-| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:329-380`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
+| Claim outcomes | Building from an outsider's text, on open blockers, beside another run, or over a branch with work | `implementer_claim.py:328-386`; `MAX_WORKING_RUNS`, `implementer_capacity.py:18` |
 | Merge guard | An agent merging or enabling auto-merge | `pr_merge_guard.py`, loaded by `agent_run_settings.json` and `.claude/settings.json` |
-| Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:219`) |
+| Push guard | An agent pushing to the default branch | `default_branch_push_guard.py`; as of 2026-11-14 only the implementer loads it (`factory-implementer.yml:224`) |
 | Prompt hard limits | Labels, branches and files outside the task | the `prompt:` of each model step |
 | App token | Writes to `.github/workflows/` | the App's permissions (ADR-0014) |
 | Headless Claude Code | Writes to `.claude/` and `.pre-commit-config.yaml` | observed, cause inferred ([wiki](../wiki/problems/implementer-write-limits.md)) |
@@ -233,7 +233,7 @@ target, a person re-adds `needs-triage`). From `needs-triage`, only the
 maintainer sets `ready-for-agent`, `ready-for-human` or `wontfix`. From
 `ready-for-agent`, `no-contract` comments and removes the label, leaving no
 state until a person adds it again; `blocked` and `at-capacity` comment and
-keep it, so the issue waits in the implementer queue (#847); `pr-exists`
+keep it, so the issue waits in the queue (#847), or remove it without one; `pr-exists`
 changes nothing; `needs-human`, the implementer's red stop rule, the Rework
 handoff and the Rework model's red checks set `ready-for-human`. Pull
 requests carry separate families, written only by `hold` and `publish`
@@ -276,7 +276,7 @@ replaces the waiting one, which is never filed ([ADR-0016](../adr/0016-fix-task.
   ([onboarding](../agents/factory-onboarding.md#one-sha-for-all-callers)).
 - **Anonymous fetch.** Every reusable job but the triage label's fetches
   `job.workflow_repository` at `job.workflow_sha` into `$RUNNER_TEMP/factory`
-  without a credential (`factory-implementer.yml:149-162`), even when agents
+  without a credential (`factory-implementer.yml:154-167`), even when agents
   calls with `./`. agents must stay public: private, all those fetches fail,
   and on the owner's plan agents would lose its ruleset too.
 - **Caller's context.** `github` and `vars` are the caller's, so
@@ -309,7 +309,7 @@ reusable workflows over copies ([0018](../adr/0018-reusable-factory-workflows.md
 Known weaknesses, as of 2026-11-15: a failed run leaves
 `ready-for-agent`, and the queue skips it, so nothing retries; the claim
 branches from `main`, not the caller's default branch
-(`implementer_claim.py:68`); the Fix task watches agents' runs only. Still
+(`implementer_claim.py:78`); the Fix task watches agents' runs only. Still
 open (ADR-0018): whether Dependabot bumps the callers' agents pins
 (question 5), and how an event policy targets a caller, which matters only
 if a target goes public (question 2).

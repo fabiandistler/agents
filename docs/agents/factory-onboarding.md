@@ -1,8 +1,8 @@
 # Factory onboarding runbook
 
 For the maintainer who puts another repository on the factory: the triage
-label, the issue triage, the PR review, the implementer, the Rework task and
-the Fix task, each called from the target as a reusable workflow of this
+label, the issue triage, the PR review, the implementer and its queue, the
+Rework task and the Fix task, each called from the target as a reusable workflow of this
 repository
 ([ADR-0018](../adr/0018-reusable-factory-workflows.md)). This page lists what
 to add, what to set by hand and in which order, and how to check the result
@@ -36,8 +36,9 @@ are the fallback. The factory's day-to-day use is in the
 - **Fixed names.** The Rework and Fix tasks find the other tasks' runs by
   file path and workflow name, so the callers keep the names of the
   templates below: `.github/workflows/pr-review.yml` named `pr-review`,
-  `implementer.yml` named `implementer`, `issue-triage.yml` named
-  `issue-triage`, `rework.yml` named `rework`. Rework serves only branches
+  `implementer.yml` named `implementer`, `implementer-queue.yml` named
+  `implementer-queue`, `issue-triage.yml` named `issue-triage`, `rework.yml`
+  named `rework`. Rework serves only branches
   `agent/issue-<n>`, the implementer's default `branch_prefix`.
 - **Default-branch rule.** Merge each caller to the target's default branch
   before its first run. Issue events run the default branch's file anyway
@@ -104,10 +105,10 @@ reusable workflow to a full 40-hex commit SHA with the comment
 because zizmor's online `ref-version-mismatch` audit reads a one-word comment
 after a SHA as a version and flags it when that SHA carries no such tag. This
 repository's `triage-label.yml`, `issue-triage.yml`, `pr-review.yml`,
-`implementer.yml`, `rework.yml` and `fix-task.yml` are the model, with `./`
-replaced by the pinned path (the triage caller without `issue_comment`, see
-below; the Fix caller with the target's own watch list). Replace `<SHA>` and
-`<date>` with the same values in all six.
+`implementer.yml`, `implementer-queue.yml`, `rework.yml` and `fix-task.yml`
+are the model, with `./` replaced by the pinned path (the triage caller
+without `issue_comment`, see below; the Fix caller with the target's own watch
+list). Replace `<SHA>` and `<date>` with the same values in all seven.
 
 `.github/workflows/triage-label.yml`:
 
@@ -203,7 +204,11 @@ and the Fix and Retro tasks find a run by it. `actions: write` is the cap for
 the model-free `follow-up` job (#863); the model job asks for `actions: read`
 only. GitHub refuses to start the run if the cap is lower, so a caller that
 pins a commit from before #863 with `actions: read` must raise it in the same
-pull request that bumps the pin.
+pull request that bumps the pin. `queue_workflow` names the queue caller
+below: only with it does a `blocked` or `at-capacity` issue keep
+`ready-for-agent` and wait, and only such a run fails if the queue is
+missing or not active. `fix_task_workflow` names the Fix caller; the
+`follow-up` job dispatches both after a run the queue started.
 
 ```yaml
 name: implementer
@@ -228,8 +233,50 @@ jobs:
     with:
       issue: ${{ inputs.issue }}
       check_command: scripts/check.sh
+      queue_workflow: implementer-queue.yml
+      fix_task_workflow: fix-task.yml
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
+`.github/workflows/implementer-queue.yml`. Model-free, with no secret: it
+dispatches `implementer.yml` for the lowest waiting issue after an implementer
+run, when an issue closes, hourly, and by hand (a dry run by default;
+[implementer queue](implementer-queue.md#implementer-queue)). It needs the
+implementer caller above under the name `implementer`. A pin from before #910
+has no `fix_task_workflow` input.
+
+```yaml
+name: implementer-queue
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] model-free; reads only the API, checks out no code of the run
+    workflows: [implementer]
+    types: [completed]
+  issues:
+    types: [closed]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the pick and dispatch nothing
+        type: boolean
+        default: true
+permissions: {}
+jobs:
+  start-next:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion != 'skipped'
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+    uses: fabiandistler/agents/.github/workflows/factory-implementer-queue.yml@<SHA> # agents main, <date>
+    with:
+      fix_task_workflow: fix-task.yml
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 ```
 
 `.github/workflows/rework.yml`. It starts when the target's `pr-review` run
@@ -272,9 +319,9 @@ repository's own caller workflows by their `name:`, never `fix-task` itself
 and never a `factory-*.yml` file: a called workflow fails inside its caller's
 run. List only callers the target has. Each caller's path must be in
 `WATCHED_WORKFLOWS` of `scripts/factory_failure_policy.py`
-(`implementer.yml`, `issue-triage.yml`, `pr-review.yml`, `rework.yml`, and
-this repository's `skill-audit.yml`, `retro.yml` and `implementer-queue.yml`);
-a run of any other path
+(`implementer.yml`, `implementer-queue.yml`, `issue-triage.yml`,
+`pr-review.yml`, `rework.yml`, and this repository's `skill-audit.yml` and
+`retro.yml`); a run of any other path
 is not filed. The triage label caller is not watched. Fix is model-free and
 needs no secret.
 
@@ -282,7 +329,7 @@ needs no secret.
 name: fix-task
 on:
   workflow_run: # zizmor: ignore[dangerous-triggers] model-free, GITHUB_TOKEN only
-    workflows: [implementer, pr-review, issue-triage, rework]
+    workflows: [implementer, implementer-queue, pr-review, issue-triage, rework]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -310,79 +357,19 @@ jobs:
 
 ## Inputs and secret
 
-Every `workflow_call` input and secret, with its default and an example value.
-The examples come from the first targets (fabiandistler/dotfiles#61 and
-fabiandistler/repo-maintenance#153).
+Every `workflow_call` input and secret, with its default and an example value,
+and the caller's optional repository variables are in
+[factory workflow inputs](factory-inputs.md).
 
-`factory-implementer.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `issue` | `""` | `${{ inputs.issue }}` |
-| `check_command` | required | `scripts/maintenance-baseline.sh` |
-| `setup_command` | `""` | `pip install -r requirements-dev.txt` |
-| `submodules` | `false` | `true` (dotfiles) |
-| `python_version` | `"3.12"` | `"3.12"` (dotfiles) |
-| `model` | `opus` | `opus` |
-| `branch_prefix` | `agent/issue-` | `agent/issue-` |
-| `queue_workflow` | `""` | `implementer-queue.yml` (agents; only with a queue caller) |
-| `fix_task_workflow` | `""` | `fix-task.yml` (agents; only with a queue caller) |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
-
-`factory-implementer-queue.yml` has no template here: as of 2026-11-20 only
-agents calls it. A target that adds a queue caller passes it
+`factory-implementer-queue.yml` had no template here: as of 2026-11-20 only
+agents called it. A target that adds a queue caller passes it
 `fix_task_workflow` as well, the same file as the implementer caller's, so a
 failed queue run that the `follow-up` job dispatched reaches the Fix task
-(#909).
-
-`factory-pr-review.yml`; the effect of each input is in the
-[input table](pr-review-reusable-workflow.md):
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `pr` | `""` | `${{ inputs.pr \|\| '' }}` |
-| `dry_run` | `true` | `${{ inputs.dry_run != false }}` |
-| `skip_head_prefixes` | `""` | `maintenance/` (repo-maintenance) |
-| `standards_path` | `""` | `instructions/review-standards.md` (repo-maintenance) |
-| `fail_on_unavailable` | `false` | `true` (dotfiles) |
-| `quiet_logs` | `false` | `true` (dotfiles) |
-| `setup_command` | `""` | `scripts/install-runner-standards.sh` (dotfiles) |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
-
-`factory-issue-triage.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `issue` | `""` | `${{ inputs.issue }}` |
-| `dry_run` | `true` | `${{ github.event_name != 'workflow_dispatch' \|\| inputs.dry_run }}` |
-| `setup_command` | `""` | `pip install -r requirements-dev.txt` |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
-
-`factory-rework.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `pr` | `""` | `${{ inputs.pr }}` |
-| `check_command` | required | the implementer caller's value |
-| `setup_command` | `""` | the implementer caller's value |
-| `submodules` | `false` | `true` (dotfiles) |
-| `python_version` | `"3.12"` | `"3.12"` |
-| `model` | `sonnet` | `${{ vars.REWORK_MODEL \|\| 'sonnet' }}` |
-| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
-
-`factory-fix-task.yml`:
-
-| Name | Default | Example |
-| --- | --- | --- |
-| `run_id` | `""` | `${{ inputs.run_id }}` |
-| `dry_run` | `true` | `${{ inputs.dry_run != false }}` |
-
-`factory-triage-label.yml` takes no input and no secret.
-
-Optional repository variables of the caller: `PR_REVIEW_MODEL` (the PR
-review's model) and `ISSUE_TRIAGE_MODEL` (the triage's model). Leave
-`PR_AUTO_MERGE` unset in a target: auto-merge is this repository's alone
-(ADR-0011, ADR-0018).
+(#909). Updated 2026-11-25 (fabiandistler/repo-maintenance#205): the claim
+lets a `blocked` or `at-capacity` issue wait only for the queue that the
+implementer caller names in `queue_workflow`, and otherwise removes
+`ready-for-agent`. The queue caller now has a [template](#caller-templates),
+and the check requires it wherever the implementer is called.
 
 ## One SHA for all callers
 
@@ -448,7 +435,7 @@ policy are not readable with a session token, so they are always
 ## Start slow
 
 Enable the stages one at a time: the triage label and the triage first, then
-the PR review, then the implementer, then the Rework task. The Fix task can
+the PR review, then the implementer with its queue, then the Rework task. The Fix task can
 come with the first caller it watches. Until a stage is enabled, its
 `caller:<file>` line reads `MISSING`, and the `pin` line covers only the
 callers present.

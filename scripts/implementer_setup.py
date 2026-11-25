@@ -6,7 +6,8 @@ because "the github context is always associated with the caller workflow"
 (GitHub docs, "Reusing workflow configurations"). That file is the target
 repository's choice, so it comes from --workflow-file or GITHUB_WORKFLOW_REF.
 The job matches by its plain name or, inside a called workflow, by its
-composed name (`agent_run_capacity.is_job`).
+composed name (`agent_run_capacity.is_job`). The caller's queue workflow, if
+it has one, comes from --queue-workflow (implementer_waiting.py).
 
 Every value here goes into an API path or a branch name, so each is checked
 before the first call; a bad one is a FetchError, which fails the claim.
@@ -61,6 +62,21 @@ def workflow_file(option: str | None) -> str:
                 f"{WORKFLOW_REF_VARIABLE} is not owner/repo/.github/workflows/<file>@<ref>"
             )
         source, file_name = WORKFLOW_REF_VARIABLE, match["file"]
+    return _plain_workflow_file(source, file_name)
+
+
+def optional_workflow_file(source: str, value: str) -> str | None:
+    """A caller's workflow file input, such as --queue-workflow: None for '' (it has none).
+
+    The one parser of these inputs; implementer_follow_up.py uses it too.
+    """
+    if value == "":
+        return None
+    return _plain_workflow_file(source, value)
+
+
+def _plain_workflow_file(source: str, file_name: str) -> str:
+    """``file_name`` if it is a file name under .github/workflows/; ``source`` names its origin."""
     if not WORKFLOW_FILE_PATTERN.fullmatch(file_name):
         raise FetchError(f"{source} does not name a plain *.yml or *.yaml file")
     return file_name

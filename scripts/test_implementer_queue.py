@@ -15,6 +15,7 @@ from implementer_setup import DEFAULT_SETUP
 from pr_github_client import GitHubClient
 from pr_github_fake import release_pin
 from test_implementer_claim import (
+    QUEUE_WORKFLOW,
     REPO,
     RUN_ID,
     FakeGitHub,
@@ -385,7 +386,9 @@ def test_a_dispatched_run_that_stops_at_capacity_keeps_waiting_without_a_loop():
     # keeps the label, so the issue still waits.
     claim_fake = FakeGitHub(jobs={RUN_ID: [working_job()], WORKING_RUN: [working_job(EARLIER)]})
     client = cast(GitHubClient, claim_fake)
-    stopped = implementer_claim.claim_branch(client, client, REPO, 12, RUN_ID)
+    stopped = implementer_claim.claim_branch(
+        client, client, REPO, 12, RUN_ID, queue_workflow=QUEUE_WORKFLOW
+    )
     assert stopped.outcome == implementer_claim.AT_CAPACITY
     assert [write[:2] for write in claim_fake.writes] == [
         ("POST", f"/repos/{REPO}/issues/12/comments")

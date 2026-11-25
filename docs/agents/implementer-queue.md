@@ -18,7 +18,20 @@ the caller's file. It matches the job by `--job-name` also as
 `<caller job> / <name>` (here `implement / implement`), and names the branch
 with `--branch-prefix`, which the reusable workflow passes from its
 `branch_prefix` input; the defaults are `implementer.yml`, `implement` and
-`agent/issue-`. The outcomes:
+`agent/issue-`. `--queue-workflow` is the reusable workflow's `queue_workflow`
+input, the caller's queue: empty when it has none. Only a claim that would
+leave the issue waiting (`blocked`, `at-capacity`) reads it, just before its
+comment: a named queue that is not an active workflow of the repository
+(Actions API) then fails the claim before any write, so a renamed or disabled
+queue turns the run red instead of leaving the issue waiting for nothing. The
+issue keeps `ready-for-agent`, but the queue skips it while that run is its
+latest (`run-failed`, [below](#implementer-queue)): once the queue is active
+again, re-run the red run or dispatch the implementer for the issue. A
+claim that leaves nothing waiting does not read it, because GitHub disables a
+scheduled workflow, as the queue is, after 60 days without activity in a
+public repository
+([GitHub docs](https://docs.github.com/actions/using-workflows/disabling-and-enabling-a-workflow)).
+The outcomes:
 
 | Situation | Outcome | What the run does | Who acts next |
 | --- | --- | --- | --- |
@@ -27,8 +40,8 @@ with `--branch-prefix`, which the reusable workflow passes from its
 | An open or merged pull request closes the issue, or an open pull request uses the branch (the stop rule's draft) | `pr-exists` | Ends without changes | The maintainer, on that pull request |
 | The branch has commits and no open pull request (a crash after pushing, or a pull request closed unmerged) | `needs-human` | Comments naming the branch, replaces `ready-for-agent` with `ready-for-human`, ends | A person: open a pull request from the branch, or rescue what is needed, delete the branch and add `ready-for-agent` again |
 | The issue was opened by an account without write access, is not an audit finding a person with write access released with its body unchanged since ([ADR-0020](../adr/0020-audit-finding-issues.md)), and no owner, member or collaborator has posted a comment containing a `## Agent Brief` heading | `no-contract` | Comments, removes `ready-for-agent`, ends before any branch exists | A person with write access: post the brief, then add `ready-for-agent` again |
-| A blocker in the issue body, the latest comment by a person with write access containing a `## Agent Brief` heading, or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository (a title, another repository's issue or a pull request) | `blocked` | Comments naming the blockers, keeps `ready-for-agent`, ends before any branch exists | The [queue](#implementer-queue), once every blocker is closed as completed; a person rewrites an unresolvable entry as `#<n>` or removes it once it is done |
-| Another implementer run started working first | `at-capacity` | Comments naming the capacity reason, keeps `ready-for-agent`, ends before any branch exists | The [queue](#implementer-queue), when no run is working |
+| A blocker in the issue body, the latest comment by a person with write access containing a `## Agent Brief` heading, or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository (a title, another repository's issue or a pull request) | `blocked` | Comments naming the blockers, keeps `ready-for-agent`, ends before any branch exists; without a queue, removes the label | The [queue](#implementer-queue), once every blocker is closed as completed; without one, a person adds `ready-for-agent` again then. A person rewrites an unresolvable entry as `#<n>` or removes it once it is done |
+| Another implementer run started working first | `at-capacity` | Comments naming the capacity reason, keeps `ready-for-agent`, ends before any branch exists; without a queue, removes the label | The [queue](#implementer-queue), when no run is working; without one, a person adds `ready-for-agent` again once that run has ended |
 | Any other API error | `failed` | Writes `RUN FAILED: claim (<reason>)`, so the run turns red | The maintainer reads the run; a retry is safe |
 
 The brief is the latest comment by a person with write access that has a
@@ -73,7 +86,10 @@ the bot's comment, and their state check accepts an issue without a state.
 
 `ready-for-agent` is the queue (#801). An issue stopped as `blocked` or
 `at-capacity` keeps the label and waits; its comment says so and that removing
-the label takes it out of the queue. `scripts/implementer_queue.py`, model-free,
+the label takes it out of the queue. That holds only where the implementer
+caller names its queue in `queue_workflow`. Without one nothing would start a
+waiting issue (fabiandistler/repo-maintenance#205), so the claim removes the
+label and its comment says when to add it again. `scripts/implementer_queue.py`, model-free,
 dispatches the implementer workflow (`inputs.issue`, on the default branch) for
 one waiting issue. It runs from `.github/workflows/implementer-queue.yml`, which
 calls the reusable `.github/workflows/factory-implementer-queue.yml`: after an

@@ -11,8 +11,10 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 RUNBOOK = (ROOT / "docs" / "agents" / "factory-onboarding.md").read_text(encoding="utf-8")
+INPUTS = (ROOT / "docs" / "agents" / "factory-inputs.md").read_text(encoding="utf-8")
 FACTORY_FILES = (
     "factory-implementer.yml",
+    "factory-implementer-queue.yml",
     "factory-pr-review.yml",
     "factory-issue-triage.yml",
     "factory-triage-label.yml",
@@ -33,12 +35,18 @@ def required(block: dict | None) -> tuple[str, ...]:
 
 
 @pytest.mark.parametrize("name", FACTORY_FILES)
-def test_runbook_names_every_input_and_secret(name):
+def test_inputs_page_names_every_input_and_secret(name):
     call = workflow_call(name)
     names = [*(call.get("inputs") or {}), *(call.get("secrets") or {})]
 
-    absent = [item for item in names if f"`{item}`" not in RUNBOOK]
+    assert f"`{name}`" in INPUTS
+    absent = [item for item in names if f"`{item}`" not in INPUTS]
     assert absent == [], f"{name}: {absent}"
+
+
+def test_runbook_and_inputs_page_link_each_other():
+    assert "[factory workflow inputs](factory-inputs.md)" in RUNBOOK
+    assert "(factory-onboarding.md#caller-templates)" in INPUTS
 
 
 def test_requirements_constant_matches_the_workflow_files():
@@ -125,13 +133,15 @@ def test_runbook_templates_pass_the_check():
         for line in template.splitlines():
             match = factory_onboarding_check.USES_LINE.match(line)
             if match:
+                # The file name the runbook gives each template.
+                path = f".github/workflows/{match['file'].removeprefix('factory-')}"
                 callers[match["file"]] = factory_onboarding_check.Caller(
-                    "x.yml", match["ref"], template
+                    path, match["ref"], template
                 )
 
     assert sorted(callers) == sorted(FACTORY_FILES)
-    for name, caller in callers.items():
-        status, _, detail = factory_onboarding_check.caller_line(name, caller, "main")
+    for name in callers:
+        status, _, detail = factory_onboarding_check.caller_line(name, callers, "main")
         assert status == "OK", detail
 
 
@@ -154,6 +164,7 @@ def local_caller(name: str) -> dict:
     ("factory_file", "caller_file"),
     [
         ("factory-implementer.yml", "implementer.yml"),
+        ("factory-implementer-queue.yml", "implementer-queue.yml"),
         ("factory-pr-review.yml", "pr-review.yml"),
         ("factory-issue-triage.yml", "issue-triage.yml"),
         ("factory-rework.yml", "rework.yml"),
@@ -170,6 +181,18 @@ def test_template_matches_this_repositorys_caller(factory_file, caller_file):
     assert set(template[True]) <= set(local[True])
     if factory_file != "factory-fix-task.yml":
         assert template[True].get("workflow_run") == local[True].get("workflow_run")
+
+
+def test_implementer_template_names_the_queue_template_that_follows_it():
+    implementer = template_for("factory-implementer.yml")
+    queue = template_for("factory-implementer-queue.yml")
+    (job,) = implementer["jobs"].values()
+    assert job["with"]["queue_workflow"] == "implementer-queue.yml"
+    assert job["with"]["fix_task_workflow"] == "fix-task.yml"
+    assert queue["name"] == "implementer-queue"
+    assert queue[True]["workflow_run"]["workflows"] == [implementer["name"]]
+    (queue_job,) = queue["jobs"].values()
+    assert queue_job["with"]["fix_task_workflow"] == "fix-task.yml"
 
 
 def test_rework_template_follows_the_pr_review_template():

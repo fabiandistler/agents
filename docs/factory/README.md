@@ -64,7 +64,8 @@ starts the implementer. Its claim either stops the run or creates branch
 `agent/issue-<n>` and builds a ready-for-review pull request that closes
 the issue. A run stopped as `blocked` or `at-capacity` keeps
 `ready-for-agent` and waits in the implementer queue, which starts it once
-no run works and its blockers are done; one stopped as `no-contract` loses
+no run works and its blockers are done (where the implementer caller passes
+no `queue_workflow`, it loses the label instead); one stopped as `no-contract` loses
 the label until you add it again. The PR review labels the risk and the verdict, keeps
 one sticky comment and sets the `pr-review/verdict` status. A `concerns` or
 `block` verdict on an `agent/issue-<n>` pull request starts up to two Rework
@@ -161,7 +162,9 @@ acts next. The cases that need you:
   not planned. The queue runs after every implementer run, when an issue
   closes, and hourly as a fallback; after a run it dispatched itself, the
   implementer's `follow-up` job starts it (#863). Remove the label to take an
-  issue out of the queue.
+  issue out of the queue. In a repository whose implementer caller passes no
+  `queue_workflow`, the claim removes the label instead: add it again once
+  the blocker is done or the working run has ended.
 - **`no-contract`.** The label is gone. Post the brief, then add
   `ready-for-agent` again.
 - **`needs-human`.** Branch `agent/issue-<n>` has commits and no open pull
@@ -203,8 +206,8 @@ acts next. The cases that need you:
    pinned to the SHA of `gh api repos/fabiandistler/agents/commits/main --jq .sha`.
    Start slow, one pull request per stage, each merged to the target's
    default branch: `triage-label.yml` and `issue-triage.yml`, then
-   `pr-review.yml`, then `implementer.yml`, whose first ticket is a trivial
-   one.
+   `pr-review.yml`, then `implementer.yml` with `implementer-queue.yml`,
+   whose first ticket is a trivial one.
 3. After each stage, check; act on every `MISSING` line:
 
    ```bash

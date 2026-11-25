@@ -32,6 +32,8 @@ REMOVE_LABEL = f"{LABELS}/ready-for-agent"
 ISSUE_PATH = f"/repos/{REPO}/issues/{ISSUE}"
 DEPENDENCIES = f"{ISSUE_PATH}/dependencies/blocked_by"
 RUNS = f"/repos/{REPO}/actions/workflows/implementer.yml/runs"
+QUEUE_WORKFLOW = "implementer-queue.yml"
+QUEUE = f"/repos/{REPO}/actions/workflows/{QUEUE_WORKFLOW}"
 RUN_ID = 5000
 MAIN = "refs/heads/main"
 JOB_START = "2026-11-10T10:00:00Z"
@@ -73,6 +75,8 @@ class FakeGitHub:
     ``jobs`` maps a run id to its jobs; by default only this run works.
     ``branch`` and ``workflow_file`` are the names the routes expect.
     ``listed_total``, when set, is the ``total_count`` every Actions listing reports.
+    ``queue_state`` is the state of the caller's queue workflow; None answers 404.
+    ``reads`` records every GET path, in order.
     """
 
     pulls: list[dict] = field(default_factory=list)
@@ -87,10 +91,12 @@ class FakeGitHub:
     errors: dict[tuple[str, str], Exception] = field(default_factory=dict)
     canned_payloads: dict[str, object] = field(default_factory=dict)
     writes: list[tuple[str, str, dict]] = field(default_factory=list)
+    reads: list[str] = field(default_factory=list)
     compared: list[str] = field(default_factory=list)
     branch: str = BRANCH
     workflow_file: str = "implementer.yml"
     listed_total: int | None = None
+    queue_state: str | None = "active"
 
     def _fail_if_routed(self, method: str, path: str) -> None:
         if (method, path) in self.errors:
@@ -99,6 +105,7 @@ class FakeGitHub:
     def get(
         self, path: str, params: dict | None = None, accept: str | None = None
     ) -> pr_github_client.Response:
+        self.reads.append(path)
         self._fail_if_routed("GET", path)
         if path in self.canned_payloads:
             first_page = (params or {}).get("page", 1) == 1
@@ -128,6 +135,11 @@ class FakeGitHub:
             return json_response(self.issue_comments if first_page else [])
         if path == DEPENDENCIES:
             return json_response(self.native_blockers if first_page else [])
+        if path == QUEUE:
+            if self.queue_state is None:
+                raise http_error(404, path)
+            workflow_path = f".github/workflows/{QUEUE_WORKFLOW}"
+            return json_response({"path": workflow_path, "state": self.queue_state})
         if path == f"/repos/{REPO}/actions/workflows/{self.workflow_file}/runs":
             assert params.get("status") == "in_progress", "only working runs may be counted"
             runs = [{"id": run_id} for run_id in self.jobs]
@@ -162,9 +174,14 @@ class FakeGitHub:
         return json_response({})
 
 
-def claim(fake: FakeGitHub) -> implementer_claim.ClaimOutcome:
+def claim(
+    fake: FakeGitHub, queue_workflow: str | None = QUEUE_WORKFLOW
+) -> implementer_claim.ClaimOutcome:
+    """Claim as this repository's caller does, whose queue is implementer-queue.yml by default."""
     client = cast(GitHubClient, fake)
-    return implementer_claim.claim_branch(client, client, REPO, ISSUE, RUN_ID)
+    return implementer_claim.claim_branch(
+        client, client, REPO, ISSUE, RUN_ID, queue_workflow=queue_workflow
+    )
 
 
 def test_free_branch_is_created_at_main():
@@ -351,7 +368,11 @@ OWN_WORKFLOW_REF = f"{REPO}/.github/workflows/implementer.yml@{MAIN}"
 
 
 def run_main(
-    monkeypatch, tmp_path, *options: str, workflow_ref: str | None = OWN_WORKFLOW_REF
+    monkeypatch,
+    tmp_path,
+    *options: str,
+    workflow_ref: str | None = OWN_WORKFLOW_REF,
+    queue_workflow: str = QUEUE_WORKFLOW,
 ) -> tuple[int, Path]:
     """Run main() with GITHUB_WORKFLOW_REF pinned; ``workflow_ref=None`` unsets it.
 
@@ -368,6 +389,7 @@ def run_main(
         [
             *("--repo", REPO, "--issue", str(ISSUE), "--summary", str(summary)),
             *("--contract", str(tmp_path / "contract.md")),
+            *("--queue-workflow", queue_workflow),
             *options,
         ]
     )
@@ -375,14 +397,21 @@ def run_main(
 
 
 def run_cli(
-    monkeypatch, tmp_path, fake, *options: str, workflow_ref: str | None = OWN_WORKFLOW_REF
+    monkeypatch,
+    tmp_path,
+    fake,
+    *options: str,
+    workflow_ref: str | None = OWN_WORKFLOW_REF,
+    queue_workflow: str = QUEUE_WORKFLOW,
 ) -> tuple[int, Path]:
     """Run main() against the fake, with both tokens and this run's id set."""
     monkeypatch.setattr(implementer_claim, "GitHubClient", lambda token: fake)
     monkeypatch.setenv("GH_TOKEN", "app-token")
     monkeypatch.setenv("ACTIONS_READ_TOKEN", "job-token")
     monkeypatch.setenv("GITHUB_RUN_ID", str(RUN_ID))
-    return run_main(monkeypatch, tmp_path, *options, workflow_ref=workflow_ref)
+    return run_main(
+        monkeypatch, tmp_path, *options, workflow_ref=workflow_ref, queue_workflow=queue_workflow
+    )
 
 
 def test_cli_ignores_the_workflow_that_runs_the_suite(monkeypatch, tmp_path):
@@ -452,8 +481,16 @@ def test_failure_output_carries_no_issue_or_pull_request_text(monkeypatch, tmp_p
         ["--repo", REPO, "--issue", "1; rm -rf /", "--summary", "s"],
         ["--repo", REPO, "--issue", "12"],
         ["--repo", REPO, "--issue", "12", "--summary", "s"],
+        ["--repo", REPO, "--issue", "12", "--summary", "s", "--contract", "c"],
     ],
-    ids=["bad-repo", "zero-issue", "non-numeric-issue", "missing-summary", "missing-contract"],
+    ids=[
+        "bad-repo",
+        "zero-issue",
+        "non-numeric-issue",
+        "missing-summary",
+        "missing-contract",
+        "missing-queue-workflow",
+    ],
 )
 def test_cli_rejects_bad_usage_before_any_call(arguments, capsys):
     with pytest.raises(SystemExit) as caught:

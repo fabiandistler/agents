@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
 
 import implementer_follow_up
+import implementer_setup
 import pr_cli
 import pr_github_client
 import pytest
@@ -177,6 +179,12 @@ def test_file_names_follow_the_queues_pattern(name, monkeypatch, capsys):
     argv = list(ARGV)
     argv[argv.index("--queue-workflow") + 1] = name
     assert implementer_follow_up.main(argv) == pr_cli.EXIT_OK
+
+
+def test_workflow_arguments_are_read_by_the_claims_parser(monkeypatch):
+    # One parser (implementer_setup): widened for the claim, it widens this check too.
+    monkeypatch.setattr(implementer_setup, "WORKFLOW_FILE_PATTERN", re.compile(r"[\w./-]+\.yml"))
+    assert implementer_follow_up._workflow(".github/workflows/q.yml") == ".github/workflows/q.yml"
 
 
 def test_help_exits_zero(capsys):

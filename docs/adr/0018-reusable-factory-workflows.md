@@ -173,7 +173,7 @@ dedicated-App fallback is recorded.
   repository. In targets they are advisory, because auto-merge
   (ADR-0011) stays off there.
 - The implementer's working-run count matches its job by its plain name or
-  as `<caller job> / <name>` (`scripts/implementer_setup.py:48`), and lists
+  as `<caller job> / <name>` (`agent_run_capacity.is_job`), and lists
   the runs of the caller's workflow file from `--workflow-file` or
   `GITHUB_WORKFLOW_REF` (#788).
 - The second checkout makes every job depend on reading this public

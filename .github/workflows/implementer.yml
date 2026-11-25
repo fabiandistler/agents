@@ -46,7 +46,10 @@ jobs:
       setup_command: pip install -r scripts/check_all.requirements.txt && prek install
       # The bats check needs the pinned submodules under test/bats/.
       submodules: true
-      # Started after a run the queue dispatched, which starts no workflow_run.
+      # Blocked and at-capacity issues wait for this queue; without it they lose
+      # ready-for-agent. After a run the queue dispatched, which starts no
+      # workflow_run, the follow-up job dispatches the queue and, unless the
+      # run succeeded, the Fix task.
       queue_workflow: implementer-queue.yml
       fix_task_workflow: fix-task.yml
     secrets:

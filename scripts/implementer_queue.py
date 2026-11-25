@@ -2,7 +2,8 @@
 """Start the next issue waiting for the implementer, once no implementer run is working.
 
 `ready-for-agent` is the queue: implementer_claim.py leaves the label on an
-issue it stops as `at-capacity` or `blocked`, so the issue waits. This script
+issue it stops as `at-capacity` or `blocked` when the caller's implementer
+names this queue (`queue_workflow`), so the issue waits. This script
 runs, model-free, after an implementer run ends, when an issue closes (a
 blocker may be done) and on a schedule. It dispatches the implementer workflow
 for one waiting issue, so no person has to add the label again.
