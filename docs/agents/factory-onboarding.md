@@ -241,7 +241,8 @@ jobs:
 
 `.github/workflows/implementer-queue.yml`. Model-free, with no secret: it
 dispatches `implementer.yml` for the lowest waiting issue after an implementer
-run, when an issue closes, hourly, and by hand (a dry run by default;
+run, when an issue closes, hourly, once when this file lands or changes on the
+default branch, and by hand (a dry run by default;
 [implementer queue](implementer-queue.md#implementer-queue)). It needs the
 implementer caller above under the name `implementer`. A pin from before #910
 has no `fix_task_workflow` input.
@@ -256,6 +257,9 @@ on:
     types: [closed]
   schedule:
     - cron: "17 * * * *"
+  push:
+    branches: [main] # the target's default branch
+    paths: [.github/workflows/implementer-queue.yml]
   workflow_dispatch:
     inputs:
       dry_run:

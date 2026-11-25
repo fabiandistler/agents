@@ -191,6 +191,7 @@ def test_implementer_template_names_the_queue_template_that_follows_it():
     assert job["with"]["fix_task_workflow"] == "fix-task.yml"
     assert queue["name"] == "implementer-queue"
     assert queue[True]["workflow_run"]["workflows"] == [implementer["name"]]
+    assert queue[True]["push"] == local_caller("implementer-queue.yml")[True]["push"]
     (queue_job,) = queue["jobs"].values()
     assert queue_job["with"]["fix_task_workflow"] == "fix-task.yml"
 
