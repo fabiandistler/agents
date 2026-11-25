@@ -285,7 +285,7 @@
     },
     {
       "name": "review-decisions",
-      "summary": "Lists the review decisions in an agent-generated change, the choices only a human reviewer can settle, from a local diff and the issue text.",
+      "summary": "Lists the review decisions in an agent-generated pull request, the choices only a human reviewer can settle, from its diff, PR text, issue and CI on GitHub or Azure DevOps.",
       "category": "workflow",
       "path": "skills/review-decisions/SKILL.md",
       "activation": "command",

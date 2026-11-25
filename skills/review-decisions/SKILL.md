@@ -5,7 +5,7 @@ activation: command
 disable-model-invocation: true
 environments: coding
 argument-hint: "[<base-ref>]"
-description: Lists the review decisions in an agent-generated change, the choices only a human reviewer can settle, from a local diff and the issue text. Never posts, approves or merges.
+description: Lists the review decisions in an agent-generated pull request, the choices only a human reviewer can settle, from its diff, PR text, issue and CI on GitHub or Azure DevOps. Never posts, approves or merges.
 metadata:
   opencode/slash: "true"
   opencode/autoinvoke: "false"
@@ -27,22 +27,48 @@ who publishes.
 ## When to use
 
 The reviewer runs it on an agent-generated change before reading it in full,
-to see first which choices need a human. It works on a local diff; the
-reviewer supplies the issue text.
+to see first which choices need a human. On GitHub and Azure DevOps it reads
+the PR text, the linked issue and the CI status itself; elsewhere it works on
+a local diff and the text the reviewer supplies.
 
 ## Gather inputs
 
 You gather the inputs; the classifier never does. Write each one to its own
 file in a new scratch directory outside the repository (`mktemp -d`):
 
-1. **Diff**: `git diff <base-ref>...HEAD` for the base the reviewer named,
-   else the merge base with the default branch. Stop if the diff is empty.
-2. **Issue**: the issue text the reviewer supplies. Ask for it once. If there
-   is none, write no issue file and state in your answer that deviations from
-   the issue were not checked.
+1. **Forge inputs**: run `python3 scripts/gather_inputs.py --repo <repo-root>
+   --out <scratch-dir>`, adding `--pr <number>` when the reviewer named the
+   pull request. It detects the forge from the `origin` remote (GitHub or
+   Azure DevOps) and reads, through that forge's own CLI and login, the PR
+   text into `pr.md`, the linked issue or work items into `issue.md` and the
+   CI status into `ci.json`. It prints the manifest `inputs.json`: the files
+   written, the PR's number, target branch and head commit, and `unchecked`,
+   one entry with a reason per input it could not read. Exit 0 means all
+   three were read; exit 3 means some are in `unchecked`.
+2. **Diff**: `git diff <base-ref>...HEAD` for the base the reviewer named,
+   else the PR's target branch from the manifest, else the merge base with
+   the default branch. Stop if the diff is empty.
 3. **Conventions**: copy the repository's agent instructions (`AGENTS.md`,
    `CLAUDE.md`), its glossary and its contributing or coding-standards docs,
    whichever exist. List the copied paths.
+
+Never pass a token, password or other credential on a command line, in a
+file you write, or in a message; the forge CLI uses its own login. If the
+reviewer pastes one, do not repeat it.
+
+### Fallback
+
+When the manifest lists an input under `unchecked` (the CLI is missing, a
+call failed, the remote is neither GitHub nor Azure DevOps, or the PR names
+no issue), carry on with the local diff and what the reviewer supplies:
+
+- **pr** or **issue**: ask the reviewer once for the text and write it to
+  `pr.md` or `issue.md`. If they have none, write no file.
+- **ci**: nothing replaces it. A missing CI status is never green.
+
+State in your answer, before the list, each input that stays unchecked and
+its reason, and what that removes: without the issue, deviations from it
+were not checked; without CI, no change is marked as proven by green CI.
 
 ## Classify
 
