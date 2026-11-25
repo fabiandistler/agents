@@ -15,7 +15,8 @@ usage: batches.py split DIFF --out DIR [--max-bytes N] | batches.py merge DIR
                         {"boundaries", "deviation", "cards", "unclassified"}.
                         Cards keep the category order; each carries "batch" and
                         "unchecked_across_batches". The files of a batch without
-                        a readable answer are listed in "unclassified" with a reason.
+                        a readable answer are listed in "unclassified" with a
+                        reason: the line in DIR/batch-<k>.failed, or the size.
 
 exit codes: 0 ok; 1 usage error; 2 DIFF or DIR/batches.json missing;
 3 DIFF is not a git diff.
@@ -135,13 +136,21 @@ def category_of(card: dict) -> str:
     return card.get("category", "").strip().lower().replace("behavior", "behaviour")
 
 
+def strip_fence(text: str) -> list[str]:
+    """The answer's lines, without a code fence the classifier wrapped around all of them."""
+    lines = text.strip().splitlines()
+    if len(lines) >= 2 and lines[0].startswith("```") and lines[-1].strip() == "```":
+        return lines[1:-1]
+    return lines
+
+
 def parse_answer(text: str) -> tuple[list[dict], bool]:
     """Return one classifier answer's decision blocks and whether deviations were unchecked."""
     cards: list[dict] = []
     unchecked = False
     current: dict | None = None
     last_key: str | None = None
-    for raw in text.splitlines():
+    for raw in strip_fence(text):
         line = raw.rstrip()
         if not line:
             current = None
@@ -180,7 +189,8 @@ def merge(out: Path) -> dict:
     manifest_file = out / "batches.json"
     if not manifest_file.is_file():
         raise BatchError(2, "DIR holds no batches.json; run split first")
-    batches = json.loads(manifest_file.read_text(encoding="utf-8"))["batches"]
+    manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    batches = manifest["batches"]
     total = len(batches)
     batch_of = {path: b["batch"] for b in batches for path in b["paths"]}
     cards: list[dict] = []
@@ -189,8 +199,17 @@ def merge(out: Path) -> dict:
     for batch in batches:
         number = batch["batch"]
         answer_file = out / f"batch-{number}.answer.md"
-        if not answer_file.is_file():
+        failed_file = out / f"batch-{number}.failed"
+        if failed_file.is_file():
+            failure = failed_file.read_text(encoding="utf-8").strip().splitlines()
+            reason = f"classifier run failed: {failure[0][:200] if failure else 'no reason given'}"
+        elif not answer_file.is_file():
             reason = "no classifier answer"
+            if batch["oversize"]:
+                reason += (
+                    f"; one file of {batch['bytes']} bytes,"
+                    f" over the {manifest['max_bytes']}-byte limit"
+                )
         else:
             try:
                 found, unchecked = parse_answer(answer_file.read_text(encoding="utf-8"))

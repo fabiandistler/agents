@@ -84,8 +84,9 @@ Its JSON lists the batches; every file lands in exactly one. Classify each
 batch as its own run (see Classify), with `batch-<k>.diff` as the diff file and
 the same other input files. Save each answer verbatim as
 `<scratch>/batches/batch-<k>.answer.md`. A batch marked `oversize` is one file
-over the size limit: classify it anyway, and when the run fails, save no answer
-for it.
+over the size limit: classify it anyway. When a run fails, save no answer for
+it; write the failure in one line, without quoting the diff, to
+`<scratch>/batches/batch-<k>.failed`.
 
 Then merge the answers into one queue:
 

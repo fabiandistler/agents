@@ -253,3 +253,49 @@ def test_merge_rejects_a_directory_without_a_split(tmp_path):
     proc = run("merge", str(tmp_path))
 
     assert proc.returncode == 2
+
+
+def test_merge_reads_an_answer_wrapped_in_a_code_fence(tmp_path):
+    out = two_batches(tmp_path)
+    answer(out, 1, "```text\n" + block("Behaviour", "cli.py:3") + "```\n")
+    answer(out, 2, "```\nNo review decisions found.\n```")
+
+    merged = merge(out)
+
+    assert [c["location"] for c in merged["cards"]] == ["cli.py:3"]
+    assert merged["cards"][0]["lean"] == "ask the author"
+    assert merged["unclassified"] == []
+
+
+def test_merge_names_the_size_of_an_oversize_batch_without_an_answer(tmp_path):
+    diff = write_diff(tmp_path, ("small.py", 3), ("big.py", 400))
+    split(tmp_path, diff, max_bytes=2_000)
+    out = tmp_path / "batches"
+    answer(out, 1, "No review decisions found.")
+    size = json.loads((out / "batches.json").read_text())["batches"][1]["bytes"]
+
+    merged = merge(out)
+
+    assert merged["unclassified"] == [
+        {
+            "path": "big.py",
+            "batch": 2,
+            "reason": f"no classifier answer; one file of {size} bytes, over the 2000-byte limit",
+        }
+    ]
+
+
+def test_merge_records_why_a_classifier_run_failed(tmp_path):
+    out = two_batches(tmp_path)
+    answer(out, 1, "No review decisions found.")
+    (out / "batch-2.failed").write_text("context window exceeded\n", encoding="utf-8")
+
+    merged = merge(out)
+
+    assert merged["unclassified"] == [
+        {
+            "path": "test_api.py",
+            "batch": 2,
+            "reason": "classifier run failed: context window exceeded",
+        }
+    ]
