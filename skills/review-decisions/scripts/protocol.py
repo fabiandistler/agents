@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Place and read the review-decisions protocol, a Markdown file kept outside the repository.
 
-usage: protocol.py path --repo DIR | protocol.py resume FILE
+usage: protocol.py path --repo DIR | protocol.py {resume,comment} FILE
 
   path --repo DIR  Print the absolute path for a new protocol under
                    $XDG_STATE_HOME/review-decisions/<repo>/ (default state home
@@ -10,16 +10,22 @@ usage: protocol.py path --repo DIR | protocol.py resume FILE
                    "next" is the first card without an answer (null if none),
                    "later" the cards answered `later`, "closed" whether the
                    closing line is present.
+  comment FILE     Print one review comment, ready for the reviewer to post, that
+                   joins the drafts of the cards answered `change` in card order.
+                   Prints only; it posts nothing.
 
 A card is a `## Card <n> of <total>` heading; its answer is the line
 `- Answer: ok|change|later`. A card with no answer, or with only questions, is undecided.
+A draft is the line `- Draft comment: <text>` plus the indented lines after it.
 
 exit codes: 0 ok; 1 usage error; 2 DIR not a git repository, or FILE missing;
-3 FILE malformed (no cards, unknown answer); 4 the state directory is inside DIR.
+3 FILE malformed (no cards, unknown answer, a `change` without a draft);
+4 the state directory is inside DIR; 5 no card is answered `change`.
 
 examples:
   python3 scripts/protocol.py path --repo .
   python3 scripts/protocol.py resume ~/.local/state/review-decisions/app/main-20260101T120000Z.md
+  python3 scripts/protocol.py comment ~/.local/state/review-decisions/app/main-20260101T120000Z.md
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -37,6 +44,9 @@ ANSWERS = {"ok", "change", "later"}
 CLOSING = "Review decisions settled, no defect review."
 CARD = re.compile(r"^## Card (\d+)\b")
 ANSWER = re.compile(r"^- Answer:[ \t]*(\S*)[ \t]*$")
+DRAFT = re.compile(r"^- Draft comment:[ \t]*(.*?)[ \t]*$")
+CONTINUATION = re.compile(r"^[ \t]+(\S.*?)[ \t]*$")
+COMMENT_FOOTER = "This comment covers review decisions only; no defect review was done."
 
 
 class ProtocolError(Exception):
@@ -81,23 +91,48 @@ def new_protocol_path(repo: Path) -> Path:
     return directory / f"{slug}-{stamp}.md"
 
 
-def resume_state(text: str) -> dict:
-    answers: dict[int, str | None] = {}
-    current: int | None = None
+@dataclass
+class Card:
+    answer: str | None = None
+    draft: list[str] = field(default_factory=list)
+
+
+def read_cards(text: str) -> dict[int, Card]:
+    """Map each card number to what the protocol records for it."""
+    cards: dict[int, Card] = {}
+    number = 0
+    in_draft = False
     for line in text.splitlines():
+        continuation = CONTINUATION.match(line)
+        if in_draft and continuation:
+            cards[number].draft.append(continuation.group(1))
+            continue
+        in_draft = False
         heading = CARD.match(line)
         if heading:
-            current = int(heading.group(1))
-            answers[current] = None
+            number = int(heading.group(1))
+            cards[number] = Card()
+            continue
+        if number not in cards:
             continue
         answer = ANSWER.match(line)
-        if answer and current is not None:
+        if answer:
             value = answer.group(1)
             if value and value not in ANSWERS:
-                raise ProtocolError(3, f"card {current}: answer must be one of ok, change, later")
-            answers[current] = value or None
-    if not answers:
+                raise ProtocolError(3, f"card {number}: answer must be one of ok, change, later")
+            cards[number].answer = value or None
+            continue
+        draft = DRAFT.match(line)
+        if draft:
+            cards[number].draft = [draft.group(1)] if draft.group(1) else []
+            in_draft = True
+    if not cards:
         raise ProtocolError(3, "no `## Card <n>` headings found")
+    return cards
+
+
+def resume_state(text: str) -> dict:
+    answers = {n: card.answer for n, card in read_cards(text).items()}
     undecided = [n for n, a in answers.items() if a is None]
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return {
@@ -106,6 +141,25 @@ def resume_state(text: str) -> dict:
         "later": [n for n, a in answers.items() if a == "later"],
         "closed": bool(lines) and lines[-1] == CLOSING,
     }
+
+
+def combined_comment(text: str) -> str:
+    """Join the drafts of the cards answered `change`, in card order, into one comment."""
+    items = []
+    for number, card in sorted(read_cards(text).items()):
+        if card.answer != "change":
+            continue
+        if not card.draft:
+            raise ProtocolError(3, f"card {number}: answer change has no draft comment")
+        items.append(card.draft)
+    if not items:
+        raise ProtocolError(5, "no card is answered change; there is nothing to comment")
+    lines = []
+    for index, draft in enumerate(items, start=1):
+        marker = f"{index}. "
+        lines.append(marker + draft[0])
+        lines.extend(" " * len(marker) + rest for rest in draft[1:])
+    return "\n".join([*lines, "", COMMENT_FOOTER]) + "\n"
 
 
 class Parser(argparse.ArgumentParser):
@@ -117,15 +171,15 @@ class Parser(argparse.ArgumentParser):
 def main(argv: list[str]) -> int:
     parser = Parser(
         prog="protocol.py",
-        usage="protocol.py path --repo DIR | protocol.py resume FILE",
+        usage="protocol.py path --repo DIR | protocol.py {resume,comment} FILE",
         description=__doc__.split("\n", 3)[3],
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    commands = parser.add_subparsers(dest="command", required=True, metavar="{path,resume}")
+    commands = parser.add_subparsers(dest="command", required=True, metavar="{path,resume,comment}")
     path_cmd = commands.add_parser("path")
     path_cmd.add_argument("--repo", required=True, type=Path)
-    resume_cmd = commands.add_parser("resume")
-    resume_cmd.add_argument("file", type=Path)
+    for name in ("resume", "comment"):
+        commands.add_parser(name).add_argument("file", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "path":
@@ -133,7 +187,11 @@ def main(argv: list[str]) -> int:
         else:
             if not args.file.is_file():
                 raise ProtocolError(2, "protocol file not found")
-            print(json.dumps(resume_state(args.file.read_text(encoding="utf-8"))))
+            text = args.file.read_text(encoding="utf-8")
+            if args.command == "resume":
+                print(json.dumps(resume_state(text)))
+            else:
+                print(combined_comment(text), end="")
     except ProtocolError as err:
         print(f"protocol.py: {err}", file=sys.stderr)
         return err.code
