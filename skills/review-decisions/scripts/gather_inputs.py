@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
 """Fetch the PR text, the linked issue and the CI status of the current branch.
 
-Detects the forge from the git remote (GitHub or Azure DevOps), reads the three
-inputs through that forge's CLI (`gh api` REST, or `az repos` / `az boards`),
-and writes them as files for the review-decisions classifier. Whatever it
-cannot read is listed under `unchecked` with a reason, so the caller falls back
-to the local diff plus text the reviewer supplies and says what is unchecked.
+usage: gather_inputs.py --out DIR [--repo DIR] [--pr N]
 
-The CLIs authenticate themselves (gh's login or GH_TOKEN in the environment,
-az's login); this script passes no credential and never prints the remote URL,
-which may carry one.
+Detects the forge from the `origin` remote (GitHub or Azure DevOps) and reads
+the pull request of the current branch, or --pr N, through `gh api` or `az`.
+  --out DIR   where to write inputs.json (the manifest, also printed), pr.md,
+              issue.md and ci.json
+  --repo DIR  the repository (default: the current directory)
+ci.json: {"state": "green"|"failing"|"pending"|"none", "checks": [{name, state}]}
+inputs.json "unchecked": [{"input": "pr"|"issue"|"ci", "reason": ...}], one per
+input it could not read; the caller falls back to text the reviewer supplies.
+
+exit codes: 0 all three inputs read; 1 usage error; 2 not a git repository;
+3 manifest written, some input unchecked.
+
+examples:
+  python3 scripts/gather_inputs.py --out "$(mktemp -d)"
+  python3 scripts/gather_inputs.py --repo ~/src/app --pr 42 --out /tmp/rd.x1
 """
+
+# The CLIs authenticate themselves (gh's login or GH_TOKEN in the environment,
+# az's login); this script passes no credential and never prints the remote URL,
+# which may carry one.
 
 from __future__ import annotations
 
-import argparse
 import json
 import re
 import shutil
@@ -24,17 +35,6 @@ from pathlib import Path
 from typing import Any
 
 import cli
-
-USAGE_EPILOG = """\
-files in --out: inputs.json (manifest, also printed), pr.md, issue.md, ci.json
-  ci.json: {"state": "green"|"failing"|"pending"|"none", "checks": [{name, state}]}
-  inputs.json "unchecked": [{"input": "pr"|"issue"|"ci", "reason": ...}]
-examples:
-  gather_inputs.py --out "$(mktemp -d)"
-  gather_inputs.py --repo ~/src/app --pr 42 --out /tmp/rd.x1
-exit: 0 all three inputs read | 1 usage error | 2 not a git repository |
-      3 manifest written, some input unchecked (see "unchecked")
-"""
 
 EXIT_OK, EXIT_NOT_GIT, EXIT_UNCHECKED = 0, 2, 3
 
@@ -274,22 +274,15 @@ def gather(forge: GitHub | Azure, branch: str, pr_number: int | None, inputs: In
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = cli.Parser(
-        prog="gather_inputs.py",
-        description="Fetch PR text, linked issue and CI status for review-decisions.",
-        epilog=USAGE_EPILOG,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument("--out", required=True, help="directory to write the input files to")
-    parser.add_argument("--repo", default=".", help="repository root (default: cwd)")
-    parser.add_argument(
-        "--pr", type=int, help="pull request number (default: the branch's open PR)"
-    )
+    parser = cli.parser(__doc__, "gather_inputs.py")
+    parser.add_argument("--out", required=True)
+    parser.add_argument("--repo", default=".")
+    parser.add_argument("--pr", type=int)
     args = parser.parse_args(argv)
 
     repo = Path(args.repo).resolve()
     if cli.git(repo, "rev-parse", "--git-dir") is None:
-        print(f"error: not a git repository: {repo}", file=sys.stderr)
+        print("gather_inputs.py: --repo is not inside a git repository", file=sys.stderr)
         return EXIT_NOT_GIT
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

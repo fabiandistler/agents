@@ -6,19 +6,16 @@ usage: protocol.py path --repo DIR | protocol.py {resume,comment} FILE
   path --repo DIR  Print the absolute path for a new protocol under
                    $XDG_STATE_HOME/review-decisions/<repo>/ (default state home
                    ~/.local/state) and create that directory. Writes nothing in DIR.
-  resume FILE      Print JSON for a protocol: {"cards", "next", "later", "closed"}.
-                   "next" is the first card without an answer that an early
-                   stop did not make moot (null if none),
+  resume FILE      Print JSON: {"cards", "next", "later", "closed"}. "next" is
+                   the first unanswered card not made moot (null if none),
                    "later" the cards answered `later`, "closed" whether the
                    closing line is present.
   comment FILE     Print one review comment, ready for the reviewer to post, that
                    joins the drafts of the cards answered `change` in card order.
                    Prints only; it posts nothing.
 
-A card is a `## Card <n> of <total>` heading; its answer is the line
-`- Answer: ok|change|later`. A card with no answer, or with only questions, is undecided.
-A draft is the line `- Draft comment: <text>` plus the indented lines after it.
-
+A card is a `## Card <n> of <total>` heading, its answer `- Answer: ok|change|later`,
+its draft `- Draft comment: <text>` plus the indented lines after it.
 exit codes: 0 ok; 1 usage error; 2 DIR not a git repository, or FILE missing;
 3 FILE malformed (no cards, unknown answer, a `change` without a draft);
 4 the state directory is inside DIR; 5 no card is answered `change`.

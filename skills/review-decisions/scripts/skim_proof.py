@@ -4,20 +4,13 @@
 usage: skim_proof.py --repo DIR --base REF [--inputs FILE]
 
 Compares REF...HEAD in DIR. A file may be skimmed only with proof:
-
   rename      moved or renamed with identical content (100% similarity)
-  formatting  only trailing whitespace or line endings
-              differ, also after a rename; indentation and spacing inside a
-              line are not formal, since they can change meaning (Python,
-              YAML, string literals)
-  ci-green    the CI status in --inputs is green, and it was read for the
-              commit checked out here
-
-Every other file gets "skim": false: the reviewer looks at it in the PR.
-Without --inputs, or without a ci.json in it, only the formal proofs apply.
-
---inputs is the inputs.json manifest gather_inputs.py wrote; its ci.json is
-read from the same directory.
+  formatting  only trailing whitespace or line endings differ, also after a
+              rename; indentation and spacing inside a line can change meaning
+  ci-green    ci.json next to --inputs (gather_inputs.py's inputs.json) says
+              green, read for the commit checked out here
+Every other file gets "skim": false. Without a ci.json only rename and
+formatting apply.
 
 output (stdout, JSON):
   {"ci": {"proof": bool, "reason": str},

@@ -34,14 +34,26 @@ class Parser(argparse.ArgumentParser):
         self.print_usage(sys.stderr)
         self.exit(EXIT_USAGE, f"{self.prog}: {message}\n")
 
+    def add_subparsers(self, **kwargs):
+        # Without prog, argparse names a subcommand after the custom usage line.
+        kwargs.setdefault("prog", self.prog)
+        return super().add_subparsers(**kwargs)
+
+    def format_help(self) -> str:
+        """The docstring alone: its flag list is the help, so argparse adds none."""
+        if self.description is None:
+            return super().format_help()
+        return f"{self.format_usage()}\n{self.description.rstrip()}\n"
+
 
 def parser(doc: str, prog: str) -> Parser:
     """A parser whose usage and help come from the script's docstring."""
-    _summary, _blank, usage, rest = doc.split("\n", 3)
+    summary, _blank, usage, rest = doc.split("\n", 3)
+    details = rest.lstrip("\n").rstrip()
     return Parser(
         prog=prog,
         usage=usage.removeprefix("usage: "),
-        description=rest,
+        description=f"{summary}\n\n{details}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
