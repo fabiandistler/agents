@@ -284,6 +284,16 @@
       ]
     },
     {
+      "name": "review-decisions",
+      "summary": "Walks a reviewer through the review decisions in an agent-generated pull request, the choices only a human can settle, one card per turn, using its PR text, issue and CI on GitHub or Azure DevOps.",
+      "category": "workflow",
+      "path": "skills/review-decisions/SKILL.md",
+      "activation": "command",
+      "environments": [
+        "coding"
+      ]
+    },
+    {
       "name": "stakeholder-update",
       "summary": "Drafts a weekly update, executive summary, escalation, or launch announcement for readers outside the working group.",
       "category": "communication",

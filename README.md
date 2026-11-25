@@ -155,6 +155,7 @@ still listed here.
 | `skills/pypet-snippets/` | Curating pypet command snippets — creating, finding, editing, running and aliasing them on request, or proposing one for recurring terminal commands. |
 | `skills/release-pr/` | Turning the current branch into a release PR for an R or Python package — confirmed version bump, NEWS.md/CHANGELOG.md, checks, PR body — and, after merge, tagging and publishing the release (GitHub, Azure Repos, GitLab). |
 | `skills/repo-status/` | Generating a status update from recent activity — standup prep, yesterday/today/blockers, structuring rough notes into a shareable update. |
+| `skills/review-decisions/` | Before reading an agent-generated change in full: walking through its review decisions, the choices neither the issue nor the repo conventions settle, one card per turn, with a resumable protocol kept outside the repo; reads the PR text, linked issue and CI status on GitHub or Azure DevOps, else a local diff and supplied text (command; never posts or merges). |
 
 ### Communication & writing (`communication`)
 
@@ -185,7 +186,7 @@ still listed here.
 | `instructions/` | Always-on, Claude path-scoped and on-demand rule fragments, composed or installed by `--instructions` |
 | `.claude/` | Mixed tree for Claude cloud sessions in this repo: generated skill and agent links, `rules/` files and hook entries; vendored Matt Pocock skills; the repo-owned `repo-error-checker`/`skill-reviewer` agents; hand-written `hooks/` and settings outside the generated entries |
 | `.claude-plugin/` | The plugin marketplace manifest (`marketplace.json`) |
-| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents, workflow the tool-restricted `browser-worker` and `analyst`), plus the hook-only `merge-guard` and `secret-guard` plugins |
+| `plugins/` | The same skills packaged as Claude plugins, one per category (architecture adds two read-only analysis subagents, workflow the tool-restricted `browser-worker`, `analyst` and `review-decisions-classifier`), plus the hook-only `merge-guard` and `secret-guard` plugins |
 | `scripts/` | Repo tooling: manifest generator, router generator, consistency checks |
 | `maintenance/` | Run records (`runs/`) and reports (`reports/`) from the scheduled maintenance rotation described in [`MAINTENANCE.md`](MAINTENANCE.md) |
 | `vendor/` | Lock file and license of code vendored from other repositories: `repo-maintenance/` pins the maintenance scanner and the instruction-unicode check in `scripts/` (see [`MAINTENANCE.md`](MAINTENANCE.md)) |
