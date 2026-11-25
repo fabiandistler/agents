@@ -194,6 +194,10 @@ Commit subjects follow Conventional Commits; the `commit-msg` hook runs
 `scripts/check_commit_msg.py`. Keep a refactor in its own commit, and include
 tests with the change they cover.
 
+Structure the PR body as *Summary*, *Evidence* and *Merge Danger*, the
+template of the [`pr` skill](../.claude/skills/pr/SKILL.md);
+`.github/pull_request_template.md` prefills those headings.
+
 The PR body names its issue with `Closes #n`. When there is no issue, write
 `No issue: <reason>`; the `issue-links` check looks for that phrase outside
 code spans. A "no issue" body must not contain a closing keyword
