@@ -75,3 +75,4 @@ nothing here describes the present. See [conventions](conventions.md).
 - [2026-11-20 status](snapshots/2026-11-20-status.md) — agents, repo-maintenance, dotfiles: human items with deadlines 2026-11-22 to 2026-12-02, broken items, no agent work queued.
 - [2026-11-20 maintenance cadence](snapshots/2026-11-20-maintenance-cadence.md) — capacity 1 slot a week against demand 2.2–3.4 runs, yield per job, cost per run by model, five levers.
 - [2026-11-25 retro of #953](snapshots/2026-11-25-retro-953.md) — issues #954–#958 from the retro, plus #959 (triage cannot read the factory) and #960 (partial review: base-content cap in path order).
+- [2026-11-25 dotfiles recommendations](snapshots/2026-11-25-dotfiles-recommendations.md) — inventory at dotfiles@5472b91 plus web research: work shell unmanaged, login-shell PATH order, no bootstrap; candidate tools and Claude/Git keys; awaiting the user's pick.
