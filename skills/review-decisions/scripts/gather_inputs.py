@@ -30,11 +30,11 @@ files in --out: inputs.json (manifest, also printed), pr.md, issue.md, ci.json
 examples:
   gather_inputs.py --out "$(mktemp -d)"
   gather_inputs.py --repo ~/src/app --pr 42 --out /tmp/rd.x1
-exit: 0 all three inputs read | 2 usage error | 3 manifest written, some
-      input unchecked (see "unchecked") | 4 not a git repository
+exit: 0 all three inputs read | 1 usage error | 2 not a git repository |
+      3 manifest written, some input unchecked (see "unchecked")
 """
 
-EXIT_OK, EXIT_USAGE, EXIT_UNCHECKED, EXIT_NOT_GIT = 0, 2, 3, 4
+EXIT_OK, EXIT_USAGE, EXIT_NOT_GIT, EXIT_UNCHECKED = 0, 1, 2, 3
 
 # GitHub closing keywords; the issue the PR claims to implement.
 CLOSING = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)\b", re.IGNORECASE)
@@ -54,7 +54,7 @@ def run_cli(repo: Path, argv: list[str]) -> Any:
         argv, cwd=repo, capture_output=True, text=True, check=False
     )
     if proc.returncode != 0:
-        sys.stderr.write(proc.stderr)
+        # Its stderr stays unread: forge error text may quote the PR or the issue.
         raise ForgeError(f"{' '.join(argv[:3])} failed (exit {proc.returncode})")
     try:
         return json.loads(proc.stdout)
@@ -114,7 +114,7 @@ class Inputs:
         }
 
     def write(self, key: str, name: str, text: str) -> None:
-        (self.out / name).write_text(text)
+        (self.out / name).write_text(text, encoding="utf-8")
         self.manifest["files"][key] = name
 
     def unchecked(self, key: str, reason: str) -> None:
@@ -281,8 +281,14 @@ def gather(forge: GitHub | Azure, branch: str, pr_number: int | None, inputs: In
         inputs.write("ci", "ci.json", json.dumps(ci, indent=2) + "\n")
 
 
+class Parser(argparse.ArgumentParser):
+    def error(self, message: str):
+        self.print_usage(sys.stderr)
+        self.exit(EXIT_USAGE, f"gather_inputs.py: {message}\n")
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
+    parser = Parser(
         prog="gather_inputs.py",
         description="Fetch PR text, linked issue and CI status for review-decisions.",
         epilog=USAGE_EPILOG,
@@ -290,7 +296,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--out", required=True, help="directory to write the input files to")
     parser.add_argument("--repo", default=".", help="repository root (default: cwd)")
-    parser.add_argument("--remote", default="origin", help="remote that names the forge")
     parser.add_argument(
         "--pr", type=int, help="pull request number (default: the branch's open PR)"
     )
@@ -303,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    url = git(repo, "remote", "get-url", args.remote)
+    url = git(repo, "remote", "get-url", "origin")
     kind = detect_forge(url)
     inputs = Inputs(out, kind)
     branch = git(repo, "branch", "--show-current")
@@ -320,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
         gather(forge, branch, args.pr, inputs)
 
     text = json.dumps(inputs.manifest, indent=2) + "\n"
-    (out / "inputs.json").write_text(text)
+    (out / "inputs.json").write_text(text, encoding="utf-8")
     sys.stdout.write(text)
     return EXIT_UNCHECKED if inputs.manifest["unchecked"] else EXIT_OK
 

@@ -368,3 +368,38 @@ def test_every_forge_call_is_a_read(tmp_path, repo, remote, routes):
 
     assert forge.calls()
     assert [call for call in forge.calls() if not is_forge_read(call)] == []
+
+
+def test_a_failing_cli_does_not_echo_its_stderr(tmp_path, repo):
+    # The forge's error text may quote the PR or the issue; only the reason is reported.
+    git(repo, "remote", "add", "origin", GH_REMOTE)
+    forge = Forge(tmp_path)
+
+    result = forge.run(repo, tmp_path / "out")
+
+    assert result.returncode == 3
+    assert "fake: no route" not in result.stderr
+
+
+def test_a_usage_error_exits_1(tmp_path, repo):
+    result = Forge(tmp_path).run(repo, tmp_path / "out", "--pr", "seven")
+
+    assert result.returncode == 1
+    assert "usage:" in result.stderr
+
+
+def test_the_forge_is_always_read_from_origin(tmp_path, repo):
+    result = Forge(tmp_path).run(repo, tmp_path / "out", "--remote", "upstream")
+
+    assert result.returncode == 1
+    assert "--remote" in result.stderr
+
+
+def test_a_directory_outside_git_exits_2(tmp_path):
+    plain = tmp_path / "plain"
+    plain.mkdir()
+
+    result = Forge(tmp_path).run(plain, tmp_path / "out")
+
+    assert result.returncode == 2
+    assert not (tmp_path / "out" / "inputs.json").exists()
