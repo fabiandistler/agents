@@ -119,6 +119,16 @@ def test_resume_reports_a_closed_protocol(tmp_path):
     assert json.loads(proc.stdout) == {"cards": 3, "next": None, "later": [], "closed": True}
 
 
+def test_resume_never_picks_a_card_made_moot_by_an_early_stop(tmp_path):
+    moot = "- Not reviewed: moot after card 1"
+    path = protocol(tmp_path, ["- Answer: change", moot, moot])
+
+    proc = run("resume", str(path))
+
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout)["next"] is None
+
+
 def test_resume_rejects_an_unknown_answer(tmp_path):
     path = protocol(tmp_path, ["- Answer: ok", "- Answer: maybe", "- Answer:"])
 

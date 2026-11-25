@@ -7,7 +7,8 @@ usage: protocol.py path --repo DIR | protocol.py {resume,comment} FILE
                    $XDG_STATE_HOME/review-decisions/<repo>/ (default state home
                    ~/.local/state) and create that directory. Writes nothing in DIR.
   resume FILE      Print JSON for a protocol: {"cards", "next", "later", "closed"}.
-                   "next" is the first card without an answer (null if none),
+                   "next" is the first card without an answer that an early
+                   stop did not make moot (null if none),
                    "later" the cards answered `later`, "closed" whether the
                    closing line is present.
   comment FILE     Print one review comment, ready for the reviewer to post, that
@@ -45,6 +46,7 @@ CLOSING = "Review decisions settled, no defect review."
 CARD = re.compile(r"^## Card (\d+)\b")
 ANSWER = re.compile(r"^- Answer:[ \t]*(\S*)[ \t]*$")
 DRAFT = re.compile(r"^- Draft comment:[ \t]*(.*?)[ \t]*$")
+MOOT = re.compile(r"^- Not reviewed:[ \t]*moot\b")
 CONTINUATION = re.compile(r"^[ \t]+(\S.*?)[ \t]*$")
 COMMENT_FOOTER = "This comment covers review decisions only; no defect review was done."
 
@@ -95,6 +97,7 @@ def new_protocol_path(repo: Path) -> Path:
 class Card:
     answer: str | None = None
     draft: list[str] = field(default_factory=list)
+    moot: bool = False
 
 
 def read_cards(text: str) -> dict[int, Card]:
@@ -122,6 +125,9 @@ def read_cards(text: str) -> dict[int, Card]:
                 raise ProtocolError(3, f"card {number}: answer must be one of ok, change, later")
             cards[number].answer = value or None
             continue
+        if MOOT.match(line):
+            cards[number].moot = True
+            continue
         draft = DRAFT.match(line)
         if draft:
             cards[number].draft = [draft.group(1)] if draft.group(1) else []
@@ -132,8 +138,9 @@ def read_cards(text: str) -> dict[int, Card]:
 
 
 def resume_state(text: str) -> dict:
-    answers = {n: card.answer for n, card in read_cards(text).items()}
-    undecided = [n for n, a in answers.items() if a is None]
+    cards = read_cards(text)
+    answers = {n: card.answer for n, card in cards.items()}
+    undecided = [n for n, card in cards.items() if card.answer is None and not card.moot]
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return {
         "cards": len(answers),
