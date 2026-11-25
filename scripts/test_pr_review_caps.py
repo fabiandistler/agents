@@ -228,3 +228,13 @@ def test_diff_coverage_counts_a_file_with_a_quoted_header_as_not_shown() -> None
 
     assert last_full == "a.py"
     assert not_in_full == ("ü b.py", "c.py")
+
+
+def test_diff_coverage_counts_a_file_whose_header_is_cut_in_half_as_not_shown() -> None:
+    files = [changed_file("a.py"), changed_file("b.py")]
+    shown = "diff --git a/a.py b/a.py\n+x\ndiff --git a/b.py b/"
+
+    last_full, not_in_full = pr_review_coverage.diff_coverage(files, shown)
+
+    assert last_full == "a.py"
+    assert not_in_full == ("b.py",)
