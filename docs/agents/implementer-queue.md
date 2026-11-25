@@ -23,7 +23,10 @@ input, the caller's queue: empty when it has none. Only a claim that would
 leave the issue waiting (`blocked`, `at-capacity`) reads it, just before its
 comment: a named queue that is not an active workflow of the repository
 (Actions API) then fails the claim before any write, so a renamed or disabled
-queue turns the run red instead of leaving the issue waiting for nothing. A
+queue turns the run red instead of leaving the issue waiting for nothing. The
+issue keeps `ready-for-agent`, but the queue skips it while that run is its
+latest (`run-failed`, [below](#implementer-queue)): once the queue is active
+again, re-run the red run or dispatch the implementer for the issue. A
 claim that leaves nothing waiting does not read it, because GitHub disables a
 scheduled workflow, as the queue is, after 60 days without activity in a
 public repository

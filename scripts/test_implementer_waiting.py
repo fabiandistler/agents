@@ -40,6 +40,9 @@ from test_implementer_intake_gates import stopped_fake
 
 GATES = ("blocked", "at-capacity")
 NOT_ACTIVE = ("disabled_manually", "disabled_inactivity", "deleted")
+# The queue skips an issue whose latest run failed, so each remedy ends in a re-run.
+ADD_QUEUE = "add the queue caller or correct `queue_workflow`, then re-run this run"
+ENABLE_QUEUE = f"enable it (Actions, {QUEUE_WORKFLOW}, Enable workflow), then re-run this run"
 RESTART = {
     "blocked": "Add `ready-for-agent` again once every blocker is done",
     "at-capacity": "Add `ready-for-agent` again once the working run has ended",
@@ -168,7 +171,7 @@ def test_a_parking_claim_fails_on_a_queue_the_repository_lacks(gate):
     assert caught.value.status == 404
     assert str(caught.value) == (
         "--queue-workflow names no workflow of the repository "
-        f"(GitHub API returned 404 for {QUEUE})"
+        f"(GitHub API returned 404 for {QUEUE}); {ADD_QUEUE}"
     )
     assert_read_at_the_gate(fake)
     assert fake.writes == [], "no comment and no released label: the Fix task sees a red run"
@@ -181,7 +184,10 @@ def test_a_parking_claim_fails_on_a_queue_that_is_not_active(gate, state):
     fake.queue_state = state
     with pytest.raises(pr_github_client.FetchError) as caught:
         claim(fake)
-    assert str(caught.value) == f"--queue-workflow names a workflow that is {state}: {QUEUE}"
+    remedy = ADD_QUEUE if state == "deleted" else ENABLE_QUEUE
+    assert str(caught.value) == (
+        f"--queue-workflow names a workflow that is {state}: {QUEUE}; {remedy}"
+    )
     assert_read_at_the_gate(fake)
     assert fake.writes == []
 
