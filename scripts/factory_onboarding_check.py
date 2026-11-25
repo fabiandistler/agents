@@ -12,7 +12,10 @@ manual step. It prints one tab-separated line per onboarding item,
 - ``app-installation``, ``secret:CLAUDE_CODE_OAUTH_TOKEN``, ``actions-policy``:
   never readable with a session token (401/403), so always CANNOT-VERIFY.
 - ``caller:<factory file>``: a workflow on the default branch calls it with
-  ``permissions: {}``, the required inputs and secrets passed by name.
+  ``permissions: {}``, the required inputs and secrets passed by name. The
+  implementer queue is one of them, and the implementer caller names it in
+  ``queue_workflow``: without a queue the claim removes ``ready-for-agent``
+  from blocked and at-capacity issues instead of letting them wait.
 - ``pin``: every caller pins the same 40-hex SHA, and it is on agents ``main``.
 
 Standard library only; GET requests only. Callers are scanned line by line for
@@ -49,12 +52,18 @@ OAUTH_SECRET = "CLAUDE_CODE_OAUTH_TOKEN"  # noqa: S105
 # equal to the workflow files.
 REQUIREMENTS: dict[str, dict[str, tuple[str, ...]]] = {
     "factory-implementer.yml": {"inputs": ("check_command",), "secrets": (OAUTH_SECRET,)},
+    "factory-implementer-queue.yml": {"inputs": (), "secrets": ()},
     "factory-pr-review.yml": {"inputs": (), "secrets": (OAUTH_SECRET,)},
     "factory-issue-triage.yml": {"inputs": (), "secrets": (OAUTH_SECRET,)},
     "factory-triage-label.yml": {"inputs": (), "secrets": ()},
     "factory-rework.yml": {"inputs": ("check_command",), "secrets": (OAUTH_SECRET,)},
     "factory-fix-task.yml": {"inputs": (), "secrets": ()},
 }
+
+# Inputs onboarding requires though the workflow gives them a default: the
+# implementer caller names its queue caller's file, which the claim checks
+# against the Actions API on every run (scripts/implementer_waiting.py).
+ONBOARDING_INPUTS: dict[str, tuple[str, ...]] = {"factory-implementer.yml": ("queue_workflow",)}
 
 OK = "OK"
 MISSING = "MISSING"
@@ -253,7 +262,7 @@ def caller_line(factory_file: str, caller: Caller | None, branch: str) -> tuple[
     for secret in required["secrets"]:
         if secret not in passed["secrets"]:
             problems.append(f"does not pass secret {secret}")
-    for name in required["inputs"]:
+    for name in (*required["inputs"], *ONBOARDING_INPUTS.get(factory_file, ())):
         if name not in passed["with"]:
             problems.append(f"does not pass input {name}")
     if problems:

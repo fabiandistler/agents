@@ -14,6 +14,7 @@ RUNBOOK = (ROOT / "docs" / "agents" / "factory-onboarding.md").read_text(encodin
 INPUTS = (ROOT / "docs" / "agents" / "factory-inputs.md").read_text(encoding="utf-8")
 FACTORY_FILES = (
     "factory-implementer.yml",
+    "factory-implementer-queue.yml",
     "factory-pr-review.yml",
     "factory-issue-triage.yml",
     "factory-triage-label.yml",
@@ -161,6 +162,7 @@ def local_caller(name: str) -> dict:
     ("factory_file", "caller_file"),
     [
         ("factory-implementer.yml", "implementer.yml"),
+        ("factory-implementer-queue.yml", "implementer-queue.yml"),
         ("factory-pr-review.yml", "pr-review.yml"),
         ("factory-issue-triage.yml", "issue-triage.yml"),
         ("factory-rework.yml", "rework.yml"),
@@ -177,6 +179,18 @@ def test_template_matches_this_repositorys_caller(factory_file, caller_file):
     assert set(template[True]) <= set(local[True])
     if factory_file != "factory-fix-task.yml":
         assert template[True].get("workflow_run") == local[True].get("workflow_run")
+
+
+def test_implementer_template_names_the_queue_template_that_follows_it():
+    implementer = template_for("factory-implementer.yml")
+    queue = template_for("factory-implementer-queue.yml")
+    (job,) = implementer["jobs"].values()
+    assert job["with"]["queue_workflow"] == "implementer-queue.yml"
+    assert job["with"]["fix_task_workflow"] == "fix-task.yml"
+    assert queue["name"] == "implementer-queue"
+    assert queue[True]["workflow_run"]["workflows"] == [implementer["name"]]
+    (queue_job,) = queue["jobs"].values()
+    assert queue_job["with"]["fix_task_workflow"] == "fix-task.yml"
 
 
 def test_rework_template_follows_the_pr_review_template():

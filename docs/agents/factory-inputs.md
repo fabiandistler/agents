@@ -17,9 +17,19 @@ targets (fabiandistler/dotfiles#61 and fabiandistler/repo-maintenance#153).
 | `python_version` | `"3.12"` | `"3.12"` (dotfiles) |
 | `model` | `opus` | `opus` |
 | `branch_prefix` | `agent/issue-` | `agent/issue-` |
-| `queue_workflow` | `""` | `implementer-queue.yml` (agents; only with a queue caller) |
+| `queue_workflow` | `""` | `implementer-queue.yml`, the queue caller; empty: `blocked` and `at-capacity` issues lose `ready-for-agent` |
 | `fix_task_workflow` | `""` | `fix-task.yml` (agents; only with a queue caller) |
 | secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
+
+`factory-implementer-queue.yml` takes no secret:
+
+| Name | Default | Example |
+| --- | --- | --- |
+| `workflow_file` | `implementer.yml` | `implementer.yml` |
+| `branch_prefix` | `agent/issue-` | the implementer caller's value |
+| `python_version` | `"3.12"` | `"3.12"` |
+| `dry_run` | `false` | `${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}` |
+| `fix_task_workflow` | `""` | `fix-task.yml`, the implementer caller's value |
 
 `factory-pr-review.yml`; the effect of each input is in the
 [input table](pr-review-reusable-workflow.md):

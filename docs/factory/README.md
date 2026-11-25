@@ -206,8 +206,8 @@ acts next. The cases that need you:
    pinned to the SHA of `gh api repos/fabiandistler/agents/commits/main --jq .sha`.
    Start slow, one pull request per stage, each merged to the target's
    default branch: `triage-label.yml` and `issue-triage.yml`, then
-   `pr-review.yml`, then `implementer.yml`, whose first ticket is a trivial
-   one.
+   `pr-review.yml`, then `implementer.yml` with `implementer-queue.yml`,
+   whose first ticket is a trivial one.
 3. After each stage, check; act on every `MISSING` line:
 
    ```bash

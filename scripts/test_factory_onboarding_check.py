@@ -20,8 +20,10 @@ BY_NAME_BLOCK = (
 )
 WORKFLOWS_PATH = f"/repos/{REPO}/contents/.github/workflows"
 
+IMPLEMENTER_WITH = "    with:\n      check_command: scripts/check.sh\n"
 CALLERS = {
-    "factory-implementer.yml": "    with:\n      check_command: scripts/check.sh\n",
+    "factory-implementer.yml": IMPLEMENTER_WITH + "      queue_workflow: implementer-queue.yml\n",
+    "factory-implementer-queue.yml": None,
     "factory-pr-review.yml": "",
     "factory-issue-triage.yml": "",
     "factory-triage-label.yml": None,
@@ -129,6 +131,7 @@ def test_fully_onboarded_private_repo_exits_0(capsys, monkeypatch):
         "secret:CLAUDE_CODE_OAUTH_TOKEN",
         "actions-policy",
         "caller:factory-implementer.yml",
+        "caller:factory-implementer-queue.yml",
         "caller:factory-pr-review.yml",
         "caller:factory-issue-triage.yml",
         "caller:factory-triage-label.yml",
@@ -193,6 +196,22 @@ def test_no_workflows_directory_makes_every_caller_and_the_pin_missing(capsys, m
     assert lines["pin"][0] == "MISSING"
 
 
+def test_an_implementer_without_a_queue_caller_is_missing(capsys, monkeypatch):
+    # Without one, the claim releases blocked and at-capacity issues instead of
+    # letting them wait (fabiandistler/repo-maintenance#205).
+    workflows = all_callers()
+    del workflows["implementer-queue.yml"]
+
+    code, lines, _ = run(RoutedFake(workflows=workflows), capsys, monkeypatch)
+
+    assert code == 1
+    assert lines["caller:factory-implementer.yml"][0] == "OK"
+    assert lines["caller:factory-implementer-queue.yml"] == (
+        "MISSING",
+        f"no workflow on {BRANCH} calls it",
+    )
+
+
 def test_one_missing_caller(capsys, monkeypatch):
     workflows = all_callers()
     del workflows["implementer.yml"]
@@ -227,6 +246,11 @@ def test_one_missing_caller(capsys, monkeypatch):
             "issue-triage.yml",
             caller("factory-issue-triage.yml", secrets=""),
             "does not pass secret CLAUDE_CODE_OAUTH_TOKEN",
+        ),
+        (
+            "implementer.yml",
+            caller("factory-implementer.yml", with_block=IMPLEMENTER_WITH),
+            "does not pass input queue_workflow",
         ),
     ],
 )
