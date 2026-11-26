@@ -22,6 +22,7 @@ product page; this page routes from a job to the page that does it.
 - [Homepage](maintainers/homepage.md) — local preview and GitHub Pages deployment
 - [Factory architecture](factory/architecture.md) — how the factory's tasks, gates and reusable workflows fit together
 - [Changing a factory task](factory/changing-a-task.md) — the checklist: tests, zizmor, pins, names, a new task, rollout to the targets
+- [Factory cross-repo specifics](factory/cross-repo.md) — what holds when a target repository calls the factory's reusable workflows: pins, anonymous fetch, caller's context
 - [Weekly skill audit](agents/skill-audit.md) — the scheduled content review and its checklist
 - [Retro](agents/retro.md) — the throttled review of merged agent PRs that proposes instruction changes
 - [Agent runs in Actions](adr/0014-agent-runs-in-github-actions.md) — implementer and skill audit workflows, their token and brakes
