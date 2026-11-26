@@ -56,8 +56,6 @@ and never reaches a tag. Below 1.0.0 a breaking change bumps minor.
 
 ## Checks
 
-The repository's own gate first (`make check`, `pre-commit run -a`). Then:
-
 | Check | Command |
 |---|---|
 | Docs regenerated | `Rscript -e 'devtools::document()'` |
@@ -85,11 +83,10 @@ form runs once before the push.
 
 ## Tag and GitHub release
 
-The `tag` procedure in `SKILL.md` uses the `gh` form on GitHub; on another
-forge, use `forges.md`. `usethis::use_github_release()` is no substitute for
-it: it pushes the current branch without asking, skips the CI and
-`release_state.py` gates, and always tags `v{Version}`, whatever
-`tag_prefix` the existing tags use.
+Use the `tag` procedure in `SKILL.md` for ordinary releases.
+`usethis::use_github_release()` pushes the current branch without asking,
+skips the CI and `release_state.py` gates, and always tags `v{Version}`
+regardless of the repository's existing `tag_prefix`.
 
 Its one place is after a CRAN acceptance (see [CRAN](#cran-only-when-the-package-is-on-cran-or-the-user-says-cran)):
 it tags the SHA recorded in `CRAN-SUBMISSION` instead of `HEAD`, takes the

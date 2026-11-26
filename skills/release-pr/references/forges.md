@@ -24,8 +24,6 @@ The operations:
 - **Update the PR:** replace its body with `<run>/pr-body.md`.
 - **CI on the tagged commit:** `gh run list` is REST-backed and works
   everywhere.
-- **Create the release:** from the pushed tag, title `<pkg> X.Y.Z`, notes
-  from `<run>/notes.md`.
 
 Use the GitHub MCP tools if the session has them; otherwise `gh`:
 
@@ -34,15 +32,11 @@ gh pr view --json number,url                  # existing PR for this branch?
 gh pr create --title "<pkg> X.Y.Z" --body-file <run>/pr-body.md
 gh pr edit --body-file <run>/pr-body.md
 gh run list --commit "$(git rev-parse HEAD)"  # CI on the tagged commit
-gh release create <tag> --verify-tag --title "<pkg> X.Y.Z" --notes-file <run>/notes.md
-# REST form of the release (no --verify-tag: a missing tag is created, so push it first)
-gh api -X POST 'repos/{owner}/{repo}/releases' -f tag_name=<tag> -f name="<pkg> X.Y.Z" -F body=@<run>/notes.md
 ```
 
 The `gh pr` commands go through GraphQL, so they fail in sessions where
 GitHub's GraphQL endpoint is blocked; there the GitHub MCP tools are the path.
-The MCP tools read releases but cannot create one, so the release itself
-always goes through `gh`. Issue link in the body: `Closes #<n>`.
+Issue link in the body: `Closes #<n>`.
 
 ## azure — Azure Repos, `az` with the `azure-devops` extension
 
@@ -80,12 +74,10 @@ az pipelines runs list --branch <default-branch> --top 20 \
   -o table
 ```
 
-Every row must be `completed` / `succeeded`. **No row** means no
-pipeline ran on the merge commit. That is common in Azure Repos: build
-validation under a branch policy runs on the PR's merge ref, and the
-pipeline may have no CI trigger on the default branch. Report that and show the PR's
-last validation run. Tag only after the user confirms. Never count a
-missing run as green.
+Require every row to be `completed` / `succeeded`. With no row for the merge
+commit, report the missing run, show the PR's last validation run, and
+get the user's confirmation before tagging. Azure branch policies may
+validate only the PR merge ref, with no CI trigger on the default branch.
 
 **Release.** Azure Repos has no release object. The annotated tag is the
 release. Put the notes in the tag message, and Azure Repos shows them on
