@@ -32,8 +32,14 @@ EARLIER = "2026-11-10T09:55:00Z"
 WORKING_RUN = 4999
 
 
-def ticket(body: str = "", association: str = "OWNER") -> dict:
-    return {"body": body, "author_association": association, "state": "open"}
+def ticket(body: str = "", association: str = "OWNER", open_native_blockers: int = 0) -> dict:
+    """A waiting issue; the fake's edge list is empty, so its open native blockers are hidden."""
+    return {
+        "body": body,
+        "author_association": association,
+        "state": "open",
+        "issue_dependencies_summary": {"blocked_by": open_native_blockers},
+    }
 
 
 def closed_issue(state_reason: str = "completed") -> dict:
@@ -317,6 +323,14 @@ def test_a_closed_blocker_frees_the_issue_only_when_completed(state_reason, pick
         assert fake.writes == []
     else:
         assert dispatched_issue(fake) == picked
+
+
+def test_an_issue_with_a_hidden_native_blocker_is_skipped_and_the_next_one_dispatched():
+    fake = waiting(12, 13)
+    fake.issues[12] = ticket(open_native_blockers=1)
+    outcome = start(fake)
+    assert outcome.skipped == [implementer_queue.Skip(12, "blocked")]
+    assert dispatched_issue(fake) == 13
 
 
 # When nothing is dispatched.

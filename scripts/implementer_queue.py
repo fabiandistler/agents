@@ -195,8 +195,7 @@ def _skip_reason(
     ticket = read_ticket(client, repo, issue)
     if contract_text(ticket, issue) is None:
         return NO_CONTRACT
-    blockers, unresolved = find_blockers(client, repo, issue, ticket)
-    if blockers or unresolved:
+    if find_blockers(client, repo, issue, ticket).block:
         return BLOCKED
     return None
 

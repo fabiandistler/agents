@@ -40,7 +40,7 @@ The outcomes:
 | An open or merged pull request closes the issue, or an open pull request uses the branch (the stop rule's draft) | `pr-exists` | Ends without changes | The maintainer, on that pull request |
 | The branch has commits and no open pull request (a crash after pushing, or a pull request closed unmerged) | `needs-human` | Comments naming the branch, replaces `ready-for-agent` with `ready-for-human`, ends | A person: open a pull request from the branch, or rescue what is needed, delete the branch and add `ready-for-agent` again |
 | The issue was opened by an account without write access, is not an audit finding a person with write access released with its body unchanged since ([ADR-0020](../adr/0020-audit-finding-issues.md)), and no owner, member or collaborator has posted a comment containing a `## Agent Brief` heading | `no-contract` | Comments, removes `ready-for-agent`, ends before any branch exists | A person with write access: post the brief, then add `ready-for-agent` again |
-| A blocker in the issue body, the latest comment by a person with write access containing a `## Agent Brief` heading, or the native dependencies is not closed as completed, or a "Blocked by" entry names no issue of this repository (a title, another repository's issue or a pull request) | `blocked` | Comments naming the blockers, keeps `ready-for-agent`, ends before any branch exists; without a queue, removes the label | The [queue](#implementer-queue), once every blocker is closed as completed; without one, a person adds `ready-for-agent` again then. A person rewrites an unresolvable entry as `#<n>` or removes it once it is done |
+| A blocker in the issue body, the latest comment by a person with write access containing a `## Agent Brief` heading, or the native dependencies is not closed as completed, a "Blocked by" entry names no issue of this repository (a title, another repository's issue or a pull request), or GitHub counts an open native blocker in a repository the token cannot read | `blocked` | Comments naming the blockers, keeps `ready-for-agent`, ends before any branch exists; without a queue, removes the label | The [queue](#implementer-queue), once every blocker is closed as completed; without one, a person adds `ready-for-agent` again then. A person rewrites an unresolvable entry as `#<n>` or removes it once it is done; a hidden native blocker clears by itself once GitHub counts it closed |
 | Another implementer run started working first | `at-capacity` | Comments naming the capacity reason, keeps `ready-for-agent`, ends before any branch exists; without a queue, removes the label | The [queue](#implementer-queue), when no run is working; without one, a person adds `ready-for-agent` again once that run has ended |
 | Any other API error | `failed` | Writes `RUN FAILED: claim (<reason>)`, so the run turns red | The maintainer reads the run; a retry is safe |
 
@@ -66,6 +66,19 @@ does, with or without a colon:
   checked; ignoring it would let the run start on a ticket a person marked as
   waiting, which is the silent fail-open this gate exists to stop. The comment
   says so, and a person removes the line once that blocker is done.
+
+**Decision (2026-11-26, #964): a native dependency is the cross-repo wait.**
+To make an issue wait for an issue in another repository, add a native
+"blocked by" dependency (the issue's *Relationships*), not a `Blocked by <URL>`
+line, which never clears. The claim's token is scoped to this repository, so
+the dependency list leaves out an edge into a repository it cannot read, but
+the issue's `issue_dependencies_summary.blocked_by` still counts it while it is
+open. The gate counts the open blockers in that summary beyond the open edges
+it can see as hidden blockers, which return `blocked` and clear once GitHub
+counts them closed, without anyone editing the issue. Limitation: a hidden
+blocker closed as not planned drops out of the count and no longer blocks; a
+visible one still does. A missing or malformed summary is an API error
+(`failed`), never zero.
 
 Runs for one issue share a concurrency group, so a branch that exists at claim
 time never belongs to a live run of this workflow.

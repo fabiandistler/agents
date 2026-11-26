@@ -77,6 +77,8 @@ class FakeGitHub:
     ``listed_total``, when set, is the ``total_count`` every Actions listing reports.
     ``queue_state`` is the state of the caller's queue workflow; None answers 404.
     ``reads`` records every GET path, in order.
+    ``hidden_blockers`` counts open native blockers the token cannot see: the
+    issue's dependency summary counts them, the edge list leaves them out.
     """
 
     pulls: list[dict] = field(default_factory=list)
@@ -86,6 +88,7 @@ class FakeGitHub:
     issue_author_association: str = "OWNER"
     issue_comments: list[dict] = field(default_factory=list)
     native_blockers: list[dict] = field(default_factory=list)
+    hidden_blockers: int = 0
     blocker_issues: dict[int, dict] = field(default_factory=dict)
     jobs: dict[int, list[dict]] = field(default_factory=lambda: {RUN_ID: [working_job()]})
     errors: dict[tuple[str, str], Exception] = field(default_factory=dict)
@@ -128,8 +131,14 @@ class FakeGitHub:
         """The routes the intake gates read."""
         first_page = params.get("page", 1) == 1
         if path == ISSUE_PATH:
+            open_edges = sum(edge.get("state") == "open" for edge in self.native_blockers)
+            summary = {"blocked_by": open_edges + self.hidden_blockers}
             return json_response(
-                {"body": self.issue_body, "author_association": self.issue_author_association}
+                {
+                    "body": self.issue_body,
+                    "author_association": self.issue_author_association,
+                    "issue_dependencies_summary": summary,
+                }
             )
         if path == COMMENTS:
             return json_response(self.issue_comments if first_page else [])

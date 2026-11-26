@@ -284,12 +284,19 @@ def claim_branch(
     if contract is None:
         _release_ticket(client, repo, issue, NO_CONTRACT_COMMENT)
         return ClaimOutcome(NO_CONTRACT, branch)
-    blockers, unresolved = find_blockers(client, repo, issue, ticket)
-    if blockers or unresolved:
+    blockers = find_blockers(client, repo, issue, ticket)
+    if blockers.block:
         # With a queue the ticket waits: implementer_queue.py starts it once unblocked.
-        comment_for = partial(blocked_comment, blockers, unresolved)
+        comment_for = partial(
+            blocked_comment, blockers.numbers, blockers.unresolved, blockers.hidden
+        )
         _stop_at_gate(client, actions_client, repo, issue, queue_workflow, comment_for)
-        return ClaimOutcome(BLOCKED, branch, blockers=blockers, unresolved_blockers=unresolved)
+        return ClaimOutcome(
+            BLOCKED,
+            branch,
+            blockers=blockers.numbers,
+            unresolved_blockers=blockers.unresolved + blockers.hidden,
+        )
     if runs_working_ahead(actions_client, repo, run_id, setup) >= MAX_WORKING_RUNS:
         # With a queue the ticket waits: implementer_queue.py starts it when no run works.
         _stop_at_gate(client, actions_client, repo, issue, queue_workflow, capacity_comment)

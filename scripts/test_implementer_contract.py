@@ -143,6 +143,7 @@ def audit_finding(
         "author_association": "CONTRIBUTOR",
         "user": author or {"login": "claude[bot]", "type": "Bot"},
         "labels": [{"name": "audit-finding"}, {"name": "ready-for-agent"}],
+        "issue_dependencies_summary": {"blocked_by": 0},
     }
     roles = {"maintainer": "admin", **(permissions or {})}
     payloads = {permission_path(login): {"permission": role} for login, role in roles.items()}

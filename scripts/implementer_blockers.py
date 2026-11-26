@@ -11,6 +11,8 @@ Standard library only. Errors name the API call, never issue text.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from implementer_contract import Ticket
 from pr_github_client import HTTP_NOT_FOUND, FetchError, GitHubClient, get_json, paginate
 from ticket_blockers import declared_blockers
@@ -48,17 +50,36 @@ def _declared_blocker_blocks(client: GitHubClient, repo: str, number: int) -> bo
     return not (_closed_as_completed(blocker, path) and _belongs_to_repo(blocker, repo, path))
 
 
-def find_blockers(
-    client: GitHubClient, repo: str, issue: int, ticket: Ticket
-) -> tuple[tuple[int, ...], int]:
-    """Blocking issue numbers, and the blockers that cannot be named as one here.
+@dataclass(frozen=True)
+class Blockers:
+    """What keeps a ticket from starting.
 
-    The issue body, the latest trusted brief and the native dependency edges all
-    count: the ticket skills omit the "Blocked by" section when they set native
+    ``numbers`` are this repository's blocking issues, ``unresolved`` the
+    entries and visible edges that name none, and ``hidden`` the open native
+    blockers the token cannot see.
+    """
+
+    numbers: tuple[int, ...]
+    unresolved: int
+    hidden: int
+
+    @property
+    def block(self) -> bool:
+        return bool(self.numbers or self.unresolved or self.hidden)
+
+
+def find_blockers(client: GitHubClient, repo: str, issue: int, ticket: Ticket) -> Blockers:
+    """The ticket's blockers, from its body, its latest trusted brief and its native edges.
+
+    The ticket skills omit the "Blocked by" section when they set native
     edges, and a brief written later cannot erase a blocker the body declares.
     The body counts whoever wrote it, because a blocker can only stop a run. The
     edge list, unlike the issue's dependency summary, also returns closed
-    blockers, so one closed as not planned is seen.
+    blockers, so one closed as not planned is seen. But the edge list leaves out
+    an edge into a repository the token cannot read, while the summary still
+    counts it, so open blockers the summary counts beyond the visible open
+    edges are hidden ones. They block until GitHub counts them closed, which
+    lets one closed as not planned through.
     """
     declared_numbers: set[int] = set()
     unresolved = 0
@@ -69,10 +90,15 @@ def find_blockers(
     blocking = {
         number for number in declared_numbers if _declared_blocker_blocks(client, repo, number)
     }
-    edges_path = f"/repos/{repo}/issues/{issue}/dependencies/blocked_by"
+    issue_path = f"/repos/{repo}/issues/{issue}"
+    if ticket.open_native_blockers is None:
+        raise FetchError(f"GitHub API returned no dependency summary for {issue_path}")
+    edges_path = f"{issue_path}/dependencies/blocked_by"
+    open_edges = 0
     for edge in paginate(client, edges_path):
         if _closed_as_completed(edge, edges_path):
             continue
+        open_edges += edge["state"] == "open"
         if _belongs_to_repo(edge, repo, edges_path):
             number = edge.get("number")
             if not isinstance(number, int):
@@ -80,4 +106,6 @@ def find_blockers(
             blocking.add(number)
         else:
             unresolved += 1
-    return tuple(sorted(blocking)), unresolved
+    # An edge that closes between the two reads can leave more open edges than the count.
+    hidden = max(ticket.open_native_blockers - open_edges, 0)
+    return Blockers(tuple(sorted(blocking)), unresolved, hidden)

@@ -86,6 +86,9 @@ Adding `ready-for-agent` starts the implementer. Its claim on branch
 `agent/issue-<n>`, the outcomes of that claim, and the queue that starts
 waiting issues one at a time are in
 [implementer claim and queue](implementer-queue.md).
+For an issue that waits on an issue in another repository, triage sets a
+native "blocked by" dependency, not a `Blocked by <URL>` line: the claim
+holds the issue until GitHub counts that blocker closed.
 
 ## Post-merge follow-up
 
