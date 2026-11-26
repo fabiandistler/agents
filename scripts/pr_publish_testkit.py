@@ -167,6 +167,7 @@ class FakeGitHub:
         self.calls: list[dict] = []
         self.pull_fetches = 0
         self.fail_paths: set[str] = set()
+        self.fail_status = 500
         # Fields to override in every pull request payload, e.g. mergeable.
         self.pull_overrides: dict = {}
         self.comments: list[dict] = []
@@ -211,7 +212,11 @@ class FakeGitHub:
     def _write(self, method: str, path: str, payload: dict | None):
         self.calls.append({"method": method, "path": path, "payload": payload})
         if path in self.fail_paths:
-            raise pr_github_client.FetchError("server error", status=500)
+            # The message shape of pr_github_client.GitHubClient._request.
+            raise pr_github_client.FetchError(
+                f"GitHub API returned {self.fail_status} for {method} {path}",
+                status=self.fail_status,
+            )
         if path == "/graphql" and self.graphql_errors:
             return json_response({"data": None, "errors": self.graphql_errors})
         self._track(method, path, payload or {})
