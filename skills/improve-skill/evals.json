@@ -1,0 +1,14 @@
+{
+  "should_trigger": [
+    "Clean the AI slop out of skills/release-notes before I share it with the team.",
+    "I unpacked my claude.ai skill ZIP into ~/Downloads/meeting-minutes; find the filler and list what could go.",
+    "Our onboarding skill reads bloated, with repeated rules and IMPORTANT everywhere. Give me a numbered list of what to cut.",
+    "Run improve-skill on docs/evals/fixtures/release-notes."
+  ],
+  "should_not_trigger": [
+    "Write a new skill that drafts release notes from merged pull requests.",
+    "Rewrite this skill's description so it triggers on more changelog requests.",
+    "Make this German LinkedIn post sound less like a template."
+  ],
+  "expected_behavior": "Run on docs/evals/fixtures/release-notes: copies the folder to an old_skill snapshot in the OS temp directory before reading it further, prints the snapshot path, and leaves the original files unchanged. Prints a numbered candidate list; each item cites a slop-signal ID (SL1 to SL7, with its checklist ID where one exists), quotes the text and gives its path:line. The list contains at least: SL1/B2 quoting 'A changelog is a file that lists the changes'; SL2/B8 quoting 'Each pull request gets exactly one line'; SL3/B4 quoting 'whichever you prefer'; SL4/B9 quoting 'IMPORTANT: You MUST NEVER include' and proposing a reason in place of the shouting while keeping the chore(deps) rule; SL5/B8 quoting the repeated 'Group the entries by Conventional Commit type'; SL6/D3 quoting the trigger list in the description, marked as not rewritten and referred to skill-creator's description optimisation; SL7/B10 for the emoji in the title, the 'Overview' heading and the 'In summary' closing section. Ends after the list without editing any file."
+}
