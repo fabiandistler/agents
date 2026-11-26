@@ -12,6 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pr_cli
 import pr_risk
 import pytest
 from pr_risk_testkit import file_entry, make_context
@@ -478,20 +479,24 @@ def test_cli_live_without_a_token_exits_five(monkeypatch):
     assert code == 5
 
 
-def test_cli_live_fetch_failure_exits_four(monkeypatch):
+def test_cli_live_fetch_failure_exits_four(monkeypatch, assert_exit_cause):
     def fail(repo, number, token=None):
         raise pr_risk.pr_github_client.FetchError("boom")
 
     monkeypatch.setattr(pr_risk.pr_github, "fetch_context", fail)
 
-    assert pr_risk.main(["--live", "--pr", "42", "--repo", "fabiandistler/agents"]) == 4
+    code = pr_risk.main(["--live", "--pr", "42", "--repo", "fabiandistler/agents"])
+    _, stderr = assert_exit_cause(code, pr_cli.EXIT_FETCH_FAILED)
+    assert "live fetch failed: boom" in stderr
 
 
-def test_cli_output_write_failure_exits_six(tmp_path):
+def test_cli_output_write_failure_exits_six(tmp_path, assert_exit_cause):
     # A write failure is its own class, apart from a malformed input (3).
     path = write_context(tmp_path, make_context([]))
 
-    assert pr_risk.main(["--context", str(path), "--output", str(tmp_path)]) == 6
+    code = pr_risk.main(["--context", str(path), "--output", str(tmp_path)])
+    _, stderr = assert_exit_cause(code, pr_cli.EXIT_OUTPUT_FAILED)
+    assert "cannot write --output" in stderr
 
 
 def test_cli_help_is_short_and_documents_exit_codes():

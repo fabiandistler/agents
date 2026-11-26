@@ -117,17 +117,18 @@ def test_the_offline_plan_honours_the_prefixes_too():
 # --- fail_on_unavailable ------------------------------------------------------
 
 
-def test_an_unavailable_review_is_published_and_then_fails_the_run(tmp_path, in_actions, capsys):
+def test_an_unavailable_review_is_published_and_then_fails_the_run(
+    tmp_path, in_actions, assert_exit_cause
+):
     fake = FakeGitHub(["abc1234", "abc1234"])
     arguments = [*args_with_review(tmp_path, **UNAVAILABLE), "--write", "--fail-on-unavailable"]
 
     code = pr_publish.main(arguments, client=fake)
 
-    assert code == pr_cli.EXIT_REVIEW_UNAVAILABLE
-    captured = capsys.readouterr()
-    assert json.loads(captured.out)["ok"] is True
+    stdout, stderr = assert_exit_cause(code, pr_cli.EXIT_REVIEW_UNAVAILABLE)
+    assert json.loads(stdout)["ok"] is True
     assert "review:unavailable" in json.dumps(write_calls(fake))
-    assert "--fail-on-unavailable" in captured.err
+    assert "--fail-on-unavailable" in stderr
 
 
 def test_without_the_flag_an_unavailable_review_stays_green(tmp_path, in_actions):

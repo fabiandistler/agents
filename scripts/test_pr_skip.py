@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pr_cli
 import pr_skip
 import pytest
 
@@ -87,8 +88,9 @@ def test_cli_without_a_context_is_a_usage_error():
     assert run.stdout == ""
 
 
-def test_cli_with_an_unreadable_context_exits_three(tmp_path):
+def test_cli_with_an_unreadable_context_exits_three(tmp_path, assert_exit_cause):
     run = run_cli("--context", str(tmp_path / "missing.json"))
 
-    assert run.returncode == 3
+    _, stderr = assert_exit_cause(run, pr_cli.EXIT_BAD_INPUT)
+    assert "--context" in stderr
     assert run.stdout == ""
