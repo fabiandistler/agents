@@ -3,12 +3,20 @@
 The tests in test_agent_run_workflows.py and
 test_factory_implementer_workflow.py read the agent-run workflow files
 (.github/workflows/) through these helpers, so each safety property can be
-asserted on its own.
+asserted on its own. Tests that run a workflow step through bash take its
+PATH from step_path().
 """
 
 from __future__ import annotations
 
+import atexit
+import functools
+import os
 import re
+import shlex
+import shutil
+import sys
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -81,3 +89,26 @@ def named_step(job: dict, name: str) -> dict:
     steps = [step for step in job["steps"] if step.get("name") == name]
     assert len(steps) == 1, f"exactly one step named {name!r}"
     return steps[0]
+
+
+def step_path() -> str:
+    """PATH for a workflow step run through bash, with the test interpreter as python3.
+
+    The steps call a bare python3 and the repo scripts need CI's 3.12, so a
+    pytest run on 3.12 must not hand them an older system python3 (#1038).
+    """
+    return f"{_test_interpreter_dir()}{os.pathsep}{os.environ['PATH']}"
+
+
+@functools.cache
+def _test_interpreter_dir() -> str:
+    # Not dirname(sys.executable): that directory may hold only python3.12,
+    # and a venv's bin/ would shadow unrelated tools. Not a symlink either:
+    # Python finds pyvenv.cfg next to the path it was started by, so a
+    # symlinked venv interpreter would run without the venv's packages.
+    directory = tempfile.mkdtemp(prefix="step-python-")
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    shim = Path(directory) / "python3"
+    shim.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} "$@"\n', encoding="utf-8")
+    shim.chmod(0o755)
+    return directory
