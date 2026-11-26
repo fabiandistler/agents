@@ -75,7 +75,9 @@ skill" request beside `writing-for-agents` and `skill-creator`.
   breaks the checklist's pointer; both change in the same pull request.
 - The behavior diff depends on `skill-creator` being installed; without it
   the rule inventory is the only check, and the skill says what that check
-  cannot see.
+  cannot see. It also needs subagents: in claude.ai `skill-creator` skips
+  its baseline runs, so "outside Claude" includes claude.ai itself, and the
+  behavior diff runs in Claude Code only.
 - Catalogue-level analysis (overlapping triggers, rules duplicated across
   skills) stays out of scope and would need its own decision.
 - `improve-skill` ships `evals.json` although command skills are exempt
