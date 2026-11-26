@@ -47,6 +47,27 @@ jobs:
       - name: Bats suites
         run: scripts/check_all.sh --only bats --tail 0
 
+  skill-scripts-py39:
+    # Skill scripts run on user machines with the system python3, which is
+    # 3.9 on RHEL 9 and Posit Workbench. ruff.toml's per-file-target-version
+    # catches 3.10+ syntax; this job catches the runtime rest, such as
+    # zip(strict=True). The tests need pytest only, and pytest 9 dropped 3.9.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.9"
+
+      - name: Install pytest
+        run: pip install pytest==8.4.2
+
+      - name: Skill-script tests on Python 3.9
+        run: python -m pytest -q skills/*/scripts
+
   mermaid:
     # Browserless syntax check over every tracked Markdown file with
     # Mermaid's own parser (jsdom, no browser download); the pinned command

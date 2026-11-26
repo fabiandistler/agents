@@ -17,6 +17,12 @@ extend-exclude = [
     "scripts/maintenance-instruction-unicode.py",
 ]
 
+# Skill scripts run on user machines with the system python3, which is 3.9 on
+# RHEL 9 and Posit Workbench; the CI job skill-scripts-py39 covers what
+# ruff cannot see, such as zip(strict=True).
+[per-file-target-version]
+"skills/**/scripts/**/*.py" = "py39"
+
 [lint]
 # request-without-timeout: flags module-level `requests.*` calls without
 # `timeout`, and `requests`/`httpx` calls with `timeout=None`. Does not see
