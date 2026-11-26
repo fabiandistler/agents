@@ -139,7 +139,8 @@ output. That file is their only home. This repository adds:
 - Every auto or router skill ships eval prompts in `skills/<name>/evals.json`
   (>=3 `should_trigger`, >=1 `should_not_trigger`, optional
   `expected_behavior`; see `docs/adr/0006-skill-eval-prompts.md`). Command
-  skills are exempt and may ship one. The `evals` check in
+  skills are exempt and may ship one, which then gets the same shape check.
+  The `evals` check in
   `scripts/check_all.sh` (the list CI calls) runs `check_evals.py --strict`,
   so a missing or malformed file fails.
 

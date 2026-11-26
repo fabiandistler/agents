@@ -10,7 +10,8 @@ exception ([ADR-0011](../adr/0011-pr-review-merge-exception.md)).
 This page is for the maintainer who works with the factory day to day. It
 assumes you know GitHub and Claude Code. How the parts fit together, for
 whoever changes them: [architecture](architecture.md), with the checklist in
-[changing a task](changing-a-task.md).
+[changing a task](changing-a-task.md) and what holds in the target
+repositories in [cross-repo specifics](cross-repo.md).
 
 As of 2026-11-14 the factory runs every task in `fabiandistler/agents`, and
 `fabiandistler/dotfiles` and `fabiandistler/repo-maintenance` call its
@@ -97,8 +98,11 @@ factory's own prompts and runbooks after every ten merged agent pull requests
 4. Keep the deliverable out of `.github/workflows/`, `.claude/` and
    `.pre-commit-config.yaml`: a run cannot write there
    ([write limits](../wiki/problems/implementer-write-limits.md)). Do such a
-   ticket in an interactive session, or ask the brief for the YAML in the
-   pull request body under "Workflow to add by hand".
+   ticket in an interactive session, or ask the brief to put the YAML in a
+   top-level `##` pull request heading ending in "to add by hand", such as
+   `## Workflow to add by hand`. In this repository, when the implementer PR
+   merges, the follow-up workflow opens a `ready-for-human` issue for each such
+   section and links it from the original issue.
 5. File issues one at a time: every issue, label and comment creates workflow
    runs ([issue tracker](../agents/issue-tracker.md), "Create many issues").
 

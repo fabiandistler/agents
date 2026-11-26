@@ -87,6 +87,12 @@ Adding `ready-for-agent` starts the implementer. Its claim on branch
 waiting issues one at a time are in
 [implementer claim and queue](implementer-queue.md).
 
+## Post-merge follow-up
+
+| Source | State set at creation | Who acts next |
+| --- | --- | --- |
+| [Hand-applied follow-up](../../.github/workflows/hand-part-follow-up.yml) for each PR section headed "to add by hand" | `ready-for-human` | The maintainer applies the section and closes the follow-up |
+
 ## Rework
 
 When the automated review of an implementer pull request ends with

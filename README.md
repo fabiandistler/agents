@@ -136,6 +136,7 @@ still listed here.
 | Skill | When to use |
 |---|---|
 | `skills/improve-codebase/` | Reviewing a repository's architecture for deepening opportunities — a visual HTML report of candidates with before/after diagrams and a top recommendation, then a round-by-round interview on the one you pick, keeping the glossary and ADRs current. |
+| `skills/improve-skill/` | Cleaning AI slop out of one skill folder, in a repo or unpacked from a claude.ai ZIP — numbered candidates citing a slop-signal or checklist ID, an interview on what is load-bearing, one rewrite checked by a rule inventory or, in eval mode, a behavior diff through `skill-creator`, and a unified diff (branch and PR in a repo, a re-packed ZIP for claude.ai); descriptions are referred to `skill-creator`. |
 | `skills/refactoring/` | Finding where to start refactoring in a codebase nobody knows well — ranking files by git churn, reading the hotspots, and keeping restructuring separate from behavior change. |
 
 ### AI & ML (`ai-ml`)

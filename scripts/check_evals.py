@@ -7,7 +7,8 @@ Run from repo root:
 
 Every auto/router skill ships skills/<name>/evals.json (ADR-0006) with at
 least three should_trigger prompts, at least one should_not_trigger prompt,
-and an optional expected_behavior string. Command skills are exempt. The
+and an optional expected_behavior string. Command skills are exempt; one
+that ships the file anyway gets the same shape check. The
 default run is warn-only so CI never breaks on main while no skill ships
 evals yet; CI flips to --strict once content lands. Stdlib-only.
 """
@@ -86,6 +87,11 @@ def collect_gaps() -> tuple[list[str], int, int]:
     checked = 0
     for entry in load_catalogue():
         if entry.activation not in ("auto", "router"):
+            # A command skill is exempt from coverage, but one that ships
+            # evals.json as its regression net must keep the file usable.
+            path = eval_path(entry.name)
+            if path.is_file():
+                gaps.extend(check_file(path))
             continue
         checked += 1
         path = eval_path(entry.name)

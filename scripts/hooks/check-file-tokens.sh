@@ -22,23 +22,33 @@ PART_TOKENS=4000
 usage() {
   cat <<'EOF'
 Usage: check-file-tokens.sh FILE...
+       check-file-tokens.sh --report FILE...
 Fails when a FILE is over 5000 tokens (tokens = bytes / 4, so over 20000
 bytes) and prints how to split it. prek passes the staged text files.
 Lockfiles, minified bundles, files marked linguist-generated or
 linguist-vendored in .gitattributes, and files with "@generated" or
 "DO NOT EDIT" in their first five lines are skipped.
+--report lists each FILE over 4000 tokens (the size split parts aim
+for, so near the limit) as "FILE: N tokens", one per line on stdout,
+with the same formula and skip rules. It reports and never blocks.
 Exit codes:
-  0  every FILE is within the limit or skipped
+  0  every FILE is within the limit or skipped; with --report, always
+     once every FILE was read
   1  at least one FILE is over the limit (a finding: the commit is blocked)
 Plugin-wide exit code table: "## Exit codes" in plugins/repo-maintenance/README.md
 (repo fabiandistler/repo-maintenance).
 EOF
 }
 
+report=0
 case "${1:-}" in
   -h | --help)
     usage
     exit 0
+    ;;
+  --report)
+    report=1
+    shift
     ;;
 esac
 
@@ -62,6 +72,17 @@ not_agent_authored() {
 
 max_bytes=$((MAX_TOKENS * BYTES_PER_TOKEN))
 part_bytes=$((PART_TOKENS * BYTES_PER_TOKEN))
+
+if ((report)); then
+  for file in "$@"; do
+    bytes=$(($(wc -c <"$file")))
+    if ((bytes > part_bytes)) && ! not_agent_authored "$file"; then
+      echo "${file}: $(((bytes + BYTES_PER_TOKEN - 1) / BYTES_PER_TOKEN)) tokens"
+    fi
+  done
+  exit 0
+fi
+
 oversized=()
 for file in "$@"; do
   bytes=$(($(wc -c <"$file")))
