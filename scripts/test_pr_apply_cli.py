@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pr_apply
+import pr_cli
 import pr_github_client
 import pytest
 from pr_apply_testkit import (
@@ -95,7 +96,9 @@ def test_cli_write_applies_the_plan_and_exits_zero(tmp_path, monkeypatch):
     assert len(client.calls) == 2
 
 
-def test_cli_write_lists_every_result_and_exits_one_on_failure(tmp_path, monkeypatch, capsys):
+def test_cli_write_lists_every_result_and_exits_one_on_failure(
+    tmp_path, monkeypatch, assert_exit_cause
+):
     def handler(method, path, payload):
         if method == "POST" and path == LABELS_PATH:
             raise pr_github_client.FetchError("server error", status=500)
@@ -113,8 +116,9 @@ def test_cli_write_lists_every_result_and_exits_one_on_failure(tmp_path, monkeyp
 
     code = pr_apply.main(["--plan", str(write_plan(tmp_path, plan)), "--write"], client=client)
 
-    assert code == 1
-    payload = json.loads(capsys.readouterr().out)
+    stdout, stderr = assert_exit_cause(code, pr_cli.EXIT_ACTION_FAILED)
+    assert stderr.splitlines() == ["pr_apply.py: set_labels failed: server error (HTTP 500)"]
+    payload = json.loads(stdout)
     assert payload["ok"] is False
     assert [result["kind"] for result in payload["results"]] == ["set_labels", "request_reviewer"]
     assert [result["ok"] for result in payload["results"]] == [False, True]

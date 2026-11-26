@@ -113,12 +113,13 @@ def test_main_prints_the_dispatches_and_exits_zero(monkeypatch, capsys):
     assert client.posts == [FIX_TASK_DISPATCH, QUEUE_DISPATCH]
 
 
-def test_main_exits_one_when_a_dispatch_failed(monkeypatch, capsys):
+def test_main_exits_one_when_a_dispatch_failed(monkeypatch, assert_exit_cause):
     client = FakeClient(failing=(QUEUE_PATH,))
     monkeypatch.setattr(implementer_follow_up, "GitHubClient", lambda token: client)
     monkeypatch.setenv("GITHUB_TOKEN", "dummy")
-    assert implementer_follow_up.main(ARGV) == pr_cli.EXIT_ACTION_FAILED
-    printed = json.loads(capsys.readouterr().out)
+    stdout, stderr = assert_exit_cause(implementer_follow_up.main(ARGV), pr_cli.EXIT_ACTION_FAILED)
+    assert f"dispatch of {QUEUE} failed: POST {QUEUE_PATH} returned HTTP 404" in stderr
+    printed = json.loads(stdout)
     assert printed["dispatched"] == [FIX_TASK]
     assert [entry["workflow"] for entry in printed["failed"]] == [QUEUE]
 

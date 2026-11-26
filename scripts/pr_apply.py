@@ -320,6 +320,7 @@ def main(argv: list[str] | None = None, client: WriteClient | None = None) -> in
             "ok": ok,
         }
     )
+    report_failed("pr_apply.py", results)
     return pr_cli.EXIT_OK if ok else pr_cli.EXIT_ACTION_FAILED
 
 
