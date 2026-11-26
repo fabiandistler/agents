@@ -71,7 +71,8 @@ def test_a_skipped_head_gets_no_hold_write(monkeypatch, in_actions, capsys):
     fake.pull_overrides = {"auto_merge": ACTIVE_AUTO_MERGE}
 
     code = pr_publish.main(
-        ["--hold", "--live", "--repo", REPO, "--pr", "42", "--write"], client=fake
+        ["--hold", "--live", "--repo", REPO, "--pr", "42", "--event", "synchronize", "--write"],
+        client=fake,
     )
 
     assert code == pr_cli.EXIT_OK

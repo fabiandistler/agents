@@ -177,6 +177,13 @@ suggestion when that is higher.
 
 A draft or fork pull request has no verdict label: its review is skipped.
 
+A push clears the verdict label: the `hold` job removes every `review:*` label
+and adds none, so the pull request has no verdict label until publish labels
+the new head. `risk:*` and `needs-review` stay. Adding `do-not-merge` leaves the
+verdict label alone. When Actions does not start at all, the hold does not run
+either and the old label stays; the merge signal is the head-bound
+`pr-review/verdict` status, not the label.
+
 **Control labels:**
 
 | Label | Set by | Meaning |

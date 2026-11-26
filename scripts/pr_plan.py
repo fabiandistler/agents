@@ -23,6 +23,10 @@ from pr_labels import AUTO_MERGE_BOT, NEEDS_REVIEW, RISK_PREFIX, VERDICT_PREFIX
 from pr_review_response import REVIEW_STATUSES, VERDICTS
 
 SCHEMA_VERSION = 1
+# The pull request event actions that start the hold: a push, and a label
+# (the workflow runs it only for do-not-merge).
+PUSH_EVENT = "synchronize"
+HOLD_EVENTS = (PUSH_EVENT, "labeled")
 
 
 class ArtifactError(ValueError):
@@ -331,11 +335,16 @@ def plan_publish(
     )
 
 
-def plan_hold(context: dict, skip_prefixes: tuple[str, ...] = ()) -> dict:
+def plan_hold(context: dict, event: str, skip_prefixes: tuple[str, ...] = ()) -> dict:
     """Return the review-free hold plan for one pull request; never writes.
 
-    ``skip_prefixes`` aborts it as in ``plan_publish``.
+    ``event`` is the pull request event action that started the hold, one of
+    ``HOLD_EVENTS``. On a push (``synchronize``) the plan also takes every
+    ``review:*`` label off: the verdict describes an older head until publish
+    labels the new one. ``skip_prefixes`` aborts it as in ``plan_publish``.
     """
+    if event not in HOLD_EVENTS:
+        raise ValueError(f"event must be one of {', '.join(HOLD_EVENTS)}")
     context = _validate_context(context)
     decision = {"risk": None, "review_status": None, "verdict": None, "auto_merge": "off"}
     if context.get("state") == "closed":
@@ -344,7 +353,19 @@ def plan_hold(context: dict, skip_prefixes: tuple[str, ...] = ()) -> dict:
         return _plan(context, "aborted", pr_skip.ABORT_REASON, [], decision)
 
     state, action = pr_auto_merge.plan_hold(context)
-    actions = [
-        planned for planned in (action, _bot_label_removal(context, state)) if planned is not None
-    ]
+    # The verdict removal comes last, so a failed label write cannot keep the
+    # disable from running.
+    planned_actions = (
+        action,
+        _bot_label_removal(context, state),
+        _stale_verdict_removal(context) if event == PUSH_EVENT else None,
+    )
+    actions = [planned for planned in planned_actions if planned is not None]
     return _plan(context, "planned", None, actions, {**decision, "auto_merge": state})
+
+
+def _stale_verdict_removal(context: dict) -> dict | None:
+    stale = [label for label in context["labels"] if label.startswith(VERDICT_PREFIX)]
+    if not stale:
+        return None
+    return {"kind": "set_labels", "add": [], "remove": stale}
