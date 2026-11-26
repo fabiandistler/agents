@@ -436,7 +436,7 @@ def command(args) -> None:
         updated = answer_card(text, args.card, args.answer, args.draft, args.question, args.reply)
     elif args.command == "close":
         updated = close_protocol(text, args.moot_remaining)
-    elif args.command == "record-post":
+    else:  # record-post, the one subcommand argparse leaves
         updated = record_post(text, args.target)
     if updated != text:
         update_protocol(args.file, updated)
