@@ -11,8 +11,8 @@ here for every model prompt, factory-rework.yml's and retro.yml's included.
 """
 
 import json
-import os
 import subprocess
+import sys
 from pathlib import Path
 
 import agent_run_capacity
@@ -33,6 +33,7 @@ from agent_run_workflow_testkit import (
     checkouts,
     model_step,
     report_step,
+    step_path,
     workflow,
 )
 
@@ -323,12 +324,26 @@ def _run_report(
             "GITHUB_STEP_SUMMARY": str(step_summary),
             "EXECUTION_FILE": execution_file,
             "FACTORY_DIR": str(REPO_ROOT),
-            "PATH": os.environ["PATH"],
+            "PATH": step_path(),
         },
         check=False,
     )
     text = step_summary.read_text(encoding="utf-8") if step_summary.exists() else ""
     return result.returncode, text
+
+
+def test_a_step_python3_is_the_interpreter_pytest_runs_on():
+    # A step's bare python3 must not fall through to an older system python3
+    # (#1038); the prefix also shows a venv's packages stay importable.
+    probe = 'python3 -c "import sys; print(sys.prefix, sys.version_info[:2])"'
+    found = subprocess.run(  # noqa: S603 -- fixed probe command, no outside input.
+        ["bash", "-e", "-c", probe],  # noqa: S607 -- bash intentionally resolves from PATH.
+        env={"PATH": step_path()},
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    assert found == f"{sys.prefix} {sys.version_info[:2]}"
 
 
 @BOTH

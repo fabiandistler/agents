@@ -18,6 +18,7 @@ from typing import cast
 import factory_handoff
 import rework_gate
 import yaml
+from agent_run_workflow_testkit import step_path
 from pr_github_client import GitHubClient
 from rework_testkit import (
     OTHER_HEAD,
@@ -342,7 +343,7 @@ def _run_validation(**values: str) -> subprocess.CompletedProcess:
     env.update(values)
     return subprocess.run(  # noqa: S603 -- runs the workflow's own validation step.
         ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
-        env={**env, "GITHUB_OUTPUT": os.devnull, "PATH": os.environ["PATH"]},
+        env={**env, "GITHUB_OUTPUT": os.devnull, "PATH": step_path()},
         capture_output=True,
         text=True,
         check=False,

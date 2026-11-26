@@ -26,6 +26,7 @@ from agent_run_workflow_testkit import (
     model_step,
     named_step,
     report_step,
+    step_path,
     step_with_id,
     workflow,
 )
@@ -80,7 +81,7 @@ def test_the_factory_fetch_lands_outside_the_workspace_at_the_sha(tmp_path):
             "FACTORY_SHA": sha,
             "RUNNER_TEMP": str(runner_temp),
             "GITHUB_OUTPUT": str(output),
-            "PATH": os.environ["PATH"],
+            "PATH": step_path(),
             "HOME": str(tmp_path),
         },
         capture_output=True,
@@ -145,7 +146,7 @@ def _run_validation(output: str = os.devnull, **values: str) -> subprocess.Compl
     env.update(values)
     return subprocess.run(  # noqa: S603 -- runs the workflow's own validation step.
         ["bash", "-e", "-c", step["run"]],  # noqa: S607 -- bash intentionally resolves from PATH.
-        env={**env, "GITHUB_OUTPUT": output, "PATH": os.environ["PATH"]},
+        env={**env, "GITHUB_OUTPUT": output, "PATH": step_path()},
         capture_output=True,
         text=True,
         check=False,
@@ -274,7 +275,7 @@ def test_the_check_command_and_the_guards_are_prepared_from_the_factory(tmp_path
             "FACTORY_DIR": str(REPO_ROOT),
             "DEFAULT_BRANCH": "trunk",
             "RUNNER_TEMP": str(runner_temp),
-            "PATH": os.environ["PATH"],
+            "PATH": step_path(),
         },
         capture_output=True,
         text=True,
@@ -441,7 +442,7 @@ def test_the_follow_up_command_line_is_accepted_by_the_script(tmp_path, queue_wo
             "IMPLEMENT_RESULT": "failure",
             "QUEUE_WORKFLOW": queue_workflow,
             "FIX_TASK_WORKFLOW": FIX_TASK.name,
-            "PATH": os.environ["PATH"],
+            "PATH": step_path(),
             "HOME": str(tmp_path),
         },
         capture_output=True,
