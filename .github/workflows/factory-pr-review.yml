@@ -25,7 +25,9 @@
 # this file, into $RUNNER_TEMP/factory, outside the workspace, without a
 # credential, and runs scripts/pr_*.py from there. So the scripts always match
 # the pinned workflow file. Only the review job checks out the caller, for
-# standards_path and setup_command.
+# standards_path and setup_command, and once more, after setup_command, into
+# pr-review-base: the base tree the model reads with Read, Grep and Glob
+# (ADR-0023).
 #
 # Contexts: `github` and `vars` belong to the caller. vars.PR_AUTO_MERGE is
 # the caller repository's variable: only this repository sets it, so other
@@ -233,7 +235,8 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
     # The caller's base checkout is for standards_path and setup_command; the
-    # model response leaves the job as an artifact, never as a GitHub write.
+    # model reads only pr-review-base. The model response leaves the job as an
+    # artifact, never as a GitHub write.
     permissions:
       contents: read
     steps:
@@ -268,6 +271,15 @@ jobs:
           SETUP_COMMAND: ${{ inputs.setup_command }}
         run: bash -euo pipefail -c "$SETUP_COMMAND"
 
+      - name: Check out the base tree the model reads
+        # After setup_command, so nothing it writes and neither context.json nor
+        # review.json is in the tree; no ref, so the commit whose workflow runs,
+        # never the pull request head (ADR-0023).
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: pr-review-base
+          persist-credentials: false
+
       - name: Install Claude Code
         # The subscription token works only inside Anthropic's own CLI. The
         # version is pinned because the next step hands this binary the token;
@@ -286,7 +298,7 @@ jobs:
             standards=(--standards "$STANDARDS_PATH")
           fi
           python3 "$RUNNER_TEMP/factory/scripts/pr_review.py" --context context.json \
-            "${standards[@]}" > review.json
+            --workspace pr-review-base "${standards[@]}" > review.json
 
       - name: Upload the review
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

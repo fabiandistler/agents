@@ -160,6 +160,16 @@ def test_cli_rejects_dry_run_with_response(tmp_path: Path) -> None:
     assert run.returncode == 2
 
 
+def test_cli_workspace_is_an_existing_directory_for_a_live_call(tmp_path: Path) -> None:
+    context_path = str(write_context(tmp_path, base_context()))
+    missing = run_cli("--context", context_path, "--workspace", str(tmp_path / "missing"))
+    assert missing.returncode == 3
+    assert missing.stdout == ""
+    assert "--workspace" in missing.stderr
+    dry_run = run_cli("--context", context_path, "--dry-run", "--workspace", str(tmp_path))
+    assert dry_run.returncode == 2
+
+
 def test_cli_help_is_short_and_names_exit_codes() -> None:
     run = run_cli("--help")
     assert run.returncode == 0

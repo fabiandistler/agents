@@ -11,7 +11,7 @@ from pathlib import Path
 import pr_review
 import pr_review_claude
 import pytest
-from pr_review_testkit import FAKE_TOKEN, VALID_RESPONSE, base_context
+from pr_review_testkit import FAKE_TOKEN, VALID_RESPONSE, base_context, run_cli, write_context
 
 FAKE_CLAUDE = """\
 #!{python}
@@ -190,6 +190,51 @@ def test_without_a_token_the_cli_is_never_started(fake_claude, monkeypatch) -> N
         fake_claude()
 
 
+def test_a_review_with_a_workspace_reads_the_base_checkout_with_the_read_tools_only(
+    fake_claude, tmp_path: Path
+) -> None:
+    base_checkout = tmp_path / "base"
+    base_checkout.mkdir()
+    (base_checkout / "AGENTS.md").write_text("The bot sets only needs-info.\n", encoding="utf-8")
+    artifact = pr_review.review(base_context(), token=FAKE_TOKEN, workspace=base_checkout)
+    call = fake_claude()
+    argv = call["argv"]
+    assert artifact["status"] == "ok"
+    assert option_value(argv, "--tools") == "Read,Grep,Glob"
+    assert "--restricted" in argv, "the file tools must stay inside the base checkout"
+    assert "--add-dir" not in argv
+    assert Path(call["cwd"]).resolve() == base_checkout.resolve()
+    assert call["cwd_entries"] == ["AGENTS.md"]
+    assert base_context()["diff"].strip() in call["stdin"]
+
+
+def test_a_review_with_a_workspace_refuses_an_answer_that_echoes_the_token(
+    fake_claude, monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("FAKE_CLAUDE_STDOUT", result_json(text=f"{VALID_RESPONSE}\n{FAKE_TOKEN}"))
+    artifact = pr_review.review(base_context(), token=FAKE_TOKEN, workspace=tmp_path)
+    assert artifact["status"] == "unavailable"
+    assert FAKE_TOKEN not in json.dumps(artifact)
+
+
+def test_the_cli_hands_the_workspace_to_the_call(fake_claude, tmp_path: Path) -> None:
+    base_checkout = tmp_path / "base"
+    base_checkout.mkdir()
+    context_path = write_context(tmp_path, base_context())
+    run = run_cli(
+        "--context",
+        str(context_path),
+        "--workspace",
+        str(base_checkout),
+        CLAUDE_CODE_OAUTH_TOKEN=FAKE_TOKEN,
+    )
+    assert run.returncode == 0, run.stderr
+    assert json.loads(run.stdout)["status"] == "ok"
+    call = fake_claude()
+    assert Path(call["cwd"]).resolve() == base_checkout.resolve()
+    assert option_value(call["argv"], "--tools") == "Read,Grep,Glob"
+
+
 def workspace_request() -> dict:
     return {
         "model": "sonnet",
@@ -215,7 +260,7 @@ def test_a_workspace_call_gets_only_the_read_tools_confined_to_it(
     assert "--add-dir" not in argv
     assert option_value(argv, "--setting-sources") == "", "no settings, hooks or CLAUDE.md"
     assert "--strict-mcp-config" in argv
-    assert int(option_value(argv, "--max-turns")) > 1
+    assert option_value(argv, "--max-turns") == "10", "a few reads, not a long session"
     assert Path(call["cwd"]).resolve() == workspace.resolve()
     assert call["stdin"] == "ISSUE BODY"
 

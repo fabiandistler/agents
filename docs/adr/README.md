@@ -21,7 +21,7 @@ governs; the replacement ADR or current record is named).
 | [0009](0009-fork-pr-description.md) | Superseded (2026-10-20); amended same day | Fork `pr-description` instead of patching `pr`. The skill was removed; Pocock's `pr` is vendored again. |
 | [0010](0010-claude-marketplace-hybrid.md) | Accepted (2026-10-22); amended for `secret-guard`; supersedes [0004](0004-distribution-channels-per-surface.md) in part | `claude` gets plugins from the marketplace only; `codex` and `opencode` keep `install.sh`. |
 | [0011](0011-pr-review-merge-exception.md) | Accepted (2026-10-28); amended 2026-11-07 (decisions A–D), 2026-11-11 (five required checks) and 2026-11-15 (low set, label write order); inert until `PR_AUTO_MERGE=true` | One model-free CI publisher may enable native auto-merge for gated docs-only PRs; interactive agents still never merge. |
-| [0012](0012-pr-review-on-claude-subscription.md) | Accepted (2026-11-09) | The PR review runs `claude -p` without tools on the maintainer's Claude subscription instead of OpenCode Zen. |
+| [0012](0012-pr-review-on-claude-subscription.md) | Accepted (2026-11-09); superseded in part (2026-11-26) by [0023](0023-pr-review-reads-the-base-tree.md) | The PR review runs `claude -p` on the maintainer's Claude subscription instead of OpenCode Zen. The tool-less call in an empty directory no longer stands. |
 | [0013](0013-automated-issue-triage.md) | Accepted (2026-11-10) | New issues by collaborators get an automated triage comment; the bot sets only `needs-info`, the maintainer every other state. |
 | [0014](0014-agent-runs-in-github-actions.md) | Accepted (2026-11-10); reason for keeping `repo-maintenance` out verified 2026-11-20 | The implementer and the skill audit run in GitHub Actions through `claude-code-action` with the Claude GitHub App token, not as Claude Code scheduled tasks. |
 | [0015](0015-rework-task.md) | Accepted (2026-11-14); amended the same day (the gate's `pull-requests: write`) | A model-free gate starts at most two model rounds that fix a non-pass review's findings on an `agent/issue-<n>` pull request, then hands it to a person. |
@@ -32,6 +32,7 @@ governs; the replacement ADR or current record is named).
 | [0020](0020-audit-finding-issues.md) | Accepted (2026-11-23) | The skill audit files one `audit-finding` issue per skill; its body becomes the implementer's contract once a person adds `ready-for-agent`. |
 | [0021](0021-triage-sets-ready-for-human.md) | Accepted (2026-11-26) | The triage bot also sets `ready-for-human`; `ready-for-agent` and `wontfix` stay with the maintainer. Partly supersedes 0013. |
 | [0022](0022-improve-skill-command.md) | Accepted (2026-11-26) | `improve-skill` refactors one skill against slop signals owned by the skill; a rule inventory checks the rewrite by default, a `skill-creator` behavior diff on request. |
+| [0023](0023-pr-review-reads-the-base-tree.md) | Accepted (2026-11-26) | The PR review model reads a checkout of the base commit with Read, Grep and Glob, to find unchanged files that still state a changed rule. Partly supersedes 0012. |
 
 ## Supersession
 
@@ -41,6 +42,10 @@ governs; the replacement ADR or current record is named).
 - **0009:** superseded. The catalogue ships no PR-description skill; the
   decision text is kept as history. The current position is recorded in
   [`.out-of-scope/pr-description-skill.md`](../../.out-of-scope/pr-description-skill.md).
+- **0012 ↔ 0023:** 0023 supersedes 0012's tool-less call in an empty
+  temporary directory: the review model reads a base checkout with Read, Grep
+  and Glob under `--restricted`. The subscription transport and the rest of
+  0012 stand.
 - **0013 ↔ 0021:** 0021 supersedes 0013's "the bot applies `needs-info`
   only": the bot also sets `ready-for-human`. The rest of 0013 stands.
 - **0008:** the A/B gate passed. The runs and their verdict are in

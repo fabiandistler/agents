@@ -33,7 +33,7 @@ and `pr-review / publish`.
 | `standards_path` | `""` | Passed to `pr_review.py --standards`: a path in the caller's base checkout or an absolute runner path ([standards file](#standards-file)). |
 | `fail_on_unavailable` | `false` | When `true`, `publish` writes `review:unavailable` as usual and then exits 8, so the run turns red. A `skipped` review (draft, fork) does not fail. |
 | `quiet_logs` | `false` | When `true`, neither the log nor the step summary holds the plan JSON, whose sticky comment carries the model's text. |
-| `setup_command` | `""` | Runs with `bash -euo pipefail -c` in the caller's base checkout, in the `review` job only, before Claude Code is installed and without the model token. A failure fails the review, which publishes `review:unavailable`. |
+| `setup_command` | `""` | Runs with `bash -euo pipefail -c` in the caller's base checkout, in the `review` job only, before Claude Code is installed and without the model token. A failure fails the review, which publishes `review:unavailable`. The model never reads that checkout: it reads `pr-review-base`, checked out after this step ([ADR-0023](../adr/0023-pr-review-reads-the-base-tree.md)). |
 
 This repository passes only `pr` and `dry_run`, so its review behaves as before
 the extraction. Another repository's caller pins the reusable workflow to a
@@ -76,8 +76,8 @@ passes no standards file; a caller passes one with the `standards_path` input.
   checkout or an installed copy, never from the pull request head, which the
   pull request author controls. The script reads only the path given on the
   command line; nothing in the context names a file.
-- **Pointers are not resolved.** The review call has no tools, so a line in
-  the file that only points to another file (such as
+- **Pointers are not resolved.** The review call reads only the base
+  checkout, so a line in the file that points to a file outside it (such as
   `instructions/70-code-review-conventions.md`, which points to
   `~/.agents/instructions/70-code-review-conventions.md`) cannot be followed.
   Concatenate the always-on and on-demand fragments you want, the code-review

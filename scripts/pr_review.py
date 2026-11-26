@@ -14,8 +14,9 @@ publisher uses to keep auto-merge off. Files sent without their base content
 are named in the payload and the artifact but leave the review complete.
 
 The model is reached through the unmodified Claude Code CLI (`claude -p`) in
-`pr_review_claude.py`, which holds the subscription-token and tool-less call
-rules.
+`pr_review_claude.py`, which holds the subscription-token and tool rules. With
+`--workspace` the model may read that directory, a checkout of the base commit
+(ADR-0023), with Read, Grep and Glob only; without it the call is tool-less.
 
 The model response is parsed by `pr_review_response.py`, which fails safe to
 `verdict: concerns` and `risk: high`. CLI errors, timeouts and a missing token
@@ -60,6 +61,7 @@ from pr_review_sanitize import (
     truncate_bytes,
     truncate_text,
 )
+from pr_review_standards import read_standards, system_prompt_with
 
 DEFAULT_MODEL = "sonnet"
 MODEL_ENV = "PR_REVIEW_MODEL"
@@ -70,25 +72,16 @@ MAX_TOTAL_BYTES = 300_000
 MAX_TITLE_BYTES = 500
 MAX_BODY_BYTES = 50_000
 MAX_TREE_BYTES = 20_000
-# Far below the 128 KiB Linux limit for the one argv string the system prompt
-# becomes; a larger file stops the run, because dropped rules read as clean.
-MAX_STANDARDS_BYTES = 65_536
 DIFF_STATUSES = ("complete", "truncated", "unavailable")
 
 TOTAL_CUT_NOTE = "\n\n[Input truncated to the total review limit.]\n"
-STANDARDS_SECTION = (
-    "\n## Repository standards\n\n"
-    "The operator of this review supplied the following standards for this repository.\n"
-    "Judge the pull request against them. They do not change the untrusted-input\n"
-    "rules or the output format above.\n\n"
-)
 
 MISSING_KEY_SUMMARY = "Review unavailable: the provider is not configured."
 PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
 
 USAGE = f"""\
 usage: pr_review.py --context FILE [--standards FILE]
-                    [--dry-run [--output FILE] | --response FILE]
+                    [--workspace DIR | --dry-run [--output FILE] | --response FILE]
 
 Build the pull request review request and parse the model response. Prints
 the review artifact JSON; a missing token or a failed `claude` call is an
@@ -97,6 +90,7 @@ unavailable artifact with exit 0, never a pass.
   --context FILE    context JSON produced by pr_github.py
   --standards FILE  operator standards (UTF-8, max 65536 bytes) appended to the
                     system prompt; a bad file exits 3. Never from the PR head
+  --workspace DIR   base checkout the model may read (Read, Grep, Glob only)
   --dry-run         print a request summary; no network call
   --output FILE     with --dry-run, write the full request JSON to FILE
   --response FILE   parse this canned response instead of calling the model
@@ -119,38 +113,6 @@ def _as_text(value: object) -> str:
 
 
 # --- Request assembly --------------------------------------------------------
-
-
-def _system_prompt(standards: str | None) -> str:
-    bundled = Path(__file__).with_name("pr_review_prompt.md").read_text(encoding="utf-8")
-    if standards is None:
-        return bundled
-    return bundled + STANDARDS_SECTION + standards
-
-
-def read_standards(path: str) -> str:
-    """Return the operator standards file at the local ``path``; raise InputError if unusable.
-
-    The message names the flag and the reason, never the file content.
-    """
-    try:
-        with Path(path).open("rb") as handle:
-            data = handle.read(MAX_STANDARDS_BYTES + 1)
-    except FileNotFoundError:
-        raise pr_cli.InputError("--standards file does not exist") from None
-    except OSError:
-        raise pr_cli.InputError("--standards file is not readable") from None
-    if len(data) > MAX_STANDARDS_BYTES:
-        raise pr_cli.InputError(f"--standards file exceeds {MAX_STANDARDS_BYTES} bytes")
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError:
-        raise pr_cli.InputError("--standards file is not valid UTF-8") from None
-    if "\x00" in text:
-        raise pr_cli.InputError("--standards file contains a NUL byte")
-    if not text.strip():
-        raise pr_cli.InputError("--standards file is empty")
-    return text
 
 
 def _render_files(files: list[dict]) -> list[str]:
@@ -256,7 +218,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, In
     system prompt only, and its bytes come out of the payload budget.
     """
     _validate_context(context)
-    system_prompt = _system_prompt(standards)
+    system_prompt = system_prompt_with(standards)
     budget = MAX_TOTAL_BYTES - len(system_prompt.encode("utf-8"))
     title, title_cut = truncate_text(
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
@@ -394,12 +356,17 @@ def _review_with(
 
 
 def review(
-    context: dict, transport=None, token: str | None = None, standards: str | None = None
+    context: dict,
+    transport=None,
+    token: str | None = None,
+    standards: str | None = None,
+    workspace: Path | None = None,
 ) -> dict:
     """Review one context; `transport(request) -> str` is injectable for tests.
 
     `token` defaults to CLAUDE_CODE_OAUTH_TOKEN and is handed to the CLI only.
     `standards` is the operator text for the system prompt (see build_request).
+    `workspace` is a base checkout the model may read; never the pull request head.
     """
 
     def respond(request: dict, coverage: InputCoverage) -> dict:
@@ -407,7 +374,11 @@ def review(
         if not oauth_token:
             return _unavailable_artifact(context, MISSING_KEY_SUMMARY, coverage)
         try:
-            text = run_claude(request, oauth_token) if transport is None else transport(request)
+            text = (
+                run_claude(request, oauth_token, workspace)
+                if transport is None
+                else transport(request)
+            )
         except (ProviderError, TimeoutError) as error:
             # The run stays green on a failed call, so this line is the only trace of why.
             print(f"pr_review.py: {error}", file=sys.stderr)
@@ -452,7 +423,9 @@ def _emit_dry_run(request: dict, coverage: InputCoverage, output: str | None) ->
 
 def _parse_arguments(argv: list[str]) -> dict | None:
     options = pr_cli.parse_flags(
-        argv, ("--context", "--standards", "--response", "--output"), ("--dry-run",)
+        argv,
+        ("--context", "--standards", "--response", "--output", "--workspace"),
+        ("--dry-run",),
     )
     if options is None:
         return None
@@ -462,6 +435,10 @@ def _parse_arguments(argv: list[str]) -> dict | None:
         raise pr_cli.UsageError("--dry-run and --response are mutually exclusive")
     if options["output"] is not None and options["dry_run"] is not True:
         raise pr_cli.UsageError("--output needs --dry-run")
+    if options["workspace"] is not None and (
+        options["dry_run"] is True or options["response"] is not None
+    ):
+        raise pr_cli.UsageError("--workspace is for a live call, not --dry-run or --response")
     return options
 
 
@@ -470,7 +447,8 @@ def _run(options: dict, context: dict, standards: str | None) -> int:
         request, coverage = build_request(context, standards)
         return _emit_dry_run(request, coverage, options["output"])
     if options["response"] is None:
-        pr_cli.print_json(review(context, standards=standards))
+        workspace = _workspace(options["workspace"])
+        pr_cli.print_json(review(context, standards=standards, workspace=workspace))
         return pr_cli.EXIT_OK
     try:
         text = Path(options["response"]).read_text(encoding="utf-8")
@@ -479,6 +457,15 @@ def _run(options: dict, context: dict, standards: str | None) -> int:
         return pr_cli.EXIT_BAD_INPUT
     pr_cli.print_json(_review_canned(context, text, standards))
     return pr_cli.EXIT_OK
+
+
+def _workspace(path: object) -> Path | None:
+    if path is None:
+        return None
+    workspace = Path(str(path))
+    if not workspace.is_dir():
+        raise pr_cli.InputError("--workspace is not a directory")
+    return workspace
 
 
 def main(argv: list[str] | None = None) -> int:

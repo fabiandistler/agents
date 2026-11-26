@@ -35,6 +35,8 @@ from pr_workflow_testkit import (
 # What the publisher stub prints: stands in for the plan JSON and its model text.
 PLAN_MARKER = "PLAN-JSON-WITH-MODEL-TEXT"
 EXPRESSION = re.compile(r"\$\{\{.*?\}\}")
+# The review job's second checkout, relative to the workspace: the model's base tree.
+BASE_TREE = "pr-review-base"
 
 
 @pytest.fixture(scope="module")
@@ -172,6 +174,8 @@ def test_standards_path_reaches_the_review_cli(
         f"{runner['temp']}/factory/scripts/pr_review.py",
         "--context",
         "context.json",
+        "--workspace",
+        BASE_TREE,
         *expected,
     ]
 
@@ -190,6 +194,25 @@ def test_the_setup_command_runs_only_when_set_and_before_claude_code(
     assert (step.get("env") or {}) == {"SETUP_COMMAND": "${{ inputs.setup_command }}"}
     assert MODEL_KEY not in str(step), "the setup command never sees the model token"
     assert steps.index(step) < steps.index(install) < steps.index(review_step(workflow))
+
+
+def test_the_model_reads_a_base_checkout_made_after_the_setup_command(
+    workflow: dict[Any, Any],
+) -> None:
+    review = job_named(workflow, "review")
+    steps = steps_of(review)
+    base_tree = next(
+        step
+        for step in steps
+        if "actions/checkout@" in str(step.get("uses", ""))
+        and (step.get("with") or {}).get("path") == BASE_TREE
+    )
+    options = base_tree.get("with") or {}
+    # No ref: the commit whose workflow runs, never the pull request head.
+    assert set(options) == {"path", "persist-credentials"}
+    assert options["persist-credentials"] is False
+    assert steps.index(setup_step(workflow)) < steps.index(base_tree)
+    assert steps.index(base_tree) < steps.index(review_step(workflow))
 
 
 def test_the_setup_command_runs_in_the_callers_checkout_and_fails_the_job(

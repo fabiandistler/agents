@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import pr_review
+import pr_review_standards
 import pytest
 from pr_review_testkit import (
     FAKE_TOKEN,
@@ -103,7 +104,7 @@ def test_the_payload_budget_shrinks_by_exactly_the_standards_bytes(monkeypatch) 
 
 
 def test_the_total_cap_holds_with_a_maximal_standards_file() -> None:
-    standards = "s" * pr_review.MAX_STANDARDS_BYTES
+    standards = "s" * pr_review_standards.MAX_STANDARDS_BYTES
     context = base_context(
         diff="\n".join("~" * 100 for _ in range(2000)),
         base_files={f"docs/file-{number}.md": "y " * 2500 for number in range(20)},
@@ -138,8 +139,8 @@ def test_review_hands_the_standards_to_the_transport() -> None:
 
 
 def test_a_file_at_the_cap_is_accepted(tmp_path: Path) -> None:
-    text = "a" * pr_review.MAX_STANDARDS_BYTES
-    assert pr_review.read_standards(str(write_standards(tmp_path, text))) == text
+    text = "a" * pr_review_standards.MAX_STANDARDS_BYTES
+    assert pr_review_standards.read_standards(str(write_standards(tmp_path, text))) == text
 
 
 def fake_claude_env(tmp_path: Path) -> dict[str, str]:
@@ -167,7 +168,7 @@ def bad_standards(tmp_path: Path, case: str) -> Path:
         "nul": f"{MARKER}\x00rest".encode(),
         "empty": b"",
         "whitespace": b"  \n\t\n",
-        "over-cap": (MARKER + "a" * pr_review.MAX_STANDARDS_BYTES).encode(),
+        "over-cap": (MARKER + "a" * pr_review_standards.MAX_STANDARDS_BYTES).encode(),
     }
     return write_standards(tmp_path, contents[case])
 
