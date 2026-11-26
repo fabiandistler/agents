@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import pr_cli
 import pr_github_client
 import pr_publish
 import pytest
@@ -388,25 +389,29 @@ def test_cli_hold_write_on_do_not_merge_keeps_the_verdict(monkeypatch, capsys):
     ],
     ids=["missing", "unknown value", "without --hold"],
 )
-def test_cli_hold_event_usage_errors_name_their_cause(arguments, cause):
+def test_cli_hold_event_usage_errors_name_their_cause(arguments, cause, assert_exit_cause):
     run = run_cli(*arguments)
 
-    assert run.returncode == 2
+    _, stderr = assert_exit_cause(run, pr_cli.EXIT_USAGE)
     assert run.stdout == ""
-    assert cause in run.stderr
+    assert cause in stderr
 
 
-def test_cli_hold_write_outside_github_actions_exits_seven(monkeypatch):
+def test_cli_hold_write_outside_github_actions_exits_seven(monkeypatch, assert_exit_cause):
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
-    assert pr_publish.main([*hold_args(), "--write"], client=held_pull_request()) == 7
+    code = pr_publish.main([*hold_args(), "--write"], client=held_pull_request())
+    _, stderr = assert_exit_cause(code, pr_cli.EXIT_OUTSIDE_ACTIONS)
+    assert "GitHub Actions" in stderr
 
 
-def test_cli_hold_write_inside_actions_without_a_token_exits_five(monkeypatch):
+def test_cli_hold_write_inside_actions_without_a_token_exits_five(monkeypatch, assert_exit_cause):
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
-    assert pr_publish.main([*hold_args(), "--write"]) == 5
+    code = pr_publish.main([*hold_args(), "--write"])
+    _, stderr = assert_exit_cause(code, pr_cli.EXIT_MISSING_TOKEN)
+    assert "GITHUB_TOKEN" in stderr
 
 
 @pytest.mark.parametrize(

@@ -34,6 +34,8 @@ extend-select = ["S", "E501"]
 
 [lint.per-file-ignores]
 "**/test_*.py" = ["S101"]
+# The shared fixtures, such as the exit-cause assertion every test file uses.
+"conftest.py" = ["S101"]
 # Fixtures and fakes shared by the test_pr_*.py modules.
 "scripts/pr_*_testkit.py" = ["S101"]
 # Loaders shared by the agent-run workflow tests.

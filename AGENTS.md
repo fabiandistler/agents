@@ -135,6 +135,10 @@ output. That file is their only home. This repository adds:
   and Posit Workbench; ruff's `per-file-target-version` and the CI job
   `skill-scripts-py39` enforce it. A PEP 723 script that declares
   `requires-python` is exempt.
+- Each non-zero exit code of a script family has a test that asserts its
+  stderr cause with the `assert_exit_cause` fixture in `conftest.py`. An
+  outcome code that prints a machine-readable reason on stdout is exempt;
+  its test asserts that reason instead.
 - A one-off command in SKILL.md (`uvx`, `npx`) is version-pinned, or it
   is not a convention.
 - Reference bundled skill scripts relative to the skill directory

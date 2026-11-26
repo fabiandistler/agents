@@ -182,6 +182,8 @@ def main(argv: list[str] | None = None) -> int:
         return pr_cli.EXIT_MISSING_TOKEN
     outcome = send(GitHubClient(token), args.repo, args.ref, dispatches)
     print(json.dumps(asdict(outcome)))
+    for failure in outcome.failed:
+        print(f"{SCRIPT}: dispatch of {failure.workflow} failed: {failure.reason}", file=sys.stderr)
     return pr_cli.EXIT_ACTION_FAILED if outcome.failed else pr_cli.EXIT_OK
 
 
