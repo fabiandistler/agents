@@ -33,5 +33,6 @@ product page; this page routes from a job to the page that does it.
 - [ADR index](adr/README.md) — decisions, status, and rationale
 - [Maintenance](../MAINTENANCE.md) — the scheduled code-maintenance rotation
 - [Evals](evals/improve-codebase-ab.md) — experiment record for the `improve-codebase` fork
+- [Classifier eval](evals/review-decisions-classifier/README.md) — hand-run cases to rerun before changing the `review-decisions-classifier` prompt
 - [Wiki](wiki/index.md) — dated session history; not current guidance
 - [Out of scope](../.out-of-scope/) — decision archive for mechanisms this repo does not build

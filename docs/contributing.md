@@ -122,7 +122,9 @@ way are in the [ADR index](adr/README.md).
 - **Plugin subagents** need YAML frontmatter with `name` matching the filename
   stem and a `description`. `install.sh` renders them into the Codex and
   opencode agent directories, and `build_project_claude.py` mirrors them into
-  `.claude/agents/`.
+  `.claude/agents/`. Before merging a change to the
+  `review-decisions-classifier` prompt, run its hand-run eval in
+  [`evals/review-decisions-classifier/`](evals/review-decisions-classifier/README.md).
 
 ## Regenerate generated files
 
