@@ -54,6 +54,8 @@ STATE_LABELS = (NEEDS_TRIAGE, NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONT
 # counts as a contract once a person adds ready-for-agent (implementer_contract).
 AUDIT_FINDING = "audit-finding"
 
+HAND_PART_HEADING = re.compile(r"^##[ \t]+(?P<title>.+? to add by hand)[ \t]*$")
+
 _HEAD = r"[0-9a-f]{40}"
 _POSITIVE = r"[1-9][0-9]*"
 _FAILURE_HASH = r"[0-9a-f]{16}"
@@ -99,6 +101,18 @@ class MarkerKind:
     pattern: re.Pattern[str]
     fields: Mapping[str, Callable[[object], bool]]
     parsers: Mapping[str, Callable[[str], object]]
+
+
+# A marker starts the issue and its link comment. Ignore markers in copied PR text.
+HAND_PART = MarkerKind(
+    name="hand-applied follow-up",
+    template="<!-- hand-part:{pr}/{section} -->",
+    pattern=re.compile(
+        rf"\A<!-- hand-part:(?P<pr>{_POSITIVE})/(?P<section>{_POSITIVE}) -->(?=\r?\n|\Z)"
+    ),
+    fields={"pr": _positive, "section": _positive},
+    parsers={"pr": int, "section": int},
+)
 
 
 # `<!-- rework-round:<round> head:<head> -->`: one per Rework run, on the pull request.
