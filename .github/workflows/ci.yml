@@ -58,15 +58,17 @@ jobs:
         with:
           persist-credentials: false
 
+      # setup-python has no 3.9 build for the current Ubuntu image; uv brings
+      # its own 3.9 (python-build-standalone), so uv runs on 3.12 here.
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
-      - name: Install pytest
-        run: pip install pytest==8.4.2
+      - name: Install uv
+        run: pip install uv==0.13.10
 
       - name: Skill-script tests on Python 3.9
-        run: python -m pytest -q skills/*/scripts
+        run: uv run --python 3.9 --no-project --with pytest==8.4.2 python -m pytest -q skills/*/scripts
 
   mermaid:
     # Browserless syntax check over every tracked Markdown file with
