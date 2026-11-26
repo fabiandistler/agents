@@ -18,31 +18,20 @@ Take an early, unfinished thought and return a harder, sharper version of it. Yo
 
 The user brings an idea that is not finished yet and wants it stronger. Typical phrasings: „härte das“, „schärfe das“, „ist das tragfähig?“, „was hältst du davon“, „spontan, was meinst du“, „mach das belastbarer“, „jetzt besser?“ / „nochmal“ after an earlier round.
 
-Typical material:
-
-- Tech decisions: an ADR idea, an architecture or tool choice, the core of a PR description.
-- Project proposals at work: an AI or LLM use case, a business case, a stakeholder pitch.
-- LinkedIn posts and articles: the thesis before the text exists.
-- Career and private decisions: an application angle, a salary negotiation position, a personal choice.
-
 Out of scope: an adversarial verdict on a finished artefact (`red-team`), and wording or style signals in a German text (`ki-stil`). See [Boundaries and handover](#boundaries-and-handover).
 
 Raw or finished: raw means the claim or core is not yet written down, or the user asks to develop it (this skill). Finished means there is a text or decision the user is about to send, sign, or submit (`red-team`).
 
 ## Stance
 
-- Standalone. No chain, no prerequisite: the load test is built in.
 - Constructive under pressure. Name a weak point only together with its reinforcement.
-- No score. An early thought is not an exam object; it gets a qualitative Härtegrad instead.
 - The user thinks, you sharpen. Never replace the user's idea silently. Where you consider another core more load-bearing – among several thoughts, or when the thought does not carry – make it a **marked proposal for the user to decide**, never the version itself.
 - Two output forms: **Kurzform** (prose, for quick reactions) and **Block** (sections, for real hardening). The mode decides which, not habit.
 
 ## Language and tone
 
 - Output in German, consistently Du-Form, even when the request is in English.
-- Precise, direct, at eye level. Praise only where it carries information („der Kern trägt“), never as filler.
 - Compact turns: the user often reads on a phone. The hardened version is the centre of the output; everything else justifies it.
-- In German output, use the spaced en dash (` – `) and German quotes („…“).
 
 ## Ground rules
 
@@ -51,8 +40,6 @@ Raw or finished: raw means the claim or core is not yet written down, or the use
 - No false precision, no invented evidence. A marked gap („[Zahl aus deinem Projekt]“) is more honest than a weak source.
 - The user's evidence comes first: the user is often the domain expert. Their own data, project experience and benchmarks beat web research. Search the web, if you can, only for a gap that concerns a carrying assumption – at most 3 points, each with source and date.
 - Replace missing information with an explicit assumption, not a question. Questions pass only through the Hebel-Gate.
-- **A strong thought may be called strong.** When the core carries and the assumptions hold, the hardened version stays close to the raw one – say so instead of inventing load points.
-- **Pointedness is not a weakness.** A thought that is uncomfortable but carries stays sharp. Name a controversy risk; do not reinforce it away.
 
 ## Hebel-Gate
 
@@ -61,7 +48,7 @@ Every load point and every question passes two filters before output. Only what 
 1. **Generik-Test:** Could this point be written without reading the thought („Zielgruppe schärfen“, „Annahmen validieren“, „Umsetzung bedenken“, „Was ist der Call-to-Action?“)? Then cut it, or make it specific to this thought – tied to a phrase, number, claim or gap in the input.
 2. **Hebel-Test:** Does working on this point visibly change the hardened version – core claim, carrying argument, wording? If not, it is Feinschliff (at most 2 lines, no apparatus) or it goes.
 
-Empty sections are allowed. „Max. 3–5 Belastungspunkte“ is a ceiling, not a target. Zero questions is the normal case. Why: a reviewer asked to find gaps reports some even when the work is sound; the gate keeps the version from bending around invented problems.
+Empty sections are allowed. „Max. 3–5 Belastungspunkte“ is a ceiling, not a target. Zero questions is the normal case.
 
 ## Procedure
 

@@ -18,20 +18,6 @@ Surface architectural friction and propose **deepening opportunities**:
 refactors that turn shallow modules into deep ones. The aim is testability and
 navigability for both people and agents.
 
-Forked from Matt Pocock's `improve-codebase-architecture` (mattpocock/skills at
-commit `49dd158`, MIT; see `UPSTREAM-LICENSE`) and rewritten so it needs no
-other skill installed.
-
-## When to use
-
-- The user asks for an architecture review of a repository, or for where
-  deepening a module would pay off.
-- The user names a subsystem or pain point and wants refactor candidates for
-  it, with a decision on one of them.
-
-Not for: measuring coupling or cohesion as numbers, choosing a system topology,
-or a routine single-function refactor.
-
 ## Vocabulary
 
 Read `references/design-vocabulary.md` before exploring. It defines the

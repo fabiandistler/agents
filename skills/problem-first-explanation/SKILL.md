@@ -56,10 +56,6 @@ Before (definitional): "A torque wrench measures applied torque in newton-metres
 
 After (problem-first): "You are putting the winter wheels on. Too loose and a nut works itself off at speed; too tight and you stretch the stud. You cannot feel newton-metres. A torque wrench removes the guesswork: set the manual's value and it clicks the moment you reach it. Look up the value, set the scale, tighten crosswise until the click, stop at the first click."
 
-## Why this order works
-
-The order is consistent with learning research, though that research has learners *attempt* a problem before instruction rather than read about it first: doing so improves later application of the concept (https://aaalab.stanford.edu/assets/papers/earlier/A_time_for_telling.pdf), with the strongest effects for conceptual material, transfer tasks, and novices (https://journals.sagepub.com/doi/10.3102/00346543211019105).
-
 ## Minimum viable check
 
 After the first paragraph the reader can answer: what concrete situation does this solve, and what the solution is called plus what it does in one sentence. If either is no, restart from step 1.
