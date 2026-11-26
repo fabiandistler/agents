@@ -6,6 +6,10 @@ Accepted (2026-11-09) by the maintainer. Replaces the OpenCode Zen provider
 of the PR review pipeline (#621, #635). [ADR-0011](0011-pr-review-merge-exception.md)
 is unchanged: the model still only advises.
 
+Superseded in part (2026-11-26) by
+[ADR-0023](0023-pr-review-reads-the-base-tree.md): the call no longer runs
+without tools in an empty directory. The rest of this record stands.
+
 ## Context
 
 The `review` job of `.github/workflows/pr-review.yml` called OpenCode Zen's
@@ -44,7 +48,10 @@ claude --print --output-format json --tools "" --system-prompt <prompt>
 ```
 
 with the payload on stdin, `CLAUDE_CODE_OAUTH_TOKEN` in its environment and an
-empty temporary working directory. The workflow installs
+empty temporary working directory. *Superseded by
+[ADR-0023](0023-pr-review-reads-the-base-tree.md): the workflow's call gets
+`--tools Read,Grep,Glob --restricted` and a checkout of the base commit as its
+working directory.* The workflow installs
 `@anthropic-ai/claude-code` at an exact version in a step that does not see
 the token.
 
@@ -71,6 +78,8 @@ the token.
 - No tool means a prompt injection in the diff can sway the verdict but not
   run commands or read the token; `--bare` is not an option because it
   ignores the OAuth token, hence the explicit flags and the empty directory.
+  *Superseded by [ADR-0023](0023-pr-review-reads-the-base-tree.md), which
+  makes the case for read-only tools in a base checkout.*
 - Two manual chores: renew the token yearly, and bump the pinned CLI version
   by hand (Dependabot does not see an `npm install` line). Both are in the
   [runbook](../agents/pr-review-runbook.md#model-change).
