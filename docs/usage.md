@@ -21,6 +21,7 @@ are user-invoked only and install as commands. In Claude Code they carry the
 plugin namespace:
 
 - `/refactoring:improve-codebase`
+- `/refactoring:improve-skill`
 - `/workflow:oss-scouting`
 - `/workflow:poc-spec-loop`
 - `/workflow:pypet-snippets`

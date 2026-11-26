@@ -204,3 +204,45 @@ follows an existing pattern, or what the issue states literally is not one.
 
 Not a synonym for a finding: a finding is a defect, a review decision is a
 choice. Settling every review decision of a change is not a defect review.
+
+## Slop signal
+
+One entry, `SL1` to `SL7`, in the fixed list of patterns that mark filler in a
+skill: text that costs tokens and attention without changing what the agent
+does. The list lives in `skills/improve-skill/references/slop-signals.md`;
+the skill audit checklist points to it by ID (B2, B4, D3, B8–B10). Signals
+describe structure, not vocabulary, so they apply to a skill in any language.
+
+Not a synonym for a finding: a slop signal is a pattern in the rubric, a
+candidate or finding is one place in one skill that matches it.
+
+## Candidate
+
+One place in one skill that `improve-skill` proposes to change: a numbered
+entry citing a slop-signal or checklist ID, its `path:line`, the quoted text
+and a proposed action. The author records each as accepted, rejected or
+load-bearing before the rewrite.
+
+Not a synonym for a finding: a finding is a defect an audit reports, a
+candidate is a proposal awaiting the author's decision.
+
+## Rule inventory
+
+The list of every rule and branch in a skill before a rewrite, each mapped
+afterwards to its place in the new text or marked as struck by the author. An
+unmapped item blocks delivery. It costs no model runs, and it catches a lost
+rule but not shifted emphasis or tone.
+
+Not a synonym for a behavior diff: the inventory compares texts, the behavior
+diff compares runs.
+
+## Behavior diff
+
+Running a skill's old snapshot and its rewritten version against the same
+prompts, grading each run's assertions, and comparing the results per
+prompt. A deviation is an assertion that passed for the old version and
+failed for the new one; it names the prompt and the section whose candidates
+caused it.
+
+Not a synonym for a rule inventory: the behavior diff spends model runs and
+catches shifted emphasis the inventory misses.

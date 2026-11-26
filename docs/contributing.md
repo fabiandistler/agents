@@ -33,7 +33,7 @@ way are in the [ADR index](adr/README.md).
 2. **Add eval prompts for an auto or router skill.** `skills/<name>/evals.json`
    needs at least three `should_trigger` prompts and one `should_not_trigger`
    prompt, plus an optional `expected_behavior`. Command skills are exempt and
-   may skip the file.
+   may skip the file; one that ships it gets the same shape check.
 
 3. **Mark a command skill in every runtime.** Set `activation: command` and
    `disable-model-invocation: true`, add the opencode metadata, and commit the

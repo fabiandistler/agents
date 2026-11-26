@@ -31,6 +31,7 @@ governs; the replacement ADR or current record is named).
 | [0019](0019-remove-claude-mention-workflow.md) | Accepted (2026-11-15) | The `@claude` mention workflow is removed: its App token could write and its thread input came from anyone; no workflow starts `claude-code-action` from a comment or review. |
 | [0020](0020-audit-finding-issues.md) | Accepted (2026-11-23) | The skill audit files one `audit-finding` issue per skill; its body becomes the implementer's contract once a person adds `ready-for-agent`. |
 | [0021](0021-triage-sets-ready-for-human.md) | Accepted (2026-11-26) | The triage bot also sets `ready-for-human`; `ready-for-agent` and `wontfix` stay with the maintainer. Partly supersedes 0013. |
+| [0022](0022-improve-skill-command.md) | Accepted (2026-11-26) | `improve-skill` refactors one skill against slop signals owned by the skill; a rule inventory checks the rewrite by default, a `skill-creator` behavior diff on request. |
 
 ## Supersession
 

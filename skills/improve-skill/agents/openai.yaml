@@ -1,0 +1,5 @@
+interface:
+  display_name: "Improve Skill"
+  short_description: "Clean slop out of one skill, checked by rule inventory"
+policy:
+  allow_implicit_invocation: false
