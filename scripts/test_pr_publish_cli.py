@@ -316,8 +316,8 @@ def test_cli_write_prints_an_aborted_plan_when_the_head_changed(monkeypatch, tmp
 # --- CLI hold ----------------------------------------------------------------
 
 
-def hold_args() -> list[str]:
-    return ["--hold", "--live", "--repo", REPO, "--pr", str(NUMBER)]
+def hold_args(event: str = "synchronize") -> list[str]:
+    return ["--hold", "--live", "--repo", REPO, "--pr", str(NUMBER), "--event", event]
 
 
 def held_pull_request() -> FakeGitHub:
@@ -332,11 +332,17 @@ def test_cli_hold_prints_the_hold_plan_without_writing(capsys):
     assert code == 0
     plan = json.loads(capsys.readouterr().out)
     assert plan["decision"]["auto_merge"] == "disabled"
-    assert [action["kind"] for action in plan["actions"]] == ["disable_auto_merge", "set_labels"]
+    assert [action["kind"] for action in plan["actions"]] == [
+        "disable_auto_merge",
+        "set_labels",
+        "set_labels",
+    ]
     assert write_calls(fake) == []
 
 
-def test_cli_hold_write_disables_the_bots_auto_merge_and_its_label(monkeypatch, capsys):
+def test_cli_hold_write_on_a_push_disables_the_auto_merge_then_clears_the_verdict(
+    monkeypatch, capsys
+):
     fake = held_pull_request()
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("GITHUB_TOKEN", "test-token")
@@ -349,11 +355,45 @@ def test_cli_hold_write_disables_the_bots_auto_merge_and_its_label(monkeypatch, 
     assert [result["kind"] for result in payload["results"]] == [
         "disable_auto_merge",
         "set_labels",
+        "set_labels",
     ]
     assert [(call["method"], call["path"]) for call in write_calls(fake)] == [
         ("POST", "/graphql"),
         ("DELETE", f"/repos/{REPO}/issues/{NUMBER}/labels/auto-merge%3Abot"),
+        ("DELETE", f"/repos/{REPO}/issues/{NUMBER}/labels/review%3Apass"),
     ]
+
+
+def test_cli_hold_write_on_do_not_merge_keeps_the_verdict(monkeypatch, capsys):
+    fake = held_pull_request()
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    code = pr_publish.main([*hold_args("labeled"), "--write"], client=fake)
+
+    assert code == 0
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+    assert [(call["method"], call["path"]) for call in write_calls(fake)] == [
+        ("POST", "/graphql"),
+        ("DELETE", f"/repos/{REPO}/issues/{NUMBER}/labels/auto-merge%3Abot"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("arguments", "cause"),
+    [
+        (["--hold", "--live", "--repo", REPO, "--pr", "1"], "--event is required"),
+        (hold_args("opened"), "--event must be one of synchronize, labeled"),
+        (hold_args("synchronize")[1:], "--event is only valid with --hold"),
+    ],
+    ids=["missing", "unknown value", "without --hold"],
+)
+def test_cli_hold_event_usage_errors_name_their_cause(arguments, cause):
+    run = run_cli(*arguments)
+
+    assert run.returncode == 2
+    assert run.stdout == ""
+    assert cause in run.stderr
 
 
 def test_cli_hold_write_outside_github_actions_exits_seven(monkeypatch):

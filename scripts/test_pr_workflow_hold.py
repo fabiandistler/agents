@@ -55,8 +55,13 @@ def test_the_hold_runs_the_review_free_publisher(workflow: dict[Any, Any]) -> No
     assert command == (
         'python3 "$RUNNER_TEMP/factory/scripts/pr_publish.py" --hold --live '
         '--repo "${{ github.repository }}" '
-        '--pr "$PR" --write'
+        '--pr "$PR" --event "$EVENT" --write'
     )
+
+
+def test_the_hold_passes_the_event_that_started_it(workflow: dict[Any, Any]) -> None:
+    # A push clears the verdict label, a do-not-merge label does not (#1034).
+    assert job_env(workflow, "hold").get("EVENT") == "${{ github.event.action }}"
 
 
 def test_the_hold_holds_the_workflow_token_and_nothing_else(workflow: dict[Any, Any]) -> None:

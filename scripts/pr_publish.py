@@ -97,15 +97,17 @@ def publish_live(
     }
 
 
-def hold_live(repo: str, number: int, write: bool = False, client=None):
+def hold_live(repo: str, number: int, event: str, write: bool = False, client=None):
     """Fetch, plan and optionally apply the auto-merge hold of one pull request.
 
     The hold needs no review: the workflow runs it on every push and when
-    ``do-not-merge`` is added. Return values follow ``publish_live``.
+    ``do-not-merge`` is added; ``event`` names which (``pr_plan.HOLD_EVENTS``).
+    Return values follow ``publish_live``.
     """
     token = _token(write, client)
     plan = pr_plan.plan_hold(
         pr_github.fetch_context(repo, number, token=token, client=client),
+        event,
         skip_prefixes=pr_skip.prefixes_from_env(),
     )
     if not write or plan["status"] == "aborted":
@@ -137,7 +139,7 @@ def _apply(plan: dict, token: str | None, client) -> dict:
 # --- CLI ---------------------------------------------------------------------
 
 USAGE = f"""usage: pr_publish.py --context FILE --assessment FILE --review FILE
-       pr_publish.py --live --repo O/R --pr N (--assessment FILE --review FILE | --hold) [--write]
+       pr_publish.py --live --repo O/R --pr N (--assessment F --review F|--hold --event E) [--write]
 
 Plan the labels, the sticky comment, the reviewer, the auto-merge decision and
 the pr-review/verdict status of one pull request. Prints JSON; --write applies it.
@@ -145,9 +147,9 @@ the pr-review/verdict status of one pull request. Prints JSON; --write applies i
   --context FILE      fresh context JSON from pr_github.py
   --assessment FILE   risk decision JSON from pr_risk.py
   --review FILE       review artifact JSON from pr_review.py
-  --live              re-fetch the context from GitHub; needs GITHUB_TOKEN
-  --repo O/R --pr N   repository as OWNER/REPO and pull request number (with --live)
+  --live --repo O/R --pr N  re-fetch pull request N of OWNER/REPO; needs GITHUB_TOKEN
   --hold              without a review: only disable the bot's auto-merge (any under do-not-merge)
+  --event E           with --hold: synchronize (also removes review:* labels) or labeled
   --write             apply the plan; needs --live and GITHUB_ACTIONS=true
   --summary FILE      append a Markdown summary to FILE; --quiet omits its JSON (not --hold)
   --status-url URL    https link for the pr-review/verdict status (not --hold)
@@ -169,6 +171,7 @@ VALUE_FLAGS = (
     "--review",
     "--summary",
     "--status-url",
+    "--event",
 )
 
 
@@ -189,6 +192,12 @@ def _parse_arguments(argv: list[str]) -> dict | None:
             )
         if options["live"] is not True:
             raise pr_cli.UsageError("--hold requires --live")
+        if options["event"] is None:
+            raise pr_cli.UsageError("--event is required with --hold")
+        if options["event"] not in pr_plan.HOLD_EVENTS:
+            raise pr_cli.UsageError(f"--event must be one of {', '.join(pr_plan.HOLD_EVENTS)}")
+    elif options["event"] is not None:
+        raise pr_cli.UsageError("--event is only valid with --hold")
     else:
         for required in ("assessment", "review"):
             if options[required] is None:
@@ -235,6 +244,7 @@ def main(argv: list[str] | None = None, client=None) -> int:
             payload = hold_live(
                 str(options["repo"]),
                 int(options["pr"]),
+                str(options["event"]),
                 write=options["write"] is True,
                 client=client,
             )

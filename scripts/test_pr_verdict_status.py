@@ -157,7 +157,7 @@ def test_an_aborted_plan_sets_no_status(context, reason):
 
 
 def test_the_hold_never_sets_a_status():
-    plan = pr_plan.plan_hold(make_context(head_sha=HEAD_SHA))
+    plan = pr_plan.plan_hold(make_context(head_sha=HEAD_SHA), "synchronize")
 
     assert actions_of(plan, "set_status") == []
 
