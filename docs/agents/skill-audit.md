@@ -69,7 +69,22 @@ Per run, at most:
    subagent: it runs every CI step and reports blocking failures, allowlist
    drift, dangling symlinks and eval gaps. Its findings go into the issue
    under *CI / format*. If the subagent is unavailable, run
-   `scripts/check_all.sh` yourself.
+   `scripts/check_all.sh` yourself. Run the token headroom report from the
+   repository root. Select regular Git file modes so the hook receives files
+   it can read and skips symlinks and submodules.
+
+   ```bash
+   git ls-files -z --format='%(objectmode) %(path)' |
+     while IFS= read -r -d '' entry; do
+       case "$entry" in
+         100644\ *|100755\ *) printf '%s\0' "${entry#* }" ;;
+       esac
+     done |
+     xargs -0 bash scripts/hooks/check-file-tokens.sh --report
+   ```
+
+   List each reported file and its token count under *CI / format*. Leave
+   file splits for their own issues and PRs.
 
 3. **Select skills for the content pass.**
    `python3 scripts/skill_audit_select.py` prints JSON: `selected` is this

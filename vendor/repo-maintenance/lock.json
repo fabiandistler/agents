@@ -1,6 +1,6 @@
 {
   "upstream": "https://github.com/fabiandistler/repo-maintenance",
-  "commit": "884a17956daa1684c640545dac42948b6ef6b235",
+  "commit": "ae6be8cd3eaa03c6b5ab3c2e5aa767b0912252a3",
   "files": {
     "scripts/maintenance-scan.sh": {
       "sha256": "3c836836318166d69b31cc36e718fac0a2d7c5a1d36469c4d395d8461f6a7dda",
@@ -19,7 +19,7 @@
       "mode": "100755"
     },
     "scripts/hooks/check-file-tokens.sh": {
-      "sha256": "7f707de828ff6d603acce61e0ecb07a997d5419d2cdf6f956cbb45f45a36400f",
+      "sha256": "0dee5d5043dd3adc205f83225fd45b6ca4b7e171358022168dff108956d487bf",
       "mode": "100755"
     }
   }
