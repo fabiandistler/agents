@@ -11,13 +11,10 @@ of cohesion does it have**, **is the cohesion weak enough to be a problem**, and
 - [Cohesion workflow](#cohesion-workflow)
 - [Cohesion output format](#cohesion-output-format)
 - [Cohesion — worked contrast](#cohesion--worked-contrast)
-- [Cohesion — common mistakes](#cohesion--common-mistakes)
 
-The point is not to maximize a metric. It is to spot modules whose parts are
-merely colocated rather than genuinely related, while resisting the opposite
-mistake: splitting a cohesive module and re-coupling the pieces. As Larry
-Constantine warned, "attempting to divide a cohesive module would only result in
-increased coupling and decreased readability."
+Assess classes and other units, including files of functions, using the same
+cohesion questions. A reusable seam keeps the parts cohesive without merely
+shifting their shared knowledge to a new dependency.
 
 Full definitions, the source examples, and the LCOM equations live in
 [cohesion-taxonomy.md](cohesion-taxonomy.md). Read it when
@@ -66,9 +63,10 @@ or calls — 1 group hangs together regardless of score, 2+ groups is a split
 candidate with a named seam; the raw lack-of-cohesion score appears only
 bracketed as `[LCOM=<n>]`).
 
-Read the result as evidence, not a verdict — see step 6 and the reference's
-"What LCOM cannot tell you." Treat the script as optional: skip it for tiny
-modules or where it doesn't fit, and rely on steps 2–3.
+Use LCOM groups as structural evidence. A constructor or cache can mask a
+seam, and a high score can point to pieces that would recouple. Apply steps
+5–6 and the reference's "What LCOM cannot tell you." For tiny units or where
+the script does not fit, rely on steps 2–3.
 
 ### 5. Apply the trade-off questions before recommending a split
 
@@ -96,8 +94,8 @@ leave with the reason. Give one concrete outcome:
 - **Merge with fold-back target** — when an over-extracted module just
   re-couples; name what it folds back into.
 - **Leave with reason** — when cohesion is fine or the split would cost more
-  than it buys. Saying "leave it" is a real, valuable outcome — always give
-  the reason.
+  than it buys. Judge temporal grouping and legitimate logical grouping on
+  their stability; a low placement on the scale alone need not warrant a split.
 
 ## Cohesion output format
 
@@ -124,19 +122,3 @@ Groups decide, scores only bracketed. Two file-level shapes recur:
   over the same data (question 1), splitting buys a module and nothing else.
   Leave, with that reason — the groups flag *where* to ask, the questions
   decide.
-
-Trust the group count, not the raw score.
-
-## Cohesion — common mistakes
-
-- **Treating LCOM as the answer.** It finds only *structural* lack of cohesion;
-  it cannot tell whether parts belong together logically. Why matters more than
-  how. When it flags a split, the step-5 judgment decides.
-- **Splitting reflexively on a high score.** A constructor or a shared cache can
-  hide a real split, and a high score can flag a split that would just re-couple
-  the pieces. Constantine's warning cuts both ways.
-- **Conflating "low cohesion" with "bad code".** Temporal grouping (startup
-  init) and some logical grouping are legitimate and stable. Flag, then judge.
-- **Forgetting non-OO code.** A `helpers.py`, an R script of free functions, or a
-  Bash library can be just as incohesive as a god-class. Analyze files of
-  functions too.

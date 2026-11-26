@@ -15,9 +15,9 @@ Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Micha
 
 - **Expose narrow tools by default; expose SQL only through a constrained query
   interface. Give a read-only agent no write/delete tools, and grant its
-  account only the privileges those tools need.** Never provide unrestricted
-  `execute_sql(query)` or code execution. Database grants enforce the scope
-  (`security.md`, Access and authorization). (Albada Ch. 4)
+  account only the privileges those tools need.** Exclude unrestricted
+  `execute_sql(query)` and open-ended code execution. Enforce database scope
+  with database grants. (Albada Ch. 4)
   - ✅ `get_user_profile(user_id)`, `cancel_order(order_id)`
   - ❌ `execute_sql(query: str)` with broad database access
 - **Treat tool metadata as the selection interface: a precise narrow name, a

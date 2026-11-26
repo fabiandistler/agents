@@ -10,7 +10,7 @@ analytics, or point-in-time reconstruction.
   - ✅ `append(PriceCorrected(...))` to correct data
   - ❌ `UPDATE events SET ...` / `DELETE FROM events` to correct data
 - **Run every command as: load events → project to state → execute → append new events.** Don't mutate an in-memory state object and diff it (Ch 7).
-- **Pair an event-sourced domain model with CQRS.** Without a separate read model, querying is limited to fetch-by-ID (Ch 7/10).
+- **Use CQRS** for the [Event-Sourced Domain Model](../SKILL.md#architecture-follows-the-pattern).
 
 ## Evolving events
 

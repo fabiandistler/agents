@@ -9,7 +9,6 @@ abbreviation in brackets) and their Main Sequence zones.
 - [The numbers and zones](#the-numbers-and-zones)
 - [Coupling-metrics workflow](#coupling-metrics-workflow)
 - [Coupling-metrics output format](#coupling-metrics-output-format)
-- [Coupling metrics — common mistakes](#coupling-metrics--common-mistakes)
 
 ## The numbers and zones
 
@@ -26,13 +25,6 @@ An unaided answer tends to eyeball imports and give a vibe. This mode makes
 the analysis reproducible: build the dependency graph, compute the metrics with
 a bundled script, classify each component, and recommend a concrete fix — while
 respecting that the numbers are blunt and need interpretation.
-
-Definitions, formulas, the zone map, the SDP/SAP principles behind the Main
-Sequence, and a worked example live in
-[metrics.md](metrics.md). Fixes per zone live in
-[remediation.md](remediation.md); read it together with
-the limitations section of metrics.md, since a flagged zone is a prompt to
-look, not a verdict.
 
 ## Coupling-metrics workflow
 
@@ -85,11 +77,14 @@ dependencies (Ca), outgoing dependencies (Ce), instability (I), abstractness
 (A) and distance from the ideal (D), sorted worst-distance first, and flags
 everything past the threshold (`--threshold`, default 0.5). Use `--json` to
 pipe the numbers elsewhere. See
-[metrics.md](metrics.md) for how each number is derived.
+[metrics.md](metrics.md) for formulas, the SDP/SAP principles, and a worked example.
 
 ### 5. Interpret — don't just rank
 
-Treat a high distance from the ideal (D) as a prompt to look, not a verdict.
+Read the [metric limitations](metrics.md#the-limitations-of-these-metrics)
+when a zone is flagged. Use distance from the ideal (D) to decide where to
+look and distinguish essential from accidental complexity before recommending
+a change.
 
 - For each flagged component, name its zone and explain *why* it landed there
   in terms of its actual edges (what depends on it, what it depends on) —
@@ -97,8 +92,8 @@ Treat a high distance from the ideal (D) as a prompt to look, not a verdict.
 - Separate real pain from earned stability: a finished, stable, concrete
   utility everyone imports can sit in the Zone of Pain corner and be perfectly
   fine — leaving it is then the right call, with the reason stated.
-- Sanity-check the graph itself — a surprising result is often a missing or
-  spurious edge, not a real coupling problem.
+- Check the extractor produced the expected graph before relying on the
+  metrics. When a result surprises you, look for missing and spurious edges.
 
 ### 6. Remediate
 
@@ -124,16 +119,3 @@ Verdict: <fix | leave | gather data> — <zone: Zone of Pain | Zone of Uselessne
 Evidence: <incoming (Ca)=<n>, outgoing (Ce)=<n>, instability (I)=<n>, abstractness (A)=<n>, distance (D)=<n>> — <what that means here, via the actual edges>
 Next step: <fix with seam | reason to leave, e.g. earned stability | abstractness counts to gather> — <concrete action>
 ```
-
-## Coupling metrics — common mistakes
-
-- **Mixing levels.** Counting class edges and package edges in one graph makes
-  the metrics meaningless. Pick one unit (step 1).
-- **Reporting numbers as verdicts.** The metrics flag *where to look*; they
-  can't tell essential from accidental complexity. Always interpret (step 5).
-- **Condemning earned stability.** A stable, concrete, finished utility in the
-  Zone of Pain corner may need no change. High distance from the ideal (D) ≠ defect.
-- **Fixing Uselessness by adding abstraction.** It's already too abstract —
-  remove indirection, don't add it.
-- **Trusting a bad graph.** Garbage edges in, garbage metrics out. Verify the
-  extractor drew the dependencies you expect before believing the table.

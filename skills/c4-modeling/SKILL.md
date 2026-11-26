@@ -8,8 +8,6 @@ compatibility: No dependencies — Mermaid renders natively on GitHub, GitLab, a
 
 # C4 Modeling
 
-This skill drafts a C4 model (c4model.com) *with* the user in a short interview, then renders the agreed diagrams as Mermaid so they display directly in the repository and in chat.
-
 The one habit that makes C4 diagrams stay consistent: **model first, diagrams
 second.** All diagrams are projections of one element/relationship table; you
 never edit a diagram directly, you edit the table and re-derive.
@@ -59,9 +57,7 @@ with a recommendation, as in a design interview):
   container only*. Ops/infra discussions → Deployment. A workflow to explain →
   Dynamic.
 
-Rule of thumb: **Context always, Container almost always, everything else on
-demand.** Most systems are well served by two diagrams; do not produce all six
-because they exist.
+Default to **Context always, Container almost always, everything else on demand.**
 
 ### 2. Elicit the model (interactive)
 
@@ -105,8 +101,7 @@ relationship's two ends share one cell.
 | ... |
 ```
 
-Show the table, get agreement, *then* draw. Renames and additions happen in
-the table first and propagate to every diagram.
+Show the table and get agreement before drawing.
 
 ### 3. Derive the diagrams (Mermaid)
 
@@ -124,8 +119,7 @@ For each level agreed in step 1, write a Mermaid diagram from the model table
   the diagram (e.g. one Component diagram per container) rather than shrink
   the font.
 
-Show each diagram to the user and iterate; the table is updated with whatever
-the iteration changes.
+Show each diagram and iterate with the user. Apply changes to the model table first.
 
 ### 4. Embed the result
 
@@ -146,18 +140,9 @@ the rationale in a diagram caption.
 
 ### 5. Review against the checklist
 
-Before calling it done, run the notation review (full checklist in
-[references/c4-best-practices.md](references/c4-best-practices.md)). Minimum
-bar for every diagram:
-
-- **Title** stating diagram type and scope ("System Context diagram — Web Shop").
-- Every **element**: name + type + one-line description. No naked boxes.
-- Every **relationship**: labeled with its purpose, single-headed arrow in the
-  primary direction. No unlabeled or double-headed lines.
-- **Technology** stated on containers, components, and non-obvious relationships.
-- **No unexplained acronyms**; the diagram must stand alone without a narrator.
-- **Key/legend** on every diagram explaining shapes, colors, line styles, and arrows. Mermaid C4 cannot draw one, so add a one-line `Key:` under the block.
-- **Consistency** across diagrams: same element ⇒ same name, same color/shape.
+Run the [notation review](references/c4-best-practices.md#diagram-review-checklist)
+on every diagram before finishing. For native Mermaid C4, add the legend as
+a one-line `Key:` under the Mermaid block.
 
 ## Source
 

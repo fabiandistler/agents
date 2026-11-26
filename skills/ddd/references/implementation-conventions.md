@@ -24,8 +24,10 @@
 - **Reference other aggregates by ID only, never by object holding.** Embedded object references smuggle a second aggregate into the boundary (Ch 6).
   - ✅ `private CustomerId customerId;`
   - ❌ `private Customer customer;`
-- **Keep aggregates as small as the invariants allow.** Include only data that must be *strongly consistent* to enforce this aggregate's rules; anything that can be eventually consistent belongs outside (Ch 6).
-- **Test membership by consistency, not by "related-ness".** An entity belongs inside only if operating on eventually-consistent copies of it could corrupt state; otherwise it's a separate aggregate (Ch 6).
+- **Keep aggregates as small as their invariants allow.** Include only data
+  that must be strongly consistent. If an eventually consistent copy of an
+  entity cannot corrupt the aggregate's state, model it as a separate
+  aggregate even when it is related (Ch 6).
 - **Expose only the aggregate root as public API.** Mutate inner entities exclusively through a root command; never let callers reach a child entity directly (Ch 6).
   - ✅ `order.changeLineQty(lineId, 5)`
   - ❌ `order.getLines().get(0).setQty(5)`
