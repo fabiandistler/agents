@@ -5,10 +5,10 @@ activation: command
 disable-model-invocation: true
 environments: coding, chat
 argument-hint: "<skill-folder>"
-compatibility: Reads one skill folder, in a repo or unpacked from a claude.ai ZIP; git is not required. Writes a snapshot and the rewrite to the OS temp directory; changes the folder, or opens a branch and pull request in a repo, only after the author agrees. Eval mode needs Claude Code with Anthropic's skill-creator installed; elsewhere the rule inventory is the only check and behavior is verified by hand.
+compatibility: Reads one skill folder, in a repo or unpacked from a claude.ai ZIP; git is not required. Writes a snapshot and the rewrite to the OS temp directory; changes the folder and packs a new archive beside the old claude.ai ZIP, or opens a branch and pull request in a repo, only after the author agrees. Eval mode needs Claude Code with Anthropic's skill-creator installed; elsewhere the rule inventory is the only check and behavior is verified by hand.
 description: Clean AI slop out of one skill folder with numbered slop-signal candidates, an author interview on what is load-bearing, one rewrite, and a rule inventory that blocks delivery if a rule was lost. Use when cleaning up a bloated skill.
 metadata:
-  version: "0.3"
+  version: "0.4"
   opencode/slash: "true"
   opencode/autoinvoke: "false"
 ---
@@ -57,7 +57,8 @@ SL7, and walk the full text once per signal. For every hit, record:
 
 - the signal ID and its checklist ID;
 - the `path:line`, relative to the skill folder;
-- the quoted text, verbatim and short enough to locate it;
+- the quoted text, verbatim in the skill's own language and short enough to
+  locate it;
 - the proposed action from the signal, adjusted by its test. A line that
   passes the test as load-bearing gets a change of form (a reason added, a
   duplicate merged), never removal.
@@ -137,6 +138,7 @@ original folder stays untouched until delivery.
 
 - Leave the frontmatter, description included, byte for byte as it was.
 - Leave the text of rejected candidates as it was.
+- Write in the skill's own language; a German skill stays German.
 - Keep every `R` item that was not struck, in the place the agent needs it
   while acting.
 
@@ -247,6 +249,31 @@ on "yes":
   Use the GitHub MCP tools if the session has them; otherwise
   `gh api repos/<owner>/<repo>/pulls -f title=<title> -f head=improve-skill/<name> -f base=<base> -f body=<body>`.
   On another forge, use its CLI the same way.
-- **Folder outside any git work tree**: copy `new_skill/` over the folder.
+- **Folder outside any git work tree** (an unpacked claude.ai skill): copy
+  `new_skill/` over the folder; the run creates no repository. Then pack it
+  for claude.ai with the packager of Anthropic's `skill-creator`:
+  1. Ask for the path of the **old ZIP**, the export the folder was unpacked
+     from, and record its `sha256sum`.
+  2. Copy `new_skill/` to `<tmpdir>/improve-skill-<name>-<timestamp>/package/<name>/`,
+     `<name>` being the frontmatter `name`: the packager names the archive
+     and its top folder after the folder it packs.
+  3. Find the installed packager, `<skill-creator>/scripts/package_skill.py`;
+     it needs Python with PyYAML. In `<skill-creator>`, run
+     `python -m scripts.package_skill <package-dir>/<name> <old-zip-dir>`.
+     It validates the frontmatter and writes `<name>.skill`, a ZIP archive.
+     If `<old-zip-dir>/<name>.skill` already exists, pass
+     `<old-zip-dir>/improve-skill-<timestamp>` as the output directory so
+     nothing is overwritten. A validation failure is a frontmatter finding:
+     print it and hand it to `skill-creator`, as with description findings.
+     Without an installed `skill-creator` packager, say so: the updated
+     folder is the result, for the author to zip by hand.
+  4. If the author no longer has the old ZIP, pack the snapshot the same way
+     (staged as `<name>/`) into `<output-dir>/old/` as the way back.
+
+  Done when the new archive exists and the old ZIP's `sha256sum` is
+  unchanged. Print both archive paths and tell the author: upload the new
+  archive in claude.ai's skill settings by hand (rename it to `.zip` if the
+  upload asks for one; the format is the same); to roll back, upload the old
+  ZIP the same way.
 
 Print the snapshot path last: it is the way back.

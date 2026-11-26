@@ -139,12 +139,12 @@
       "category": "refactoring",
       "path": "skills/improve-skill/SKILL.md",
       "activation": "command",
-      "compatibility": "Reads one skill folder, in a repo or unpacked from a claude.ai ZIP; git is not required. Writes a snapshot and the rewrite to the OS temp directory; changes the folder, or opens a branch and pull request in a repo, only after the author agrees. Eval mode needs Claude Code with Anthropic's skill-creator installed; elsewhere the rule inventory is the only check and behavior is verified by hand.",
+      "compatibility": "Reads one skill folder, in a repo or unpacked from a claude.ai ZIP; git is not required. Writes a snapshot and the rewrite to the OS temp directory; changes the folder and packs a new archive beside the old claude.ai ZIP, or opens a branch and pull request in a repo, only after the author agrees. Eval mode needs Claude Code with Anthropic's skill-creator installed; elsewhere the rule inventory is the only check and behavior is verified by hand.",
       "environments": [
         "coding",
         "chat"
       ],
-      "version": "0.3"
+      "version": "0.4"
     },
     {
       "name": "ki-stil",
