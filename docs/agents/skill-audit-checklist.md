@@ -46,7 +46,7 @@ rather than applying it ad hoc.
   ("helps with", "handles"). (warn)
 - **D3** Trigger lists and feature enumerations sit in the body's leading
   `## When to use`, not the frontmatter (skill-conventions.md budget rule).
-  (warn)
+  Slop signal SL6. (warn)
 - **D4** The description matches what the body actually does — no promised
   capability the body lacks, no major workflow the description hides. (error)
 - **D5** Name is specific, not generic (`helper`, `utils`, `data`), and
@@ -56,17 +56,27 @@ rather than applying it ad hoc.
 
 - **B1** Body under 500 lines; larger material moved to `references/`. (warn)
 - **B2** Concise: no paragraphs explaining what a capable model already knows
-  (what a PDF is, what git does). Quote the offending line. (warn)
+  (what a PDF is, what git does). Quote the offending line. Slop signal SL1.
+  (warn)
 - **B3** Multi-step workflows are numbered steps, with a validation or
   feedback loop before any irreversible or quality-critical step. (warn)
 - **B4** One default per decision, with an escape hatch — not a menu of
-  equivalent options. (warn)
+  equivalent options. Slop signal SL3. (warn)
 - **B5** Consistent terminology within the skill; uses `GLOSSARY.md` terms
   where the concept exists there. (nit)
 - **B6** Degree of freedom fits the task: fragile sequences are exact
   commands, judgement tasks are heuristics. (warn)
 - **B7** No agent-specific vocabulary the vocab script misses: proprietary
   tool names, hardcoded install paths, runtime error text. (warn)
+
+B8–B10 name slop signals defined in `skills/improve-skill/references/slop-signals.md`;
+read the signal there for its shape and the test that tells slop from a
+load-bearing line.
+
+- **B8** One statement per rule: slop signals SL2 (several wordings of one
+  case) and SL5 (one rule repeated in two sections). (warn)
+- **B9** Rules carry a reason, not emphasis: slop signal SL4. (warn)
+- **B10** No decoration: slop signal SL7. (nit)
 
 ## R — References and bundled files
 
