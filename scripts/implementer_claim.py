@@ -410,6 +410,7 @@ def main(argv: list[str] | None = None) -> int:
         reason = str(error)
         args.summary.write_text(f"{FAILED_PREFIX}: claim ({reason})\n", encoding="utf-8")
         print(json.dumps({"outcome": FAILED, "reason": reason}))
+        print(f"implementer_claim.py: {reason}", file=sys.stderr)
         return EXIT_FAILED
     report = asdict(claim)
     contract = report.pop("contract")

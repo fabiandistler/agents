@@ -156,13 +156,22 @@ def test_a_finding_no_writer_released_is_not_pinned(events):
     assert fake.posted == []
 
 
-def test_cli_without_a_token_fails_before_any_call(monkeypatch, capsys):
+def test_cli_without_a_token_fails_before_any_call(monkeypatch, assert_exit_cause):
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
     code = audit_release_pin.main(["--repo", REPO, "--issue", str(ISSUE)])
 
-    assert code == audit_release_pin.EXIT_FAILED
-    assert json.loads(capsys.readouterr().out)["outcome"] == audit_release_pin.FAILED
+    stdout, stderr = assert_exit_cause(code, audit_release_pin.EXIT_FAILED)
+    assert "GITHUB_TOKEN is not set" in stderr
+    assert json.loads(stdout)["outcome"] == audit_release_pin.FAILED
+
+
+def test_cli_rejects_a_bad_issue_as_usage(assert_exit_cause):
+    with pytest.raises(SystemExit) as stopped:
+        audit_release_pin.main(["--repo", REPO, "--issue", "0"])
+
+    _, stderr = assert_exit_cause(stopped.value.code, 2)
+    assert "--issue" in stderr
 
 
 def test_cli_prints_the_outcome_as_json(monkeypatch, capsys):

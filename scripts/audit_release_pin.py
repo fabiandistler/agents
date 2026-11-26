@@ -107,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         outcome, digest = pin_release(GitHubClient(token), args.repo, args.issue)
     except FetchError as error:
         print(json.dumps({"outcome": FAILED, "reason": str(error)}))
+        print(f"audit_release_pin.py: {error}", file=sys.stderr)
         return EXIT_FAILED
     print(json.dumps({"outcome": outcome, "sha256": digest}))
     return EXIT_OK
