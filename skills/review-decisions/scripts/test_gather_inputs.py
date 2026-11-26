@@ -22,19 +22,17 @@ def repo(tmp_path):
     return make_repo(tmp_path)
 
 
-def github_routes(forge, check_runs, body="Adds the widget.\n\nCloses #12"):
-    forge.route(
-        "pulls?head=acme:feature",
-        [
-            {
-                "number": 7,
-                "title": "Add widget",
-                "body": body,
-                "base": {"ref": "main"},
-                "head": {"sha": "abc123"},
-            }
-        ],
-    )
+def github_routes(forge, check_runs, body="Adds the widget.\n\nCloses #12", mergeable=True):
+    pull = {
+        "number": 7,
+        "title": "Add widget",
+        "body": body,
+        "base": {"ref": "main"},
+        "head": {"sha": "abc123"},
+    }
+    # The list endpoint returns no mergeability; only the single-PR endpoint does.
+    forge.route("pulls?head=acme:feature", [pull])
+    forge.route("pulls/7", {**pull, "mergeable": mergeable})
     forge.route("issues/12", {"number": 12, "title": "Widget", "body": "Build the widget."})
     forge.route(
         "commits/abc123/check-runs", {"total_count": len(check_runs), "check_runs": check_runs}
@@ -53,7 +51,12 @@ def test_github_reads_pr_issue_and_ci(tmp_path, repo):
     assert result.returncode == 0, result.stderr
     found = manifest(out)
     assert found["forge"] == "github"
-    assert found["pr"] == {"number": 7, "target_branch": "main", "head_sha": "abc123"}
+    assert found["pr"] == {
+        "number": 7,
+        "target_branch": "main",
+        "head_sha": "abc123",
+        "merge_status": "clean",
+    }
     assert found["issues"] == ["12"]
     assert found["unchecked"] == []
     assert "Add widget" in (out / "pr.md").read_text()
@@ -62,7 +65,7 @@ def test_github_reads_pr_issue_and_ci(tmp_path, repo):
     assert ci == {"state": "green", "checks": [{"name": "ci", "state": "green"}]}
 
 
-def azure_routes(forge, policies, work_items=({"id": 31},)):
+def azure_routes(forge, policies, work_items=({"id": 31},), merge_status="succeeded"):
     forge.route(
         "repos pr list --source-branch feature",
         [
@@ -72,6 +75,7 @@ def azure_routes(forge, policies, work_items=({"id": 31},)):
                 "description": "Adds the widget.",
                 "targetRefName": "refs/heads/main",
                 "lastMergeSourceCommit": {"commitId": "def456"},
+                "mergeStatus": merge_status,
             }
         ],
     )
@@ -108,7 +112,12 @@ def test_azure_reads_pr_work_item_and_ci(tmp_path, repo):
     assert result.returncode == 0, result.stderr
     found = manifest(out)
     assert found["forge"] == "azure"
-    assert found["pr"] == {"number": 5, "target_branch": "main", "head_sha": "def456"}
+    assert found["pr"] == {
+        "number": 5,
+        "target_branch": "main",
+        "head_sha": "def456",
+        "merge_status": "clean",
+    }
     assert found["issues"] == ["31"]
     assert found["unchecked"] == []
     assert "Adds the widget." in (out / "pr.md").read_text()
@@ -360,3 +369,60 @@ def test_no_pull_request_for_the_branch_points_to_pr_for_forks(tmp_path, repo):
     assert result.returncode == 3, result.stderr
     reasons = [u["reason"] for u in manifest(out)["unchecked"]]
     assert all("--pr" in reason for reason in reasons)
+
+
+@pytest.mark.parametrize(
+    ("mergeable", "status"),
+    [(True, "clean"), (False, "conflicts"), (None, "unknown")],
+)
+def test_github_merge_status_comes_from_the_single_pr_endpoint(tmp_path, repo, mergeable, status):
+    # GitHub returns mergeable null while it computes the test merge in the background.
+    git(repo, "remote", "add", "origin", GH_REMOTE)
+    forge = Forge(tmp_path)
+    github_routes(forge, [], mergeable=mergeable)
+    out = tmp_path / "out"
+
+    result = forge.run(repo, out)
+
+    assert result.returncode == 0, result.stderr
+    assert manifest(out)["pr"]["merge_status"] == status
+    assert ["gh", "api", "repos/acme/widget/pulls/7"] in forge.calls()
+
+
+def test_github_pr_number_reads_the_single_pr_endpoint_once(tmp_path, repo):
+    git(repo, "remote", "add", "origin", GH_REMOTE)
+    forge = Forge(tmp_path)
+    github_routes(forge, [], mergeable=False)
+    out = tmp_path / "out"
+
+    result = forge.run(repo, out, "--pr", "7")
+
+    assert result.returncode == 0, result.stderr
+    assert manifest(out)["pr"]["merge_status"] == "conflicts"
+    pulls = [call for call in forge.calls() if "pulls" in call[-1]]
+    assert pulls == [["gh", "api", "repos/acme/widget/pulls/7"]]
+
+
+@pytest.mark.parametrize(
+    ("merge_status", "status"),
+    [
+        ("succeeded", "clean"),
+        ("conflicts", "conflicts"),
+        ("queued", "unknown"),
+        ("notSet", "unknown"),
+        ("rejectedByPolicy", "unknown"),
+        ("failure", "unknown"),
+    ],
+)
+def test_azure_merge_status_maps_to_clean_conflicts_or_unknown(
+    tmp_path, repo, merge_status, status
+):
+    git(repo, "remote", "add", "origin", AZ_REMOTE)
+    forge = Forge(tmp_path)
+    azure_routes(forge, [policy("Build", "approved")], merge_status=merge_status)
+    out = tmp_path / "out"
+
+    result = forge.run(repo, out)
+
+    assert result.returncode == 0, result.stderr
+    assert manifest(out)["pr"]["merge_status"] == status

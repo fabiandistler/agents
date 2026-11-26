@@ -5,17 +5,17 @@ usage: gather_inputs.py --out DIR [--repo DIR] [--pr N | --from-json FILE]
 
 Detects the forge from the `origin` remote (GitHub or Azure DevOps) and reads
 the pull request of the current branch, or --pr N, through `gh api` or `az`.
-  --out DIR   where to write inputs.json (the manifest, also printed), pr.md,
-              issue.md and ci.json
+  --out DIR   writes inputs.json (the manifest, also printed), pr.md, issue.md, ci.json
   --repo DIR  the repository (default: the current directory)
-  --from-json FILE  import GitHub evidence without a remote or forge CLI. Use a
-              JSON object with pr (number, title, body, base.ref, head.sha),
-              issues (number, title, body, comments [{body}] on each issue),
-              check_runs (name, status, conclusion), and optional statuses
-              (context, state). Supply empty arrays for checked, empty lists.
+  --from-json FILE  import GitHub evidence without a remote or forge CLI: a JSON
+              object with pr (number, title, body, base.ref, head.sha, optional
+              merge_status), issues (number, title, body, comments [{body}] on
+              each issue), check_runs (name, status, conclusion), optional
+              statuses (context, state); [] for a checked, empty list.
 ci.json: {"state": "green"|"failing"|"pending"|"none", "checks": [{name, state}]}
-inputs.json "unchecked": [{"input": "pr"|"issue"|"ci", "reason": ...}], one per
-input it could not read; the caller falls back to text the reviewer supplies.
+inputs.json: pr.merge_status "clean"|"conflicts"|"unknown" (default unknown);
+"unchecked": [{"input": "pr"|"issue"|"ci", "reason": ...}], one per input it
+could not read; the caller falls back to text the reviewer supplies.
 
 exit codes: 0 all three inputs read; 1 usage error; 2 not a git repository;
 3 manifest written, some input unchecked.
@@ -48,6 +48,13 @@ EXIT_OK, EXIT_NOT_GIT, EXIT_UNCHECKED = 0, 2, 3
 CLOSING = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)\b", re.IGNORECASE)
 
 GITHUB_GREEN = {"success", "neutral", "skipped"}
+
+MERGE_STATUSES = ("clean", "conflicts", "unknown")
+# GitHub's `mergeable` is null while it computes the test merge in the background.
+GITHUB_MERGE_STATUS = {True: "clean", False: "conflicts"}
+# Azure's other mergeStatus values (notSet, queued, rejectedByPolicy, failure)
+# say nothing about conflicts, so they map to unknown.
+AZURE_MERGE_STATUS = {"succeeded": "clean", "conflicts": "conflicts"}
 
 
 class ForgeError(Exception):
@@ -169,15 +176,16 @@ class GitHub:
         return run_cli(self.repo, ["gh", "api", f"{self.base}/{endpoint}"])
 
     def pull(self, branch: str, number: int | None) -> dict:
-        if number is not None:
-            return self.api(f"pulls/{number}")
-        pulls = self.api(f"pulls?head={self.owner}:{branch}&state=open")
-        if not pulls:
-            raise ForgeError(
-                "no open pull request for the current branch in this repository;"
-                " for a pull request from a fork, pass --pr N"
-            )
-        return pulls[0]
+        if number is None:
+            pulls = self.api(f"pulls?head={self.owner}:{branch}&state=open")
+            if not pulls:
+                raise ForgeError(
+                    "no open pull request for the current branch in this repository;"
+                    " for a pull request from a fork, pass --pr N"
+                )
+            # The list endpoint omits `mergeable`; the single-PR endpoint has it.
+            number = pulls[0]["number"]
+        return self.api(f"pulls/{number}")
 
     @staticmethod
     def summary(pull: dict) -> tuple[dict, str]:
@@ -185,6 +193,7 @@ class GitHub:
             "number": pull["number"],
             "target_branch": pull["base"]["ref"],
             "head_sha": pull["head"]["sha"],
+            "merge_status": GITHUB_MERGE_STATUS.get(pull.get("mergeable"), "unknown"),
         }
         return info, f"# {pull['title']}\n\n{pull.get('body') or ''}\n"
 
@@ -238,6 +247,7 @@ class Azure:
             "number": pull["pullRequestId"],
             "target_branch": pull["targetRefName"].removeprefix("refs/heads/"),
             "head_sha": pull["lastMergeSourceCommit"]["commitId"],
+            "merge_status": AZURE_MERGE_STATUS.get(pull.get("mergeStatus"), "unknown"),
         }
         return info, f"# {pull['title']}\n\n{pull.get('description') or ''}\n"
 
@@ -335,7 +345,12 @@ def json_pull(envelope: dict) -> tuple[dict, str]:
     for parent, field in (("base", "ref"), ("head", "sha")):
         if not json_field(json_field(pull, parent, dict), field, str).strip():
             raise ForgeError(f"{parent}.{field} in --from-json must be non-empty")
-    return GitHub.summary(pull)
+    merge_status = json_field(pull, "merge_status", str) if "merge_status" in pull else "unknown"
+    if merge_status not in MERGE_STATUSES:
+        raise ForgeError("merge_status in --from-json must be clean, conflicts or unknown")
+    info, text = GitHub.summary(pull)
+    info["merge_status"] = merge_status
+    return info, text
 
 
 def json_issues(envelope: dict) -> list[tuple[str, str, str]]:

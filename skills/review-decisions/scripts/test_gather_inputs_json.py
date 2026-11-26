@@ -86,7 +86,12 @@ def test_json_import_preserves_evidence_and_supplies_skim_proof(
     assert json.loads(completed.stdout) == found
     assert found == {
         "forge": "github",
-        "pr": {"number": 7, "target_branch": "main", "head_sha": forge_json["pr"]["head"]["sha"]},
+        "pr": {
+            "number": 7,
+            "target_branch": "main",
+            "head_sha": forge_json["pr"]["head"]["sha"],
+            "merge_status": "unknown",
+        },
         "issues": ["12"],
         "files": {"pr": "pr.md", "issue": "issue.md", "ci": "ci.json"},
         "unchecked": [],
@@ -133,6 +138,8 @@ def test_json_import_keeps_stale_pr_head(tmp_path, repo, forge_json):
     [
         ("pr", {"head": []}, "pr"),
         ("pr", {"number": 7, "title": "Widget", "body": "private\ud800"}, "pr"),
+        ("pr", {"merge_status": "dirty"}, "pr"),
+        ("pr", {"merge_status": None}, "pr"),
         ("issues", [], "issue"),
         ("issues", [{"number": 12, "title": "Widget", "body": "Build it."}], "issue"),
         ("check_runs", [{"name": "lint", "status": "completed"}], "ci"),
@@ -144,6 +151,8 @@ def test_json_import_marks_only_malformed_or_missing_evidence_unchecked(
 ):
     if replacement is None:
         del forge_json[section]
+    elif section == "pr" and "merge_status" in replacement:
+        forge_json["pr"].update(replacement)
     else:
         forge_json[section] = replacement
     completed, out = import_forge(tmp_path, repo, forge_json)
@@ -164,3 +173,12 @@ def test_invalid_json_writes_unchecked_manifest(tmp_path, repo, content):
     completed = Forge(tmp_path, clis=()).run(repo, out, "--from-json", str(source))
 
     assert_fallback(completed, out, "cannot read --from-json as a JSON object")
+
+
+@pytest.mark.parametrize("status", ["clean", "conflicts", "unknown"])
+def test_json_import_records_a_supplied_merge_status(tmp_path, repo, forge_json, status):
+    forge_json["pr"]["merge_status"] = status
+    completed, out = import_forge(tmp_path, repo, forge_json)
+
+    assert completed.returncode == 0, completed.stderr
+    assert manifest(out)["pr"]["merge_status"] == status
