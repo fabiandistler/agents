@@ -16,20 +16,17 @@ pick the wrong default: reading a neighbor's database, sharing a
 shipping calls without timeouts, or binding whole payloads into strict typed
 objects.
 
-The binding rules live in
-[references/design-conventions.md](references/design-conventions.md). **Read
-that file before designing or reviewing any cross-service interaction.**
-Where a rule carries a `✅`/`❌` pair, the `❌` line is the code shape to look
-for in review.
+For review, use each rule's negative example to locate the matching code shape.
 
 ## When to use
 
 Whenever the work touches an interaction between two or more services — a new
 service or endpoint, an event or message schema, a shared library crossing
 service boundaries, a cross-service workflow, or code that calls another
-service. Not for deciding whether to use microservices at all
-(→ `members/architecture-pattern-advisor/SKILL.md`) or where domain boundaries lie
-(→ `members/ddd/SKILL.md`); both are read via the `architecture` router.
+service. Read `members/architecture-pattern-advisor/SKILL.md` via the
+`architecture` router to choose the topology, size boundaries or extract services.
+Read `members/ddd/SKILL.md` via the same router to derive bounded contexts and
+aggregates or choose context-mapping patterns.
 
 ## How to apply
 
@@ -37,9 +34,9 @@ service. Not for deciding whether to use microservices at all
    change usually hits two or three clusters — a new endpoint touches
    Communication Style *and* Contracts & Versioning; a new cross-service
    workflow touches Workflow & Transactions *and* Resiliency.
-2. **Load the matching sections of the reference file** and walk the change
-   against each rule as a pass/fail checklist. Every rule is falsifiable by
-   design.
+2. Read [references/design-conventions.md](references/design-conventions.md)
+   before designing or reviewing any interaction. Check each rule in the
+   matching sections as pass/fail.
 3. **Flag violations with the rule, not just an opinion.** Quote the rule, and
    its `❌` example when the code matches that shape.
 4. **Record consequential design calls** (e.g. choreography vs orchestration,
@@ -64,14 +61,6 @@ For modules in a modular monolith, Coupling / Contracts / Code Reuse apply; Resi
 ## Division of labor with related skills
 
 Sibling sub-skills, each read via the `architecture` router:
-- `members/architecture-pattern-advisor/SKILL.md` — decides *whether* microservices are the
-  right topology and where to cut boundaries; this skill governs how the
-  resulting services *interact*. Boundary sizing and extraction live there;
-  the Service Boundaries cluster keeps only the interaction-level rules so
-  the reference file still reads alone as a review checklist.
-- `members/ddd/SKILL.md` — derives the bounded contexts and aggregates that the
-  Service Boundaries cluster assumes as given; context-mapping patterns live
-  there.
 - `members/coupling-cohesion/SKILL.md` — when a specific inter-service dependency flagged by
   the Coupling cluster needs a deeper verdict (integration strength ×
   distance × volatility), hand it to that skill's balanced-coupling mode.
@@ -79,6 +68,4 @@ Sibling sub-skills, each read via the `architecture` router:
 ## Source
 
 Distilled from Sam Newman, *Building Microservices: Designing Fine-Grained
-Systems*, 2nd ed. (O'Reilly, 2021), chapters 2–6, 9, and 12: generic best
-practice is omitted; only non-obvious forks where an unaided implementation
-picks the wrong default survive.
+Systems*, 2nd ed. (O'Reilly, 2021), chapters 2–6, 9, and 12.

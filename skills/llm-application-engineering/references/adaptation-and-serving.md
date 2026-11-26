@@ -1,7 +1,5 @@
 # Adaptation and serving conventions
 
-Rules for prompting and model choice, finetuning, training data, and serving and cost.
-
 Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025).
 
 ## Contents

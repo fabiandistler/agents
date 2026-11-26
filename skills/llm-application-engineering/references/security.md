@@ -1,7 +1,5 @@
 # Security conventions
 
-Rules for guardrails, access and authorization, and execution and operations.
-
 Citations: Huyen = Chip Huyen, *AI Engineering* (O'Reilly, 2025); Albada = Michael Albada, *Building Applications with AI Agents* (O'Reilly, 2025).
 
 ## Contents

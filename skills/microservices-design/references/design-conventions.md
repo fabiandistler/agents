@@ -3,7 +3,6 @@
 > Non-obvious design forks distilled from *Building Microservices*, 2nd ed. (Newman), chapters 2–6, 9, and 12.
 > Generic best practice ("loose coupling good", "write tests", "monitor everything", ACID definitions) is assumed and omitted.
 > These are design-principle rules, not project rules — nothing here is specific to any codebase.
-> Chapter references in `(ch N)` instead of rationale.
 > Named tools and spec versions (AsyncAPI; Temporal, Restate, DBOS) are examples and will date; the rule around them is the durable part.
 
 ## Service Boundaries
@@ -21,7 +20,7 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
   - ✅ `ordersClient.getOrder(orderId)` from the warehouse service
   - ❌ `SELECT ... FROM orders_db.order` from the warehouse service
 - **Avoid a shared mutable database across services.** Shared writable data is never allowed; read-only reference data is allowed if the consuming context owns its copy. (ch2, ch4)
-- **Don't pass data through an intermediary service purely because a further-downstream service needs it.** Every hop adds coupling and a failure mode for data the intermediary never uses. Either call the downstream directly, have the intermediary build the payload itself, or make the intermediary treat it as an opaque blob it never parses. (ch2)
+- Avoid pass-through data that an intermediary never uses. Call the downstream directly by default. If the intermediary owns the needed data, let it build the payload. If it must forward someone else's payload, keep it opaque. Each unnecessary hop adds coupling and a failure mode. (ch2)
 - **Send the minimum data a call or event requires.** Every extra field becomes an assumption consumers couple to — and, in an event, part of your contract. (ch2, ch4)
 - **Treat a service that depends on many downstreams as a smell** — logic has likely been over-centralized into it. (ch2)
 
@@ -58,9 +57,8 @@ Cut boundaries around business domains with one owner per aggregate — see `mem
 
 ## Messaging Reliability
 
-- **Write the state change and the event through a transactional outbox in the same local transaction; relay the outbox to the broker asynchronously.** See `members/ddd/SKILL.md` (read via the `architecture` router) for the outbox pattern. (ch4, ch6)
 - **Assume at-least-once delivery and dedupe consumers on the message or business ID.** A consumer must tolerate receiving the same event twice. (ch4)
-- **Never publish to the broker from the business code path, inside the transaction or right after its commit.** Commit state (plus the outbox row) first; let the relay publish afterward. (ch4, ch6)
+- Commit the state change and transactional outbox row in the same local transaction. Only the asynchronous relay publishes to the broker, after the commit. The business path never publishes. See `members/ddd/SKILL.md` via the `architecture` router for the outbox pattern. (ch4, ch6)
   - ✅ `db.save(order); db.insert(outbox_row(evt)); db.commit()`
   - ❌ `db.commit(); broker.publish(evt)`
 

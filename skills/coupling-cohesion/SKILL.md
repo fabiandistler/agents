@@ -8,9 +8,6 @@ compatibility: The bundled scripts are stdlib-only Python 3.8+. LCOM analyzes Py
 
 # Coupling & Cohesion
 
-"High cohesion, low coupling" is the meta-principle most design rules reduce to.
-This skill **measures existing code** along both axes and picks the right lens
-for the question in front of you:
 
 | Mode | The question | Open |
 |---|---|---|
@@ -24,8 +21,7 @@ mode file only when the answer needs it — for example, a Mode B hotspot
 whose one suspicious dependency you then weigh with Mode C. Script paths in
 the mode files are relative to this skill's directory.
 
-The mode files send you on to four deeper references at the step that needs
-them; open one only then:
+Open the relevant reference when its condition applies:
 
 - [references/metrics.md](references/metrics.md) — how each Mode B number is
   derived, and the limits that make a flagged zone a prompt, not a verdict.
@@ -41,8 +37,6 @@ the hotspots, the balance model (C) explains and fixes a specific relationship.
 Mode A is the cohesion half of the same law. The per-scale expressions and the
 classic failure shapes live in
 [references/cohesion-taxonomy.md](references/cohesion-taxonomy.md#the-same-law-at-every-scale).
-For *greenfield* decomposition of a system that doesn't exist yet, use
-`members/logical-component-design/SKILL.md` (read via the `architecture` router) instead — this skill measures what's already there.
 
 ## When to use
 
@@ -50,9 +44,10 @@ For *greenfield* decomposition of a system that doesn't exist yet, use
 - "Which of our packages sit in the Zone of Pain?"
 - "Is it OK that the billing service reads the shared customer entity?"
 
-**Not for:** a single function's cyclomatic complexity, choosing an architecture
-from scratch (use `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router), or greenfield component
-decomposition (use `logical-component-design`).
+**Not for:** a single function's cyclomatic complexity, first-time topology
+choices (route to `members/architecture-pattern-advisor/SKILL.md`), or
+greenfield component decomposition (route to
+`members/logical-component-design/SKILL.md`). Read both via the `architecture` router.
 
 ## Output contract (all modes)
 

@@ -216,12 +216,7 @@ from the main sequence, zones of pain/uselessness — use `coupling-cohesion`.
 
 ## 9. The Law of Demeter
 
-The redesign pattern and its coupling-redistribution trade-off are worked in
-`SKILL.md` (refinement lens "Law of Demeter"). In short: `Order Placement`
-knows it must decrement inventory, possibly reorder from a supplier, reprice,
-and email the customer — then moves the "low stock → reorder *and* reprice"
-knowledge into `Inventory Management`, which already owns inventory, and its
-efferent count drops.
+See the [Law of Demeter](../SKILL.md#refinement-lens-law-of-demeter-least-knowledge) for placing knowledge and checking where coupling moves.
 
 ---
 

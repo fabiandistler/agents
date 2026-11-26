@@ -9,28 +9,17 @@ when_to_use: "Use even when the word architecture is absent: how should I struct
 
 # Architecture & design
 
-This is a **router**. The architecture category ships several deep sub-skills;
-this entry keeps one broad trigger on the surface and hands off to the specific
-one. Do not answer an architecture or design question from this file alone.
-
 ## How to use
 
 1. Match the request to a row in the table below.
-2. **Read that sub-skill's `SKILL.md` before acting.** The sub-skills are
-   files; open `members/<name>/SKILL.md` relative to this file's directory.
-   If your agent also lists them as skills, still route through this table.
-   The file carries the real workflow, references, and scripts — this router
-   only points the way.
+2. **Read that sub-skill's `SKILL.md` before acting.** Open
+   `members/<name>/SKILL.md` relative to this router, even if your agent lists
+   the member separately. Follow the member's workflow, references, and scripts.
 3. When the table does not give exactly one row:
    - Two rows apply: take the default member from the tie-breaks below; read
      a second member only if the first points to it.
-   - No row fits: use your general knowledge and say the catalogue has no
-     dedicated sub-skill.
-   - Plain table or index design has no member: answer directly and say so.
-
-The sub-skills are nested under this router's `members/` directory, so they load
-only when routed to (progressive disclosure) rather than each competing for the
-model's trigger surface.
+   - No row fits (including plain table or index design): answer from general
+     knowledge and say the catalogue has no dedicated sub-skill.
 
 <!-- BEGIN generated:members -->
 | Sub-skill | When to use | Read before acting |

@@ -348,9 +348,8 @@ Modeled on Netflix's Simian Army — governance of characteristics that only
 exist in a running system:
 
 - **Chaos engineering** (Chaos Monkey, Latency Monkey, Chaos Kong; current
-  options include Chaos Toolkit, AWS Fault Injection Service, Gremlin, LitmusChaos) —
-  resilience is verified by injecting the failure before reality does. The
-  perspective shift: not *if* something breaks, but *when*.
+  tool options include Chaos Toolkit, AWS Fault Injection Service, Gremlin,
+  and LitmusChaos) — test resilience through controlled failure injection.
 - **Conformity checks** (Conformity Monkey) — continuously assert deployed
   services meet architect-defined rules, e.g. "every service answers health
   checks without errors", "every service exposes required metadata".

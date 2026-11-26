@@ -66,7 +66,7 @@ Adapted from c4model.com's review checklist. Run it on every finished diagram:
 2. Is the **diagram type** obvious from the title or a label (Context /
    Container / Component / Dynamic / Deployment / Landscape)?
 3. Do you know who the **audience** is, and does the level of detail match?
-4. Does every **element** have a name, a type, and a description?
+4. Does every **element** have a name, a type, and a one-line description?
 5. Are **technology choices** stated for containers, components, and
    deployment nodes?
 6. Are all **acronyms and abbreviations** explained (or removed)?
@@ -74,7 +74,8 @@ Adapted from c4model.com's review checklist. Run it on every finished diagram:
 8. Are relationship **technologies/protocols** shown where they matter?
 9. Is every line **unidirectional** with a clear primary direction?
 10. Is there a key/legend explaining shapes, colors, line styles, and arrows?
-11. Is the **notation consistent** with the other diagrams of the model?
+11. Is **notation consistent** across the model's diagrams, including each
+    element's name, shape, and color?
 12. Would the diagram **make sense standalone**, without verbal explanation?
 13. Are there **≤ ~20 elements**, and only elements of one abstraction level
     (plus their direct neighbors)?

@@ -26,12 +26,6 @@ knowledge should cross large distances (loose coupling). Strong coupling across
 a large distance is a **knowledge leak** heading toward a distributed monolith;
 it is tolerable only when the shared knowledge is stable (low volatility).
 
-Dimension definitions, the strength levels with recognition cues, the distance
-and volatility ladders, and the balance quadrants live in
-[balanced-coupling-model.md](balanced-coupling-model.md).
-Fixes per imbalance live in [rebalancing.md](rebalancing.md);
-open it alongside the model page whenever you accept an imbalance as stable, since
-it holds the revisit conditions.
 
 ## Balanced-coupling workflow
 
@@ -98,10 +92,9 @@ for how levels reduce to high/low.
 ### 6. Rebalance what's flagged
 
 An imbalance has exactly three exits — pick per pair from
-[rebalancing.md](rebalancing.md): reduce the strength
-crossing the boundary, reduce the distance, or accept on proven stability with
-a revisit condition (an ADR).
-
+[rebalancing.md](rebalancing.md): reduce the strength, reduce the distance,
+or accept on proven stability. For the last option, read the reference alongside
+the balance model and record its revisit condition in an ADR.
 ### 7. Sanity-check the verdicts
 
 Binary high/low is a deliberate simplification — recheck generous distance

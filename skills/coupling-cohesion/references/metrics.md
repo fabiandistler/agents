@@ -160,5 +160,4 @@ engineering disciplines, and they require interpretation.** Specifically:
   the dependency extractor drew the graph. Garbage edges in, garbage metrics
   out.
 
-Use the metrics to **establish a baseline and direct attention**, then apply
-human judgment. Never report a number as a verdict.
+Use the metrics to establish a baseline and direct attention, then apply human judgment.
