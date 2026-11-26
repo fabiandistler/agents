@@ -330,7 +330,7 @@
     },
     {
       "name": "visual-plan",
-      "summary": "Turns an implementation plan into a reviewable HTML page with wireframes, diagrams, file map and an open-questions form, as the approval gate before coding.",
+      "summary": "Turns an implementation plan into a reviewable HTML page with wireframes, diagrams, file map and an open-questions form, as the approval step before coding.",
       "category": "workflow",
       "path": "skills/visual-plan/SKILL.md",
       "environments": [

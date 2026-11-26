@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TITEL</title>
+<title>TITLE</title>
 <style>
 :root{--paper:#fbfaf7;--card:#ffffff;--ink:#1d1d1b;--muted:#6b6a65;--line:#dedbd3;--accent:#2f5bd3;--accent-soft:#e6ecfb;--ok:#1f7a4d;--ok-soft:#e3f3ea;--warn:#a35c00;--warn-soft:#fbefdc;--bad:#b3261e;--bad-soft:#fbe5e3;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--r:8px}
 @media (prefers-color-scheme:dark){:root{--paper:#161615;--card:#1f1f1d;--ink:#ecebe6;--muted:#a3a19a;--line:#3a3935;--accent:#8aa8ff;--accent-soft:#25304d;--ok:#6fcf97;--ok-soft:#1c3327;--warn:#f0b35a;--warn-soft:#3a2c17;--bad:#ff8a80;--bad-soft:#3d1f1d}}
@@ -68,13 +68,13 @@ figure{margin:14px 0}figure svg{display:block;width:100%;max-width:640px;height:
 </head>
 <body>
 <main>
-<!-- INHALT HIER -->
+<!-- CONTENT HERE -->
 </main>
 <script>
 (()=>{
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const inRange=(spec,n)=>String(spec).split(',').some(p=>{const [a,b]=p.split('-').map(Number);return n>=a&&n<=(b||a)});
-const notesHtml=notes=>notes&&notes.length?'<ul class="notes">'+notes.map(x=>`<li><span class="at">${x.side==='before'?'vorher ':''}Z. ${esc(x.lines)}</span>${x.label?'<b>'+esc(x.label)+':</b> ':''}${esc(x.note)}</li>`).join('')+'</ul>':'';
+const notesHtml=notes=>notes&&notes.length?'<ul class="notes">'+notes.map(x=>`<li><span class="at">${x.side==='before'?'before ':''}L. ${esc(x.lines)}</span>${x.label?'<b>'+esc(x.label)+':</b> ':''}${esc(x.note)}</li>`).join('')+'</ul>':'';
 const head=d=>`<div class="code-head"><span>${esc(d.filename||'')}</span><span>${esc(d.lang||'')}</span></div>`+(d.summary?`<div class="code-sum">${esc(d.summary)}</div>`:'');
 function lcs(a,b){const n=a.length,m=b.length,t=Array.from({length:n+1},()=>new Int32Array(m+1));for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)t[i][j]=a[i]===b[j]?t[i+1][j+1]+1:Math.max(t[i+1][j],t[i][j+1]);const L=[],R=[];let i=0,j=0;while(i<n||j<m){if(i<n&&j<m&&a[i]===b[j]){L.push([i+1,a[i],'']);R.push([j+1,b[j],'']);i++;j++}else if(j<m&&(i>=n||t[i][j+1]>=t[i+1][j])){L.push(null);R.push([j+1,b[j],'add']);j++}else{L.push([i+1,a[i],'del']);R.push(null);i++}}return[L,R]}
 const col=(rows,hl)=>'<pre class="lines">'+rows.map(r=>r?`<div class="${r[2]}${hl&&hl(r[0])?' hl':''}"><span class="ln">${r[0]}</span>${esc(r[1])||' '}</div>`:'<div class="gap"><span class="ln"></span> </div>').join('')+'</pre>';
@@ -89,9 +89,9 @@ document.querySelectorAll('.tabs').forEach(t=>{const panels=[...t.querySelectorA
 document.querySelectorAll('.proto').forEach(p=>{const show=id=>p.querySelectorAll('.proto-screen').forEach(s=>s.hidden=s.dataset.id!==id);const first=p.querySelector('.proto-screen');first&&show(first.dataset.id);
   p.addEventListener('click',e=>{const g=e.target.closest('[data-goto]');if(g){e.preventDefault();show(g.dataset.goto)}})});
 const oq=document.querySelector('form.oq');if(oq){oq.addEventListener('submit',e=>{e.preventDefault();
-  const out=[...oq.querySelectorAll('fieldset')].map(f=>{const q=f.querySelector('legend').textContent.trim();const ch=[...f.querySelectorAll('input:checked')].map(i=>i.value);const tx=(f.querySelector('textarea')||{}).value||'';return `- ${q}: ${ch.join(', ')||'(offen)'}${tx.trim()?' — '+tx.trim():''}`}).join('\n');
-  const txt='Antworten zu „'+document.title+'“:\n'+out,pre=oq.querySelector('pre')||oq.appendChild(document.createElement('pre'));pre.textContent=txt;
-  const st=oq.querySelector('.status');try{navigator.clipboard.writeText(txt).then(()=>st&&(st.textContent='Kopiert, in den Chat einfügen.'),()=>st&&(st.textContent='Bitte Text unten markieren und kopieren.'))}catch(_){st&&(st.textContent='Bitte Text unten markieren und kopieren.')}})}
+  const out=[...oq.querySelectorAll('fieldset')].map(f=>{const q=f.querySelector('legend').textContent.trim();const ch=[...f.querySelectorAll('input:checked')].map(i=>i.value);const tx=(f.querySelector('textarea')||{}).value||'';return `- ${q}: ${ch.join(', ')||'(open)'}${tx.trim()?' — '+tx.trim():''}`}).join('\n');
+  const txt='Answers for "'+document.title+'":\n'+out,pre=oq.querySelector('pre')||oq.appendChild(document.createElement('pre'));pre.textContent=txt;
+  const st=oq.querySelector('.status');try{navigator.clipboard.writeText(txt).then(()=>st&&(st.textContent='Copied; paste it into the chat.'),()=>st&&(st.textContent='Select the text below and copy it.'))}catch(_){st&&(st.textContent='Select the text below and copy it.')}})}
 })();
 </script>
 </body>

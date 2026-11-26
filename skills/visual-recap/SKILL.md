@@ -10,66 +10,66 @@ metadata:
 
 # visual-recap
 
-As of 2026-11-16: Fork von [BuilderIO/skills](https://github.com/BuilderIO/skills) `visual-recap` (Commit 5af3010, MIT-Lizenz, Text in `LICENSE.builderio`). Das Original veröffentlicht über den Plan-MCP von plan.agent-native.com; dieser Fork veröffentlicht als private Seite der Laufzeit (Artifact) oder als Datei.
+As of 2026-11-16: fork of [BuilderIO/skills](https://github.com/BuilderIO/skills) `visual-recap` (commit 5af3010, MIT licence, text in `LICENSE.builderio`). The original publishes through the plan MCP of plan.agent-native.com; this fork publishes as a private page of the runtime (an artifact) or as a file.
 
-Ein Recap ist ein Plan in Rückwärtsrichtung: Er beschreibt eine Änderung, die existiert, eine Flughöhe über dem Zeilen-Review. Schema-, API-, Datei- und Architekturänderungen werden zu denselben Bausteinen wie im Plan. Der Reviewer sieht zuerst die Form, dann die ladenden Zeilen.
+A recap is a plan in reverse: it describes a change that exists, one altitude above the line review. Schema, API, file and architecture changes become the same blocks as in a plan. The reviewer sees the shape first, then the load-bearing lines.
 
-## Wann
+## When to use
 
-Auslöser: "/visual-recap", "recap diesen PR", "zeig mir, was der Branch geändert hat", "fass die Änderungen visuell zusammen". Nicht für Pläne vor dem Coden (`visual-plan`), Review gegen Standards oder Spec und Status-Updates für Stakeholder (`stakeholder-update`).
+Triggers: "/visual-recap", "recap this PR", "show me what the branch changed", "summarize the changes visually" (or the German equivalents, such as "recap diesen PR"). Not for plans before coding (`visual-plan`), review against standards or a spec, or status updates for stakeholders (`stakeholder-update`).
 
-Bei großen, mehrdateiigen Änderungen oder solchen, die Schema, API-Verträge, Architektur oder UI berühren. Kleine, einzelne oder offensichtliche Diffs reviewt man schneller als Diff: dann kurz sagen und keinen Recap bauen.
+Use it for large, multi-file changes or changes that touch schema, API contracts, architecture or UI. Small, single or obvious diffs are faster to review as a diff: say so briefly and build no recap.
 
-## Ablauf
+## Workflow
 
-1. **Scope bestimmen.** Gegebene Referenz (PR, Branch, Commit, Range) oder, in einer laufenden Session, die **ganze Arbeitseinheit** dieser Session: ursprüngliche Umsetzung, spätere Fixes, UI-Nachbesserungen, Tests, Changesets, Skill-/Doku-Änderungen. Fremde, schon vorher vorhandene Änderungen bleiben draußen. Ist der Scope nicht ableitbar: Annahme nennen oder kurz fragen.
-2. **Diff in einem Durchgang lesen** (`git diff --stat`, dann die Dateien; bei PRs den PR-Diff lesen: Use the GitHub MCP tools if the session has them; otherwise `gh api repos/<owner>/<repo>/pulls/<n> -H 'Accept: application/vnd.github.diff'`) und dabei Notizen führen: Inventar der geänderten Routen, Komponenten, Popover/Dialoge, Rollen-/Zugriffszustände, Leer-/Fehlerzustände, Schema-, API- und geteilten Abstraktionen. Danach arbeitest du aus den Notizen, ohne den Diff erneut ganz zu lesen.
-3. **Skill `visual-plan` laden** und daraus übernehmen: das Gerüst (`assets/scaffold.html` dort), die Bausteine, die Wireframe- und Diagrammregeln sowie Prüfen und Veröffentlichen (Schritte 4-5 dort). Diese Teile gelten hier unverändert.
-4. **Seite in `recap-<slug>.html` schreiben** nach Kanon und Zuordnung unten. Jedes Inventar-Element ist entweder durch einen Baustein vertreten oder bewusst weggelassen (winzig, redundant, nicht sichtbar).
-5. **Prüfen und veröffentlichen** wie in visual-plan; Badge-Status "Recap", Icon `review`.
-6. **Übergeben:** ein Satz zur Kernaussage der Änderung. Feedback per Chat oder Kommentar an der Seite fließt zurück in den Code (Kommentar → Agent → Diff); danach den Recap so aktualisieren, dass er weiter die ganze Arbeitseinheit plus Korrektur abdeckt.
+1. **Determine the scope.** A given reference (PR, branch, commit, range) or, in a running session, the session's **whole unit of work**: the original implementation, later fixes, UI touch-ups, tests, changesets, skill and docs changes. Unrelated changes that existed before stay out. If the scope cannot be derived, state the assumption or ask briefly.
+2. **Read the diff in one pass** (`git diff --stat`, then the files; for a PR, read the PR diff: Use the GitHub MCP tools if the session has them; otherwise `gh api repos/<owner>/<repo>/pulls/<n> -H 'Accept: application/vnd.github.diff'`) and keep notes as you go: an inventory of changed routes, components, popovers/dialogs, role and access states, empty and error states, schema, API and shared abstractions. Afterwards work from the notes without rereading the whole diff.
+3. **Load the `visual-plan` skill** and take from it: the scaffold (its `assets/scaffold.html`), the blocks, the wireframe and diagram rules, and checking and publishing (its steps 4-5). Those parts apply here unchanged.
+4. **Write the page to `recap-<slug>.html`** following the canon and mapping below. Every inventory item is either represented by a block or deliberately left out (tiny, redundant, not visible).
+5. **Check and publish** as in visual-plan; badge status "Recap", icon `review`.
+6. **Hand over:** one sentence on the core of the change. Feedback in chat or as a comment on the page flows back into the code (comment → agent → diff); afterwards update the recap so it still covers the whole unit of work plus the correction.
 
-## Kanon und Budgets
+## Canon and budgets
 
-Von oben nach unten:
+Top to bottom:
 
-1. **UI-Schlagzeile:** Wireframes zuerst, wenn der Diff gerenderte UI ändert.
-2. **Ergebnis-Erzählung:** 1-3 Absätze, was sich geändert hat und warum.
-3. **Datenmodell / Endpoint** für Schema- und Vertragsänderungen, Vorher/Nachher in `cols`.
-4. **Datei-Baum** mit `data-change` je Datei.
-5. **`## Key changes`:** genau ein `tabs`-Block mit Diff bzw. annotiertem Code, ein Tab pro Schlüsseldatei (Label = Pfad oder kurzer Name mit Ordner-Hinweis).
+1. **UI headline:** wireframes first when the diff changes rendered UI.
+2. **Outcome narrative:** 1-3 paragraphs on what changed and why.
+3. **Data model / endpoint** for schema and contract changes, before/after in `cols`.
+4. **File tree** with `data-change` per file.
+5. **`## Key changes`:** exactly one `tabs` block with diffs or annotated code, one tab per key file (label = path, or a short name with a folder hint).
 
-Budgets, zugleich die Kostenobergrenze: 3-8 Key-Change-Tabs; pro Tab unter ~150 Zeilen, den Rest einer langen Datei zusammenfassen; Titel ≤ 70 Zeichen; Brief 1-3 Sätze.
+Budgets, which are also the cost ceiling: 3-8 key-change tabs; under about 150 lines per tab, summarizing the rest of a long file; title ≤ 70 characters; brief 1-3 sentences.
 
-**Schlank, aber substanziell.** Kein Prosa-Block, der nur sagt, dass der Recap eine Hilfe ist, wie viele Dateien sich geändert haben oder aus welchem Ref er stammt: Titel, Brief und Datei-Baum tragen das. Prosa nur für Ziel, echtes Kompatibilitätsrisiko, sichtbare Entscheidung oder fundierte Review-Notiz. Ein großer Diff braucht trotzdem Datei-Baum und Key-Change-Diffs; ein Wireframe plus ein Satz für 40 Dateien schickt den Reviewer zurück in den Rohdiff.
+**Lean but substantial.** No prose block that only says the recap is a help, how many files changed or which ref it comes from: the title, brief and file tree carry that. Prose only for the goal, a real compatibility risk, a visible decision or a grounded review note. A large diff still needs a file tree and key-change diffs; one wireframe plus one sentence for 40 files sends the reviewer back to the raw diff.
 
-Gut: 25-Dateien-Auth-Änderung mit Vorher/Nachher-Wireframes der Login-Fläche, zwei Absätzen Erzählung, Datenmodell der Session-Tabelle mit Änderungsflags, Endpoint der neuen Refresh-Route, Datei-Baum und fünf fokussierten Key-Change-Tabs mit je einer Zusammenfassung und wenigen Notizen.
+Good: a 25-file auth change with before/after wireframes of the login surface, two paragraphs of narrative, the session table's data model with change flags, the endpoint of the new refresh route, a file tree and five focused key-change tabs, each with a summary and a few notes.
 
-## Zuordnung Diff → Baustein
+## Mapping diff → block
 
-- **Schema/Migration** → Datenmodell der resultierenden Entitäten; pro Feld `data-change` (added/modified/removed/renamed), geänderter Typ mit `span.was`. Das ist die Schlagzeile; SQL-Diff nur, wenn das exakte Statement zählt.
-- **API/Route/Action** → Endpoint im Zustand nach der Änderung; geänderte Parameter/Antworten mit `data-change` und `span.was`; ganz neue oder entfernte Route mit `data-change` im Kopf, entfernte zusätzlich in Prosa erklärt. Jedes Beispiel genau ein gültiger JSON-Wert; mehrere Nachrichtenformen (Erfolg vs. Fehler, Frame-Typen) als je eigenes beschriftetes Beispiel. Mehrere Endpoints untereinander, außer bei echtem Vorher/Nachher-Vertrag.
-- **Kompatibilitätskritisch** → kurzer `callout` `risk` neben dem Baustein: welches Feld/Endpoint/Verhalten, breaking / riskant / nicht breaking.
-- **Bedeutsamer Code-Hunk** → Diff (Split) mit echtem `before`/`after`, `filename`, `lang` und einer Ein-Satz-`summary` (was und warum). Schlüsseldateien bekommen wenige Notizen an den Zeilen, die zählen (Nachher-Zeilennummern; `side:"before"` für entfernte Zeilen).
-- **Neue Datei / großer neuer Block ohne sinnvolles Vorher** → annotierter Code statt einseitigem Diff.
-- **Dateien neu/entfernt/umbenannt** → Datei-Baum mit `data-change` und kurzer Notiz.
-- **Architektur-/Datenfluss-Verschiebung** → Diagramm als Vorher/Nachher-Panels, Schichten oder Swimlanes. UI-Steuerelemente zeigst du als Wireframe, nicht als Diagramm.
+- **Schema/migration** → data model of the resulting entities; `data-change` (added/modified/removed/renamed) per field, a changed type with `span.was`. This is the headline; an SQL diff only when the exact statement matters.
+- **API/route/action** → endpoint in its post-change state; changed parameters/responses with `data-change` and `span.was`; a wholly new or removed route with `data-change` in the header, a removed one also explained in prose. Every example is exactly one valid JSON value; several message shapes (success vs. error, frame types) each get their own labelled example. Several endpoints go one below the other, except for a real before/after contract.
+- **Compatibility-critical** → a short `callout` `risk` next to the block: which field, endpoint or behaviour, and whether it is breaking, risky or not breaking.
+- **Meaningful code hunk** → a split diff with the real `before`/`after`, `filename`, `lang` and a one-sentence `summary` (what and why). Key files get a few notes on the lines that matter (after-side line numbers; `side:"before"` for removed lines).
+- **New file / large new block with no meaningful before** → annotated code instead of a one-sided diff.
+- **Files added/removed/renamed** → file tree with `data-change` and a short note.
+- **Architecture or data-flow shift** → a diagram as before/after panels, layers or swimlanes. Show UI controls as a wireframe, not as a diagram.
 
-## UI-Änderungen brauchen Wireframes
+## UI changes need wireframes
 
-Ändert der Diff Layout, Dichte, sichtbaren Zustand, Bedienelemente, Navigation, Menüs, Dialoge oder Design-Tokens, enthält der Recap Wireframes. Abdeckung aus dem Diff ableiten:
+If the diff changes layout, density, visible state, controls, navigation, menus, dialogs or design tokens, the recap contains wireframes. Derive the coverage from the diff:
 
-- **Einstieg:** wo die Änderung erscheint (Header, Listenzeile, Toolbar, Menü-Trigger).
-- **Interaktionsfläche:** was sich öffnet oder ändert (Popover, Dialog, Tab, Sheet, Inline-Editor, Toast).
-- **Ergebnis:** Zielzustand (Seite, Read-only, Leer-, Fehler-, Lade-, Kein-Zugriff-, Gespeichert-Zustand).
-- **Rollen:** bei Rechteänderungen Owner/Admin vs. Viewer als Paar oder Matrix.
+- **Entry point:** where the change appears (header, list row, toolbar, menu trigger).
+- **Interaction surface:** what opens or changes (popover, dialog, tab, sheet, inline editor, toast).
+- **Result:** the target state (page, read-only, empty, error, loading, no-access, saved state).
+- **Roles:** for permission changes, owner/admin vs. viewer as a pair or a matrix.
 
-Bei UI-lastigen PRs alle drei Stufen Einstieg → Fläche → Ergebnis zeigen. Kleinste klare Form wählen: Vorher/Nachher bei direktem Vergleich; nur Nachher bei rein Additivem; Zustandsfolge bei Flows. Kleine Flächen mit passendem `data-surface`. Wireframes stützen sich auf Komponentennamen und diff-sichtbare Labels; Erschlossenes markierst du im `wf-label` als "erschlossen".
+For UI-heavy PRs, show all three stages entry → surface → result. Choose the smallest clear form: before/after for a direct comparison; after only for purely additive changes; a state sequence for flows. Small surfaces get the matching `data-surface`. Wireframes rely on component names and labels visible in the diff; mark inferred content as "inferred" in the `wf-label`.
 
-## Wahr durch Konstruktion
+## True by construction
 
-Diff, Datenmodell, Endpoint und Datei-Baum entstehen mechanisch aus den echten geänderten Zeilen: echte Pfade, Felder, Methoden, Vorher/Nachher-Text. Du schreibst frei nur die Prosa: Warum, Erzählung, Risikoeinschätzung. Was der Diff nicht enthält, bleibt draußen; Erschlossenes ist als erschlossen markiert. Ein selbstbewusst falscher Recap verleitet den Reviewer, genau die falsch zusammengefasste Zeile zu überspringen.
+Diff, data model, endpoint and file tree are built mechanically from the real changed lines: real paths, fields, methods, before/after text. Only the prose is written freely: the why, the narrative, the risk assessment. What the diff does not contain stays out; inferred content is marked as inferred. A confidently wrong recap leads the reviewer to skip exactly the line it summarized wrongly.
 
-## Sicherheit
+## Security
 
-Secrets aus dem Diff (API-Keys, Tokens, Webhook-URLs, Signing-Secrets, `.env`-Werte) erscheinen in keinem Baustein, keiner Notiz und keiner Bildunterschrift: `<redacted>` oder `sk-•••`. Ein Recap legt unveröffentlichtes Schema und interne Endpoints offen; behandle ihn wie den Quellcode. Das Artifact ist privat, bis der Nutzer es teilt.
+Secrets from the diff (API keys, tokens, webhook URLs, signing secrets, `.env` values) appear in no block, note or caption: use `<redacted>` or `sk-•••`. A recap exposes unpublished schema and internal endpoints; treat it like the source code. The artifact is private until the user shares it.
