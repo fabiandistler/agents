@@ -329,6 +329,28 @@
       "version": "1.3"
     },
     {
+      "name": "visual-plan",
+      "summary": "Turns an implementation plan into a reviewable HTML page with wireframes, diagrams, file map and an open-questions form, as the approval gate before coding.",
+      "category": "workflow",
+      "path": "skills/visual-plan/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
+      ],
+      "version": "1.0"
+    },
+    {
+      "name": "visual-recap",
+      "summary": "Turns finished work (PR, branch, commit, diff, session changes) into a visual HTML recap with wireframes, diagrams, schema and API changes, file tree and annotated diffs.",
+      "category": "workflow",
+      "path": "skills/visual-recap/SKILL.md",
+      "environments": [
+        "coding",
+        "chat"
+      ],
+      "version": "1.0"
+    },
+    {
       "name": "was",
       "summary": "Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim.",
       "category": "communication",
