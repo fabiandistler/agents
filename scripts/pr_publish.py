@@ -332,15 +332,10 @@ def _emit(payload: dict, write: bool) -> int:
 
 
 def _report_failed_actions(payload: dict) -> None:
-    """One stderr line per failed action, so a log without the JSON names the cause.
-
-    The detail holds the method, the API path and the HTTP status or GitHub's
-    message, never a request body such as the sticky comment.
-    """
     follow_up = payload.get("follow_up") or {}
-    for result in [*payload.get("results", []), *follow_up.get("results", [])]:
-        if not result["ok"]:
-            print(f"pr_publish.py: {result['kind']} failed: {result['detail']}", file=sys.stderr)
+    pr_apply.report_failed(
+        "pr_publish.py", [*payload.get("results", []), *follow_up.get("results", [])]
+    )
 
 
 def _append_summary(path: object, text: str) -> bool:

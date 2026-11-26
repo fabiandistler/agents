@@ -235,6 +235,17 @@ def resolve_operations(plan: object) -> list[Operation]:
     return [operation for _, operations in resolved for operation in operations]
 
 
+def report_failed(script: str, results: list[dict]) -> None:
+    """One stderr line per failed result, so a log without the JSON names the cause.
+
+    The detail holds the method, the API path and the HTTP status or GitHub's
+    message, never a request body such as the sticky comment.
+    """
+    for result in results:
+        if not result["ok"]:
+            print(f"{script}: {result['kind']} failed: {result['detail']}", file=sys.stderr)
+
+
 # --- CLI ---------------------------------------------------------------------
 
 USAGE = f"""usage: pr_apply.py --plan FILE [--write]
