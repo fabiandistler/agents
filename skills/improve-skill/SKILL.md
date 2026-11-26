@@ -192,48 +192,8 @@ When neither holds, propose nothing: the rule inventory is the check.
 
 ### Eval mode
 
-Eval mode needs `skill-creator` among the session's skills and subagents to
-run the two versions apart, as in Claude Code. In claude.ai `skill-creator`
-skips its baseline runs, so there is nothing to compare. When either is
-missing, run no behavior check: print the note below, carry it into what
-step 8 delivers (the pull request body in a repository), and go on to step 8
-with the rule inventory as the only check.
-
-```markdown
-Behavior not checked: eval mode needs skill-creator and subagents, which this
-session lacks. Verify the behavior by hand: run <prompts> once with old_skill/
-and once with new_skill/ and compare the results.
-```
-
-Otherwise follow `skill-creator`'s "Running and evaluating test cases" in its
-case for improving an existing skill, set up as follows:
-
-- Workspace: `<tmpdir>/improve-skill-<name>-<timestamp>/evals/`, so nothing is
-  written beside the skill folder.
-- The with-skill runs use `new_skill/`. The baseline runs use `old_skill/`:
-  the snapshot of step 1 is the `skill-creator` snapshot, so skip its copy.
-- Prompts: those of `old_skill/evals/evals.json` with its expectations as
-  assertions; else every `should_trigger` prompt of `old_skill/evals.json`,
-  with assertions drafted from `expected_behavior`; else two or three
-  prompts the author confirms that exercise the touched rules.
-- Grade every run with its grader and aggregate the benchmark. Skip its
-  viewer and its iteration loop; the comparison below replaces them.
-
-Print a table per prompt: each assertion with its result for `old_skill` and
-for `new_skill`. A **deviation** is an assertion that passed for `old_skill`
-and failed for `new_skill`. For each deviation name the prompt, the
-assertion, and the section of `new_skill/` that governs it (heading and
-`path:line`), then list the candidates whose snapshot lines fall in that
-section. Deliver nothing. Ask again about those candidates only, as in step 5;
-the author may also accept a deviation as intended, a recorded answer. Apply
-the changed answers to `new_skill/` as a repair of this rewrite, run the rule
-inventory again, and rerun only the deviating prompts on `new_skill/`.
-
-An assertion that failed for `old_skill` and passes for `new_skill` is a gain:
-report it, it does not block.
-
-Done when no deviation is open. Carry the tables into what step 8 prints and
-delivers (the pull request body in a repository).
+When the author asked for eval mode or accepts it, read
+`references/eval-mode.md` and follow it.
 
 ## 8. Deliver
 
@@ -251,29 +211,6 @@ on "yes":
   On another forge, use its CLI the same way.
 - **Folder outside any git work tree** (an unpacked claude.ai skill): copy
   `new_skill/` over the folder; the run creates no repository. Then pack it
-  for claude.ai with the packager of Anthropic's `skill-creator`:
-  1. Ask for the path of the **old ZIP**, the export the folder was unpacked
-     from, and record its `sha256sum`.
-  2. Copy `new_skill/` to `<tmpdir>/improve-skill-<name>-<timestamp>/package/<name>/`,
-     `<name>` being the frontmatter `name`: the packager names the archive
-     and its top folder after the folder it packs.
-  3. Find the installed packager, `<skill-creator>/scripts/package_skill.py`;
-     it needs Python with PyYAML. In `<skill-creator>`, run
-     `python -m scripts.package_skill <package-dir>/<name> <old-zip-dir>`.
-     It validates the frontmatter and writes `<name>.skill`, a ZIP archive.
-     If `<old-zip-dir>/<name>.skill` already exists, pass
-     `<old-zip-dir>/improve-skill-<timestamp>` as the output directory so
-     nothing is overwritten. A validation failure is a frontmatter finding:
-     print it and hand it to `skill-creator`, as with description findings.
-     Without an installed `skill-creator` packager, say so: the updated
-     folder is the result, for the author to zip by hand.
-  4. If the author no longer has the old ZIP, pack the snapshot the same way
-     (staged as `<name>/`) into `<output-dir>/old/` as the way back.
-
-  Done when the new archive exists and the old ZIP's `sha256sum` is
-  unchanged. Print both archive paths and tell the author: upload the new
-  archive in claude.ai's skill settings by hand (rename it to `.zip` if the
-  upload asks for one; the format is the same); to roll back, upload the old
-  ZIP the same way.
+  for claude.ai as `references/claude-ai-zip.md` describes.
 
 Print the snapshot path last: it is the way back.
