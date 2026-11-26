@@ -204,3 +204,33 @@ follows an existing pattern, or what the issue states literally is not one.
 
 Not a synonym for a finding: a finding is a defect, a review decision is a
 choice. Settling every review decision of a change is not a defect review.
+
+## Slop signal
+
+One entry, `SL1` to `SL7`, in the fixed list of patterns that mark filler in a
+skill: text that costs tokens and attention without changing what the agent
+does. The list lives in `skills/improve-skill/references/slop-signals.md`;
+the skill audit checklist points to it by ID (B2, B4, D3, B8–B10). Signals
+describe structure, not vocabulary, so they apply to a skill in any language.
+
+Not a synonym for a finding: a slop signal is a pattern in the rubric, a
+candidate or finding is one place in one skill that matches it.
+
+## Rule inventory
+
+The list of every rule and branch in a skill before a rewrite, each mapped
+afterwards to its place in the new text or marked as struck by the author. An
+unmapped item blocks delivery. It costs no model runs, and it catches a lost
+rule but not shifted emphasis or tone.
+
+Not a synonym for a behavior diff: the inventory compares texts, the behavior
+diff compares runs.
+
+## Behavior diff
+
+Running a skill's old snapshot and its rewritten version against the same
+prompts and comparing the transcripts. A deviation names the prompt and the
+section whose candidates caused it.
+
+Not a synonym for a rule inventory: the behavior diff spends model runs and
+catches shifted emphasis the inventory misses.
