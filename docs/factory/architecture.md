@@ -144,7 +144,7 @@ sequenceDiagram
     I->>GH: 10. checks green: push, open ready-for-review PR
     GH->>R: 11. pull_request_target (hold on a push)
     R->>R: 12. assess: context, path risk (artifacts)
-    R->>R: 13. review: claude -p, no tools (artifact)
+    R->>R: 13. review: claude -p, read-only base tree (artifact)
     R->>GH: 14. publish: fetch, plan, fetch again, re-plan
     R->>GH: 15. labels, comment, reviewer, auto-merge, verdict status last
 ```
@@ -162,7 +162,7 @@ fast-forwarded to `main` (`reclaimed`); one with commits goes to a person
 (`needs-human`). The model builds, runs the caller's
 `check_command` and opens a ready-for-review pull request. In the PR review,
 `assess` fetches the context and classifies the risk, `review` asks the
-model without tools, and `publish` re-fetches, aborts on a moved head
+model, which may read a base checkout (ADR-0023), and `publish` re-fetches, aborts on a moved head
 or a closed pull request, and otherwise writes labels, the sticky comment,
 the reviewer, any auto-merge change and, last, `pr-review/verdict`
 (`pr_plan.plan_publish`). The status goes last so a merge waits until the

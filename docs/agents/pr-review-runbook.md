@@ -53,7 +53,7 @@ the `pull_request_target` trigger runs only with the event policy of
 | --- | --- | --- |
 | `hold` | write: contents, pull-requests, issues; no model token | On a push, disables the bot's auto-merge; when `do-not-merge` is added, disables any auto-merge. Never enables. |
 | `assess` | read: contents, pull-requests, issues | `pr_github.py` fetches the context over REST; `pr_risk.py` classifies it. |
-| `review` | `contents: read`; `CLAUDE_CODE_OAUTH_TOKEN` | Installs a pinned Claude Code CLI; `pr_review.py` sanitizes and caps the input, runs `claude -p` without tools, parses the verdict. |
+| `review` | `contents: read`; `CLAUDE_CODE_OAUTH_TOKEN` | Installs a pinned Claude Code CLI; `pr_review.py` sanitizes and caps the input, runs `claude -p` in a base checkout, parses the verdict. |
 | `publish` | write: contents, pull-requests, issues, statuses; no model token | `pr_publish.py` re-fetches, plans and, through `pr_apply.py`, writes, then sets [`pr-review/verdict`](pr-review-verdict-status.md). |
 
 - **Base code only.** `pull_request_target` runs the workflow file and scripts
@@ -64,10 +64,11 @@ the `pull_request_target` trigger runs only with the event policy of
   write scope. The jobs that write hold no model token and check out nothing;
   `review` checks out the caller's base with `persist-credentials: false`. The
   default of both workflow files is `permissions: {}`.
-- **The model only advises, and holds no tool.** It runs inside the Claude
-  Code CLI with `--tools ""`, a replaced system prompt, no settings, MCP
-  servers or slash commands, and an empty working directory. Injected text can
-  sway its verdict but cannot run a command or read the token. Its risk can
+- **The model only advises, and only reads a base checkout**
+  ([ADR-0023](../adr/0023-pr-review-reads-the-base-tree.md)): Claude Code CLI
+  with `--tools Read,Grep,Glob --restricted`, a replaced system prompt, no
+  settings, MCP servers or slash commands. Injected text can
+  sway its verdict but cannot run a command, write, or read the token. Its risk can
   raise the path-based risk, never lower it. Title, body and diff are
   untrusted: HTML comments (in code diffs only neutralized), zero-width
   characters and base64 blobs are stripped. Unparseable output becomes
@@ -112,7 +113,7 @@ data:
 The required checks are not a gate in the script (decision A). The default
 ruleset requires the five checks of [setup step 6](#setup); native auto-merge
 waits for them and merges only when they pass. Pending checks never disable the bot's auto-merge; a failing check
-simply blocks the merge.
+blocks the merge.
 
 The write is GitHub's GraphQL `enablePullRequestAutoMerge` with merge method
 `MERGE` (a merge commit) and `expectedHeadOid` pinned to the assessed head.
@@ -296,10 +297,10 @@ is high risk and needs a human review.
 ### CLI update
 
 The review job installs `@anthropic-ai/claude-code` at the exact version
-pinned in `.github/workflows/factory-pr-review.yml`; the next step hands that binary
+pinned in `.github/workflows/factory-pr-review.yml`; the next step hands it
 the token. Dependabot does not update it. To update, check the release notes,
 change the version, and dispatch a dry run before merging. A test fails if the
-pin loses its exact version.
+pin loses its exact version. First rerun the ADR-0013 sandbox check.
 
 ### Token renewal
 
@@ -309,9 +310,8 @@ pin loses its exact version.
 
 ## Quota and cost
 
-- One review job makes one single-turn `claude -p` call with a 300-second
-  timeout. Label events, drafts and forks make none. A newer push cancels the
-  run for the old head. The input is capped:
+- One review job makes one `claude -p` call of up to 40 turns, 600 seconds.
+  Label events, drafts and forks make none. The input is capped:
 
   | Cap | Limit | Effect |
   |---|---|---|
@@ -329,9 +329,8 @@ pin loses its exact version.
   payload and comment name the files sent without base content and, on a diff
   cut, the last file shown in full and the files not shown.
 - Each review draws on the maintainer's Claude subscription usage limits,
-  shared with interactive Claude Code use. No extra money is charged. Fork
-  pull requests are never reviewed, so outside contributors cannot spend the
-  quota. A reached limit or an outage yields `review:unavailable` and no
+  shared with interactive Claude Code use. No extra money is charged. Forks
+  are never reviewed, so outsiders cannot spend the quota. A reached limit or an outage yields `review:unavailable` and no
   auto-merge, never a pass. `opus` uses the quota faster than `sonnet`.
 - Anthropic sizes subscription limits for ordinary, individual use. One
   review per push in the maintainer's own repository is that; do not reuse
