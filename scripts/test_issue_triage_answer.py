@@ -139,6 +139,14 @@ def test_a_needs_info_comment_asks_the_reporter_and_says_the_bot_set_the_label()
     assert "Triage run" not in body
 
 
+def test_a_ready_for_human_comment_says_the_bot_set_the_label_and_the_brief_stands():
+    body = render_comment(parse_answer(answer_text(state="ready-for-human")), "reporter", None)
+    assert "The bot set `ready-for-human`" in body
+    assert "the draft brief above is the issue's brief" in body
+    assert "Answering here" not in body
+    assert "only the maintainer sets" not in body
+
+
 def test_a_wontfix_comment_leaves_closing_to_the_maintainer():
     text = answer_text(state="wontfix", brief="", wontfix_reason="already-implemented")
     body = render_comment(parse_answer(text), "reporter", None)

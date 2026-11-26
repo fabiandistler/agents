@@ -216,7 +216,7 @@ stateDiagram-v2
     triage --> info: triage bot or maintainer
     info --> triage: reporter answers
     triage --> agent: maintainer, with a brief
-    triage --> human: maintainer
+    triage --> human: triage bot or maintainer
     triage --> wontfix: maintainer, closes
     agent --> none: no-contract
     agent --> agent: blocked, at-capacity (waits)
@@ -231,8 +231,8 @@ Text equivalent: an issue holds at most one of the five state labels
 them, and every task imports them from there. The triage label task, and the
 Fix task for its own issues, start it in `needs-triage`. The triage bot may
 move it to `needs-info`, and the reporter's answer moves it back (in a
-target, a person re-adds `needs-triage`). From `needs-triage`, only the
-maintainer sets `ready-for-agent`, `ready-for-human` or `wontfix`. From
+target, a person re-adds `needs-triage`), or to `ready-for-human`. From
+`needs-triage`, only the maintainer sets `ready-for-agent` or `wontfix`. From
 `ready-for-agent`, `no-contract` comments and removes the label, leaving no
 state until a person adds it again; `blocked` and `at-capacity` comment and
 keep it, so the issue waits in the queue (#847), or remove it without one; `pr-exists`

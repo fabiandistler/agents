@@ -163,14 +163,16 @@ def test_an_unknown_trigger_is_an_error():
         ([NEEDS_TRIAGE], NEEDS_INFO, [NEEDS_INFO], [NEEDS_TRIAGE]),
         ([], NEEDS_INFO, [NEEDS_INFO], []),
         ([NEEDS_TRIAGE], READY_FOR_AGENT, [], []),
-        ([NEEDS_TRIAGE], READY_FOR_HUMAN, [], []),
+        ([NEEDS_TRIAGE], READY_FOR_HUMAN, [READY_FOR_HUMAN], [NEEDS_TRIAGE]),
+        ([], READY_FOR_HUMAN, [READY_FOR_HUMAN], []),
+        ([NEEDS_INFO], READY_FOR_HUMAN, [READY_FOR_HUMAN], [NEEDS_INFO]),
         ([NEEDS_TRIAGE], WONTFIX, [], []),
         ([], READY_FOR_AGENT, [NEEDS_TRIAGE], []),
         ([NEEDS_INFO, "bug"], READY_FOR_AGENT, [NEEDS_TRIAGE], [NEEDS_INFO]),
         ([NEEDS_INFO], NEEDS_INFO, [], []),
     ],
 )
-def test_the_bot_sets_needs_info_and_leaves_every_other_state_to_the_maintainer(
+def test_the_bot_sets_needs_info_and_ready_for_human_and_leaves_the_rest_to_the_maintainer(
     current: list[str], recommended: str, add: list[str], remove: list[str]
 ):
     assert plan_labels(current, recommended) == {"add": add, "remove": remove}

@@ -212,6 +212,8 @@ def _evidence_lines(evidence: list[dict]) -> list[str]:
 
 
 def _next_step(recommended: str) -> str:
+    if recommended == READY_FOR_HUMAN:
+        return f"The bot set `{recommended}`: the draft brief above is the issue's brief."
     if target_state(recommended) == recommended:
         return f"The bot set `{recommended}`. Answering here sends the issue back to triage."
     return f"The issue stays in `needs-triage`: only the maintainer sets `{recommended}`" + (

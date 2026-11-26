@@ -34,11 +34,12 @@ title: An issue's life in the software factory
 ---
 flowchart TD
     opened([Issue opened]) --> label["triage-label adds needs-triage"]
-    label --> triage["issue-triage comments a recommendation;<br/>sets needs-info only"]
+    label --> triage["issue-triage comments a recommendation;<br/>sets needs-info or ready-for-human"]
     triage -->|needs-info| reply["Reporter answers"]
     reply --> triage
     triage --> decide{"You decide"}
     decide -->|"brief posted,<br/>ready-for-agent added"| claim["implementer claims agent/issue-n"]
+    triage -->|ready-for-human| person
     decide -->|"ready-for-human or wontfix"| person([A person takes it])
     claim -->|"blocked or at-capacity"| queue["Keeps ready-for-agent;<br/>waits in the queue"]
     queue --> claim
@@ -58,8 +59,8 @@ flowchart TD
 
 Text equivalent: a new issue gets `needs-triage` from the triage label task.
 The issue triage task comments with a category and a recommended state; it
-sets `needs-info` itself and nothing else, and the reporter's answer sends the
-issue back to triage. You post an agent brief and add `ready-for-agent`, which
+sets `needs-info` or `ready-for-human` itself and leaves every other state to
+you; the reporter's answer to `needs-info` sends the issue back to triage. You post an agent brief and add `ready-for-agent`, which
 starts the implementer. Its claim either stops the run or creates branch
 `agent/issue-<n>` and builds a ready-for-review pull request that closes
 the issue. A run stopped as `blocked` or `at-capacity` keeps

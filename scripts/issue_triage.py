@@ -8,7 +8,7 @@
   read-only ``claude -p`` workspace call and write the triage artifact.
 - ``publish`` (write token, no model): re-fetch the labels, post the triage
   comment and move the state label; the bot only ever sets ``needs-info`` or
-  keeps ``needs-triage``. A reporter's reply moves ``needs-info`` back to
+  ``ready-for-human``, or keeps ``needs-triage``. A reporter's reply moves ``needs-info`` back to
   ``needs-triage`` even when no triage ran. Without ``--write`` it prints the
   plan only.
 
