@@ -147,7 +147,10 @@ def check_read_only_agents(plugins_dir: Path, errors: list[str]) -> None:
         md = plugins_dir / rel
         label = f"plugins/{rel}"
         if not md.is_file():
-            errors.append(f"{label}: missing, but READ_ONLY_AGENTS pins it read-only")
+            errors.append(
+                f"{label}: missing, but READ_ONLY_AGENTS pins it to read-only tools, "
+                "no Write or forge tool"
+            )
             continue
         try:
             fields, _ = parse_agent_source(md)
@@ -164,7 +167,8 @@ def check_read_only_agents(plugins_dir: Path, errors: list[str]) -> None:
         extra = [tool for tool in tools if tool not in READ_ONLY_TOOLS]
         if extra:
             errors.append(
-                f"{label}: pinned read-only, but lists {', '.join(extra)}; "
+                f"{label}: pinned to read-only tools, no Write or forge tool, "
+                f"but lists {', '.join(extra)}; "
                 f"allowed: {', '.join(sorted(READ_ONLY_TOOLS))}"
             )
 
