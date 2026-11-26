@@ -22,6 +22,14 @@ def repo(tmp_path):
     return make_repo(tmp_path)
 
 
+# Full argv, CLI name included: the fake answers only an exact match.
+GH_PULLS_FOR_BRANCH = ["gh", "api", "repos/acme/widget/pulls?head=acme:feature&state=open"]
+GH_PULL_7 = ["gh", "api", "repos/acme/widget/pulls/7"]
+GH_ISSUE_12 = ["gh", "api", "repos/acme/widget/issues/12"]
+AZ_PR_LIST = ["az", "repos", "pr", "list", "--source-branch", "feature", "--status", "active"]
+AZ_PR_SHOW = ["az", "repos", "pr", "show", "--id", "5"]
+
+
 def github_routes(forge, check_runs, body="Adds the widget.\n\nCloses #12", mergeable=True):
     pull = {
         "number": 7,
@@ -31,13 +39,17 @@ def github_routes(forge, check_runs, body="Adds the widget.\n\nCloses #12", merg
         "head": {"sha": "abc123"},
     }
     # The list endpoint returns no mergeability; only the single-PR endpoint does.
-    forge.route("pulls?head=acme:feature", [pull])
-    forge.route("pulls/7", {**pull, "mergeable": mergeable})
-    forge.route("issues/12", {"number": 12, "title": "Widget", "body": "Build the widget."})
+    forge.route(GH_PULLS_FOR_BRANCH, [pull])
+    forge.route(GH_PULL_7, {**pull, "mergeable": mergeable})
+    forge.route(GH_ISSUE_12, {"number": 12, "title": "Widget", "body": "Build the widget."})
     forge.route(
-        "commits/abc123/check-runs", {"total_count": len(check_runs), "check_runs": check_runs}
+        ["gh", "api", "repos/acme/widget/commits/abc123/check-runs?per_page=100"],
+        {"total_count": len(check_runs), "check_runs": check_runs},
     )
-    forge.route("commits/abc123/status", {"state": "pending", "statuses": []})
+    forge.route(
+        ["gh", "api", "repos/acme/widget/commits/abc123/status"],
+        {"state": "pending", "statuses": []},
+    )
 
 
 def test_github_reads_pr_issue_and_ci(tmp_path, repo):
@@ -66,25 +78,29 @@ def test_github_reads_pr_issue_and_ci(tmp_path, repo):
 
 
 def azure_routes(forge, policies, work_items=({"id": 31},), merge_status="succeeded"):
+    pull = {
+        "pullRequestId": 5,
+        "title": "Add widget",
+        "description": "Adds the widget.",
+        "targetRefName": "refs/heads/main",
+        "lastMergeSourceCommit": {"commitId": "def456"},
+        "mergeStatus": merge_status,
+    }
+    forge.route(az_argv(AZ_PR_LIST), [pull])
+    forge.route(az_argv(AZ_PR_SHOW), pull)
+    forge.route(az_argv(["az", "repos", "pr", "work-item", "list", "--id", "5"]), list(work_items))
+    show = ["az", "boards", "work-item", "show", "--id", "31"]
+    fields = ["--fields", "System.Title,System.Description", "--expand", "none"]
     forge.route(
-        "repos pr list --source-branch feature",
-        [
-            {
-                "pullRequestId": 5,
-                "title": "Add widget",
-                "description": "Adds the widget.",
-                "targetRefName": "refs/heads/main",
-                "lastMergeSourceCommit": {"commitId": "def456"},
-                "mergeStatus": merge_status,
-            }
-        ],
-    )
-    forge.route("repos pr work-item list --id 5", list(work_items))
-    forge.route(
-        "boards work-item show --id 31",
+        az_argv(show + fields),
         {"id": 31, "fields": {"System.Title": "Widget", "System.Description": "Build it."}},
     )
-    forge.route("repos pr policy list --id 5", policies)
+    forge.route(az_argv(["az", "repos", "pr", "policy", "list", "--id", "5"]), policies)
+
+
+def az_argv(command):
+    """`command` with the flags gather_inputs.py appends to every az call."""
+    return [*command, "--detect", "true", "--output", "json"]
 
 
 def policy(type_name, status, display=None):
@@ -122,8 +138,6 @@ def test_azure_reads_pr_work_item_and_ci(tmp_path, repo):
     assert found["unchecked"] == []
     assert "Adds the widget." in (out / "pr.md").read_text()
     assert "Build it." in (out / "issue.md").read_text()
-    show = "az boards work-item show --id 31 --fields System.Title,System.Description"
-    assert f"{show} --expand none --detect true --output json".split() in forge.calls()
     ci = json.loads((out / "ci.json").read_text())
     assert ci == {"state": "green", "checks": [{"name": "PR build", "state": "green"}]}
 
@@ -175,7 +189,7 @@ def test_unsupported_or_missing_remote_falls_back(tmp_path, repo, remote):
 def test_failed_issue_read_keeps_pr_and_ci(tmp_path, repo):
     git(repo, "remote", "add", "origin", GH_REMOTE)
     forge = Forge(tmp_path)
-    forge.route("issues/12", "", code=1)
+    forge.route(GH_ISSUE_12, "", code=1)
     github_routes(forge, [{"name": "ci", "status": "completed", "conclusion": "success"}])
     out = tmp_path / "out"
 
@@ -361,7 +375,7 @@ def test_ssh_and_legacy_remotes_are_recognised(tmp_path, repo, remote):
 def test_no_pull_request_for_the_branch_points_to_pr_for_forks(tmp_path, repo):
     git(repo, "remote", "add", "origin", GH_REMOTE)
     forge = Forge(tmp_path)
-    forge.route("pulls?head=acme:feature", [])
+    forge.route(GH_PULLS_FOR_BRANCH, [])
     out = tmp_path / "out"
 
     result = forge.run(repo, out)
@@ -386,7 +400,7 @@ def test_github_merge_status_comes_from_the_single_pr_endpoint(tmp_path, repo, m
 
     assert result.returncode == 0, result.stderr
     assert manifest(out)["pr"]["merge_status"] == status
-    assert ["gh", "api", "repos/acme/widget/pulls/7"] in forge.calls()
+    assert GH_PULL_7 in forge.calls()
 
 
 def test_github_pr_number_reads_the_single_pr_endpoint_once(tmp_path, repo):
@@ -400,7 +414,7 @@ def test_github_pr_number_reads_the_single_pr_endpoint_once(tmp_path, repo):
     assert result.returncode == 0, result.stderr
     assert manifest(out)["pr"]["merge_status"] == "conflicts"
     pulls = [call for call in forge.calls() if "pulls" in call[-1]]
-    assert pulls == [["gh", "api", "repos/acme/widget/pulls/7"]]
+    assert pulls == [GH_PULL_7]
 
 
 @pytest.mark.parametrize(
@@ -426,3 +440,17 @@ def test_azure_merge_status_maps_to_clean_conflicts_or_unknown(
 
     assert result.returncode == 0, result.stderr
     assert manifest(out)["pr"]["merge_status"] == status
+
+
+def test_azure_pr_number_reads_that_pull_request(tmp_path, repo):
+    git(repo, "remote", "add", "origin", AZ_REMOTE)
+    forge = Forge(tmp_path)
+    azure_routes(forge, [policy("Build", "approved")])
+    out = tmp_path / "out"
+
+    result = forge.run(repo, out, "--pr", "5")
+
+    assert result.returncode == 0, result.stderr
+    assert manifest(out)["pr"]["number"] == 5
+    assert az_argv(AZ_PR_SHOW) in forge.calls()
+    assert az_argv(AZ_PR_LIST) not in forge.calls()

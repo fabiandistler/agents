@@ -13,16 +13,17 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("gather_inputs.py")
 
-# A fake forge CLI: answers the first route whose key occurs in its joined
-# argv, logs every argv to $FAKE_LOG, and exits 1 when no route matches.
+# A fake forge CLI: answers the first route whose key equals its full argv,
+# CLI name included, logs every argv to $FAKE_LOG, and exits 1 when no route
+# matches. Exact matching makes a missing, extra or changed flag fail the test
+# the way the real CLI would reject it.
 FAKE_CLI = """\
 import json, os, sys
-argv = sys.argv[1:]
-joined = " ".join(argv)
+argv = [os.path.basename(sys.argv[0]), *sys.argv[1:]]
 with open(os.environ["FAKE_LOG"], "a") as log:
-    log.write(json.dumps([os.path.basename(sys.argv[0]), *argv]) + "\\n")
+    log.write(json.dumps(argv) + "\\n")
 for key, stdout, code in json.load(open(os.environ["FAKE_ROUTES"])):
-    if key in joined:
+    if key == argv:
         sys.stdout.write(stdout)
         sys.exit(code)
 sys.stderr.write("fake: no route\\n")
@@ -68,9 +69,10 @@ class Forge:
             cli.write_text(f"#!{sys.executable}\n{FAKE_CLI}")
             cli.chmod(0o755)
 
-    def route(self, key, payload, code=0):
+    def route(self, argv, payload, code=0):
+        """Answer the call whose argv, CLI name included, equals `argv`."""
         stdout = payload if isinstance(payload, str) else json.dumps(payload)
-        self.routes.append([key, stdout, code])
+        self.routes.append([list(argv), stdout, code])
 
     def calls(self):
         if not self.log.exists():
