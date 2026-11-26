@@ -11,9 +11,12 @@ by name.
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 from factory_handoff import STATE_LABELS
 
@@ -215,6 +218,65 @@ def test_the_model_workspace_is_never_the_factory_checkout():
     assert '--workspace "$GITHUB_WORKSPACE"' in run
     assert not FACTORY.startswith("${{ github.workspace }}")
     assert "$FACTORY" not in run.split("--workspace", 1)[1].split("\n", 1)[0]
+
+
+@pytest.mark.parametrize("consumer", [False, True], ids=["factory", "consumer"])
+def test_only_consumers_pass_the_pinned_factory_to_triage(tmp_path: Path, consumer: bool):
+    steps = {step.get("name"): step for step in _jobs()["triage"]["steps"]}
+    fetch = steps["Fetch the factory scripts"]
+    triage = steps["Triage the issue"]
+    for key in ("FACTORY_REPOSITORY", "FACTORY_SHA"):
+        assert triage["env"][key] == fetch["env"][key]
+    assert triage["env"]["CALLER_REPOSITORY"] == "${{ github.repository }}"
+    assert triage["env"]["WORK"] == "${{ runner.temp }}/triage"
+    assert "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD" not in triage["env"]
+
+    factory = tmp_path / "pinned factory"
+    context_dir = tmp_path / "triage"
+    context_dir.mkdir()
+    repository = "fabiandistler/agents"
+    sha = "a" * 40
+    completed = subprocess.run(  # noqa: S603 -- run the checked-in step with a local stub
+        [
+            "/bin/bash",
+            "--noprofile",
+            "--norc",
+            "-c",
+            'python3() { printf "%s\\n" "$@"; }\n' + triage["run"],
+        ],
+        env={
+            "PATH": os.defpath,
+            "WORK": str(context_dir),
+            "FACTORY": str(factory),
+            "GITHUB_WORKSPACE": "caller checkout",
+            "CALLER_REPOSITORY": "example/consumer" if consumer else repository,
+            "FACTORY_REPOSITORY": repository,
+            "FACTORY_SHA": sha,
+        },
+        capture_output=True,
+        check=True,
+        timeout=10,
+    )
+    assert completed.stdout == b""
+    argv = (context_dir / "triage.json").read_text(encoding="utf-8").splitlines()
+    expected = [
+        str(factory / "scripts/issue_triage.py"),
+        "triage",
+        "--context",
+        str(context_dir / "context.json"),
+        "--workspace",
+        "caller checkout",
+    ]
+    if consumer:
+        expected += [
+            "--factory-dir",
+            str(factory),
+            "--factory-repo",
+            repository,
+            "--factory-sha",
+            sha,
+        ]
+    assert argv == expected
 
 
 def test_the_setup_command_runs_before_the_model_without_secrets():

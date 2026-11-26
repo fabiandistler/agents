@@ -79,8 +79,8 @@ Brakes:
 
 - Each new issue by a collaborator costs one `claude -p` run of up to 40 turns
   on the subscription, shared with interactive use and the PR review.
-- `claude --restricted` confines the file tools to the checkout and refuses
-  process files such as `/proc/self/environ` (checked with 2.1.321 on
+- `claude --restricted` confines the file tools to the allowed directories
+  and refuses process files such as `/proc/self/environ` (checked with 2.1.321 on
   2026-11-10); an answer that contains the token is refused before it can be
   published. The pinned CLI version is shared with the PR review and bumped
   with it.
@@ -95,6 +95,16 @@ Brakes:
   check holds for the pinned version only: before the CLI pin is bumped, run
   it again with the new version (Read and Grep on a file, a `/proc` link and
   a directory link outside the working directory must all be refused).
+- A consumer's triage also passes the pinned factory checkout as an explicit
+  `--add-dir` under `--restricted`. The factory is a second source of
+  read-only evidence, with its repository and commit in the system prompt.
+- A synthetic check of 2.1.321 on 2026-11-26 used the pinned CLI with a local
+  mock model endpoint. Read and Grep found a file in the added directory and
+  refused files outside both directories, including a directory symlink
+  from the factory to an outside directory. Read also refused the adjacent
+  `triage/context.json` and a workspace symlink to `/proc/self/status`. The
+  added directory's `CLAUDE.md` did not load. Recheck both directories when
+  updating the CLI pin.
 - The triage job always checks out the default branch, and a newer trigger
   waits for the run in flight instead of cancelling it.
 - Publish posts the comment before it moves the label, so a failed label

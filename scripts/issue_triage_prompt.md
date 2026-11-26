@@ -80,3 +80,13 @@ Rules:
   For `ready-for-human`, add a line `**Why a human:** ...` after the summary.
 - `wontfix_reason`: required for `wontfix`.
 - Omit or leave empty the fields a state does not use.
+
+<!-- factory source -->
+## Factory evidence for this consumer
+
+`{directory}` is a read-only copy of `{repository}@{sha}`, the factory
+workflows and scripts pinned by the caller. Trace behaviour such as claim,
+queue, concurrency, dispatch and review there. Use
+`{repository}@{short_sha}:<path>` in the evidence path for files in that copy.
+If the cause is in the factory, recommend `ready-for-human` and name
+`{repository}` as the repository where the fix belongs.

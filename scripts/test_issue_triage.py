@@ -184,6 +184,34 @@ def test_triage_parses_a_valid_answer(tmp_path: Path):
     assert result["state"] == "needs-info"
 
 
+def test_triage_cli_passes_the_pinned_factory_along_to_the_transport(tmp_path, monkeypatch, capsys):
+    workspace = tmp_path / "checkout"
+    factory = tmp_path / "factory"
+    workspace.mkdir()
+    factory.mkdir()
+    context_path = tmp_path / "context.json"
+    context_path.write_text(json.dumps(assessed(FakeClient(api_issue()))), encoding="utf-8")
+    sha = "abcdef0" + "1" * 33
+    requests = []
+
+    def transport(request, _token, *, workspace, read_only_directory):
+        requests.append((request, workspace, read_only_directory))
+        return ANSWER
+
+    monkeypatch.setattr(issue_triage, "run_claude", transport)
+    monkeypatch.setenv(issue_triage.TOKEN_ENV, TOKEN)
+    local_args = ["triage", "--context", str(context_path), "--workspace", str(workspace)]
+    factory_args = ["--factory-dir", str(factory), "--factory-repo", REPO, "--factory-sha", sha]
+    assert issue_triage.main(local_args) == pr_cli.EXIT_OK
+    assert json.loads(capsys.readouterr().out)["status"] == "ok"
+    assert issue_triage.main(local_args + factory_args) == pr_cli.EXIT_OK
+    assert json.loads(capsys.readouterr().out)["status"] == "ok"
+    assert requests[0][1:] == (workspace, None)
+    assert requests[1][1:] == (workspace, factory)
+    assert f"{REPO}@{sha}" in requests[1][0]["messages"][0]["content"]
+    assert issue_triage.main(local_args + factory_args[:2]) == pr_cli.EXIT_USAGE
+
+
 def test_triage_without_token_or_with_a_failed_call_is_unavailable(tmp_path, monkeypatch):
     context = assessed(FakeClient(api_issue()))
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
