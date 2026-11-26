@@ -110,10 +110,11 @@ Interview the author about the candidates in **rounds**, before any file is
 written:
 
 1. Ask one numbered question per candidate, except description findings,
-   which stay reported only. Give the candidate's proposed action as the
-   recommended answer, worded so that "yes" accepts it. Where a candidate
-   would remove an `R` item, name the item and ask whether it is
-   load-bearing.
+   which stay reported only. State the recommended decision (accepted, or
+   load-bearing when the signal's test says the line carries a rule) with
+   the `R` items it touches, worded so that a single "yes" accepts it.
+   Where the action adds a reason, ask the author for the failure the rule
+   prevents; the reason is the author's, never invented.
 2. Ask every question that depends on no open answer in the same round.
    Questions that depend on an open answer, such as which wording of a
    repeated rule to keep, go into the next round.
