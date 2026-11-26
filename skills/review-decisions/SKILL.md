@@ -116,10 +116,10 @@ Its `cards` are already in the Queue order. With more than one batch:
   `batches.json`, and queue each part the issue asks for that no batch
   touches as a deviation card.
 - On each card with `unchecked_across_batches: true`, add the line
-  `- Unchecked across batches: yes` and show it on the card under
-  `Why queued`. These are deviations, public surface, schema and data, and
-  decisions that depend on a file in another batch: their other half may sit
-  in a batch the classifier did not see.
+  `- Unchecked across batches: yes` and show it on the card as the bullet
+  `**Unchecked across batches:** yes`. These are deviations, public surface,
+  schema and data, and decisions that depend on a file in another batch:
+  their other half may sit in a batch the classifier did not see.
 - Name every file in `unclassified` with its reason before the first card, and
   list them in the protocol header as `Not classified: <file>: <reason>`. Never
   drop a file without saying so. The reviewer reads these files in the PR or
@@ -238,23 +238,47 @@ Exit 3 means the file is not a protocol this skill wrote; say so and stop.
 
 ## Cards
 
-Show one card per turn and wait for the answer. Keep it short enough to read
-on a phone screen without scrolling far:
+Show one card per turn and wait for the answer. Render it as Markdown, never
+inside a code block, so labels stay bold and lines wrap in the reader's
+window:
 
-```text
-Card <n> of <total>: <file>:<line>
-Why queued: <category>: <the criterion that put it in the queue>
-Chosen: <what the author chose>
-Cost to undo after merge: <one sentence>
+```markdown
+### Card <n> of <total> · `<file>:<line>`
+**<Category>:** <headline: the decision in the change's own terms>
 
-Lean: <the skill's lean, and why, in one line>
+- **Chosen:** <what the author chose>
+- **<Other fact>:** <for example the other pattern in the repo, with file:line>
+- **Cost to undo:** <what breaks if it is undone after the merge>
+- **Depends on:** card <m>
 
-Answer: ok / change / question / later
+> **Lean:** <the skill's lean, and why>
+
+`ok` · `change` · `question` · `later`
 ```
 
-When `location_verified` is false, label the location `Location (unverified)`
-and give the reason. Read `nearest_line` in the diff before suggesting it to
-the reviewer. Keep the lean below the finding.
+Keep to this budget, so a card fits in about 15 rendered lines:
+
+- **Headline**: under 8 words. It replaces the criterion: name the thing
+  (`names of new exports`), not the definition (`names of exported
+  functions`).
+- **Bullets**: one fact each, under 20 words, at most five. Leave out
+  `Depends on` when there is none, and the other-fact bullet when there is
+  no second fact.
+- **Lean**: under 25 words.
+
+Shorten a classifier field that runs over its budget instead of wrapping it:
+the full text stays in the protocol, and a `question` brings it out.
+
+When `location_verified` is false, write `(location unverified)` after the
+`<file>` in the heading and add the bullet `**Location (unverified):**` with
+the reason. Read `nearest_line` in the diff before suggesting it to the
+reviewer. Keep the lean below the finding.
+
+The overview before the first card follows the same layout and budget: a
+`### Overview · <total> cards` heading, one bullet per unchecked input,
+deviation status, batch note and unclassified file, then a `**Files**` label
+and one bullet per file label. Files with the same label and reason share a
+bullet.
 
 The reviewer answers with one word, or a word and a note:
 

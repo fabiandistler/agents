@@ -87,11 +87,24 @@ lines, nothing else:
 ```text
 Category: <category>
 Location: <file>:<line>
-Criterion: <which part of the definition above queues it>
+Criterion: <what queues it, in the change's own terms>
 Chosen: <what the author chose>
-Cost to undo: <one sentence on undoing it after the merge>
-Lean: <your view of the chosen option and why, one line>
+Cost to undo: <what breaks if it is undone after the merge>
+Lean: <your view of the chosen option and why>
 ```
+
+Keep each field to one line and one fact. The reviewer reads them on a short
+card, so stay within these lengths:
+
+- `Criterion`: under 12 words. Name the thing (`names of new exports`), not
+  the definition above (`names of exported functions`).
+- `Chosen`: under 25 words. For a choice between patterns, name the chosen
+  one and the other with its `file:line`.
+- `Cost to undo`: under 20 words.
+- `Lean`: under 25 words.
+
+Leave out history and side facts: a reviewer who asks about them gets the
+answer from the diff.
 
 When the deviation category is unchecked, make the first line
 `Deviation: unchecked (no issue).` When a decision only matters if an earlier
