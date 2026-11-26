@@ -100,6 +100,7 @@ One standing caveat:
 | 4 | `error-edges` | no | Report | 14d |
 | 5 | `test-flakiness` | yes | PR | 30d |
 | 6 | `perf-quickwins` | no | Report | 30d |
+| 7 | `asset-drift` | yes | Report | 30d |
 
 Open question per job (details in the external `repo-maintenance` skill's `references/jobs.md`):
 
@@ -113,6 +114,9 @@ Open question per job (details in the external `repo-maintenance` skill's `refer
 5. **test-flakiness** - Is the time, randomness, or network dependency intentional? Only the
    source of nondeterminism is replaced, never the assertion.
 6. **perf-quickwins** - Measurably slow, or just ugly? No measurement, no finding.
+7. **asset-drift** - Is the adapted copy a change to keep, or drift to resolve? The scanner
+   compares each copy with `maintenance/assets.lock` and the installed plugin; only copies
+   unchanged since their lock row are updated, adapted ones are reported with their diff.
 
 ## Notes on the pre-stages in this repository
 
@@ -136,6 +140,11 @@ Scanner and hook fixes go upstream, then a re-vendor brings them here: the `vend
 `scripts/check_all.sh` fails on any local edit or mode change. `--check` compares the files
 against the lock offline. It does not compare the lock against upstream, so after a merge
 conflict in `lock.json`, re-vendor instead of hand-merging.
+
+`deps-audit` owns updates to the files in `vendor/repo-maintenance/lock.json`.
+When `asset-drift` lists those files, report them as "owned by the vendor lock".
+Never run `update` or `copy` on them from `asset-drift`. Keep this job report-only
+and leave `maintenance/assets.lock` absent.
 
 These hooks skip the vendored files: `ruff-check`, `ruff-format` and `ty` skip the vendored
 Python files (`ruff.toml`, `ty.toml`), and `shellcheck` and `shfmt` skip the scanner and
@@ -165,6 +174,7 @@ The catalog-relevant analogues in this repository are:
 | `deps-audit` | the pinned `rev:` values in `.pre-commit-config.yaml` and the pins in `scripts/check_all.requirements.txt` (prek, pytest, pyyaml, zizmor), and the release tags the `test/bats/` submodules are checked out at (Dependabot would move them to branch heads, so they stay manual). Also the two vendor locks, which only `deps-audit` notices going stale (the CI `vendor-lock` check is offline): `vendor/repo-maintenance/lock.json` (target: upstream `main`) and `.claude/vendor/mattpocock-skills/lock.json` (target: the newest release tag). Check them with `python3 scripts/vendor_repo_maintenance.py --check-upstream` and `python3 scripts/vendor_mattpocock_skills.py --check-upstream`: exit 0 `current`, exit 5 `behind` (both commits printed), exit 6 `ahead` (the target is an ancestor of the locked commit, as when the mattpocock lock sits past the newest tag for an in-progress skill the release lacks; no action, report it as "ahead, no action"), exit 1 upstream unreachable, ref unknown or locked commit missing upstream. A lock that is `behind` gets re-vendored at the printed upstream commit (`python3 scripts/vendor_repo_maintenance.py --ref <commit>`, or `python3 scripts/vendor_mattpocock_skills.py --ref <tag>`) and `scripts/check_all.sh` re-run; if a check then fails, the run reverts the re-vendor and puts the lock in the report instead. Exit 1 is reported as "not checked" with git's error, never as "current": the repo-maintenance upstream is private, so a session without read access to it cannot check that lock. Action tags are Dependabot's (`.github/dependabot.yml`), so a run should confirm that config still covers them rather than re-checking each tag by hand. Read each changelog from the upstream file on `raw.githubusercontent.com` (`https://raw.githubusercontent.com/<owner>/<repo>/<branch>/CHANGELOG.md`), which a cloud session can fetch (routine run of 2026-10-31: pytest, prek, ruff); its GitHub access may refuse third-party repositories ("GitHub access to this repository is not enabled for this session"), so do not depend on release pages. Only if the raw file cannot be read either, the report marks the update "risk unverified: changelog not readable in this session" instead of estimating a risk from the version number |
 | `dead-exports` | skills present in `skills/` but not reachable via `skills.json`, a router, or `.claude-plugin/` |
 | `test-flakiness` | the `pytest` fixture files under `skills/*/scripts/test_*.py` and the Bats suites `test/*.bats` |
+| `asset-drift` | Run `python3 "${CLAUDE_PLUGIN_ROOT}/assets/maintenance-assets.py" check --ci github` from the repo root. The only copy to assess is `.github/workflows/maintenance-gate.yml`, which reads `unknown` because it is adapted and has no lock row. Report its `diff -u` against the template, flag gate-weakening hunks and recommend which adaptations to keep. If the report mentions workflow security or lint, cite the gate header's reasons for their deliberate omission. List any paths in `vendor/repo-maintenance/lock.json` as "owned by the vendor lock" and leave their updates to `deps-audit`. |
 
 ## Backlog
 
