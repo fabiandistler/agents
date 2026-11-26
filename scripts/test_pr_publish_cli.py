@@ -259,7 +259,6 @@ def test_cli_write_exits_one_when_an_action_failed(monkeypatch, tmp_path, capsys
 
     assert code == 1
     captured = capsys.readouterr()
-    assert captured.err == ""
     payload = json.loads(captured.out)
     assert payload["ok"] is False
     assert [result["kind"] for result in payload["results"]] == [
@@ -273,6 +272,29 @@ def test_cli_write_exits_one_when_an_action_failed(monkeypatch, tmp_path, capsys
         "the verdict status stays unset when the comment carrying the verdict failed"
     )
     assert failed[0]["detail"], "a failed action must say what went wrong"
+
+
+@pytest.mark.parametrize("status", [403, 422])
+def test_cli_write_names_each_failed_action_on_stderr(monkeypatch, tmp_path, capsys, status):
+    fake = FakeGitHub(["abc1234", "abc1234"])
+    fake.fail_paths.add(COMMENTS_PATH)
+    fake.fail_status = status
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    code = pr_publish.main([*live_args(tmp_path), "--write", "--quiet"], client=fake)
+
+    assert code == 1
+    captured = capsys.readouterr()
+    lines = captured.err.splitlines()
+    assert len(lines) == 2, "one stderr line per failed action"
+    assert lines[0].startswith("pr_publish.py: upsert_comment failed: ")
+    assert f"POST {COMMENTS_PATH}" in lines[0]
+    assert f"HTTP {status}" in lines[0]
+    assert lines[1].startswith("pr_publish.py: set_status failed: ")
+    body = json.loads(captured.out)["plan"]["actions"]
+    comment = next(action for action in body if action["kind"] == "upsert_comment")["body"]
+    assert comment not in captured.err, "the comment body never reaches the log"
 
 
 def test_cli_write_prints_an_aborted_plan_when_the_head_changed(monkeypatch, tmp_path, capsys):

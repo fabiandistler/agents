@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pr_review_response
+import pytest
 
 CONTEXT = {"schema_version": 1, "number": 42, "head_sha": "abc123"}
 
@@ -46,6 +47,23 @@ def test_finding_without_a_parseable_line_gets_null() -> None:
     artifact = pr_review_response.parse_response(response, CONTEXT)
     assert artifact["findings"][0]["line"] is None
     assert artifact["findings"][0]["path"] == "docs/review.md"
+
+
+@pytest.mark.parametrize(
+    ("finding", "path", "line"),
+    [
+        ("- .chezmoiignore:24 [warning] msg", ".chezmoiignore", 24),
+        ("- **.github/workflows/x.yml:3** [info] msg", ".github/workflows/x.yml", 3),
+        ("- `.pre-commit-config.yaml:7` [info] msg", ".pre-commit-config.yaml", 7),
+        ("- ./src/a.py:1 [info] msg", "src/a.py", 1),
+        ("- `src/a.py`: [info] msg", "src/a.py", None),
+        ("- /etc/hosts:2 [info] msg", "/etc/hosts", 2),
+    ],
+)
+def test_finding_path_keeps_its_leading_dot_and_line(finding: str, path: str, line) -> None:
+    response = f"RISK: low\nVERDICT: concerns\nSUMMARY: s.\nFINDINGS:\n{finding}\nEND\n"
+    artifact = pr_review_response.parse_response(response, CONTEXT)
+    assert (artifact["findings"][0]["path"], artifact["findings"][0]["line"]) == (path, line)
 
 
 LOW_QUALITY_RESPONSES = [
