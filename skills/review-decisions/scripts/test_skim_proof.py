@@ -3,6 +3,8 @@
 Run from the repo root with: uv run --with pytest pytest skills/review-decisions/scripts/
 """
 
+from __future__ import annotations
+
 import json
 import subprocess
 import sys

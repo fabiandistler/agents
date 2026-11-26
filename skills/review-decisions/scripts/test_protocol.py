@@ -437,6 +437,16 @@ def test_answer_requires_draft_and_refuses_a_different_final_answer(tmp_path):
     assert run("comment", str(path), "--json").returncode == 5
 
 
+def test_answer_after_card_rejects_an_unknown_answer_and_extra_arguments(tmp_path):
+    path = initialize(tmp_path, [{"location": "-"}])
+    saved = path.read_bytes()
+    unknown = run("answer", str(path), "--card", "1", "maybe")
+    assert unknown.returncode == 1
+    assert "invalid choice" in unknown.stderr
+    assert run("answer", str(path), "--card", "1", "ok", "extra").returncode == 1
+    assert path.read_bytes() == saved
+
+
 def test_answer_repairs_a_legacy_change_without_a_draft(tmp_path):
     path = protocol(tmp_path, ["- Answer: change", "- Answer: ok", "- Answer: ok"], closing=True)
     updated = run("answer", str(path), "--card", "1", "change", "--draft", "Keep the key.")
