@@ -254,6 +254,10 @@ class Azure:
                 item_id,
                 "--fields",
                 "System.Title,System.Description",
+                # `--expand` defaults to `all`, and the service rejects any
+                # expand together with `--fields`.
+                "--expand",
+                "none",
             )
             fields = item.get("fields", {})
             found.append(

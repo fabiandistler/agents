@@ -198,6 +198,8 @@ def test_azure_reads_pr_work_item_and_ci(tmp_path, repo):
     assert found["unchecked"] == []
     assert "Adds the widget." in (out / "pr.md").read_text()
     assert "Build it." in (out / "issue.md").read_text()
+    show = "az boards work-item show --id 31 --fields System.Title,System.Description"
+    assert f"{show} --expand none --detect true --output json".split() in forge.calls()
     ci = json.loads((out / "ci.json").read_text())
     assert ci == {"state": "green", "checks": [{"name": "PR build", "state": "green"}]}
 
