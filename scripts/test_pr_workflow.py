@@ -378,8 +378,10 @@ def test_only_the_review_checks_out_the_caller(workflow: dict[Any, Any]) -> None
             step for step in steps_of(job) if "actions/checkout@" in str(step.get("uses", ""))
         ]
         if name == "review":
-            assert len(checkouts) == 1, "review reads standards_path and runs setup_command there"
-            assert (checkouts[0].get("with") or {}).get("persist-credentials") is False
+            # One for standards_path and setup_command, one the model reads.
+            assert len(checkouts) == 2, "review checks out the caller and the model's base tree"
+            for checkout in checkouts:
+                assert (checkout.get("with") or {}).get("persist-credentials") is False
         else:
             assert checkouts == [], f"job {name!r} reads no file of the caller"
 
