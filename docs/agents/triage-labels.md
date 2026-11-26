@@ -30,14 +30,16 @@ this table.
 ## Automated triage
 
 `.github/workflows/issue-triage.yml` triages issues by collaborators
-([ADR-0013](../adr/0013-automated-issue-triage.md)). It posts one comment
+([ADR-0013](../adr/0013-automated-issue-triage.md),
+[ADR-0021](../adr/0021-triage-sets-ready-for-human.md)). It posts one comment
 marked `<!-- issue-triage-bot -->` with a category, a recommended state, where
 it looked in the code, and either questions or a draft agent brief.
 
 | The model recommends | The bot leaves | Who acts next |
 | --- | --- | --- |
 | Recommends `needs-info` | Sets `needs-info` | The reporter answers; the issue returns to `needs-triage` |
-| Recommends `ready-for-agent` or `ready-for-human` | Keeps `needs-triage` | The maintainer sets the state and posts the brief |
+| Recommends `ready-for-human` | Sets `ready-for-human`; the draft brief in the comment is the brief | The maintainer works the issue |
+| Recommends `ready-for-agent` | Keeps `needs-triage` | The maintainer sets the state and posts the brief |
 | Recommends `wontfix` | Keeps `needs-triage` | The maintainer sets `wontfix` and closes |
 
 Runs start on a new issue, on the reporter's reply to `needs-info`, when the

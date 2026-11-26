@@ -4,7 +4,11 @@
 
 Accepted (2026-11-10) by the maintainer, after the review of #743: the bot
 sets `needs-info` itself, the three Actions jobs run it, and the brakes below
-stand. Builds on
+stand.
+
+Partly superseded 2026-11-26 by
+[ADR-0021](0021-triage-sets-ready-for-human.md): the bot also sets
+`ready-for-human`. The rest of this decision stands. Builds on
 [ADR-0012](0012-pr-review-on-claude-subscription.md) (the model runs through
 `claude -p` on the Claude subscription).
 
@@ -38,7 +42,9 @@ same way as the PR review:
 
 The bot applies **`needs-info` only**. `ready-for-agent`, `ready-for-human`
 and `wontfix` stay recommendations in the comment; the maintainer sets them,
-and only the maintainer closes an issue.
+and only the maintainer closes an issue. Since
+[ADR-0021](0021-triage-sets-ready-for-human.md) the bot also sets
+`ready-for-human`.
 
 Brakes:
 

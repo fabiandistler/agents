@@ -30,6 +30,7 @@ governs; the replacement ADR or current record is named).
 | [0018](0018-reusable-factory-workflows.md) | Accepted (2026-11-11, recorded 2026-11-14) | The factory's tasks are `workflow_call` workflows in this repository; other repositories call them through thin callers pinned to a commit SHA. |
 | [0019](0019-remove-claude-mention-workflow.md) | Accepted (2026-11-15) | The `@claude` mention workflow is removed: its App token could write and its thread input came from anyone; no workflow starts `claude-code-action` from a comment or review. |
 | [0020](0020-audit-finding-issues.md) | Accepted (2026-11-23) | The skill audit files one `audit-finding` issue per skill; its body becomes the implementer's contract once a person adds `ready-for-agent`. |
+| [0021](0021-triage-sets-ready-for-human.md) | Accepted (2026-11-26) | The triage bot also sets `ready-for-human`; `ready-for-agent` and `wontfix` stay with the maintainer. Partly supersedes 0013. |
 
 ## Supersession
 
@@ -39,6 +40,8 @@ governs; the replacement ADR or current record is named).
 - **0009:** superseded. The catalogue ships no PR-description skill; the
   decision text is kept as history. The current position is recorded in
   [`.out-of-scope/pr-description-skill.md`](../../.out-of-scope/pr-description-skill.md).
+- **0013 ↔ 0021:** 0021 supersedes 0013's "the bot applies `needs-info`
+  only": the bot also sets `ready-for-human`. The rest of 0013 stands.
 - **0008:** the A/B gate passed. The runs and their verdict are in
   [`docs/evals/improve-codebase-ab.md`](../evals/improve-codebase-ab.md).
 - **0010:** amended for the `secret-guard` plugin, which follows the same

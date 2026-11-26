@@ -6,9 +6,10 @@ Two decisions live here, both pure functions over issue data:
   wrote it, which state label it carries, and how many automated triages it
   has already had.
 - ``plan_labels`` turns the model's recommended state into label changes. The
-  bot sets ``needs-info`` itself and nothing else: every other recommendation
-  leaves the issue in ``needs-triage`` for the maintainer, who applies the
-  state (docs/agents/triage-labels.md, ADR-0013).
+  bot sets ``needs-info`` and ``ready-for-human`` itself, neither of which
+  starts a factory task; ``ready-for-agent`` and ``wontfix`` leave the issue
+  in ``needs-triage`` for the maintainer, who applies the state
+  (docs/agents/triage-labels.md, ADR-0013, ADR-0021).
 
 The state labels themselves belong to the handoff protocol module
 (factory_handoff.py); this module holds only the triage rules over them.
@@ -32,8 +33,10 @@ from factory_handoff import (
 
 # What the model may recommend: every state except the one it starts from.
 RECOMMENDABLE_STATES = (NEEDS_INFO, READY_FOR_AGENT, READY_FOR_HUMAN, WONTFIX)
-# The only state the bot applies on its own.
-BOT_STATES = (NEEDS_INFO,)
+# The states the bot applies on its own (ADR-0021): neither starts a task.
+# ready-for-agent starts the implementer and wontfix goes with closing, so
+# both stay with the maintainer.
+BOT_STATES = (NEEDS_INFO, READY_FOR_HUMAN)
 CATEGORIES = ("bug", "enhancement")
 
 # The triage comment's marker; the handoff protocol reader counts it only in a

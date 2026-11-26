@@ -184,6 +184,16 @@ it.
 Not a synonym for an artifact: artifacts carry data inside one run's jobs, the
 handoff protocol carries facts between runs.
 
+## Triage recommendation
+
+The state the automated triage proposes for an issue in its comment. The bot
+applies it as the issue's state label only for `needs-info` and
+`ready-for-human`; `ready-for-agent` and `wontfix` stay a proposal until the
+maintainer sets them.
+
+Not a synonym for a state label: the recommendation is what the bot proposes,
+the state label is what the issue carries. Avoid "declared" for either.
+
 ## Review decision
 
 A place in a change where its author chose between several defensible options
