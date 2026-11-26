@@ -120,7 +120,7 @@ class Inputs:
         }
 
     def _write(self, key: str, name: str, text: str) -> None:
-        (self.out / name).write_text(text, encoding="utf-8", newline="")
+        (self.out / name).write_bytes(text.encode("utf-8"))
         self.manifest["files"][key] = name
 
     def write_pr(self, info: dict, text: str) -> None:
