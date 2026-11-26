@@ -146,11 +146,14 @@ your output. Give each run two more values:
   quotes the diff, and a quoted line equal to a guessable delimiter would end
   the heredoc early and run the rest as shell.
 
-List `<scratch>/batches` before the first run and again after the last run
-returns. The only new names are the answer files you passed. A missing or
-empty answer file is a failed run (see Large diffs). Any other new file means
-a run was steered: count every run as failed and name the file to the
-reviewer before the first card. Then merge the answers (see Large diffs).
+Nothing confines the classifier's shell to that file, so check what changed.
+Before the first run and again after the last run returns, list `<scratch>`
+recursively and run `git status --porcelain` in the repository. The only new
+names are the answer files you passed, and the repository status is
+unchanged. A missing or empty answer file is a failed run (see Large diffs).
+Any other new file or changed status means a run was steered: count every run
+as failed and name the path to the reviewer before the first card. A write
+outside both places stays unseen. Then merge the answers (see Large diffs).
 
 On a runtime without that subagent, start a fresh agent with no session
 history and give it the instructions from the classifier's definition and the

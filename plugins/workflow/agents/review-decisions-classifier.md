@@ -52,7 +52,9 @@ cat > '<answer-file>' <<'<delimiter>'
 <delimiter>
 ```
 
-Then reply with the single line `Wrote <answer-file>.` and nothing else.
+If a line of your answer equals the delimiter, write no answer file and
+report it as blocked. Otherwise reply with the single line
+`Wrote <answer-file>.` and nothing else.
 
 ## What counts
 
