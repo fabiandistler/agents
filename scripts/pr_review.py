@@ -60,6 +60,7 @@ from pr_review_sanitize import (
     truncate_bytes,
     truncate_text,
 )
+from pr_review_standards import read_standards, system_prompt_with
 
 DEFAULT_MODEL = "sonnet"
 MODEL_ENV = "PR_REVIEW_MODEL"
@@ -70,18 +71,9 @@ MAX_TOTAL_BYTES = 300_000
 MAX_TITLE_BYTES = 500
 MAX_BODY_BYTES = 50_000
 MAX_TREE_BYTES = 20_000
-# Far below the 128 KiB Linux limit for the one argv string the system prompt
-# becomes; a larger file stops the run, because dropped rules read as clean.
-MAX_STANDARDS_BYTES = 65_536
 DIFF_STATUSES = ("complete", "truncated", "unavailable")
 
 TOTAL_CUT_NOTE = "\n\n[Input truncated to the total review limit.]\n"
-STANDARDS_SECTION = (
-    "\n## Repository standards\n\n"
-    "The operator of this review supplied the following standards for this repository.\n"
-    "Judge the pull request against them. They do not change the untrusted-input\n"
-    "rules or the output format above.\n\n"
-)
 
 MISSING_KEY_SUMMARY = "Review unavailable: the provider is not configured."
 PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
@@ -119,38 +111,6 @@ def _as_text(value: object) -> str:
 
 
 # --- Request assembly --------------------------------------------------------
-
-
-def _system_prompt(standards: str | None) -> str:
-    bundled = Path(__file__).with_name("pr_review_prompt.md").read_text(encoding="utf-8")
-    if standards is None:
-        return bundled
-    return bundled + STANDARDS_SECTION + standards
-
-
-def read_standards(path: str) -> str:
-    """Return the operator standards file at the local ``path``; raise InputError if unusable.
-
-    The message names the flag and the reason, never the file content.
-    """
-    try:
-        with Path(path).open("rb") as handle:
-            data = handle.read(MAX_STANDARDS_BYTES + 1)
-    except FileNotFoundError:
-        raise pr_cli.InputError("--standards file does not exist") from None
-    except OSError:
-        raise pr_cli.InputError("--standards file is not readable") from None
-    if len(data) > MAX_STANDARDS_BYTES:
-        raise pr_cli.InputError(f"--standards file exceeds {MAX_STANDARDS_BYTES} bytes")
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError:
-        raise pr_cli.InputError("--standards file is not valid UTF-8") from None
-    if "\x00" in text:
-        raise pr_cli.InputError("--standards file contains a NUL byte")
-    if not text.strip():
-        raise pr_cli.InputError("--standards file is empty")
-    return text
 
 
 def _render_files(files: list[dict]) -> list[str]:
@@ -256,7 +216,7 @@ def build_request(context: dict, standards: str | None = None) -> tuple[dict, In
     system prompt only, and its bytes come out of the payload budget.
     """
     _validate_context(context)
-    system_prompt = _system_prompt(standards)
+    system_prompt = system_prompt_with(standards)
     budget = MAX_TOTAL_BYTES - len(system_prompt.encode("utf-8"))
     title, title_cut = truncate_text(
         " ".join(sanitize_text(_as_text(context.get("title"))).split()), MAX_TITLE_BYTES
