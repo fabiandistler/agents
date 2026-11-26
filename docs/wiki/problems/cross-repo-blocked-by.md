@@ -17,5 +17,16 @@
   implementer; their Blocked-by lists had been rewritten to agents#794 only
   that day. The 2026-11-11 claims about the mechanism are not affected.
   Source: [2026-11-20 status sweep](../snapshots/2026-11-20-status.md).
+- 2026-11-26 (#964): a native "blocked by" dependency into a private
+  repository was invisible to the claim and the queue: their repo-scoped
+  tokens get an empty dependency list, so agents#956 stopped `at-capacity`
+  and would have been dispatched before fabiandistler/repo-maintenance#208
+  closed. The fix counts the open blockers in the issue's
+  `issue_dependencies_summary.blocked_by` that the list does not show; they
+  block until GitHub counts them closed. A native dependency is now the
+  supported cross-repo wait, and a `Blocked by <URL>` line still fails
+  closed. Not planned clears a hidden blocker, unlike a visible one. Probe:
+  with the App token, agents#956 reported `total_blocked_by: 1` and an
+  empty dependency list, so the summary counts the hidden edge.
 
 Related: [rollout](../decisions/2026-11-11-factory-rollout.md).

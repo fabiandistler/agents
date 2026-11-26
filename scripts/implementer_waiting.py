@@ -102,7 +102,7 @@ def require_active_queue(client: ReadClient, repo: str, queue_workflow: str) -> 
         raise FetchError(f"--queue-workflow names a workflow that is {state}: {path}; {remedy}")
 
 
-def blocked_comment(blockers: tuple[int, ...], unresolved: int, *, waits: bool) -> str:
+def blocked_comment(blockers: tuple[int, ...], unresolved: int, hidden: int, *, waits: bool) -> str:
     reasons: list[str] = []
     if blockers:
         reasons.append("Blocked by " + ", ".join(f"#{number}" for number in blockers) + ".")
@@ -111,6 +111,13 @@ def blocked_comment(blockers: tuple[int, ...], unresolved: int, *, waits: bool) 
             f'{unresolved} "Blocked by" entries name no issue in this repository (a title, '
             "another repository's issue or a pull request), so they count as blocking: "
             "write each one as `#<n>`, or remove it once it is done."
+        )
+    if hidden:
+        reasons.append(
+            f"{hidden} native blockers (the issue's Relationships, blocked by) are in a "
+            "repository this run cannot read. They count as done once GitHub counts them "
+            "closed, so for them alone closed as not planned counts as done too; nobody has to "
+            "edit this issue."
         )
     next_step = BLOCKED_WAITS if waits else RELEASED.format(restart="once every blocker is done")
     return BLOCKED_COMMENT.format(reason=" ".join(reasons), next_step=next_step)

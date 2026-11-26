@@ -112,7 +112,7 @@ def test_without_a_queue_no_workflow_is_looked_up(gate):
 
 
 @pytest.mark.parametrize("queue_workflow", [None, QUEUE_WORKFLOW])
-@pytest.mark.parametrize("comment_for", [capacity_comment, partial(blocked_comment, (7,), 0)])
+@pytest.mark.parametrize("comment_for", [capacity_comment, partial(blocked_comment, (7,), 0, 0)])
 def test_one_decision_picks_the_comment_and_the_label(queue_workflow, comment_for):
     # The comment promises what happens to the label: kept for the queue, or removed.
     fake = FakeGitHub()

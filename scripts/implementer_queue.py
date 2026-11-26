@@ -49,12 +49,9 @@ from dataclasses import asdict, dataclass, field
 
 import agent_run_capacity
 from factory_handoff import READY_FOR_AGENT, implementer_run_issue
+from implementer_blockers import find_blockers
 from implementer_capacity import MAX_WORKING_RUNS
-from implementer_claim import (
-    HTTP_NOT_FOUND,
-    find_blockers,
-    pull_request_holding_issue,
-)
+from implementer_claim import HTTP_NOT_FOUND, pull_request_holding_issue
 from implementer_contract import contract_text, read_ticket
 from implementer_setup import (
     BRANCH_PREFIX,
@@ -198,8 +195,7 @@ def _skip_reason(
     ticket = read_ticket(client, repo, issue)
     if contract_text(ticket, issue) is None:
         return NO_CONTRACT
-    blockers, unresolved = find_blockers(client, repo, issue, ticket)
-    if blockers or unresolved:
+    if find_blockers(client, repo, issue, ticket).block:
         return BLOCKED
     return None
 

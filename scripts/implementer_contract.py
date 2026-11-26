@@ -48,12 +48,18 @@ without write access, and no such person has posted a comment containing a \
 
 @dataclass(frozen=True)
 class Ticket:
-    """The issue's texts, split by whether their author has write access."""
+    """The issue's texts, split by whether their author has write access.
+
+    ``open_native_blockers`` is the issue's own count of open native blockers
+    (``issue_dependencies_summary.blocked_by``), or None when the payload holds
+    no such count; a reader that needs it fails then (implementer_claim.py).
+    """
 
     body: str
     body_is_trusted: bool
     brief: str | None
     trusted_comments: tuple[str, ...]
+    open_native_blockers: int | None
 
 
 def read_ticket(client: ReadClient, repo: str, issue: int) -> Ticket:
@@ -80,8 +86,21 @@ def read_ticket(client: ReadClient, repo: str, issue: int) -> Ticket:
             trusted_comments.append(text)
     brief = briefs[-1] if briefs else None
     return Ticket(
-        body, body_is_trusted(client, repo, issue, ticket), brief, tuple(trusted_comments)
+        body,
+        body_is_trusted(client, repo, issue, ticket),
+        brief,
+        tuple(trusted_comments),
+        _open_native_blockers(ticket),
     )
+
+
+def _open_native_blockers(issue: dict) -> int | None:
+    """The open-blocker count GitHub keeps on the issue, or None when it is missing or malformed."""
+    summary = issue.get("issue_dependencies_summary")
+    count = summary.get("blocked_by") if isinstance(summary, dict) else None
+    if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+        return None
+    return count
 
 
 def body_is_trusted(client: ReadClient, repo: str, number: int, issue: dict) -> bool:
