@@ -69,7 +69,7 @@ def file_chunks(diff: str) -> list[tuple[str, str]]:
         raise ScriptError(3, "DIFF does not start with a `diff --git` header")
     starts = [m.start() for m in re.finditer(r"^diff --git ", diff, flags=re.MULTILINE)]
     ends = [*starts[1:], len(diff)]
-    return [(chunk_path(diff[s:e]), diff[s:e]) for s, e in zip(starts, ends, strict=True)]
+    return [(chunk_path(diff[s:e]), diff[s:e]) for s, e in zip(starts, ends)]
 
 
 def chunk_path(chunk: str) -> str:

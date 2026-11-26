@@ -130,6 +130,10 @@ output. That file is their only home. This repository adds:
 - Python with third-party deps: PEP 723 inline block + `uv run
   script.py`. No sibling requirements.txt, no install step. `uv add
   --script` to edit, `uv lock --script` when the run must reproduce.
+- A skill's `scripts/` run on Python 3.9, the system `python3` on RHEL 9
+  and Posit Workbench; ruff's `per-file-target-version` and the CI job
+  `skill-scripts-py39` enforce it. A PEP 723 script that declares
+  `requires-python` is exempt.
 - A one-off command in SKILL.md (`uvx`, `npx`) is version-pinned, or it
   is not a convention.
 - Reference bundled skill scripts relative to the skill directory

@@ -33,7 +33,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from urllib.parse import urlsplit
@@ -74,7 +74,7 @@ def new_protocol_path(repo: Path) -> Path:
             4, "the state directory lies inside the repository; set XDG_STATE_HOME elsewhere"
         )
     directory.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     slug = re.sub(r"[^A-Za-z0-9._-]+", "-", ref).strip("-")
     return directory / f"{slug}-{stamp}.md"
 
@@ -301,7 +301,7 @@ def record_post(text: str, target: str) -> str:
     if any(line.startswith(POSTED) and line.endswith(" " + target) for line in text.splitlines()):
         return text
     before_close, _ = text.rstrip().rsplit(CLOSING, 1)
-    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     before_close = before_close.rstrip("\n")
     return finish(f"{before_close}\n\n{POSTED}{timestamp} {target}")
 
@@ -419,28 +419,25 @@ def command(args) -> None:
     if not args.file.is_file():
         raise ScriptError(2, "protocol file not found")
     text = args.file.read_text(encoding="utf-8")
-    match args.command:
-        case "resume":
-            print(json.dumps(resume_state(text)))
-            return
-        case "comment":
-            print(
-                json.dumps(comments.review_comment(change_cards(text)))
-                if args.json
-                else comments.combined_comment(change_cards(text)),
-                end="\n" if args.json else "",
-            )
-            return
-        case "add-card":
-            updated = add_card(text, load_json(args.card_json), args.file_line)
-        case "answer":
-            updated = answer_card(
-                text, args.card, args.answer, args.draft, args.question, args.reply
-            )
-        case "close":
-            updated = close_protocol(text, args.moot_remaining)
-        case "record-post":
-            updated = record_post(text, args.target)
+    if args.command == "resume":
+        print(json.dumps(resume_state(text)))
+        return
+    if args.command == "comment":
+        print(
+            json.dumps(comments.review_comment(change_cards(text)))
+            if args.json
+            else comments.combined_comment(change_cards(text)),
+            end="\n" if args.json else "",
+        )
+        return
+    if args.command == "add-card":
+        updated = add_card(text, load_json(args.card_json), args.file_line)
+    elif args.command == "answer":
+        updated = answer_card(text, args.card, args.answer, args.draft, args.question, args.reply)
+    elif args.command == "close":
+        updated = close_protocol(text, args.moot_remaining)
+    else:  # record-post, the one subcommand argparse leaves
+        updated = record_post(text, args.target)
     if updated != text:
         update_protocol(args.file, updated)
 
@@ -474,7 +471,15 @@ def main(argv: list[str]) -> int:
     commands.add_parser("resume").add_argument("file", type=Path)
     for verb in (add, close, comment, post):
         verb.add_argument("file", type=Path)
-    args = parser.parse_args(argv)
+    # Older argparse (3.9 included) fills the optional ANSWER together with FILE,
+    # so `answer FILE --card N ok` leaves `ok` unrecognized; take it from there.
+    args, unrecognized = parser.parse_known_args(argv)
+    if args.command == "answer" and args.answer is None and len(unrecognized) == 1:
+        args.answer = unrecognized.pop()
+        if args.answer not in ANSWERS:
+            answer.error(f"argument answer: invalid choice: {args.answer!r}")
+    if unrecognized:
+        parser.error(f"unrecognized arguments: {' '.join(unrecognized)}")
     return cli.run("protocol.py", lambda: command(args))
 
 

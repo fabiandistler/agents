@@ -249,6 +249,9 @@ def load_release_state():
     return module
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="only tomllib (3.11+) reports a malformed pyproject.toml"
+)
 @pytest.mark.parametrize(
     ("content", "position"),
     [(MALFORMED_PYPROJECT, "at line 4, column 9"), (UNTERMINATED_PYPROJECT, "at end of document")],
