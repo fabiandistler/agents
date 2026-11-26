@@ -260,7 +260,7 @@ def test_a_workspace_call_gets_only_the_read_tools_confined_to_it(
     assert "--add-dir" not in argv
     assert option_value(argv, "--setting-sources") == "", "no settings, hooks or CLAUDE.md"
     assert "--strict-mcp-config" in argv
-    assert int(option_value(argv, "--max-turns")) > 1
+    assert option_value(argv, "--max-turns") == "10", "a few reads, not a long session"
     assert Path(call["cwd"]).resolve() == workspace.resolve()
     assert call["stdin"] == "ISSUE BODY"
 

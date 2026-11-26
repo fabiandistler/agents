@@ -34,7 +34,7 @@ pr-review-base` hands that directory to `run_claude`, which runs
 
 ```text
 claude --print --output-format json --tools Read,Grep,Glob --restricted
-       --system-prompt <prompt> --model <model> --max-turns 40
+       --system-prompt <prompt> --model <model> --max-turns 10
        --no-session-persistence --strict-mcp-config --disable-slash-commands
        --setting-sources ""
 ```
@@ -101,9 +101,12 @@ no input to turn it off.
 
 ## Consequences
 
-- A review may take up to 40 turns and 600 seconds instead of one turn and
+- A review may take up to 10 turns and 600 seconds instead of one turn and
   300 seconds, so each one draws more on the subscription. ADR-0012's reopen
-  condition (reviews crowding out interactive use) now weighs more.
+  condition (reviews crowding out interactive use) now weighs more. The cap is
+  10, not 40, because reviews share the subscription's 5-hour limit, which about
+  30 tool-less reviews already reached on 2026-11-26; 10 turns leave room for
+  the few searches and reads the PR #990 case needed.
 - The workspace is the base branch's tip when the run starts; the payload's
   base contents are from the pull request's base commit. When the base branch
   moved after the last push, the two differ.

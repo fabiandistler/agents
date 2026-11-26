@@ -310,7 +310,7 @@ pin loses its exact version. First rerun the ADR-0013 sandbox check.
 
 ## Quota and cost
 
-- One review job makes one `claude -p` call of up to 40 turns, 600 seconds.
+- One review job makes one `claude -p` call of up to 10 turns, 600 seconds.
   Label events, drafts and forks make none. The input is capped:
 
   | Cap | Limit | Effect |

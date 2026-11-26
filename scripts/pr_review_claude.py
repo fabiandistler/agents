@@ -29,7 +29,7 @@ TIMEOUT_SECONDS = 300
 MAX_REASON_CHARS = 300
 # The read-only tools a workspace call gets; nothing that runs code or writes.
 WORKSPACE_TOOLS = "Read,Grep,Glob"
-WORKSPACE_MAX_TURNS = 40
+WORKSPACE_MAX_TURNS = 10
 WORKSPACE_TIMEOUT_SECONDS = 600
 
 
