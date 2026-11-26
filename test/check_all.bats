@@ -197,6 +197,74 @@ decoy_config() {
   assert_line "MISSING pytest: not installed: pytest pyyaml ($bare_python -m pip install -r scripts/check_all.requirements.txt)"
 }
 
+# A bare checkout whose instructions check starts a bare python3, as the
+# workflow shell lines under test do, and prints what that python3 reports:
+# `prefix=<sys.prefix>`, `python3=<its path on PATH>` and `PATH=<PATH>`.
+make_checkout_with_bare_python3_check() {
+  bare_checkout="$(make_bare_checkout)"
+  cat >"$bare_checkout/scripts/check_instructions.py" <<'EOF'
+import subprocess
+
+report = (
+    "import os, shutil, sys; "
+    "print('prefix=' + sys.prefix); "
+    "print('python3=' + shutil.which('python3')); "
+    "print('PATH=' + os.environ['PATH'])"
+)
+print(subprocess.run(["python3", "-c", report], check=True, capture_output=True, text=True).stdout)
+EOF
+}
+
+@test "PYTHON outside PATH is the python3 a check starts, and its shim is gone after the run" {
+  make_checkout_with_bare_python3_check
+  "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/venv"
+  run env PYTHON="$BATS_TEST_TMPDIR/venv/bin/python" \
+    "$bare_checkout/scripts/check_all.sh" --only instructions --output "$bare_checkout/full.log"
+  assert_success
+  # The venv's prefix: a symlink to it would start the base interpreter.
+  grep -qxF "prefix=$BATS_TEST_TMPDIR/venv" "$bare_checkout/full.log"
+  shim="$(sed -n 's/^python3=//p' "$bare_checkout/full.log")"
+  [ -n "$shim" ]
+  [ ! -e "$shim" ]
+}
+
+@test "PYTHON as a bare command name that is python3 does not start itself" {
+  make_checkout_with_bare_python3_check
+  local py_bin="$BATS_TEST_TMPDIR/py-bin"
+  mkdir "$py_bin"
+  ln -s "$(command -v "$PYTHON")" "$py_bin/python3"
+  run timeout 60 env PATH="$py_bin:$PATH" PYTHON=python3 \
+    "$bare_checkout/scripts/check_all.sh" --only instructions --output "$bare_checkout/full.log"
+  assert_success
+  grep -q '^prefix=' "$bare_checkout/full.log"
+}
+
+# The MISSING line's fix installs zizmor with PYTHON's pip, into PYTHON's
+# scripts directory, which need not be on PATH.
+@test "a tool that PYTHON's pip installed runs without a PATH change" {
+  bare_checkout="$(make_bare_checkout)"
+  "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/venv"
+  printf '#!/usr/bin/env bash\necho "zizmor from the venv"\n' >"$BATS_TEST_TMPDIR/venv/bin/zizmor"
+  chmod +x "$BATS_TEST_TMPDIR/venv/bin/zizmor"
+  run env PATH="$(path_without zizmor)" PYTHON="$BATS_TEST_TMPDIR/venv/bin/python" \
+    "$bare_checkout/scripts/check_all.sh" --only zizmor --output "$bare_checkout/full.log"
+  assert_success
+  assert_line --regexp '^PASS zizmor \([0-9]+s\)$'
+  grep -qxF 'zizmor from the venv' "$bare_checkout/full.log"
+}
+
+@test "without PYTHON the checks get PATH unchanged" {
+  make_checkout_with_bare_python3_check
+  # The gate needs a python3 of 3.11 or newer on PATH.
+  local py_bin="$BATS_TEST_TMPDIR/py-bin"
+  mkdir "$py_bin"
+  ln -s "$(command -v "$PYTHON")" "$py_bin/python3"
+  run env -u PYTHON PATH="$py_bin:$PATH" \
+    "$bare_checkout/scripts/check_all.sh" --only instructions --output "$bare_checkout/full.log"
+  assert_success
+  grep -qxF "PATH=$py_bin:$PATH" "$bare_checkout/full.log"
+}
+
 @test "missing Bats submodules report MISSING with the fix and exit 3" {
   bare_checkout="$(make_bare_checkout)"
   run "$bare_checkout/scripts/check_all.sh" --only bats
