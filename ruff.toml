@@ -38,3 +38,5 @@ extend-select = ["S", "E501"]
 "scripts/pr_*_testkit.py" = ["S101"]
 # Loaders shared by the agent-run workflow tests.
 "scripts/agent_run_workflow_testkit.py" = ["S101"]
+# Fake forge CLIs shared by the review-decisions gather_inputs.py test modules.
+"skills/review-decisions/scripts/gather_inputs_testkit.py" = ["S101"]

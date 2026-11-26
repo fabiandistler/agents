@@ -37,7 +37,8 @@ file in a new scratch directory outside the repository (`mktemp -d`):
    Azure DevOps) and reads, through that forge's own CLI and login, the PR
    text into `pr.md`, the linked issue or work items into `issue.md` and the
    CI status into `ci.json`. It prints the manifest `inputs.json`: the files
-   written, the PR's number, target branch and head commit, and `unchecked`,
+   written, the PR's number, target branch, head commit and `merge_status`
+   (`clean`, `conflicts` or `unknown`, from the forge), and `unchecked`,
    one entry with a reason per input it could not read. Exit 0 means all
    three were read; exit 3 means some are in `unchecked`.
 2. **Diff**: `git diff <base-ref>...HEAD` for the base the reviewer named,
@@ -74,6 +75,13 @@ Before the first card, list each input that stays unchecked, the reason and
 what the review could not check. Record the same lines in the protocol header.
 Use the no-issue rule under Queue. Without CI, no change is marked as proven
 by green CI.
+
+When the manifest's `merge_status` is `conflicts` or `unknown`, say so in the
+same place before the first card: the PR conflicts with its target branch, or
+the forge has not said whether it merges cleanly, so a card may judge code the
+target has already changed. Record it as the header line `merge status:
+<value>`. Say nothing for `clean`. Neither status makes an input unchecked or
+stops the review.
 
 ## Large diffs
 
@@ -235,7 +243,8 @@ Before showing the first card, save `cards.json` in final queue order and
 run `python3 scripts/protocol.py init --repo <repo-root> --base <base-ref>
 --cards <cards.json>`. Repeat `--file-line` for the file labels and
 `--header-line` for the input files (including `inputs.json`), unchecked
-inputs and reasons, deviation status, and batch notes. Print the path it
+inputs and reasons, a `conflicts` or `unknown` merge status, deviation
+status, and batch notes. Print the path it
 returns. On exit 4 set `XDG_STATE_HOME` outside the repository and retry.
 
 Record each answer as it is given with `python3 scripts/protocol.py answer
