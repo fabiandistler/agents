@@ -30,7 +30,8 @@ this table.
 ## Automated triage
 
 `.github/workflows/issue-triage.yml` triages issues by collaborators
-([ADR-0013](../adr/0013-automated-issue-triage.md), [ADR-0021](../adr/0021-triage-sets-ready-for-human.md)). It posts one comment
+([ADR-0013](../adr/0013-automated-issue-triage.md),
+[ADR-0021](../adr/0021-triage-sets-ready-for-human.md)). It posts one comment
 marked `<!-- issue-triage-bot -->` with a category, a recommended state, where
 it looked in the code, and either questions or a draft agent brief.
 

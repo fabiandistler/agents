@@ -42,7 +42,9 @@ same way as the PR review:
 
 The bot applies **`needs-info` only**. `ready-for-agent`, `ready-for-human`
 and `wontfix` stay recommendations in the comment; the maintainer sets them,
-and only the maintainer closes an issue.
+and only the maintainer closes an issue. Since
+[ADR-0021](0021-triage-sets-ready-for-human.md) the bot also sets
+`ready-for-human`.
 
 Brakes:
 

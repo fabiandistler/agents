@@ -153,7 +153,7 @@ Issues live as GitHub issues on fabiandistler/agents. GitHub reads and writes (i
 
 The five canonical triage roles use their default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
-`.github/workflows/issue-triage.yml` triages new issues by collaborators with a model that recommends a state in a comment; it sets only `needs-info` itself (`docs/adr/0013-automated-issue-triage.md`).
+`.github/workflows/issue-triage.yml` triages new issues by collaborators with a model that recommends a state in a comment; it sets `needs-info` and `ready-for-human` itself (`docs/adr/0013-automated-issue-triage.md`, `docs/adr/0021-triage-sets-ready-for-human.md`).
 
 ### Implementer
 

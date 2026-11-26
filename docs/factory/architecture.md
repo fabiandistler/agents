@@ -302,7 +302,8 @@ Each decision, with its rejected options, is an ADR:
 App write token in the model step instead of a model/publisher split
 ([0014](../adr/0014-agent-runs-in-github-actions.md)); the review on the
 subscription through the CLI ([0012](../adr/0012-pr-review-on-claude-subscription.md));
-a triage bot that sets only `needs-info` ([0013](../adr/0013-automated-issue-triage.md));
+a triage bot that sets `needs-info` and `ready-for-human`
+([0013](../adr/0013-automated-issue-triage.md));
 auto-merge for gated docs-only pull requests ([0011](../adr/0011-pr-review-merge-exception.md));
 Rework on `workflow_run`, two rounds ([0015](../adr/0015-rework-task.md)); a
 model-free Fix task that never starts a fix ([0016](../adr/0016-fix-task.md));

@@ -37,10 +37,10 @@ flowchart TD
     label --> triage["issue-triage comments a recommendation;<br/>sets needs-info or ready-for-human"]
     triage -->|needs-info| reply["Reporter answers"]
     reply --> triage
-    triage --> decide{"You decide"}
+    triage -->|ready-for-human| person([A person takes it])
+    triage -->|"needs-triage kept"| decide{"You decide"}
     decide -->|"brief posted,<br/>ready-for-agent added"| claim["implementer claims agent/issue-n"]
-    triage -->|ready-for-human| person
-    decide -->|"ready-for-human or wontfix"| person([A person takes it])
+    decide -->|wontfix| person
     claim -->|"blocked or at-capacity"| queue["Keeps ready-for-agent;<br/>waits in the queue"]
     queue --> claim
     claim -->|"no-contract"| stopped["Label removed;<br/>you add it again"]
@@ -60,8 +60,9 @@ flowchart TD
 Text equivalent: a new issue gets `needs-triage` from the triage label task.
 The issue triage task comments with a category and a recommended state; it
 sets `needs-info` or `ready-for-human` itself and leaves every other state to
-you; the reporter's answer to `needs-info` sends the issue back to triage. You post an agent brief and add `ready-for-agent`, which
-starts the implementer. Its claim either stops the run or creates branch
+you; the reporter's answer to `needs-info` sends the issue back to triage.
+On an issue that keeps `needs-triage`, you post an agent brief and add
+`ready-for-agent`, which starts the implementer, or close it as `wontfix`. Its claim either stops the run or creates branch
 `agent/issue-<n>` and builds a ready-for-review pull request that closes
 the issue. A run stopped as `blocked` or `at-capacity` keeps
 `ready-for-agent` and waits in the implementer queue, which starts it once
