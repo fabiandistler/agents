@@ -38,7 +38,8 @@ Runs every CI check from the repo root; one PASS/FAIL/MISSING line per check.
   --output FILE  also write every check's full output to FILE
   --list         print the check names with the tools each needs, then exit
   -h, --help     show this help
-Env: PYTHON (default python3, must be 3.11 or newer). The prek check runs ruff, ty, shellcheck, shfmt
+Env: PYTHON (default python3, must be 3.11 or newer). When set, it is also the
+python3 on PATH for every check. The prek check runs ruff, ty, shellcheck, shfmt
 and the secret scan at the versions pinned in .pre-commit-config.yaml; its
 hooks may rewrite files (ruff --fix, shfmt, whitespace). A failing prek check
 prints each hook's result, then `git diff --stat` of the work tree (up to 10
@@ -334,8 +335,25 @@ for name in "${CHECKS[@]}"; do
 done
 
 if [ -n "$output" ]; then : >"$output" || exit 2; fi
-log="$(mktemp)"
-trap 'rm -f "$log"' EXIT
+run_dir="$(mktemp -d)"
+trap 'rm -rf "$run_dir"' EXIT
+log="$run_dir/log"
+
+# A set PYTHON is also the bare python3 that checks start (workflow shell
+# lines under test call one, #997). A shim directory, not PYTHON's own
+# directory: for PYTHON=/usr/bin/python3.12 that directory's python3 can be
+# an older one. The shim execs PYTHON instead of linking to it, because a
+# symlink outside a venv starts the venv's base interpreter without its
+# packages. PYTHON is resolved first, so PYTHON=python3 does not exec itself.
+if [ -n "${PYTHON:-}" ]; then
+  require_python check_all.sh "$PY" || exit 4
+  py_path="$(command -v "$PY")"
+  case "$py_path" in /*) ;; *) py_path="$PWD/$py_path" ;; esac
+  mkdir "$run_dir/bin"
+  printf '#!/usr/bin/env bash\nexec %q "$@"\n' "$py_path" >"$run_dir/bin/python3"
+  chmod +x "$run_dir/bin/python3"
+  PATH="$run_dir/bin:$PATH"
+fi
 
 failed=() missing=() missing_tools=""
 for name in "${wanted[@]}"; do
