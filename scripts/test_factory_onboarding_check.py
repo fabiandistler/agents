@@ -152,7 +152,8 @@ def test_missing_label_is_named(capsys, monkeypatch):
 
     code, lines, _ = run(fake, capsys, monkeypatch)
 
-    assert code == 1
+    # EXIT_MISSING is an outcome: its reason is the MISSING line on stdout.
+    assert code == check.EXIT_MISSING
     assert lines["labels"] == ("MISSING", "absent: wontfix")
 
 
@@ -345,31 +346,33 @@ def test_file_content_and_token_never_printed_and_only_gets(capsys, monkeypatch)
     assert {method for method, _, _ in fake.calls} == {"GET"}
 
 
-def test_api_error_exits_3_naming_endpoint_and_status(capsys, monkeypatch):
+def test_api_error_exits_3_naming_endpoint_and_status(monkeypatch, assert_exit_cause):
     path = f"/repos/{REPO}/labels"
     fake = RoutedFake(errors={path: FetchError(f"GitHub API returned 500 for {path}", 500)})
+    monkeypatch.setenv("GH_TOKEN", "test-token")
 
-    code, _, err = run(fake, capsys, monkeypatch)
+    code = check.main(["--repo", REPO], client=fake)
 
-    assert code == 3
+    _, err = assert_exit_cause(code, check.EXIT_API)
     assert err.strip() == f"factory_onboarding_check.py: GitHub API returned 500 for {path}"
 
 
 @pytest.mark.parametrize("argv", [["--repo", "not-a-repo"], ["--repo", "a/b/c"], []])
-def test_bad_repo_is_a_usage_error(capsys, monkeypatch, argv):
+def test_bad_repo_is_a_usage_error(monkeypatch, assert_exit_cause, argv):
     monkeypatch.setenv("GH_TOKEN", "test-token")
     fake = RoutedFake()
 
-    assert check.main(argv, client=fake) == 2
+    _, err = assert_exit_cause(check.main(argv, client=fake), check.EXIT_USAGE)
+    assert "--repo" in err
     assert fake.calls == []
 
 
-def test_missing_token_is_a_usage_error(capsys, monkeypatch):
+def test_missing_token_is_a_usage_error(monkeypatch, assert_exit_cause):
     monkeypatch.delenv("GH_TOKEN", raising=False)
     fake = RoutedFake()
 
-    assert check.main(["--repo", REPO], client=fake) == 2
-    assert "GH_TOKEN" in capsys.readouterr().err
+    _, err = assert_exit_cause(check.main(["--repo", REPO], client=fake), check.EXIT_USAGE)
+    assert "GH_TOKEN" in err
     assert fake.calls == []
 
 

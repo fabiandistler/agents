@@ -76,15 +76,25 @@ def _run(*args: str, env: dict | None = None) -> subprocess.CompletedProcess:
     )
 
 
-def test_cli_without_token_exits_3():
+def test_cli_without_token_exits_3(assert_exit_cause):
     result = _run("--repo", REPO, "--event", "schedule", env={"PATH": "/usr/bin:/bin"})
-    assert result.returncode == skill_audit_gate.EXIT_MISSING_TOKEN
-    assert "GITHUB_TOKEN" in result.stderr
+    _, stderr = assert_exit_cause(result, skill_audit_gate.EXIT_MISSING_TOKEN)
+    assert "GITHUB_TOKEN" in stderr
 
 
-def test_cli_rejects_a_bad_repo():
+def test_cli_rejects_a_bad_repo(assert_exit_cause):
     result = _run("--repo", "not a repo", "--event", "schedule")
-    assert result.returncode == skill_audit_gate.EXIT_USAGE
+    _, stderr = assert_exit_cause(result, skill_audit_gate.EXIT_USAGE)
+    assert "--repo" in stderr
+
+
+def test_cli_fetch_failure_exits_4(monkeypatch, assert_exit_cause):
+    monkeypatch.setattr(skill_audit_gate, "GitHubClient", lambda token: FakeRuns("many"))
+    monkeypatch.setenv("GITHUB_TOKEN", "dummy")
+    code = skill_audit_gate.main(["--repo", REPO, "--event", "schedule", "--date", "2026-11-22"])
+    stdout, stderr = assert_exit_cause(code, skill_audit_gate.EXIT_FETCH_FAILED)
+    assert stdout == ""
+    assert "unexpected payload for skill-audit.yml runs" in stderr
 
 
 def test_help_stays_short():
