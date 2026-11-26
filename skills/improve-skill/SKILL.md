@@ -5,10 +5,10 @@ activation: command
 disable-model-invocation: true
 environments: coding, chat
 argument-hint: "<skill-folder>"
-compatibility: Reads one skill folder, in a repo or unpacked from a claude.ai ZIP; git is not required. Writes a snapshot and the rewrite to the OS temp directory; changes the folder, or opens a branch and pull request in a repo, only after the author agrees.
+compatibility: Reads one skill folder, in a repo or unpacked from a claude.ai ZIP; git is not required. Writes a snapshot and the rewrite to the OS temp directory; changes the folder, or opens a branch and pull request in a repo, only after the author agrees. Eval mode needs Claude Code with Anthropic's skill-creator installed; elsewhere the rule inventory is the only check and behavior is verified by hand.
 description: Clean AI slop out of one skill folder with numbered slop-signal candidates, an author interview on what is load-bearing, one rewrite, and a rule inventory that blocks delivery if a rule was lost. Use when cleaning up a bloated skill.
 metadata:
-  version: "0.2"
+  version: "0.3"
   opencode/slash: "true"
   opencode/autoinvoke: "false"
 ---
@@ -19,7 +19,9 @@ Remove the filler from one skill: text that costs the agent tokens and
 attention without changing what it does. The run snapshots the skill, scans it
 against the **slop signals**, lists numbered **candidates**, inventories the
 skill's rules, interviews the author, rewrites once, and checks the rewrite
-against the **rule inventory** before it delivers a unified diff.
+against the **rule inventory** before it delivers a unified diff. In **eval
+mode** a **behavior diff** also runs the snapshot and the rewrite against the
+same prompts through Anthropic's `skill-creator`.
 
 ## When to use
 
@@ -141,7 +143,12 @@ original folder stays untouched until delivery.
 Done when every recorded decision is applied and the frontmatter block of
 `new_skill/SKILL.md` matches the snapshot's byte for byte.
 
-## 7. Check the rule inventory
+## 7. Check
+
+The rule inventory runs on every rewrite. Eval mode runs after it when the
+author asked for it with the command or accepts it when proposed.
+
+### Rule inventory
 
 Read `new_skill/` from disk, not from memory of the rewrite, and map each `R`
 item to one of:
@@ -162,6 +169,68 @@ into `new_skill/`, a repair of this rewrite, not a second one) or strike it
 (a recorded answer). Then run this check again.
 
 Done when every `R` item is mapped.
+
+### Propose eval mode
+
+If the author has not asked for eval mode, propose it when either holds, and
+name which:
+
+- **An eval covers a touched rule.** A rule is touched when it maps with a
+  candidate number or is struck by author. It is covered when a prompt or
+  expected behavior in the snapshot's `evals.json` (`should_trigger`,
+  `expected_behavior`) or `evals/evals.json` (`skill-creator`'s `prompt`,
+  `expected_output`, `expectations`) exercises what the rule governs.
+- **More than a third of the words go.** Count the words of `SKILL.md`
+  without its frontmatter plus every Markdown file under `references/`, in
+  `old_skill/` and in `new_skill/`; propose when the new count is below
+  two thirds of the old.
+
+When neither holds, propose nothing: the rule inventory is the check.
+
+### Eval mode
+
+Eval mode needs `skill-creator` among the session's skills and subagents to
+run the two versions apart, as in Claude Code. In claude.ai `skill-creator`
+skips its baseline runs, so there is nothing to compare. When either is
+missing, run no behavior check: print the note below, put it in the pull
+request body of step 8, and go on to step 8 with the rule inventory as the
+only check.
+
+```markdown
+Behavior not checked: eval mode needs skill-creator and subagents, which this
+session lacks. Verify the behavior by hand: run <prompts> once with old_skill/
+and once with new_skill/ and compare the results.
+```
+
+Otherwise follow `skill-creator`'s "Running and evaluating test cases" in its
+case for improving an existing skill, set up as follows:
+
+- Workspace: `<tmpdir>/improve-skill-<name>-<timestamp>/evals/`, so nothing is
+  written beside the skill folder.
+- The with-skill runs use `new_skill/`. The baseline runs use `old_skill/`:
+  the snapshot of step 1 is the `skill-creator` snapshot, so skip its copy.
+- Prompts: those of `evals/evals.json` with its expectations as assertions;
+  else every `should_trigger` prompt of `evals.json` with assertions drafted
+  from `expected_behavior`; else two or three prompts the author confirms
+  that exercise the touched rules.
+- Grade every run with its grader and aggregate the benchmark. Skip its
+  viewer and its iteration loop; the comparison below replaces them.
+
+Print a table per prompt: each assertion with its result for `old_skill` and
+for `new_skill`. A **deviation** is an assertion that passed for `old_skill`
+and failed for `new_skill`. For each deviation name the prompt, the
+assertion, and the section of `new_skill/` that governs it (heading and
+`path:line`), then list the candidates whose snapshot lines fall in that
+section. Deliver nothing. Ask again about those candidates only, as in step 5;
+the author may also accept a deviation as intended, a recorded answer. Apply
+the changed answers to `new_skill/` as a repair of this rewrite, run the rule
+inventory again, and rerun only the deviating prompts on `new_skill/`.
+
+An assertion that failed for `old_skill` and passes for `new_skill` is a gain:
+report it, it does not block.
+
+Done when no deviation is open. Carry the tables into the output of step 8
+and the pull request body.
 
 ## 8. Deliver
 
