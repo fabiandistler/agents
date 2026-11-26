@@ -14,8 +14,9 @@ publisher uses to keep auto-merge off. Files sent without their base content
 are named in the payload and the artifact but leave the review complete.
 
 The model is reached through the unmodified Claude Code CLI (`claude -p`) in
-`pr_review_claude.py`, which holds the subscription-token and tool-less call
-rules.
+`pr_review_claude.py`, which holds the subscription-token and tool rules. With
+`--workspace` the model may read that directory, a checkout of the base commit
+(ADR-0023), with Read, Grep and Glob only; without it the call is tool-less.
 
 The model response is parsed by `pr_review_response.py`, which fails safe to
 `verdict: concerns` and `risk: high`. CLI errors, timeouts and a missing token
@@ -80,7 +81,7 @@ PROVIDER_SUMMARY = "Review unavailable: the provider call failed."
 
 USAGE = f"""\
 usage: pr_review.py --context FILE [--standards FILE]
-                    [--dry-run [--output FILE] | --response FILE]
+                    [--workspace DIR | --dry-run [--output FILE] | --response FILE]
 
 Build the pull request review request and parse the model response. Prints
 the review artifact JSON; a missing token or a failed `claude` call is an
@@ -89,6 +90,7 @@ unavailable artifact with exit 0, never a pass.
   --context FILE    context JSON produced by pr_github.py
   --standards FILE  operator standards (UTF-8, max 65536 bytes) appended to the
                     system prompt; a bad file exits 3. Never from the PR head
+  --workspace DIR   base checkout the model may read (Read, Grep, Glob only)
   --dry-run         print a request summary; no network call
   --output FILE     with --dry-run, write the full request JSON to FILE
   --response FILE   parse this canned response instead of calling the model
@@ -354,12 +356,17 @@ def _review_with(
 
 
 def review(
-    context: dict, transport=None, token: str | None = None, standards: str | None = None
+    context: dict,
+    transport=None,
+    token: str | None = None,
+    standards: str | None = None,
+    workspace: Path | None = None,
 ) -> dict:
     """Review one context; `transport(request) -> str` is injectable for tests.
 
     `token` defaults to CLAUDE_CODE_OAUTH_TOKEN and is handed to the CLI only.
     `standards` is the operator text for the system prompt (see build_request).
+    `workspace` is a base checkout the model may read; never the pull request head.
     """
 
     def respond(request: dict, coverage: InputCoverage) -> dict:
@@ -367,7 +374,11 @@ def review(
         if not oauth_token:
             return _unavailable_artifact(context, MISSING_KEY_SUMMARY, coverage)
         try:
-            text = run_claude(request, oauth_token) if transport is None else transport(request)
+            text = (
+                run_claude(request, oauth_token, workspace)
+                if transport is None
+                else transport(request)
+            )
         except (ProviderError, TimeoutError) as error:
             # The run stays green on a failed call, so this line is the only trace of why.
             print(f"pr_review.py: {error}", file=sys.stderr)
@@ -412,7 +423,9 @@ def _emit_dry_run(request: dict, coverage: InputCoverage, output: str | None) ->
 
 def _parse_arguments(argv: list[str]) -> dict | None:
     options = pr_cli.parse_flags(
-        argv, ("--context", "--standards", "--response", "--output"), ("--dry-run",)
+        argv,
+        ("--context", "--standards", "--response", "--output", "--workspace"),
+        ("--dry-run",),
     )
     if options is None:
         return None
@@ -422,6 +435,10 @@ def _parse_arguments(argv: list[str]) -> dict | None:
         raise pr_cli.UsageError("--dry-run and --response are mutually exclusive")
     if options["output"] is not None and options["dry_run"] is not True:
         raise pr_cli.UsageError("--output needs --dry-run")
+    if options["workspace"] is not None and (
+        options["dry_run"] is True or options["response"] is not None
+    ):
+        raise pr_cli.UsageError("--workspace is for a live call, not --dry-run or --response")
     return options
 
 
@@ -430,7 +447,8 @@ def _run(options: dict, context: dict, standards: str | None) -> int:
         request, coverage = build_request(context, standards)
         return _emit_dry_run(request, coverage, options["output"])
     if options["response"] is None:
-        pr_cli.print_json(review(context, standards=standards))
+        workspace = _workspace(options["workspace"])
+        pr_cli.print_json(review(context, standards=standards, workspace=workspace))
         return pr_cli.EXIT_OK
     try:
         text = Path(options["response"]).read_text(encoding="utf-8")
@@ -439,6 +457,15 @@ def _run(options: dict, context: dict, standards: str | None) -> int:
         return pr_cli.EXIT_BAD_INPUT
     pr_cli.print_json(_review_canned(context, text, standards))
     return pr_cli.EXIT_OK
+
+
+def _workspace(path: object) -> Path | None:
+    if path is None:
+        return None
+    workspace = Path(str(path))
+    if not workspace.is_dir():
+        raise pr_cli.InputError("--workspace is not a directory")
+    return workspace
 
 
 def main(argv: list[str] | None = None) -> int:
