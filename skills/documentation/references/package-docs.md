@@ -27,7 +27,8 @@ Python — pick one convention (Google or NumPy) and keep it everywhere.
 **Reference index.** A complete list of every exported function pointing at
 its entry. In R this is the pkgdown `_pkgdown.yml` reference index; in
 Python it is the Sphinx autodoc or mkdocstrings API page. Generate the index
-from the source; never hand-maintain a second list of function names.
+from source instead of maintaining a second list. If the index is written
+manually, test it against the namespace for missing or removed exports.
 
 **Examples.** Every example is executed in CI (R CMD check runs
 `@examples`; doctest or an equivalent runner runs docstring examples), so a
@@ -74,8 +75,6 @@ and the quarto-live README.
 
 ## Failure modes
 
-- **Hand-maintained function lists** that miss new exports or keep removed
-  ones. Generate the index or test that it matches the namespace.
 - **Parameters documented without types, defaults, or return values.**
   The reader cannot call what they cannot construct.
 - **Unexecuted examples.** Copy-pasted output that no longer runs is the

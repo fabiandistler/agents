@@ -9,11 +9,6 @@ metadata:
 
 # Communication Analysis
 
-This skill applies Friedemann Schulz von Thun's four-sides model and
-Rogers-style active listening to analyze or improve a message, a piece of
-feedback, or a conversation transcript. It decodes what is communicated on
-several levels at once, names contradictions, and suggests clearer rewrites.
-
 ## When to use
 
 Reviewing or rewriting feedback, diagnosing why a message landed badly,
@@ -83,9 +78,9 @@ A hidden appeal wraps a request in a neutral statement, e.g. "This work is
 really difficult..." meaning "please help me."
 
 Flag a hidden appeal only when the message is request-shaped but contains no
-explicit ask, and a plausible direct ask can be stated. Phrase the hypothesis
-as a question: "I hear you'd like help with this — is that right?" The sender
-can then confirm or correct. Never assert manipulation.
+explicit ask, and a plausible direct ask can be stated. Offer an alternative
+reading and phrase the hypothesis as a falsifiable question: "I hear you'd
+like help with this — is that right?" Never assert manipulation.
 
 ## Active listening
 
@@ -118,18 +113,6 @@ Example: "This is sloppy, did you even think?" sits at brutality (honesty
 without tact). Move toward tact: "This section has three gaps (X, Y, Z). Can
 you rework X by Friday?" The facts stay; the attack goes.
 
-## Judgment rules
-
-- Offer competing decodings with confidence; never a single verdict on
-  relationship or appeal.
-- Quote both signals when flagging incongruence; otherwise stay silent.
-- State hidden appeals as falsifiable questions with an alternative reading.
-- Calibrate directness to hierarchy and culture: offer a direct and a graded
-  variant for upward or cross-cultural feedback instead of prescribing
-  bluntness.
-- Check every rewrite against all four comprehensibility makers, not just one.
-- Draft boundary statements explicitly (see workflow step 8) instead of
-  softening them into hints.
 
 ## Workflow: applying this to a concrete task
 
@@ -141,17 +124,18 @@ you rework X by Friday?" The facts stay; the attack goes.
    in that weight order.
 5. **Look for a hidden appeal.** State it as a question, not an accusation.
 6. **Check the solution reflex.** Paraphrase the concern before proposing fixes.
-7. **When rewriting:** fill the ## Output template below. The rewrite must be
-   congruent, relevant, comprehensible, and make any request explicit. Use
-   the values square when feedback is too blunt or too vague.
+7. **When rewriting:** use the output template. Check congruence, relevance,
+   all four comprehensibility makers, and whether each request is explicit.
+   Use the values square for blunt or vague feedback. For upward or
+   cross-cultural feedback, offer a direct and a graded variant calibrated to
+   hierarchy and culture.
 8. **When a boundary is at stake:** draft one explicit statement naming the
    limit, the context, and the consequence, e.g. "I can't take calls after
    18:00; message me and I'll reply in the morning."
 
 ## Output
 
-Use this shape for every analysis. Alternatives with confidence are required;
-never give a single verdict on relationship or appeal.
+Use this shape for every analysis.
 
 ### Template
 
@@ -199,15 +183,6 @@ Input: "This PR is a mess. Did you even test it?"
 - Hidden-appeal hypothesis: "I hear you want failing tests listed before rework — is that right?"
 - Rewrite: "I found three failing cases (X, Y, Z). Can you add tests and rework X by Friday?"
 - What changed and why: values square applied (brutality toward tact); facts kept, attack cut; request explicit.
-
-## Common mistakes to avoid
-
-- Reacting to only one of the four sides.
-- Routing around incongruence instead of naming it.
-- Maximizing brevity or stimulance until structure breaks.
-- Asserting manipulation instead of asking a mirrored question.
-- Jumping to solutions before the concern is understood.
-- Applying the frameworks to a person's character instead of the message.
 
 ## Source
 

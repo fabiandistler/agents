@@ -34,9 +34,8 @@ semantics, ordering guarantees, idempotency, side effects, and worked examples.
 **Authentication.** Show how to obtain a credential, how to send it, and what
 an auth failure looks like on the wire. One curl that works end to end.
 
-**Errors.** A table of code (with its HTTP status), meaning, and — the part usually
-missing — *what the caller should do about it*. Retryable and non-retryable
-must be distinguishable.
+**Errors.** Use a table showing each code, its HTTP status, cause and meaning,
+and what the caller should do. Distinguish retryable from non-retryable failures.
 
 | Code (HTTP status) | Meaning | Caller action |
 |---|---|---|
@@ -46,6 +45,9 @@ must be distinguishable.
 **Pagination.** State the style (cursor, offset, keyset), the page-size default
 and maximum, and how the caller knows it has reached the end. Show two
 consecutive requests, not one.
+
+**Rate limits.** Give the window, the quota, and which response headers
+expose the remaining budget.
 
 **Endpoints.** Per endpoint: one line of purpose, parameters, a request example
 with realistic values, the actual response body, and which of the documented
@@ -74,9 +76,3 @@ examples far more than off type tables.
 - **Documented fields that no longer exist**, or real fields never documented.
   Generate what can be generated; otherwise pin a test that asserts the example
   responses still parse.
-- **Error codes listed without causes or remedies.** A bare code table tells the
-  caller nothing about whether to retry.
-- **Auth described but never demonstrated.** "Send a bearer token" leaves the
-  reader guessing the header name and prefix.
-- **Rate limits mentioned without numbers or headers.** Say the window, the
-  quota, and which response headers expose the remaining budget.

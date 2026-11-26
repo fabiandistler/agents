@@ -66,8 +66,6 @@ Prefer rotations and team channels over personal names — people change teams.
 
 ## Failure modes
 
-- **No rollback.** The reader is mid-incident with a half-applied change and no
-  documented way back.
 - **Access discovered mid-procedure.** Steps require a role the prerequisites
   never mentioned.
 - **Unverifiable success.** No independent signal, so the reader cannot tell

@@ -12,8 +12,7 @@ metadata:
 
 Attacks an artefact or a decision the way its most critical reader would, then
 makes it stronger: every objection comes with evidence, impact, a fix, and what
-would refute it. Output is German, Du-Form. Strong input may be called strong:
-an honest "entscheidungsreif" beats invented criticism.
+would refute it. An honest "entscheidungsreif" beats invented criticism.
 
 ## When to use
 
@@ -150,9 +149,9 @@ perfection. Use exactly one of these five:
 
 - **Entscheidungsreif**: no material point open. The audience finds nothing
   that tips the position. Remaining criticism is taste or pointedness.
-- **Belastbar mit Restaufgabe**: the position holds; 1–2 named material
-  points are open that the audience would pick up. Without a nameable point,
-  it is Entscheidungsreif.
+- **Belastbar mit Restaufgabe**: the position holds with 1–2 material points
+  the audience would pick up. Name them. If none can be named, use
+  Entscheidungsreif.
 - **Angreifbar**: one place gives way under pressure, or a central
   assumption is unproven; fixable within the current structure.
 - **Bedingt tragfähig**: the core claim stands, but several gaps in
@@ -163,9 +162,6 @@ perfection. Use exactly one of these five:
 
 Rules:
 
-- No downgrade "to be safe". If you cannot name the material point that
-  separates Belastbar mit Restaufgabe from Entscheidungsreif, it is
-  Entscheidungsreif. A downgrade without a nameable point is a method error.
 - Omit the verdict for exploratory input, brainstorms, and style-only
   feedback: a missing verdict is cleaner than an invented one.
 - Borderline: when two adjacent levels both fit, write "Grenzfall zwischen X
@@ -254,7 +250,7 @@ Vollprüfung, Dokumentprüfung, Re-Prüfung:
 - [BLOCKIEREND | wichtig | optional] <Empfehlung> – Adressat: … – Zeitpunkt: …
   (BLOCKIEREND nur, wenn die Entscheidung substanziell gefährdet ist)
 
-**Feinschliff** (ändert das Verdikt nicht; max. 3 Zeilen oder entfällt)
+**Feinschliff**
 - …
 
 **Pointierungsrisiko** (kein Mangel; entfällt meist)

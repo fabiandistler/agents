@@ -68,8 +68,7 @@ Artefact:
 
 ## Several critics
 
-- Start only after the user has asked for or agreed to several critics
-  (SKILL.md section 2).
+- Follow the approval rule in SKILL.md section 2.
 - Same brief for every critic; only the lenses line differs. Give each
   critic one of the lens sets A–D (`stakeholder-lenses.md`, last section), so
   critics differ by perspective, not only by label.

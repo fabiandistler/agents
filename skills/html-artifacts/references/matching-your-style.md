@@ -1,6 +1,6 @@
 # Matching the User's Style
 
-Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact skill can do is producing generic-looking output: gradient cards, emoji headers, four shades of indigo, the default Tailwind aesthetic. Avoid that. Read this reference for every artifact, alongside its category reference: it holds the default look when no style exists and the steps for adopting one that does.
+Read this reference alongside the artifact's category reference. Match the user's existing design system or use the defaults below.
 
 ## Contents
 
@@ -20,7 +20,7 @@ Bad-looking HTML is worse than good markdown. Most of the harm an HTML-artifact 
 
 ## The design-system-from-codebase trick
 
-When the user has an existing visual identity (a deployed product, a brand, a codebase), don't invent one. Build a one-time **design system reference HTML file** by reading the codebase, then have it sit alongside future artifacts as input.
+When the user has an existing design system, skill or brand, use its conventions. If the tokens already live in a codebase, build one reference HTML file from them and reuse it for future artifacts.
 
 The flow:
 
