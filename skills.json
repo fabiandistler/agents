@@ -135,7 +135,7 @@
     },
     {
       "name": "improve-skill",
-      "summary": "Clean AI slop out of one skill folder with numbered slop-signal candidates, an author interview on what is load-bearing, one rewrite, and a rule inventory that blocks delivery if a rule was lost.",
+      "summary": "Rewrites one skill folder to cut AI slop without losing a rule, after the author confirms each cut.",
       "category": "refactoring",
       "path": "skills/improve-skill/SKILL.md",
       "activation": "command",

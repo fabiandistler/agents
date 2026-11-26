@@ -6,7 +6,7 @@ disable-model-invocation: true
 environments: coding, chat
 argument-hint: "<skill-folder>"
 compatibility: Reads one skill folder, in a repo or unpacked from a claude.ai ZIP; git is not required. Writes a snapshot and the rewrite to the OS temp directory; changes the folder and packs a new archive beside the old claude.ai ZIP, or opens a branch and pull request in a repo, only after the author agrees. Eval mode needs Claude Code with Anthropic's skill-creator installed; elsewhere the rule inventory is the only check and behavior is verified by hand.
-description: Clean AI slop out of one skill folder with numbered slop-signal candidates, an author interview on what is load-bearing, one rewrite, and a rule inventory that blocks delivery if a rule was lost. Use when cleaning up a bloated skill.
+description: Rewrites one skill folder to cut AI slop without losing a rule, after the author confirms each cut. Use when a skill reads bloated, repetitive or shouty.
 metadata:
   version: "0.4"
   opencode/slash: "true"
@@ -16,32 +16,40 @@ metadata:
 # Improve Skill
 
 Remove the filler from one skill: text that costs the agent tokens and
-attention without changing what it does. The run snapshots the skill, scans it
-against the **slop signals**, lists numbered **candidates**, inventories the
-skill's rules, interviews the author, rewrites once, and checks the rewrite
-against the **rule inventory** before it delivers a unified diff. In **eval
-mode** a **behavior diff** also runs the snapshot and the rewrite against the
-same prompts through Anthropic's `skill-creator`.
+attention without changing what it does.
+
+The frontmatter, description included, stays byte for byte as it was, because
+a changed trigger would blur whether the rest of the skill still behaves the
+same. A finding in it (SL6, any D item, a packager validation failure) is a
+**D-finding**: reported with the proposal "Not rewritten here: take it to
+`skill-creator`" (for a description, to its description optimisation), never
+asked about and never applied.
 
 ## When to use
 
 - One skill folder whose body reads bloated: definitions of known things,
-  repeated rules, shouted warnings, option menus, decorative sections.
-- A skill in a repository, or an unpacked claude.ai skill ZIP outside any
-  repository.
+  repeated rules, shouted warnings, option menus, decorative sections. The
+  run lists numbered **candidates**, each citing a slop-signal or checklist
+  ID, and rewrites once after the author's answers.
+- A skill in a repository (delivered as a branch and pull request), or an
+  unpacked claude.ai skill ZIP outside any repository (delivered as a
+  re-packed archive beside the old ZIP).
+- A check stronger than the rule inventory: eval mode compares the old and
+  new skill on the same prompts through Anthropic's `skill-creator`.
 
-Writing a new skill is not this command's job. Neither is improving how a
-description triggers: description findings are listed, then handed to
-Anthropic's `skill-creator` and its description optimisation.
+Writing a new skill, or changing how a description triggers, is
+`skill-creator`'s job.
 
 ## 1. Snapshot
 
 The argument is a folder holding a `SKILL.md`. If it does not hold one, stop
 and ask for the skill folder.
 
-Before reading any file in it, copy the whole folder into the OS temp
-directory as `<tmpdir>/improve-skill-<name>-<timestamp>/old_skill/`, then
-print that path. The snapshot is the baseline for the check and the way back.
+Before reading any file in it, create the **run directory**
+`<tmpdir>/improve-skill-<name>-<timestamp>/` in the OS temp directory, copy the
+whole folder into it as `old_skill/`, and print that path. Every file the run
+writes before delivery goes into the run directory. The snapshot is the
+baseline for the check and the way back.
 
 Done when `diff -r <folder> <snapshot>` prints nothing.
 
@@ -84,19 +92,15 @@ Use this shape:
    Keep the rule, state it plainly, add the failure it prevents.
 ```
 
-A description finding (SL6, or any D item) carries the proposal "Not
-rewritten here: take it to `skill-creator`'s description optimisation". This
-command never rewrites a description, because a changed trigger would blur
-whether the rest of the skill still behaves the same.
+A D-finding carries its "Not rewritten here" proposal in place of an action.
 
 ## 4. Inventory the rules
 
-List every rule and branch of the snapshot, before anything is rewritten. An
-item is anything that changes what the agent does: a step, a constraint, a
+List every rule and branch of the snapshot's body and references, before
+anything is rewritten. An item is anything that changes what the agent does: a step, a constraint, a
 condition and each of its branches, a default, an output format, a completion
 criterion, a pointer to another file. Definitions, exposition and decoration
 are not items. A rule stated in several places is one item citing every line.
-The frontmatter is not inventoried: this run leaves it unchanged.
 
 Number the items `R1`, `R2`, … in file and line order and print them:
 
@@ -112,10 +116,10 @@ belongs to an item.
 Interview the author about the candidates in **rounds**, before any file is
 written:
 
-1. Ask one numbered question per candidate, except description findings,
-   which stay reported only. State the recommended decision (accepted, or
-   load-bearing when the signal's test says the line carries a rule) with
-   the `R` items it touches, worded so that a single "yes" accepts it.
+1. Ask one numbered question per candidate except D-findings. State the
+   recommended decision (accepted, or load-bearing when the signal's test
+   says the line carries a rule) with the `R` items it touches, worded so
+   that a single "yes" accepts it.
    Where the action adds a reason, ask the author for the failure the rule
    prevents; the reason is the author's, never invented.
 2. Ask every question that depends on no open answer in the same round.
@@ -132,18 +136,18 @@ confirmed the printed record.
 
 ## 6. Rewrite once
 
-Copy the snapshot to `<tmpdir>/improve-skill-<name>-<timestamp>/new_skill/`
-and apply every accepted and load-bearing decision there, in one pass. The
-original folder stays untouched until delivery.
+Copy the snapshot to `new_skill/` in the run directory and apply every
+accepted and load-bearing decision there, in one pass. The original folder
+stays untouched until delivery. A later fix in step 7 edits `new_skill/` in
+place: a **repair** of this rewrite, not a second one.
 
-- Leave the frontmatter, description included, byte for byte as it was.
 - Leave the text of rejected candidates as it was.
 - Write in the skill's own language; a German skill stays German.
 - Keep every `R` item that was not struck, in the place the agent needs it
   while acting.
 
-Done when every recorded decision is applied and the frontmatter block of
-`new_skill/SKILL.md` matches the snapshot's byte for byte.
+Done when every recorded decision is applied and `diff` of the frontmatter
+blocks of `old_skill/SKILL.md` and `new_skill/SKILL.md` prints nothing.
 
 ## 7. Check
 
@@ -167,8 +171,8 @@ see shifted emphasis or tone."
 An unmapped item blocks delivery. Name each one with its snapshot `path:line`
 and quote, deliver nothing (no diff as the result, no branch, no commit, no
 pull request), and ask the author for each: restore it (copy the rule back
-into `new_skill/`, a repair of this rewrite, not a second one) or strike it
-(a recorded answer). Then run this check again.
+into `new_skill/` as a repair) or strike it (a recorded answer). Then run
+this check again.
 
 Done when every `R` item is mapped.
 
@@ -197,15 +201,17 @@ When the author asked for eval mode or accepts it, read
 
 ## 8. Deliver
 
-Print the unified diff, `diff -ru old_skill new_skill`, then the candidate
-decisions and the inventory mapping. Ask the author whether to deliver, and
+Print the unified diff, `diff -ru old_skill new_skill`, then the **report**:
+the candidate decisions, the inventory mapping with its blind-spot sentence,
+and eval mode's tables or its "Behavior not checked" note when step 7 produced
+them. Ask the author whether to deliver, and
 on "yes":
 
 - **Folder in a git work tree** (`git -C <folder> rev-parse --show-toplevel`
   succeeds): create the branch `improve-skill/<name>` from the current
   branch, copy `new_skill/` over the folder, and commit in the repository's
   commit convention. Push the branch and open a pull request whose body holds
-  the candidate decisions, the inventory mapping and the blind-spot sentence.
+  the report.
   Use the GitHub MCP tools if the session has them; otherwise
   `gh api repos/<owner>/<repo>/pulls -f title=<title> -f head=improve-skill/<name> -f base=<base> -f body=<body>`.
   On another forge, use its CLI the same way.

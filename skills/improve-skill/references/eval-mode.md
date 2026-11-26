@@ -6,8 +6,7 @@ when the author asked for eval mode or accepted it.
 Eval mode needs `skill-creator` among the session's skills and subagents to
 run the two versions apart, as in Claude Code. In claude.ai `skill-creator`
 skips its baseline runs, so there is nothing to compare. When either is
-missing, run no behavior check: print the note below, carry it into what
-step 8 delivers (the pull request body in a repository), and go on to step 8
+missing, run no behavior check: print the note below and go on to step 8
 with the rule inventory as the only check.
 
 ```markdown
@@ -19,8 +18,7 @@ and once with new_skill/ and compare the results.
 Otherwise follow `skill-creator`'s "Running and evaluating test cases" in its
 case for improving an existing skill, set up as follows:
 
-- Workspace: `<tmpdir>/improve-skill-<name>-<timestamp>/evals/`, so nothing is
-  written beside the skill folder.
+- Workspace: `evals/` in the run directory.
 - The with-skill runs use `new_skill/`. The baseline runs use `old_skill/`:
   the snapshot of step 1 is the `skill-creator` snapshot, so skip its copy.
 - Prompts: those of `old_skill/evals/evals.json` with its expectations as
@@ -37,11 +35,10 @@ assertion, and the section of `new_skill/` that governs it (heading and
 `path:line`), then list the candidates whose snapshot lines fall in that
 section. Deliver nothing. Ask again about those candidates only, as in step 5;
 the author may also accept a deviation as intended, a recorded answer. Apply
-the changed answers to `new_skill/` as a repair of this rewrite, run the rule
+the changed answers to `new_skill/` as a repair (step 6), run the rule
 inventory again, and rerun only the deviating prompts on `new_skill/`.
 
 An assertion that failed for `old_skill` and passes for `new_skill` is a gain:
 report it, it does not block.
 
-Done when no deviation is open. Carry the tables into what step 8 prints and
-delivers (the pull request body in a repository).
+Done when no deviation is open.
