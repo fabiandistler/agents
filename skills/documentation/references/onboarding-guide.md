@@ -59,6 +59,3 @@ Prefer team channels to individuals; individuals move.
 - **Setup steps that only work for the author**, kept alive because no existing
   team member ever re-runs them.
 - **Access requests discovered late**, silently costing days.
-- **Nicknames omitted.** The new person hears "the relay" in standup for two
-  weeks and cannot search for it.
-- **Duplicating the architecture doc**, so both drift. Link instead.

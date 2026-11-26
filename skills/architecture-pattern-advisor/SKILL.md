@@ -21,7 +21,7 @@ Help the user pick the architecture that fits *their* project, then help impleme
 
 ## Workflow
 
-Follow these steps in order. Do not skip step 2 to reach a recommendation faster — the diagnosis is what makes the recommendation honest.
+Follow the steps in order.
 
 ### 1. Establish context: new or existing repo
 
@@ -32,13 +32,14 @@ Follow these steps in order. Do not skip step 2 to reach a recommendation faster
 
 Ask a short, focused set of the diagnostic questions in [references/decision-drivers.md](references/decision-drivers.md): project type and language, team size, domain complexity, scaling and deployment needs, independent deployability, data-consistency needs, testability and external integrations, expected lifetime and rate of change, operational maturity (CI/CD, observability).
 
-Ask the few that actually discriminate for this project — not all of them. Prefer one multiple-choice question at a time. **Recommend nothing until you have these answers.**
+Ask only the questions that discriminate for this project, preferably one
+multiple-choice question at a time. Wait for the answers before recommending.
 
 ### 3. Recommend — up to three candidates per axis, topology first
 
-Work the two axes **sequentially**: first topology, then code organization. For each axis, present the candidates using this exact shape:
+Work the two axes independently and in sequence: topology first, code organization second. For each axis, use this exact shape:
 
-- **Every candidate gets the same treatment** — recommended option and alternatives alike: a one-line definition, **Pros**, and **Cons**. Honest trade-offs, no strawmen. The recommended option is not exempt from showing its cons.
+- For every candidate, including the recommendation, give a one-line definition and honest **Pros** and **Cons**.
 - Put the **recommended option first** and label it as recommended; in addition to its pros/cons, give it one "fits you because …" line grounded in the diagnosis answers.
 - Up to three candidates per axis. Present **fewer** when the context makes an option irrelevant — do **not** invent a third. (A small library or R package usually has no real topology choice; skip the topology axis entirely and say so.)
 - Close by stating how the chosen topology and code organization compose.
@@ -76,15 +77,5 @@ Sibling sub-skills, each read via the `architecture` router:
 - `members/ddd/SKILL.md` — use when domain boundaries are unclear and bounded contexts must be found first.
 - `members/microservices-design/SKILL.md` — use when services exist and their boundaries, communication, or contracts need design or review.
 - `members/logical-component-design/SKILL.md` — use when decomposing a new system or feature into named logical components.
-- `members/fitness-functions/SKILL.md` — use when a chosen boundary must be enforced by a check that fails CI.
 - `members/c4-modeling/SKILL.md` — use when the chosen architecture must be drawn as Context, Container, or Component diagrams.
 - `members/coupling-cohesion/SKILL.md` — use when measuring whether an existing decomposition is sound.
-
-## Common Mistakes
-
-- **Recommending before diagnosing.** The whole value is matching the project. Ask first.
-- **Collapsing the two axes.** "Microservices" answers topology, not code organization; "hexagonal" answers code organization, not topology. Keep them separate, then compose.
-- **Forcing three options.** Present only the candidates that genuinely apply; skip an axis when there is no real choice.
-- **Strawman alternatives.** Each candidate's pros/cons must be honest, or the comparison is theatre.
-- **Big-bang migration.** For existing repos, always incremental and build-green.
-- **Stopping at a diagram.** Offer the ADR and the actual scaffolding/migration, not just an illustrative tree.

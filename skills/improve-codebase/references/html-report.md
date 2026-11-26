@@ -76,15 +76,15 @@ Each candidate is one `<article>`:
   candidate, each carrying a `path:line` or a metric value quoted as the
   instrument printed it (`commits=41 in 12 months`, `groups=2 [LCOM=7]`,
   `sharing=intrusive, distance=package`), followed by a few words in
-  vocabulary terms (`evidence-translation.md` maps the metric terms). A
-  finding without either is cut, and a candidate left with no evidence line is
-  not rendered.
+  report vocabulary. Omit unsupported findings and any candidate left without
+  evidence.
 - **Before / After diagram**: the centrepiece. Two columns, side by side. See
   the patterns below.
 - **Problem**: one sentence. What hurts.
 - **Solution**: one sentence. What changes.
-- **Wins**: bullets, six words or fewer each, e.g. "Tests hit one interface",
-  "Pricing logic stops leaking", "Delete 4 shallow wrappers".
+- **Wins**: name concrete gains in the design vocabulary, with at most six words
+  per bullet. For example: "One interface, fewer call sites", "Pricing stops
+  leaking across the seam", or "Delete four shallow wrappers".
 - **ADR callout** (if applicable): one line in an amber-tinted box.
 
 No paragraphs of explanation. If a diagram needs a paragraph to be understood,
@@ -170,11 +170,6 @@ Plain English and concise, with the architectural nouns and verbs exactly as
 - "Pricing leaks across the seam."
 - "Deepen: one interface, one place to test."
 - "Two adapters justify the seam: HTTP in prod, in-memory in tests."
-
-**Wins bullets** name the gain in vocabulary terms: "locality: bugs concentrate
-in one module", "leverage: one interface, N call sites", "interface shrinks;
-implementation absorbs the wrappers". Not "easier to maintain" or "cleaner
-code": those terms are not in the vocabulary and do not earn their place.
 
 No hedging, no throat-clearing, no "it's worth noting that". If a sentence
 could be a bullet, make it a bullet. If a bullet could be cut, cut it. If a

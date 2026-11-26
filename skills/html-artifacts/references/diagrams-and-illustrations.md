@@ -14,7 +14,6 @@ For "make me the diagrams for this article" or "draw the figures I'll use in the
 
 **What's load-bearing**
 - Visual consistency across the set. A scattered visual language reads as amateurish even if each figure is fine on its own.
-- Copy buttons per figure. Without them the user has to view-source. With them this is a usable workflow.
 - Sizing that survives reuse: don't hard-code colors that won't work in the destination doc.
 
 ## Annotated flowchart
@@ -24,12 +23,11 @@ For "diagram our deploy pipeline" or "show me how a request flows through the sy
 **Layout**
 - The flowchart as inline SVG, drawn properly: nodes with labels, edges with directionality, branching paths visually distinct from the main path.
 - Click any node to expand a side panel with: what runs there, expected duration, what failure looks like, links to source.
-- Highlight the **happy path** in a distinct color; failure/retry paths in a muted secondary color.
+- Use a distinct color for the **happy path** so readers can trace the common case first. Use a muted secondary color for failure and retry paths.
 - A legend in the corner.
 
 **What's load-bearing**
 - Click-to-expand. The flowchart is the navigation, the panel is the content. Don't try to fit everything on the chart itself.
-- Happy path highlight. Most of the time the reader cares about the common case; let them tune out the edges initially.
 - Direction indicators on edges. Without arrows, a flowchart is just a graph.
 
 **Common mistakes**

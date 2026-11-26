@@ -1,8 +1,7 @@
 # Stakeholder lenses
 
 Lens catalogue for the red-team procedure (step 5) and the lens sets for the
-several-critics path. Pick 3–5 lenses per case; each must produce a concrete
-objection or condition in German, never a mood.
+several-critics path.
 
 ## Contents
 
@@ -21,9 +20,9 @@ objection or condition in German, never a mood.
   dimensions: decision power, implementation, risk and compliance,
   economics, acceptance. Swap a lens if a dimension that matters is empty.
 - Prefer the person who decides or pays over the person who merely reads.
-- Use 3 lenses when 5 would be artificial.
-- Each lens line in the output names the concrete objection or condition
-  and a tendency (zustimmend / offen / skeptisch / ablehnend). No
+- Pick 3–5 lenses. Use 3 when 5 would be artificial.
+- Each lens line in the output names a concrete objection or condition in
+  German and a tendency (zustimmend / offen / skeptisch / ablehnend). Omit
   percentages.
 
 ## Tech decisions: ADR, architecture, tool choice

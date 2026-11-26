@@ -68,8 +68,7 @@ default flags. Three states stay separate:
 2. **Restored infrastructure.** Only a preflight that passes in the new
    environment shows this. The loop then continues with the items that are
    still selectable.
-3. **Retry of an old blocked item.** Restored infrastructure does not unblock
-   it. It needs separate human approval naming the item, then the procedure
+3. **Retry of an old blocked item.** Follow the separate approval procedure
    below.
 
 ## Human-approved retry of one blocked item

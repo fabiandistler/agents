@@ -10,26 +10,21 @@ metadata:
 
 # KI-Stil
 
-A style check for German texts in three stages: style hygiene, AI-typical
-patterns, authenticity. The goal is a text that carries its author's voice, not
-one that passes a detector. Signals are counted by a script and weighed by
-genre and evidence tier; the verdict is about *how the text reads*, never about
-*who wrote it*. Why: detectors and human judges cannot decide authorship
-(OpenAI withdrew its own classifier in 2023; Weber-Wulff 2023, Fleckenstein
-2024), and they flag non-native writers far more often (Liang 2023). Output is
-German, Du-Form, even when the request is in English.
+Review German texts in three stages: style hygiene, AI-typical patterns, and
+authenticity. Count signals with the script and weigh them by genre and evidence
+tier. Preserve the author's voice. Report how the text reads; the evidence
+cannot establish authorship and detectors disproportionately flag non-native
+writers. See [the evidence in the marker catalogue](references/marker-katalog.md#evidence-behind-the-tiers).
 
 ## When to use
 
-- The user asks, in German or English: „Klingt das nach KI?“, „KI-Stil-Test“,
-  „prüf den Text auf KI-Floskeln“, „klingt mein LinkedIn-Post generisch?“,
-  „ist das zu glatt?“, „mach das weniger nach ChatGPT“, "does this German post
-  read like AI?".
+- The user asks in German or English, e.g. „Klingt das nach KI?“, „Mach das
+  weniger nach ChatGPT“ or "Does this German post read like AI?".
 - A German draft is about to go out: LinkedIn post or article, PR description
   or ADR, project proposal or work mail, application or cover letter.
-- Not for: whether the argument holds (suggest red-team), turning a raw idea
-  into a stronger one (suggest blue-team), grammar-only proofreading, or
-  proving that a person or a model wrote a text.
+- Route argument review to red-team and development of a raw idea to blue-team.
+  Fact-checking, grammar-only proofreading, plagiarism and copyright checks,
+  and authorship claims are outside this style check.
 
 ## Stance
 
@@ -48,8 +43,8 @@ German, Du-Form, even when the request is in English.
 - Every criticism comes with a rewrite. Rewrites keep the author's voice and
   never invent facts: missing specifics become placeholders like
   `[deine Zahl]`.
-- The output itself stays plain: at most one rhetorical figure per paragraph,
-  no floskeln, Du-Form.
+- Write the output in German, using Du-Form even when the request is in English.
+  Keep it plain: at most one rhetorical figure per paragraph and no floskeln.
 
 ## Fan-out
 
@@ -63,8 +58,8 @@ script that also handles long texts. Run the whole check in one context.
    an, gern mit dem Kanal (LinkedIn, PR, Mail, Bewerbung).“ Check only text that
    is actually there.
 2. **Set the genre.** Pick one from [Genre logic](#genre-logic). If unclear,
-   ask once or state the assumption in the output: „Ich behandle das als
-   LinkedIn-Post.“
+   state the most plausible assumption (e.g. „Ich behandle das als
+   LinkedIn-Post.“). Ask once if the choice would materially change the review.
 3. **Count.** Save pasted text to a temporary file and run, from the skill
    directory, `python3 scripts/style_scan.py <file>` (or pipe it with `-`).
    It prints JSON: sentence-length dispersion, list hits with tier, density and
@@ -146,7 +141,7 @@ evidence a short text cannot supply. Use the short template.
 
 ## Ampel
 
-A heuristic, not a detector verdict. In a borderline case choose 🟡.
+In a borderline case choose 🟡.
 
 - 🟢 **unauffällig:** no cluster, at most isolated hits, no strong signal,
   own substance present. Anchor: a PR description with measurements and an
@@ -219,13 +214,3 @@ and note the shortest, the longest and whether they cluster in a narrow band;
 count triads and „nicht X, sondern Y“ by eye. Use the short template if the
 text is under about 80 words, else the full one, with
 „Grundlage: geschätzt, ohne Zählskript“ and „ca.“ before every number.
-
-## What this skill does not do
-
-- It never claims a text is provably AI-written or provably human: heuristics
-  cannot decide that.
-- It is no substitute for statistical detectors, and no plagiarism or
-  copyright check.
-- It checks no facts and judges no argument: stage 3 notes whether own
-  substance and an edge are present, not whether the position holds. For
-  content, suggest red-team; for developing the idea, blue-team.

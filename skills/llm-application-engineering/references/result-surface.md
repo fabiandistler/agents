@@ -4,8 +4,7 @@ How a model result is shown to the person who acts on it. Source: Apple HIG
 "Machine Learning" and "Generative AI", consumer-app guidance re-cut for
 expert/B2B tools. When you build or change a UI that shows model output,
 check every rule below and list the unmet ones in the change description or
-review notes. Confirmation before irreversible actions: the approval-gate rule
-in [`security.md`, Access and authorization](security.md#access-and-authorization).
+review notes. Apply the approval gate before irreversible actions.
 
 As of 2026-11-16: distilled from the HIG revision of 2026-06-08. Art. 50 of
 Regulation (EU) 2024/1689 (AI Act) sets the transparency duties; check its

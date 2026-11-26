@@ -24,7 +24,7 @@ One deployable unit, one process, one database.
 - **Avoid:** independent team release autonomy, components with wildly different scaling needs.
 
 ### Modular Monolith
-One deployable unit, but internally split into well-bounded modules with explicit public interfaces. **Recommended default when unsure.**
+One deployable unit split into bounded modules with explicit public interfaces.
 
 - **Pros:** monolith's operational simplicity + clear seams; modules can later be extracted into services; enforces boundaries without network cost.
 - **Cons:** boundaries must be actively maintained (a monolith in disguise if not); still one deploy/scale unit; shared fate — a process crash or runaway thread brings all modules down simultaneously, no process isolation between them.

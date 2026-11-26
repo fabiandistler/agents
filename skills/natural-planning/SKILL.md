@@ -9,11 +9,7 @@ metadata:
 
 # Natural Planning Model
 
-Projects the brain plans well all go through the same five phases, whether or
-not anyone names them. David Allen's *Getting Things Done* (GTD) formalizes the
-sequence so it can be applied deliberately to projects that are stuck, vague,
-or new — to arrive at clear outcomes and concrete next actions. Apply it as a
-general reasoning tool, not as a prescription for how anyone must plan.
+David Allen's *Getting Things Done* (GTD) uses five phases to clarify new, vague or stalled projects and identify concrete next actions. Apply the sequence as a flexible reasoning tool.
 
 ## When to use
 
@@ -63,10 +59,8 @@ For Light-tier projects, steps 4–5 collapse: go straight from outcome (step 3)
 
 ## The physical-next-action rule
 
-A next action names a physical, visible behavior. "Schedule a meeting" is an outcome, not an action; "Email Jane to propose three possible dates" is something a body can go and do right now.
-
-Checklist for testing a candidate next action:
-- [ ] Does it name a physical behavior (email, call, write, buy, walk to, open) rather than a result or an intention?
+Test each candidate next action:
+- [ ] Does it describe visible physical behavior rather than a result or an intention? "Email Jane to propose three possible dates" passes. "Schedule a meeting" names an outcome.
 - [ ] Could someone else do exactly this, right now, without asking a clarifying question first?
 - [ ] If not — make gathering the missing information the next action; that is usually what unblocks a stalled decision.
 
@@ -99,4 +93,4 @@ When applying this skill to a project, produce:
 5. A list of concrete physical next actions — checked against the physical-next-action rule above, one per currently-movable front of the project.
 6. A Waiting-For list for fronts whose next move belongs to someone else — who owes what — kept separate from your own next actions.
 
-If the process stalls, run the stuck-session diagnostic above — move up for clarity, move down for motion.
+If the process stalls, apply the [stuck-session diagnostic](#diagnosing-a-stuck-planning-session).

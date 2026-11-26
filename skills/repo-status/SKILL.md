@@ -14,12 +14,12 @@ metadata:
 # Repo Status
 
 Turn recent activity into a short async standup update for a team channel.
-Draft first; ask afterwards.
 
 ## When to use
 
 This skill covers the short, team-facing update: a small window, an optional
-goal line plus yesterday/today/blockers, no clarifying round before the draft.
+goal line plus yesterday/today/blockers. Draft before asking follow-up
+questions.
 
 For a periodic or event-driven update aimed outside the working group — a weekly
 or monthly status to leadership, a launch announcement, a risk escalation, or the
@@ -94,10 +94,9 @@ Then:
   `gh api "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100" --jq '.[] | select(.user.login == "<login>" and .submitted_at >= "<date>") | .state'`.
 - CI status: `gh run list --limit 5`
 
-Without the GitHub MCP tools or `gh`, fall back to git-only and structure what
-the user tells you.
-
-**Or structure what the user tells you.** If nothing is connected, or the user just narrates, organize those notes into the format below.
+Without the GitHub MCP tools or `gh`, fall back to Git evidence and use any
+notes the user supplies. Use the format below to structure notes on their own
+when no tools are connected or the user just narrates.
 
 ## Output format
 
@@ -120,8 +119,7 @@ Produce this structure:
 ```
 
 Write outcomes, not activity: the result ("auth migration live behind its flag")
-rather than the motion ("worked on auth"). Each blocker names who can unblock
-it and what is needed. With no blockers, write "None".
+rather than the motion ("worked on auth"). With no blockers, write "None".
 
 ### Scoping with the argument
 

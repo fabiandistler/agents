@@ -9,8 +9,6 @@ metadata:
 
 # Hypertrophy Training
 
-This skill covers evidence-based hypertrophy programming and auto-regulation for **experienced trainees**.
-
 ## When to use
 
 Whenever an experienced trainee (roughly 9+ years of systematic training) asks
@@ -24,8 +22,7 @@ Draws on recent volume and failure meta-analyses and Israetel et al.; not aimed 
 > **Scope and safety note.** This is an educational summary of
 > strength-training research, not medical, physical-therapy, or
 > personal-training advice.
-> Individual recovery capacity varies widely — genetics alone can shift the
-> realistic outcomes of a given program by roughly ±50%. Training near
+> Individual recovery capacity varies widely. Training near
 > muscular failure carries real injury risk if attempted without adequate
 > technique, spotting, or safe equipment (see the RIR calibration in Part B).
 > Apply this material only when explicitly asked to help with training
@@ -50,9 +47,9 @@ before setting sets, RIR, frequency or a training block.
 
 ## Part B — Auto-regulation: precise stop criteria
 
-Three protocols that let a session's volume emerge from real-time
-performance, the RIR calibration they depend on, and the two-step plateau
-diagnosis (fatigue problem or stimulus problem). Read
+Three protocols for adapting session volume to real-time performance, their
+required RIR calibration, and the two-step plateau diagnosis (fatigue or
+stimulus). Read
 [`references/auto-regulation.md`](references/auto-regulation.md) when
 auto-regulating a set or session or when a lift has stalled.
 
@@ -81,22 +78,15 @@ the outcome by roughly ±50%.
   automatically better.
 - **Chasing volume while training at submaximal RIR.** The volume figures
   assume 0–2 RIR; the same volume at 4+ RIR is a materially weaker stimulus.
-- **Increasing volume as the default response to a plateau.** Run the
-  recovery-vs-stimulus test first — over-fatigued trainees regress further
-  with more volume.
+- **Plateau:** run the fatigue-vs-stimulus diagnosis in Part B before adding volume.
 - **Concentrating weekly volume into one or two sessions.** The PUOS ceiling
   means the same sets, spread across more sessions, tend to work better.
-- **Skipping RIR calibration.** Every auto-regulation protocol in Part B depends
-  on an accurate sense of RIR; miscalibrated RIR makes all three unreliable.
 - **Applying these ranges to beginners or intermediates.** This material is
   calibrated to experienced (9+ year) trainees; lower-experience trainees
   need substantially less volume to progress.
 - **Running Part C's restrictions permanently.** They cost growth by design.
   They are a package for a defined period; when the elevated-risk condition
   clears, Part A's ranges resume.
-- **Loosening several variables at once when returning from injury.** Part
-  C.2 works because exactly one of load, RIR, ROM, and exercise type moves at
-  a time, in an order fixed before the first session.
 
 ## Sources
 

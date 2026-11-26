@@ -20,21 +20,11 @@ existing code (→ `members/coupling-cohesion/SKILL.md`) or choosing an
 architecture in the first place (→ `members/architecture-pattern-advisor/SKILL.md`); both
 are read via the `architecture` router.
 
-An **architecture fitness function** is any automated check that scores how
-close the codebase or running system stays to the architect's intent — a
-perspective on tools you already have (tests, metrics, monitors, chaos), wired
-into CI so important-but-never-urgent concerns like modularity don't erode one
-import at a time.
-
-Concrete tool-by-tool implementations live in
-[references/tooling-catalog.md](references/tooling-catalog.md) — read it once
-you reach step 3 and know the ecosystem. This file is the workflow.
-
 ## The workflow
 
 ### 1. Name the characteristic being governed
 
-Start from the architecture characteristic, not from a tool. What decision or
+Name the architecture characteristic the automatic check must protect. What decision or
 quality must survive schedule pressure? Typical candidates: modularity (no
 cycles, controlled dependencies), layer/boundary integrity, coupling limits,
 test integrity, security configuration, cost hygiene, operational resilience.
@@ -71,9 +61,9 @@ that only exist at runtime.
 
 ### 3. Implement it — objective, binary or thresholded
 
-Write the check with the ecosystem's governance tool (see
-[references/tooling-catalog.md](references/tooling-catalog.md)). The three
-patterns from the book cover most structural cases:
+Once you know the project's ecosystem, use [the tooling catalog](references/tooling-catalog.md)
+to choose a governance tool and implement the check. Three patterns cover
+most structural cases:
 
 - **Cycle detection** — fail the build if any component cycle exists
   (JDepend's `containsCycles()`, dependency-cruiser's `no-circular`,
@@ -108,12 +98,9 @@ codebase cannot meet yet. Per-ecosystem baseline mechanics are listed in
 
 ### 4. Wire it into the pipeline
 
-A fitness function that isn't executed automatically is documentation.
-Structural checks run in the test suite / CI on every commit; metric checks run
-in the same place with their threshold committed next to the code; production
-checks run continuously against live systems. Once wired in, the architect can
-"stop worrying about trigger-happy developers accidentally introducing cycles"
-— accidental lapses are caught mechanically, which is the entire point.
+Run structural checks in the test suite or CI on every commit. Run metric
+checks there too, with the threshold committed alongside the code. Run
+production checks continuously against live systems.
 
 When a coding agent works in the repo, the checks double as its deterministic
 feedback loop: run them in pre-commit and in the test command the agent
@@ -126,11 +113,8 @@ rule and its fix command from the repo's agent instruction file.
 
 Two social rules the chapter is emphatic about:
 
-- **Explain before imposing.** Ensure developers understand the *purpose* of a
-  fitness function before it starts failing their builds. The intent is not
-  architects in an ivory tower writing esoteric checks developers can't
-  understand — it's collaboratively implemented governance that everyone can
-  read. Design the check *with* developers where possible.
+- Explain to developers what the check protects before it starts failing
+  builds. Design it with them where possible.
 - **Expect the metric to be gamed.** Once people know what is measured, some
   will code to the metric — e.g. assertion-free unit tests that "touch" code
   to satisfy coverage. Where a check is gameable, add a companion fitness
@@ -164,10 +148,7 @@ governance suite. Deliver the check ready to commit, not as a proposal.
 ## Related skills
 
 Sibling sub-skills, each read via the `architecture` router:
-- `members/coupling-cohesion/SKILL.md` — measures afferent/efferent coupling, Instability,
-  and Distance from the Main Sequence on an existing codebase (use it to pick
-  the thresholds this skill then enforces), plus split/merge/leave cohesion
-  verdicts for individual modules.
+- `members/coupling-cohesion/SKILL.md` — also gives split/merge/leave verdicts for individual modules.
 - `members/architecture-pattern-advisor/SKILL.md` — choosing the architecture whose rules
   fitness functions will guard.
 

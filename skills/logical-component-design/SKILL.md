@@ -14,13 +14,6 @@ build* and produces a first set of named components, then refines them. It is th
 generative front end to the analysis skills: it *creates* the decomposition;
 `members/coupling-cohesion/SKILL.md` (read via the `architecture` router) *measures* one that already exists.
 
-The core idea, from *Fundamentals of Software Architecture* (ch. 8), is that
-component identification is an **iterative feedback loop**, not a one-shot act of
-getting it right. You know least about the system at the very start, so trying to
-perfect the initial components is wasted effort. Make a best guess, assign work
-to it, see where it strains, and restructure. The loop never fully stops — it
-runs on greenfield systems and every time a feature is added or changed.
-
 Detailed approaches, worked examples, the Going-Going-Gone case study, and a
 fill-in worksheet live in
 [references/component-identification.md](references/component-identification.md).
@@ -29,14 +22,10 @@ workflow.
 
 ## When to use
 
-Whenever someone is starting a design and asks "what components / modules do I
-need for …", "how do I break this new system into components", "decompose this
-domain", "how should I organize these user stories into components", or
-"identify the building blocks for my <app>", or is filling empty buckets,
-applying the Workflow or Actor/Action approach, or worrying about the Entity
-Trap — even without naming the book. Not for analyzing existing code
-(→ coupling-cohesion) or choosing system topology and folder layout
-(→ `members/architecture-pattern-advisor/SKILL.md`, read via the `architecture` router).
+Use for decomposing a new system or feature into components, including grouping user
+stories, choosing Workflow or Actor/Action, and avoiding the Entity Trap. For
+existing-code metrics use `coupling-cohesion`. For topology or folder layout read
+`members/architecture-pattern-advisor/SKILL.md` via the `architecture` router.
 
 ## Relation to siblings
 
@@ -51,8 +40,10 @@ Sibling sub-skills, each read via the `architecture` router:
 
 ## The cycle
 
-Run these five steps in order, then loop. Enter at whatever step matches what the
-user already has (they may arrive with components and only need step 3–5).
+Run the five-step identification and refactoring cycle for new systems, new features
+and changes to existing features. Start with the best initial grouping available,
+test it against requirements and repeat after a restructure. Enter at the step the
+user needs, for example step 3 if candidate components already exist.
 
 ### 1. Identify initial core components
 
@@ -124,10 +115,8 @@ split: in the GGG auction, one `Bid Capture` component handled bids from both
 bidders and the auctioneer, but bidders need high scalability/elasticity
 (thousands of them) while the auctioneer needs high reliability/availability
 (one connection that must not drop) — so it splits into `Bid Capture` and
- `Auctioneer Capture`. This step assumes you already know which characteristics
-matter most; ask the user for the top 3 driving characteristics, or take them
-from an existing ADR or architecture-pattern-advisor's trade-off analysis —
-do not assume them.
+`Auctioneer Capture`. Use the top three driving characteristics from a relevant ADR
+or an existing architecture trade-off analysis. Ask the user for missing drivers.
 
 ### 5. Restructure and iterate
 

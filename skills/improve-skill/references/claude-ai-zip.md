@@ -15,12 +15,10 @@ pack the rewritten folder for claude.ai with the packager of Anthropic's
    It validates the frontmatter and writes `<name>.skill`, a ZIP archive.
    If `<old-zip-dir>/<name>.skill` already exists, pass
    `<old-zip-dir>/improve-skill-<timestamp>` as the output directory so
-   nothing is overwritten. On a validation failure the packager writes no
-   archive: add the failure to the report as a D-finding (see the
-   frontmatter paragraph at the top of `SKILL.md`), leave the frontmatter
-   unchanged, and deliver the updated folder for the author to zip by hand.
-   Without an installed `skill-creator` packager, say so: the updated
-   folder is the result, for the author to zip by hand.
+   nothing is overwritten. A validation failure writes no archive: report the
+   error as a D-finding and preserve the frontmatter byte for byte.
+   If the packager is unavailable, say so. In both fallback cases deliver the
+   updated folder for the author to zip by hand.
 4. If the author no longer has the old ZIP, pack the snapshot the same way
    (staged as `<name>/`) into `<output-dir>/old/` as the way back.
 

@@ -1,7 +1,6 @@
 # Project quirks
 
-Per-project deviations from the default procedure. Verify in the repo when in
-doubt rather than adopting blindly.
+Per-project deviations from the default procedure.
 
 - data.table tests through its own `test()` mechanism in
   `inst/tests/tests.Rraw` (numbered tests, not testthat) and requires a NEWS

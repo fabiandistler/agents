@@ -5,8 +5,7 @@ Use these rules when a pipeline separates finding, grading, and publishing. They
 ## Finding and grading
 
 - Whoever finds a problem does not grade it. Grading runs as a separate step with fresh context.
-- For application failure modes, give each mode its own binary pass/fail judge. Do not use a continuous score for these application judges.
-- An independent meta-grader evaluating code-review findings uses this anchored scale, not the application pass/fail rule:
+- Use a separate binary pass/fail judge for each application failure mode. Reserve the anchored scale below for independent grading of code-review findings:
 
   | Grade | Meaning |
   |---:|---|

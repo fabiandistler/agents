@@ -8,7 +8,7 @@ For "review this PR" or "look over this change."
 
 **Layout**
 - Title with the PR/branch name and a one-line summary.
-- A short framing block: motivation, "where to focus the review."
+- Open with the motivation and name which parts of the diff reviewers should prioritize.
 - The diff itself, rendered with `+`/`-` line styling, syntax highlighting, and **margin annotations** — small numbered notes pinned to specific lines, not interleaved into the code.
 - Severity tags inline: `blocking`, `nit`, `question`, `praise`. Text labels with color-coding.
 - Jump links at the top to skip to the annotated regions.
@@ -17,7 +17,6 @@ For "review this PR" or "look over this change."
 **What's load-bearing**
 - Margin annotations, not interleaved comments. Interleaved comments break the visual flow of the diff and you lose the ability to read the code as code. Margin notes preserve both.
 - Severity color-coding. Reviewers scan for red first; help them.
-- The "where to focus" framing. Reviewers don't have time for everything; tell them what matters.
 
 **Common mistakes**
 - Repeating the entire diff with `<pre>` blocks and explanations between every chunk. That's a markdown article, not a review. The diff is the spine; the annotations attach to it.
@@ -47,14 +46,13 @@ For "I'm new to this package, walk me through it" or "what does this module do."
 
 **Layout**
 - Top: a single-sentence summary of what the package does.
-- Below: a boxes-and-arrows diagram (inline SVG) of the modules and how they call each other. Highlight the **hot path** — the most common call sequence — in a distinct color.
+- Use an inline SVG boxes-and-arrows diagram of module calls. Highlight the hot path in a distinct color so readers can trace the common call sequence first.
 - Entry points called out explicitly: "If you're trying to do X, start at Y."
 - Per-module cards below the diagram with: what it does (one line), key types/functions, gotchas.
 - A "data lifecycle" trace: pick one realistic input, show how it flows through.
 
 **What's load-bearing**
 - The diagram. The whole point is that you can see the shape at a glance.
-- The hot path highlight. Most readers care about the common case; help them ignore the edges first.
 - Entry points by use case ("if you want to do X..."). Code is rarely read top-to-bottom; help the reader find their way in.
 
 **Common mistakes**

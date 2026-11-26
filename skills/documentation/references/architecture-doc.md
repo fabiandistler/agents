@@ -63,5 +63,3 @@ starting point instead of a discovery project.
 - **Diagram and prose disagree** after a refactor — usually because the diagram
   is an image nobody can edit. Prefer text-source diagrams (Mermaid, PlantUML)
   that live in the repo.
-- **Failure paths omitted.** Only the happy path is drawn, which is exactly the
-  path nobody needed documentation for.

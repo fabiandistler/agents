@@ -16,12 +16,7 @@ metadata:
 Filter a change down to its **review decisions**: places where the author
 chose between several defensible options that neither the originating issue
 nor the repository's conventions settle, and where undoing the choice after
-the merge is costly. A deviation from the issue counts as one too. What a
-linter catches, what follows an existing pattern, and what the issue states
-literally do not.
-
-This workflow covers review decisions only. Offer a comment preview at the
-end, with publication available on explicit request under Close.
+the merge is costly. A deviation from the issue counts as one too.
 
 ## When to use
 
@@ -75,10 +70,10 @@ For any input still unchecked:
   `pr.md` or `issue.md`. If they have none, write no file.
 - **ci**: nothing replaces it. A missing CI status is never green.
 
-Before the first card, state each input that stays unchecked and its
-reason, and what that removes: without the issue, deviations from it were
-not checked; without CI, no change is marked as proven by green CI. Record
-the same lines in the protocol header.
+Before the first card, list each input that stays unchecked, the reason and
+what the review could not check. Record the same lines in the protocol header.
+Use the no-issue rule under Queue. Without CI, no change is marked as proven
+by green CI.
 
 ## Large diffs
 
@@ -200,9 +195,8 @@ Label each file:
 - **you look at this in the PR**: every other file, with the script's
   reason.
 
-The script never decides that a file is queued, and its proof never takes a
-file out of the queue. When unsure whether a file holds a review decision,
-queue it rather than label it "skim is enough".
+Only your review decides whether a file belongs in the queue. The script's
+proof does not take a file out of the queue.
 
 Show the list before the first card. Pass each entry to `protocol.py init`
 with `--file-line "<path>: <label>: <reason>"`. If the queue is empty, show

@@ -16,18 +16,15 @@ metadata:
 - Production metrics or user-feedback signals need defining.
 - A step needs implementing: prompts, an eval harness or judge, guardrails, finetuning, training data, or a UI that shows model output.
 
-All three parts below guard against one failure: reaching for the more complex
-tool before the cheaper one is ruled out.
-
 ## References
 
 Open the file for the topic you are implementing:
 
 - [`references/evaluation.md`](references/evaluation.md): eval harness, LLM judges, agent evaluation, rollout experiments, production metrics and implicit feedback.
-- [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context and retrieval, autonomy and escalation.
+- [`references/agents-and-tools.md`](references/agents-and-tools.md): tool design, orchestration, context and retrieval, autonomy and escalation. When designing SQL access, also read [Access and authorization](references/security.md#access-and-authorization) for database grants.
 - [`references/security.md`](references/security.md): guardrails, access and authorization, sandboxing, log redaction, red-teaming.
 - [`references/adaptation-and-serving.md`](references/adaptation-and-serving.md): prompting, finetuning, training data, serving, cost caps.
-- [`references/result-surface.md`](references/result-surface.md): any UI that shows model output (confidence, attribution, corrections, AI labelling, blocked output).
+- [`references/result-surface.md`](references/result-surface.md): any UI that shows model output (confidence, attribution, corrections, AI labelling, blocked output). For irreversible actions, apply the approval gate in [Access and authorization](references/security.md#access-and-authorization).
 - [`references/agent-pipelines.md`](references/agent-pipelines.md): multi-stage or unattended pipelines; grader separation, code-review meta-grading, controlled external writes.
 
 ## Part A — The adaptation ladder
@@ -52,19 +49,15 @@ risk, and ongoing cost.
 
 Before moving to a higher rung, ask: **what kind of failure is this?**
 
-- **Information failure** — the model simply did not know something → go to retrieval or cached long context.
+- **Information failure** — the model is missing knowledge at inference time. Use retrieval or cached long context; more training data does not fix this.
 - **Format failure** — the content is right but the shape is wrong → go to structured outputs.
 - **Behavior failure** — the model knew it, but responded wrongly anyway → go to finetuning.
 
-This distinction blocks the single most expensive wrong turn in LLM projects:
-finetuning a RAG problem. More training data does not cure knowledge the model
-is missing *at inference time*.
-
 ### The sample-size rule of thumb
 
-Every rung change needs an eval that can detect whether it helped. At 95%
-confidence, **every 3× decrease in the score difference to detect needs
-roughly 10× more samples.**
+Size the error-analysis eval to detect each rung change. At 95% confidence,
+every 3× decrease in the score difference to detect needs roughly 10× more
+samples.
 
 | Difference to detect | Samples needed |
 |---|---|
@@ -91,8 +84,9 @@ metrics:
 
 ## Part B — Progressive architecture: five build steps
 
-Add each step only when its trigger is present, never preemptively. The
-numbers give the usual order; the "Add it when" line decides each step.
+Add a step only when its "Add it when" condition holds, even if you skip earlier
+steps. A single-model app can add prompt caching without a router. The numbers
+give the usual order.
 
 - **1. Enhance and minimize context**
   - What it adds: Retrieval from text/image/tabular sources, tool outputs (web search, APIs); keep the smallest high-signal context — see Context engineering in `references/agents-and-tools.md`
@@ -115,9 +109,7 @@ numbers give the usual order; the "Add it when" line decides each step.
 
 ### Dependencies between the steps
 
-A step whose trigger is absent is skipped, even if a later one applies: a
-single-model app needs no router before prompt caching. Only these
-dependencies hold, each when both steps are present:
+The following dependencies apply only when both steps are present.
 
 - Output checks for hallucination compare the answer against the retrieved
   context, so they need the context layer of step 1.

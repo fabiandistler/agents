@@ -3,23 +3,23 @@
 Each target is three lines. Phase 1 copies them into `SPEC.md ## Definition of Done`; the smoke command becomes the `check` of the final prd item. Language × target picks the framework.
 
 - **`package`**
-  - Smoke command (`check` of last prd item): Python: `uv build && uv run python -c "import <name>"` · R: `Rscript -e 'devtools::check(error_on="warning")'` · bash: `bats --recursive test/`
+  - Smoke command: Python: `uv build && uv run python -c "import <name>"` · R: `Rscript -e 'devtools::check(error_on="warning")'` · bash: `bats --recursive test/`
   - Required artefact: installable package with README usage block
   - Non-goal: publishing to PyPI/CRAN
 - **`http-service`**
-  - Smoke command (`check` of last prd item): `docker rm -f app-smoke >/dev/null 2>&1; docker build -t app:test . && docker run --rm -d -p 8000:8000 --name app-smoke app:test && curl -sf --retry 10 --retry-all-errors --retry-delay 1 localhost:8000/health; rc=$?; docker rm -f app-smoke >/dev/null 2>&1; exit $rc` — the container is removed on every path, so a failed attempt never blocks the next one on the name `app-smoke`. Docker 29 rejects one-character container names. `--retry-all-errors` (curl ≥ 7.71) also retries the connection reset Docker's port proxy sends while the app is still starting; `--retry-connrefused` alone fails on it
+  - Smoke command: `docker rm -f app-smoke >/dev/null 2>&1; docker build -t app:test . && docker run --rm -d -p 8000:8000 --name app-smoke app:test && curl -sf --retry 10 --retry-all-errors --retry-delay 1 localhost:8000/health; rc=$?; docker rm -f app-smoke >/dev/null 2>&1; exit $rc` — the container is removed on every path, so a failed attempt never blocks the next one on the name `app-smoke`. Docker 29 rejects one-character container names. `--retry-all-errors` (curl ≥ 7.71) also retries the connection reset Docker's port proxy sends while the app is still starting; `--retry-connrefused` alone fails on it
   - Required artefact: `Dockerfile` (multi-stage, `--target test` runs suite), `/health` endpoint
   - Non-goal: TLS, auth, horizontal scaling
 - **`mcp-server`**
-  - Smoke command (`check` of last prd item): Python: `npx -y @modelcontextprotocol/inspector@2.8.0 --cli uv run python -m <name> --method tools/list --format json | jq -e '.result.tools | length > 0'` (needs Node; a stdio server ignores `--help` and would wait on stdin) · R/bash: n/a → ask, likely `other`
+  - Smoke command: Python: `npx -y @modelcontextprotocol/inspector@2.8.0 --cli uv run python -m <name> --method tools/list --format json | jq -e '.result.tools | length > 0'` (needs Node; a stdio server ignores `--help` and would wait on stdin) · R/bash: n/a → ask, likely `other`
   - Required artefact: stdio entry point, `tools/list` returns ≥1 tool
   - Non-goal: HTTP transport unless the goal says so
 - **`cli`**
-  - Smoke command (`check` of last prd item): `<cmd> --help` exits 0 and one golden-path invocation from SPEC.md `## Users` exits 0
+  - Smoke command: `<cmd> --help` exits 0 and one golden-path invocation from SPEC.md `## Users` exits 0
   - Required artefact: single entry point, `--help` documents every flag
   - Non-goal: shell completion, packaging for distros
 - **`other:<text>`**
-  - Smoke command (`check` of last prd item): Phase 1 asks for a smoke command verbatim; refuse to write prd.json without one
+  - Smoke command: Phase 1 asks for a smoke command verbatim; refuse to write prd.json without one
   - Required artefact: as stated
   - Non-goal: as stated
 

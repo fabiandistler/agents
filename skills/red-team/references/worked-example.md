@@ -1,7 +1,6 @@
 # Worked example
 
-Read when unsure about tone, depth, or how strict the materiality gate is.
-Three short cases: a first check, its re-check, and a strong input.
+Three cases: a first check, its re-check, and a strong input.
 
 ## Contents
 

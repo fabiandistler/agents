@@ -205,5 +205,3 @@ cheapest first:
    (`mmdc`) — legacy batch rendering; it requires a browser binary
    (Chrome/Chromium downloaded via Puppeteer) and exits non-zero on syntax
    errors.
-
-A diagram that has never been validated is a diagram with a syntax error.

@@ -11,9 +11,9 @@ metadata:
 
 Never explain a solution before the reader knows what problem it solves: Problem → Solution → Application.
 
-The test for whether it applies: does the thing being explained exist *because of* a problem? A design pattern, a statistical method, a torque wrench, a tax allowance, a meeting format, a proposed process change — all do. Then the reader needs that problem first.
-
 ## When to use
+
+Apply when the subject exists to solve a problem.
 
 - Writing or editing a README, package description, design rationale, or ADR motivation.
 - Explaining a concept, method, tool, or rule from any field — "explain X", "what is X", "why do we use X", "what is X for".
@@ -34,19 +34,17 @@ API docstrings and roxygen blocks stay reference-first: at most a one-clause why
 ### 1. Problem (concrete, not abstract)
 Describe the **specific situation** that creates a need. Use a scenario, a symptom, or a pain point — not a category.
 
-- ✗ "When you need to add behaviour to a class..." (abstract, no urgency)
+- ✗ "When you need to add behaviour to a class..." (too vague to anchor the explanation)
 - ✓ "You have an Order class with a `format()` method. Marketing wants to optionally add a gift-wrap note, a discount banner, and a tracking link to a confirmation — in any combination. Subclassing produces an explosion of OrderWithGiftNote, OrderWithBanner, OrderWithGiftNoteAndBanner..." (concrete, the reader feels the pain)
 
 ### 2. Solution (conceptual, named)
 Introduce the concept as a **direct response** to the pain just described. Name it. State what it does in one sentence. Do not yet show the details.
 
-- ✗ "There is a pattern called Decorator that wraps objects..." (definitional, doesn't hook the problem)
+- ✗ "There is a pattern called Decorator that wraps objects..." (definition before the problem). A code dump, spec table or unguided list of use cases has the same problem. Give readers the scenario and concept before the details.
 - ✓ "The Decorator pattern solves this: instead of subclassing, you wrap the original `Order` in decorators (`GiftNoteDecorator`, `BannerDecorator`) that each add one embellishment around the original `format()`. Any combination is a stack of wrappers, not a new subclass." (links solution to pain)
 
 ### 3. Application (concrete how)
 Now show how it is used — whatever form the "how" takes in the domain: code or a signature, a sequence of steps, a worked calculation, a diagram, the exact wording of a request, the decision the reader now has to make. The reader has the mental model already, so this part reads as "of course, that follows".
-
-- Torque wrench: look up the value, set the scale, tighten the nuts in a crosswise pattern until the click, stop at the first click, and turn the scale back down before storing it.
 
 ## Before / after
 
@@ -59,9 +57,3 @@ After (problem-first): "You are putting the winter wheels on. Too loose and a nu
 ## Minimum viable check
 
 After the first paragraph the reader can answer: what concrete situation does this solve, and what the solution is called plus what it does in one sentence. If either is no, restart from step 1.
-
-## Failure modes to refuse
-
-- **Definitional opener.** "X is a pattern / tool / method that..." — definitions before pain. Restart with a concrete scenario.
-- **Solution before problem.** A code dump or spec table followed by "this does Y", or "use X when..." — readers cannot parse details without a mental model; *when* is a list, not a hook.
-- **Generic problem statement.** "Sometimes you need flexibility..." / "Precision matters..." — too vague to anchor.

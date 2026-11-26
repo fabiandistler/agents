@@ -1,6 +1,6 @@
 # Decision Drivers
 
-The diagnostic questions for step 2, plus how answers map to candidate patterns. Ask only the few questions that actually discriminate for the project at hand. Heuristics are *hints* to justify a recommendation, not a rigid score.
+These questions and heuristics support step 2. Use the heuristics to justify a recommendation without turning them into a rigid score.
 
 ## Diagnostic questions
 

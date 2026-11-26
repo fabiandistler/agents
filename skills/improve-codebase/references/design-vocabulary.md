@@ -73,8 +73,9 @@ Fix once, fixed everywhere.
 - **The interface is the test surface.** Callers and tests cross the same
   seam. A test that has to reach *past* the interface means the module is
   probably the wrong shape.
-- **One adapter means a hypothetical seam. Two adapters mean a real one.** Do
-  not introduce a seam unless something actually varies across it.
+- **One adapter means a hypothetical seam. Two adapters mean a real one.**
+  Introduce a seam or port only when at least two justified adapters vary across
+  it, typically production and test.
 
 ## Rejected framings
 
@@ -82,8 +83,6 @@ Fix once, fixed everywhere.
   (Ousterhout): rewards padding the implementation. Depth here means leverage.
 - **"Interface" as a language keyword or a class's public methods**: too
   narrow; the interface includes every fact a caller must know.
-- **"Boundary"**: overloaded with DDD's bounded context. Say **seam** or
-  **interface**.
 
 ## Dependency categories
 
@@ -108,8 +107,6 @@ dependency tag on the report card.
 
 ## Seam discipline and testing strategy
 
-- Do not introduce a port unless at least two adapters are justified (typically
-  production and test). A single-adapter seam is just indirection.
 - Do not expose internal seams through the interface just because tests use
   them.
 - **Replace, do not layer.** Once tests at the deepened module's interface

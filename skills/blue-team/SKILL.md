@@ -10,7 +10,8 @@ metadata:
 
 # Blue Team
 
-Take an early, unfinished thought and return a harder, sharper version of it. You are a sparring partner, not an examiner: expose the core, load it where it gives, and rebuild it reinforced. The result is always a version, never only a verdict.
+Return a sharper version of the user's unfinished thought. Expose its core,
+test where it gives, and strengthen it. Always include the resulting version.
 
 **Harden** is the leading word: afterwards the thought survives more than before – follow-up questions, counter-arguments, contact with its audience. Hardening never means smoother, more cautious or more generic. A hardened version is usually more pointed than the raw one.
 
@@ -18,7 +19,10 @@ Take an early, unfinished thought and return a harder, sharper version of it. Yo
 
 The user brings an idea that is not finished yet and wants it stronger. Typical phrasings: „härte das“, „schärfe das“, „ist das tragfähig?“, „was hältst du davon“, „spontan, was meinst du“, „mach das belastbarer“, „jetzt besser?“ / „nochmal“ after an earlier round.
 
-Out of scope: an adversarial verdict on a finished artefact (`red-team`), and wording or style signals in a German text (`ki-stil`). See [Boundaries and handover](#boundaries-and-handover).
+Use `red-team` for an adversarial verdict on a finished or near-finished
+artefact or decision. Use `ki-stil` for wording and style in German; this
+skill works on the claim, argument, and audience. See
+[Boundaries and handover](#boundaries-and-handover) for the handoff.
 
 Raw or finished: raw means the claim or core is not yet written down, or the user asks to develop it (this skill). Finished means there is a text or decision the user is about to send, sign, or submit (`red-team`).
 
@@ -31,11 +35,11 @@ Raw or finished: raw means the claim or core is not yet written down, or the use
 ## Language and tone
 
 - Output in German, consistently Du-Form, even when the request is in English.
-- Compact turns: the user often reads on a phone. The hardened version is the centre of the output; everything else justifies it.
+- Work through the idea thoroughly and keep the output compact for phone
+  reading. Make the hardened version the focus; the other sections justify it.
 
 ## Ground rules
 
-- Work thoroughly inside, show only the densest useful layer outside.
 - Separate **gesichert**, **plausibel** and **spekulativ** for every carrying claim.
 - No false precision, no invented evidence. A marked gap („[Zahl aus deinem Projekt]“) is more honest than a weak source.
 - The user's evidence comes first: the user is often the domain expert. Their own data, project experience and benchmarks beat web research. Search the web, if you can, only for a gap that concerns a carrying assumption – at most 3 points, each with source and date.
@@ -63,7 +67,7 @@ Empty sections are allowed. „Max. 3–5 Belastungspunkte“ is a ceiling, not 
 9. **Write the hardened version** – reinforcements built in, Beiwerk out, pointedness kept.
 10. **Run the sharper-not-smoother check** (below). If the version fails, rewrite it once.
 11. **Set the Härtegrad** by its anchors.
-12. **Outside check** – only in Vollhärtung, only when the user asks or the idea is about to go out (see [Fan-out](#fan-out)).
+12. **Outside check** — follow [Fan-out](#fan-out).
 
 ## Mode selection
 
@@ -128,13 +132,13 @@ Before output, compare the hardened version with the raw input on five checks:
 
 1. **Claim:** more specific – one verifiable statement instead of a vague or several competing ones.
 2. **Audience:** named – it is clear for whom the version must hold.
-3. **Evidence:** concrete evidence, or the gap marked as a gap. No invented number.
+3. **Evidence:** use concrete support or mark what is missing.
 4. **Hedges:** fewer – „eventuell“, „könnte“, „gewissermaßen“, „in gewisser Weise“ stay only where they mark a real, named uncertainty.
 5. **Beiwerk:** removed – nothing in the version that the core does not need.
 
 The version must improve on at least one check and lose on none. If it only became longer, more cautious or more generic, it was smoothed, not hardened – rewrite it. Then one more check: would you defend every load point to the user with reference to their wording? If not, demote it to Feinschliff or cut it.
 
-Also keep: no redundancy between KERN, BELASTUNG and the version; every load point has a reinforcement; the version reads on its own without the BELASTUNG section; one strong point beats three weak ones.
+Check that KERN, BELASTUNG, and the version each do distinct work and that the version stands on its own. Prefer one strong point over several weak ones.
 
 ## Härtegrad
 
@@ -161,8 +165,7 @@ Exception, Vollhärtung only: run an outside check when the user asks for one. W
 
 ## Boundaries and handover
 
-- `red-team` critiques a finished or near-finished artefact or decision adversarially and returns a verdict. Blue team hardens the unfinished and returns a version. Each works without the other.
-- `ki-stil` checks wording and style signals in a German text. Blue team works on the content – claim, argument, audience – not on how the sentences read.
+- Blue team and red team each work independently.
 - Turning the hardened core into a post, slide or document is outside this skill; do it directly once the user asks.
 
 When the user moves on to `red-team` or to writing the final text, hand over in German:

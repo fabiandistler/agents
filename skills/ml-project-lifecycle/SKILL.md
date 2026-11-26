@@ -70,7 +70,7 @@ Pick the model family from the shape of the data first, and prefer the boring, w
 | Text | Zero-shot LLM, then embeddings plus linear model, then fine-tune | Sentence-transformer embeddings are often sufficient without a full fine-tune |
 | Time series | AutoETS or Theta plus a zero-shot time-series foundation model (Chronos, TimesFM) | Via statsforecast or fable; Prophet is not a first choice |
 
-Treat the specific model names as illustrative of the *category* to reach for, not a permanent ranking — this table will date faster than the decision process itself.
+Treat specific library and model names as examples of their categories, not permanent recommendations.
 
 ### AutoML notes
 
@@ -79,7 +79,7 @@ AutoML (AutoGluon, H2O AutoML, FLAML; workflowsets in R) is a legitimate way to 
 - **Use it for:** a quick baseline, proof-of-concept work, standard well-trodden problems where time matters more than a marginal accuracy gain.
 - **Its costs:** it is a black box that is hard to debug, it can overfit to the validation data, it gets expensive on large datasets, and it cannot encode domain-specific structure a practitioner knows about.
 
-A workable default workflow: begin with the model family from the table (for tabular data, compare a tabular foundation model with an untuned GBDT), use AutoML as an optional comparison, and move to deep learning only when the baseline misses a genuine business need.
+Use the table's default model family as the starting point. AutoML is an optional comparator. Move to deep learning only when the baseline misses a genuine business need.
 
 ## Part C — Pipeline and deployment checklist
 
@@ -96,7 +96,9 @@ A workable default workflow: begin with the model family from the table (for tab
 Choose transformations that fit the data and model: missing-value handling as
 above, scaling, categorical encoding, feature crossing, or sequence embeddings.
 
-**Ordering constraint that matters most: every fitted step — impute, scale, encode, select, tune — is fit on training folds only, inside CV.** Fitting any statistic on the full dataset before splitting leaks test-set information into training and inflates validation performance in a way that will not hold in production.
+<a id="fit-preprocessing-inside-cv"></a>
+
+Fit every learned step (imputation, scaling, encoding, selection and tuning) only on training folds inside CV. Fitting any statistic before splitting leaks test information into training and inflates validation performance.
 
 Leakage checklist — pass all six before trusting a validation score:
 
@@ -104,7 +106,7 @@ Leakage checklist — pass all six before trusting a validation score:
 2. Group split — no shared entity across folds (same user, patient, device); split by group.
 3. Target-proxy audit — no feature computed from the outcome or only available after it.
 4. Duplicate check — no duplicate or near-duplicate rows straddling train and validation.
-5. Preprocessing inside CV — every fitted preprocessing step lives inside the cross-validation loop.
+5. [Preprocessing inside CV](#fit-preprocessing-inside-cv).
 6. Test set touched once — the held-out test set is evaluated a single time, never used for tuning.
 
 ```python
@@ -182,4 +184,4 @@ Retrain on any of these signals, not on a schedule alone:
 
 ## Source
 
-This skill distills Chip Huyen, *Designing Machine Learning Systems* (2022); the tabular defaults reflect tabular-foundation-model practice (2024–2026). Treat specific library and model names as a snapshot of common practice at the time of writing, not a permanent recommendation.
+This skill distills Chip Huyen, *Designing Machine Learning Systems* (2022); the tabular defaults reflect tabular-foundation-model practice (2024–2026).
