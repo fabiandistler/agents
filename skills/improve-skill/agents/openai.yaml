@@ -1,0 +1,5 @@
+interface:
+  display_name: "Improve Skill"
+  short_description: "List slop candidates in one skill folder"
+policy:
+  allow_implicit_invocation: false

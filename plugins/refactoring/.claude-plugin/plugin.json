@@ -1,6 +1,6 @@
 {
   "name": "refactoring",
-  "description": "Refactoring and code-quality skills: finding where to start refactoring via git-churn hotspots, and keeping restructuring separate from behavior change.",
+  "description": "Refactoring and code-quality skills: finding where to start refactoring via git-churn hotspots, keeping restructuring separate from behavior change, and listing slop candidates in a skill.",
   "author": {
     "name": "Fabian Distler"
   }
