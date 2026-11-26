@@ -17,12 +17,13 @@ def test_default_run_reports_gaps_as_warn_only(monkeypatch, capsys):
     assert "warn: x: missing" in captured.err
 
 
-def command_skill_with_evals(monkeypatch, tmp_path, evals_text):
-    """Point the check at one command skill whose evals.json holds evals_text."""
+def command_skill_with_evals(monkeypatch, tmp_path, evals_text=None):
+    """Point the check at one command skill; it ships evals.json only when evals_text is given."""
     from catalogue import SkillEntry
 
     path = tmp_path / "evals.json"
-    path.write_text(evals_text, encoding="utf-8")
+    if evals_text is not None:
+        path.write_text(evals_text, encoding="utf-8")
     entry = SkillEntry(
         name="cmd", summary="s", category="workflow", path="skills/cmd", activation="command"
     )
@@ -38,6 +39,5 @@ def test_command_skill_that_ships_evals_gets_its_shape_checked(monkeypatch, tmp_
 
 
 def test_command_skill_without_evals_stays_exempt(monkeypatch, tmp_path):
-    command_skill_with_evals(monkeypatch, tmp_path, "{}")
-    (tmp_path / "evals.json").unlink()
+    command_skill_with_evals(monkeypatch, tmp_path)
     assert check_evals.collect_gaps() == ([], 0, 0)
