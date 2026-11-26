@@ -294,4 +294,4 @@ def test_a_context_with_unreadable_labels_is_bad_input(labels):
     with pytest.raises(pr_plan.ArtifactError, match="labels"):
         pr_plan.plan_publish(context, make_assessment(), make_review(), auto_merge=True)
     with pytest.raises(pr_plan.ArtifactError, match="labels"):
-        pr_plan.plan_hold(context)
+        pr_plan.plan_hold(context, "synchronize")

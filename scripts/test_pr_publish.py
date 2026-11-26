@@ -299,7 +299,7 @@ def test_live_mergeability_still_being_computed_never_disables(monkeypatch, merg
 def run(job: str, fake: FakeGitHub) -> dict:
     """One write run of ``job`` (hold or publish); publish carries a block verdict."""
     if job == "hold":
-        return pr_publish.hold_live(REPO, NUMBER, write=True, client=fake)
+        return pr_publish.hold_live(REPO, NUMBER, "synchronize", write=True, client=fake)
     review = make_review(verdict="block", risk="high")
     return pr_publish.publish_live(REPO, NUMBER, make_assessment(), review, write=True, client=fake)
 
