@@ -89,16 +89,15 @@ Category: <category>
 Location: <file>:<line>
 Criterion: <which part of the definition above queues it>
 Chosen: <what the author chose>
-Alternatives: <two or three other defensible options, reconstructed>
 Cost to undo: <one sentence on undoing it after the merge>
-Lean: <your lean and why, one line>
+Lean: <your view of the chosen option and why, one line>
 ```
 
 When the deviation category is unchecked, make the first line
 `Deviation: unchecked (no issue).` When a decision only matters if an earlier
 one stands, add the line `Depends on: <file>:<line>` to its block.
 
-The alternatives are reconstructed: you cannot see what the author
-considered, so never describe them as options the author weighed. Keep the
-lean to its own line. No verdict on whether the change is correct, no defect
-review, no summary. If you find none, answer `No review decisions found.`
+Use `Location: <file>` for a decision on a file without a new-side line, and
+`Location: -` for an omission without a file. Keep the lean to its own line.
+Leave the verdict, defect review and summary to the reviewer. If you find
+none, answer `No review decisions found.`
