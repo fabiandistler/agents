@@ -22,6 +22,7 @@ record = {{
     "cwd_entries": os.listdir("."),
     "stdin": sys.stdin.read(),
     "token": os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"),
+    "load_added_instructions": os.environ.get("CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD"),
 }}
 with open(os.environ["FAKE_CLAUDE_LOG"], "w", encoding="utf-8") as handle:
     json.dump(record, handle)
@@ -211,6 +212,7 @@ def test_a_workspace_call_gets_only_the_read_tools_confined_to_it(
     assert answer == VALID_RESPONSE
     assert option_value(argv, "--tools") == "Read,Grep,Glob"
     assert "--restricted" in argv, "the file tools must stay inside the workspace"
+    assert "--add-dir" not in argv
     assert option_value(argv, "--setting-sources") == "", "no settings, hooks or CLAUDE.md"
     assert "--strict-mcp-config" in argv
     assert int(option_value(argv, "--max-turns")) > 1
@@ -218,11 +220,38 @@ def test_a_workspace_call_gets_only_the_read_tools_confined_to_it(
     assert call["stdin"] == "ISSUE BODY"
 
 
+def test_a_workspace_call_can_read_the_explicit_factory_directory(
+    fake_claude, monkeypatch, tmp_path: Path
+) -> None:
+    workspace = tmp_path / "checkout"
+    factory = tmp_path / "pinned factory"
+    workspace.mkdir()
+    factory.mkdir()
+    monkeypatch.setenv("CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD", "1")
+
+    pr_review_claude.run_claude(workspace_request(), FAKE_TOKEN, workspace=workspace)
+    baseline = fake_claude()["argv"]
+    pr_review_claude.run_claude(
+        workspace_request(), FAKE_TOKEN, workspace=workspace, read_only_directory=factory
+    )
+    call = fake_claude()
+    argv = call["argv"]
+    index = argv.index("--add-dir")
+    assert argv[index : index + 2] == ["--add-dir", str(factory)]
+    assert argv[:index] + argv[index + 2 :] == baseline
+    assert option_value(argv, "--tools") == "Read,Grep,Glob"
+    assert option_value(argv, "--setting-sources") == ""
+    assert {"--restricted", "--strict-mcp-config", "--disable-slash-commands"} <= set(argv)
+    assert call["load_added_instructions"] is None
+    assert Path(call["cwd"]) == workspace
+
+
 def test_a_call_without_workspace_keeps_no_tools_and_no_restricted_flag(fake_claude) -> None:
     pr_review_claude.run_claude(workspace_request(), FAKE_TOKEN)
     argv = fake_claude()["argv"]
     assert option_value(argv, "--tools") == ""
     assert "--restricted" not in argv
+    assert "--add-dir" not in argv
     assert option_value(argv, "--max-turns") == "1"
 
 

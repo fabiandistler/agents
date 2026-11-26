@@ -18,6 +18,7 @@ Standard library only.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import urllib.parse
 from pathlib import Path
@@ -25,7 +26,14 @@ from pathlib import Path
 import pr_cli
 import pr_github_client
 from factory_handoff import NEEDS_TRIAGE
-from issue_triage_answer import AnswerError, artifact, build_request, parse_answer, render_comment
+from issue_triage_answer import (
+    AnswerError,
+    FactorySource,
+    artifact,
+    build_request,
+    parse_answer,
+    render_comment,
+)
 from issue_triage_policy import (
     TRIGGERS,
     assess,
@@ -43,6 +51,7 @@ SCHEMA_VERSION = 1
 USAGE = f"""\
 usage: issue_triage.py assess  --repo O/R --issue N --trigger T --output FILE
        issue_triage.py triage  --context FILE --workspace DIR
+                              [--factory-dir DIR --factory-repo O/R --factory-sha SHA]
        issue_triage.py publish --repo O/R --context FILE [--triage FILE]
                                [--run-url URL] [--write]
 
@@ -58,6 +67,9 @@ applies it only with --write.
   --output FILE     where `assess` writes the context JSON
   --context FILE    context JSON written by `assess`
   --workspace DIR   checkout the model may read (Read, Grep, Glob only)
+  --factory-dir DIR pinned factory checkout the model may also read
+  --factory-repo O/R repository of that checkout
+  --factory-sha SHA  40-hex commit of that checkout (all three factory flags go together)
   --triage FILE     artifact written by `triage`; omit it when no triage ran
   --run-url URL     link to the workflow run, shown in the comment
   --write           apply the plan; only inside GitHub Actions
@@ -77,7 +89,10 @@ examples:
 
 FLAGS = {
     "assess": (("--repo", "--issue", "--trigger", "--output"), ()),
-    "triage": (("--context", "--workspace"), ()),
+    "triage": (
+        ("--context", "--workspace", "--factory-dir", "--factory-repo", "--factory-sha"),
+        (),
+    ),
     "publish": (("--repo", "--context", "--triage", "--run-url"), ("--write",)),
 }
 REQUIRED = {
@@ -178,7 +193,14 @@ def fetch_context(client, repo: str, number: int, trigger: str) -> dict:
 # --- triage ------------------------------------------------------------------
 
 
-def triage(context: dict, workspace: Path, transport=None, token: str | None = None) -> dict:
+def triage(
+    context: dict,
+    workspace: Path,
+    transport=None,
+    token: str | None = None,
+    *,
+    factory: FactorySource | None = None,
+) -> dict:
     """Ask the model about an eligible context; never raises for a failed call."""
     if context.get("eligible") is not True:
         raise pr_cli.InputError("the context is not eligible for triage")
@@ -186,10 +208,15 @@ def triage(context: dict, workspace: Path, transport=None, token: str | None = N
     if not oauth_token:
         print(f"{SCRIPT}: {TOKEN_ENV} is not set", file=sys.stderr)
         return artifact(context, "unavailable")
-    request = build_request(context)
+    request = build_request(context, factory)
     try:
         if transport is None:
-            text = run_claude(request, oauth_token, workspace=workspace)
+            text = run_claude(
+                request,
+                oauth_token,
+                workspace=workspace,
+                read_only_directory=factory.directory if factory is not None else None,
+            )
         else:
             text = transport(request)
     except ProviderError as error:
@@ -276,6 +303,19 @@ def publish(options: dict, client) -> dict:
 # --- CLI ---------------------------------------------------------------------
 
 
+def _factory_source(options: dict) -> FactorySource | None:
+    directory, repository, sha = (options[f"factory_{field}"] for field in ("dir", "repo", "sha"))
+    if directory is repository is sha is None:
+        return None
+    if not directory or not repository or not sha:
+        raise pr_cli.UsageError("--factory-dir, --factory-repo and --factory-sha must go together")
+    if not pr_github_client.REPO_PATTERN.fullmatch(repository):
+        raise pr_cli.UsageError("--factory-repo must be OWNER/REPO")
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise pr_cli.UsageError("--factory-sha must be a 40-character lowercase hex commit SHA")
+    return FactorySource(Path(directory).resolve(), repository, sha)
+
+
 def _parse(argv: list[str]) -> tuple[str, dict] | None:
     if not argv or argv[0] in ("-h", "--help"):
         return None
@@ -296,6 +336,8 @@ def _parse(argv: list[str]) -> tuple[str, dict] | None:
             raise pr_cli.UsageError(f"--trigger must be one of {', '.join(TRIGGERS)}")
         if not str(options["issue"]).isdigit() or int(str(options["issue"])) <= 0:
             raise pr_cli.UsageError("--issue must be a positive integer")
+    if command == "triage":
+        options["factory"] = _factory_source(options)
     return command, options
 
 
@@ -310,7 +352,9 @@ def _run(command: str, options: dict, client) -> int:
         return pr_cli.EXIT_OK
     if command == "triage":
         context = pr_cli.read_json_object(str(options["context"]), "--context")
-        pr_cli.print_json(triage(context, Path(str(options["workspace"]))))
+        pr_cli.print_json(
+            triage(context, Path(str(options["workspace"])), factory=options["factory"])
+        )
         return pr_cli.EXIT_OK
     if options["write"] is True and os.environ.get("GITHUB_ACTIONS") != "true":
         print(f"{SCRIPT}: --write is only available inside GitHub Actions", file=sys.stderr)

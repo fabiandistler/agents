@@ -5,10 +5,11 @@
 # here; another repository calls it with a thin caller pinned to a SHA.
 #
 # The model reads the issue and a checkout of the caller's default branch with
-# Read, Grep and Glob only, confined to the checkout by `claude --restricted`.
-# It recommends a category and a state. The bot applies `needs-info` itself and
-# nothing else: every other recommendation is a comment, and the maintainer
-# sets the label (which is what starts the implementer).
+# Read, Grep and Glob only. `claude --restricted` confines those tools to
+# the caller checkout and, for consumers, the pinned factory checkout.
+# It recommends a category and a state. The bot applies `needs-info` and
+# `ready-for-human`. The maintainer sets `ready-for-agent` to start the
+# implementer and applies `wontfix` when closing an issue.
 #
 # Triggers are the caller's (`github` is the caller's context): a new issue by
 # a person, filed without a state label or with `needs-triage` and without a
@@ -21,9 +22,9 @@
 #
 # Scripts and the prompt run from this workflow's own repository and commit
 # (job.workflow_repository at job.workflow_sha), fetched anonymously into
-# $RUNNER_TEMP/factory as in factory-pr-review.yml: outside the workspace, so
-# the model never sees it, and the scripts always match the pinned workflow
-# file. actions/checkout cannot do that: it writes only under the workspace.
+# $RUNNER_TEMP/factory as in factory-pr-review.yml. The separate checkout
+# keeps the scripts at the pinned workflow commit and gives consumer triage
+# a distinct source of evidence. actions/checkout writes under the workspace.
 name: factory-issue-triage
 
 on:
@@ -176,9 +177,9 @@ jobs:
     if: needs.assess.outputs.eligible == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # The model reads the caller's default-branch checkout; its answer leaves
-    # the job as an artifact, never as a GitHub write. No GitHub token reaches
-    # this job.
+    # The model reads the caller's default branch and, for consumers, the
+    # pinned factory checkout. It returns an artifact. The token for GitHub
+    # writes belongs to the publish job.
     permissions:
       contents: read
     steps:
@@ -215,7 +216,7 @@ jobs:
         # Pinned like the pr-review job: the next step hands this binary the
         # token, and --restricted needs a version that confines the file tools.
         # Before bumping it, re-run the sandbox check in ADR-0013 with the new
-        # version: reads and symlinks outside the checkout must be refused.
+        # version: reads and symlinks outside the allowed directories must be refused.
         run: npm install --global @anthropic-ai/claude-code@2.1.321
 
       - name: Run the caller's setup command
@@ -234,9 +235,17 @@ jobs:
           # repository file.
           WORK: ${{ runner.temp }}/triage
           FACTORY: ${{ runner.temp }}/factory
+          CALLER_REPOSITORY: ${{ github.repository }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
         run: |
+          set -euo pipefail
+          factory_args=()
+          if [[ "$FACTORY_REPOSITORY" != "$CALLER_REPOSITORY" ]]; then
+            factory_args=(--factory-dir "$FACTORY" --factory-repo "$FACTORY_REPOSITORY" --factory-sha "$FACTORY_SHA")
+          fi
           python3 "$FACTORY/scripts/issue_triage.py" triage --context "$WORK/context.json" \
-            --workspace "$GITHUB_WORKSPACE" > "$WORK/triage.json"
+            --workspace "$GITHUB_WORKSPACE" "${factory_args[@]}" > "$WORK/triage.json"
 
       - name: Upload the triage
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

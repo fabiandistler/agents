@@ -9,7 +9,7 @@ By default the CLI runs with every tool disabled, the system prompt replaced
 and an empty working directory: injected text in the payload can sway the
 answer but cannot run a command or read the token. With a ``workspace`` the
 CLI gets only the read-only file tools (Read, Grep, Glob) in restricted mode,
-which confines them to that directory and refuses process files such as
+which confines them to the configured directories and refuses process files such as
 ``/proc/self/environ``. An answer that echoes the token is refused either way.
 
 Standard library only.
@@ -37,12 +37,15 @@ class ProviderError(Exception):
     """The `claude` call failed; `pr_review.review` turns it into unavailable."""
 
 
-def claude_command(request: dict, read_only_tools: bool = False) -> list[str]:
+def claude_command(
+    request: dict, read_only_tools: bool = False, *, read_only_directory: Path | None = None
+) -> list[str]:
     """Return the argv for one `claude -p` call.
 
     Without ``read_only_tools`` the call is tool-less and single-turn. With
     it, the call may read the working directory over several turns, confined
-    by ``--restricted``. The user payload goes to stdin, never into argv.
+    by ``--restricted``. An extra directory is available only in that mode.
+    The user payload goes to stdin, never into argv.
     """
     system = request["messages"][0]["content"]
     # The payload is untrusted and the job holds a secret: no tool that runs
@@ -59,6 +62,8 @@ def claude_command(request: dict, read_only_tools: bool = False) -> list[str]:
     ]
     if read_only_tools:
         command.append("--restricted")
+        if read_only_directory is not None:
+            command.extend(["--add-dir", str(read_only_directory)])
     return command + [
         "--system-prompt",
         system,
@@ -120,7 +125,13 @@ def _run_cli(
         raise ProviderError("the claude CLI timed out") from err
 
 
-def run_claude(request: dict, oauth_token: str, workspace: Path | None = None) -> str:
+def run_claude(
+    request: dict,
+    oauth_token: str,
+    workspace: Path | None = None,
+    *,
+    read_only_directory: Path | None = None,
+) -> str:
     """Return the model's answer to ``request``.
 
     ``workspace`` is a directory the model may read with the read-only tools;
@@ -130,7 +141,12 @@ def run_claude(request: dict, oauth_token: str, workspace: Path | None = None) -
     environment = {**os.environ, TOKEN_ENV: oauth_token}
     payload = request["messages"][1]["content"]
     if workspace is not None:
-        command = claude_command(request, read_only_tools=True)
+        if read_only_directory is not None:
+            # Additional directories provide evidence only, even if the caller opted in.
+            environment.pop("CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD", None)
+        command = claude_command(
+            request, read_only_tools=True, read_only_directory=read_only_directory
+        )
         completed = _run_cli(
             command, payload, str(workspace), environment, WORKSPACE_TIMEOUT_SECONDS
         )
