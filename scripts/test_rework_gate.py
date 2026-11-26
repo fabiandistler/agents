@@ -274,7 +274,7 @@ def test_cli_stops_when_the_review_job_did_not_run(monkeypatch, tmp_path, capsys
     assert fake.writes == []
 
 
-def test_cli_fails_on_a_malformed_artifact_without_writes(monkeypatch, tmp_path, capsys):
+def test_cli_fails_on_a_malformed_artifact_without_writes(monkeypatch, tmp_path, assert_exit_cause):
     (tmp_path / "broken.json").write_text("not json", encoding="utf-8")
     fake = FakeGitHub()
     monkeypatch.setattr(rework_gate, "GitHubClient", lambda token: fake)
@@ -290,8 +290,9 @@ def test_cli_fails_on_a_malformed_artifact_without_writes(monkeypatch, tmp_path,
             "--findings", str(tmp_path / "findings.json"),
         ]
     )  # fmt: skip
-    assert code == rework_gate.EXIT_FAILED
-    assert json.loads(capsys.readouterr().out)["action"] == "failed"
+    stdout, stderr = assert_exit_cause(code, rework_gate.EXIT_FAILED)
+    assert json.loads(stdout)["action"] == "failed"
+    assert "artifact broken.json is missing or not JSON" in stderr
     assert fake.writes == []
 
 
@@ -299,7 +300,8 @@ def test_cli_fails_on_a_malformed_artifact_without_writes(monkeypatch, tmp_path,
     "arguments",
     [["locate", "--repo", REPO], ["locate", "--repo", "bad", "--pr", "1"], ["decide"]],
 )
-def test_cli_rejects_bad_usage(arguments):
+def test_cli_rejects_bad_usage(arguments, assert_exit_cause):
     with pytest.raises(SystemExit) as stopped:
         rework_gate.main(arguments)
-    assert stopped.value.code == rework_gate.EXIT_USAGE
+    _, stderr = assert_exit_cause(stopped.value.code, rework_gate.EXIT_USAGE)
+    assert "error:" in stderr

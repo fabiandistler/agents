@@ -276,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
         picked = start_next(GitHubClient(token), args.repo, setup, dry_run=args.dry_run)
     except FetchError as error:
         print(json.dumps({"outcome": FAILED, "reason": str(error)}))
+        print(f"implementer_queue.py: {error}", file=sys.stderr)
         return EXIT_FAILED
     print(json.dumps(asdict(picked)))
     return EXIT_OK

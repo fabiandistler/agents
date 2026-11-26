@@ -208,8 +208,37 @@ def test_a_failed_implementer_run_lookup_still_selects_and_labels(failing, capsy
     assert "without a run summary" in capsys.readouterr().err
 
 
-def test_cli_every_rejects_non_numbers():
-    assert retro_gate.main(["select", "--repo", REPO, "--every", "ten"]) == retro_gate.EXIT_USAGE
+def test_cli_every_rejects_non_numbers(assert_exit_cause):
+    code = retro_gate.main(["select", "--repo", REPO, "--every", "ten"])
+    _, stderr = assert_exit_cause(code, retro_gate.EXIT_USAGE)
+    assert "--every" in stderr
+
+
+def test_cli_without_a_token_exits_three(monkeypatch, assert_exit_cause):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    code = retro_gate.main(["select", "--repo", REPO])
+    _, stderr = assert_exit_cause(code, retro_gate.EXIT_MISSING_TOKEN)
+    assert "GITHUB_TOKEN is not set" in stderr
+
+
+def test_cli_fetch_failure_exits_four(monkeypatch, assert_exit_cause):
+    routes = gate_routes(ten_after_floor())
+    routes[f"/repos/{REPO}/pulls?state=closed"] = FetchError("GitHub API returned 502", status=502)
+    monkeypatch.setattr(retro_gate, "GitHubClient", lambda token: RoutedClient(routes))
+    monkeypatch.setenv("GITHUB_TOKEN", "dummy")
+    code = retro_gate.main(["select", "--repo", REPO])
+    _, stderr = assert_exit_cause(code, retro_gate.EXIT_FETCH_FAILED)
+    assert "GitHub API returned 502" in stderr
+
+
+def test_cli_without_a_floor_commit_exits_five(monkeypatch, assert_exit_cause):
+    client = RoutedClient(gate_routes(ten_after_floor()), floor=None)
+    monkeypatch.setattr(retro_gate, "GitHubClient", lambda token: client)
+    monkeypatch.setenv("GITHUB_TOKEN", "dummy")
+    code = retro_gate.main(["select", "--repo", REPO])
+    _, stderr = assert_exit_cause(code, retro_gate.EXIT_NO_FLOOR)
+    assert "no commit on the default branch adds" in stderr
+    assert client.posts == []
 
 
 # --- Context -----------------------------------------------------------------

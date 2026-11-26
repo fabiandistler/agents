@@ -449,12 +449,14 @@ def test_cli_reports_each_outcome(monkeypatch, tmp_path, capsys, fake, outcome, 
     assert not summary.exists(), "only a failed claim writes the run summary"
 
 
-def test_cli_failure_writes_the_line_that_turns_the_run_red(monkeypatch, tmp_path, capsys):
+def test_cli_failure_writes_the_line_that_turns_the_run_red(
+    monkeypatch, tmp_path, assert_exit_cause
+):
     fake = FakeGitHub(errors={("POST", CREATE_REF): http_error(503, CREATE_REF)})
     code, summary = run_cli(monkeypatch, tmp_path, fake)
-    printed = json.loads(capsys.readouterr().out)
-    assert code == implementer_claim.EXIT_FAILED
-    assert printed["outcome"] == "failed"
+    stdout, stderr = assert_exit_cause(code, implementer_claim.EXIT_FAILED)
+    assert f"GitHub API returned 503 for {CREATE_REF}" in stderr
+    assert json.loads(stdout)["outcome"] == "failed"
     text = summary.read_text(encoding="utf-8")
     assert text == f"RUN FAILED: claim (GitHub API returned 503 for {CREATE_REF})\n"
     report, report_code = agent_run_report.build_report(text, None)
@@ -501,7 +503,7 @@ def test_failure_output_carries_no_issue_or_pull_request_text(monkeypatch, tmp_p
         "missing-queue-workflow",
     ],
 )
-def test_cli_rejects_bad_usage_before_any_call(arguments, capsys):
+def test_cli_rejects_bad_usage_before_any_call(arguments, assert_exit_cause):
     with pytest.raises(SystemExit) as caught:
         implementer_claim.main(arguments)
-    assert caught.value.code == implementer_claim.EXIT_USAGE
+    assert_exit_cause(caught.value.code, implementer_claim.EXIT_USAGE)

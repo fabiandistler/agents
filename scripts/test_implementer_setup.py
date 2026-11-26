@@ -204,7 +204,7 @@ def test_invalid_setup_fails_before_any_call(
     assert fake.writes == []
 
 
-def test_the_script_runs_from_another_checkout(tmp_path):
+def test_the_script_runs_from_another_checkout(tmp_path, assert_exit_cause):
     # The reusable workflow runs it from $RUNNER_TEMP/factory/scripts/ while the
     # working directory is the target repository: its siblings must still import.
     summary = tmp_path / "run-summary.md"
@@ -222,6 +222,7 @@ def test_the_script_runs_from_another_checkout(tmp_path):
         text=True,
         check=False,
     )
-    assert completed.stderr == ""
-    assert completed.returncode == implementer_claim.EXIT_FAILED
+    # The cause line alone: an import failure would add a traceback.
+    _, stderr = assert_exit_cause(completed, implementer_claim.EXIT_FAILED)
+    assert stderr == "implementer_claim.py: GH_TOKEN is not set\n"
     assert json.loads(completed.stdout) == {"outcome": "failed", "reason": "GH_TOKEN is not set"}

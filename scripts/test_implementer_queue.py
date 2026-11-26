@@ -460,12 +460,12 @@ def test_cli_ignores_the_workflow_ref_of_its_own_workflow(monkeypatch, capsys):
     assert fake.writes[0][1] == DISPATCHES
 
 
-def test_cli_reports_an_api_error_as_failed(monkeypatch, capsys):
+def test_cli_reports_an_api_error_as_failed(monkeypatch, assert_exit_cause):
     fake = waiting(12)
     fake.errors[("GET", RUNS)] = http_error(403, RUNS)
-    code = run_cli(monkeypatch, fake)
-    printed = json.loads(capsys.readouterr().out)
-    assert code == implementer_queue.EXIT_FAILED
+    stdout, stderr = assert_exit_cause(run_cli(monkeypatch, fake), implementer_queue.EXIT_FAILED)
+    assert f"GitHub API returned 403 for {RUNS}" in stderr
+    printed = json.loads(stdout)
     assert printed["outcome"] == "failed"
     assert printed["reason"].startswith("GitHub API returned 403")
     assert fake.writes == []
@@ -476,6 +476,13 @@ def test_cli_without_a_token_fails(monkeypatch, capsys):
     code = implementer_queue.main(["--repo", REPO])
     assert code == implementer_queue.EXIT_FAILED
     assert json.loads(capsys.readouterr().out)["reason"] == "GH_TOKEN is not set"
+
+
+def test_cli_rejects_a_bad_repo_as_usage(assert_exit_cause):
+    with pytest.raises(SystemExit) as stopped:
+        implementer_queue.main(["--repo", "not a repo"])
+    _, stderr = assert_exit_cause(stopped.value.code, 2)
+    assert "--repo" in stderr
 
 
 def test_cli_rejects_a_bad_branch_prefix_before_any_call(monkeypatch, capsys):

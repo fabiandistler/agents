@@ -293,6 +293,7 @@ def main(argv: list[str] | None = None) -> int:
             fields = _report(decision, review.get("number"))
     except FetchError as error:
         print(json.dumps({"action": "failed", "reason": str(error)}))
+        print(f"rework_gate.py: {error}", file=sys.stderr)
         return EXIT_FAILED
     _append_outputs(args.outputs, fields)
     print(json.dumps(fields))
