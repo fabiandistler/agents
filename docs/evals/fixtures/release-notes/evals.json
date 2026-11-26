@@ -1,0 +1,11 @@
+{
+  "should_trigger": [
+    "Write the release notes for everything merged since v2.3.0.",
+    "What's new since the last tag? Draft the changelog.",
+    "List the changes since the last release for the announcement."
+  ],
+  "should_not_trigger": [
+    "Bump the version number in pyproject.toml."
+  ],
+  "expected_behavior": "Lists the pull requests merged since the last tag with git log --merges, groups them by Conventional Commit type, leaves out every pull request whose title starts with chore(deps), and writes exactly one line per pull request."
+}
