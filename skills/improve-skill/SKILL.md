@@ -177,9 +177,10 @@ name which:
 
 - **An eval covers a touched rule.** A rule is touched when it maps with a
   candidate number or is struck by author. It is covered when a prompt or
-  expected behavior in the snapshot's `evals.json` (`should_trigger`,
-  `expected_behavior`) or `evals/evals.json` (`skill-creator`'s `prompt`,
-  `expected_output`, `expectations`) exercises what the rule governs.
+  expected behavior in `old_skill/evals.json` (`should_trigger`,
+  `expected_behavior`) or `old_skill/evals/evals.json` (`skill-creator`'s
+  `prompt`, `expected_output`, `expectations`) exercises what the rule
+  governs.
 - **More than a third of the words go.** Count the words of `SKILL.md`
   without its frontmatter plus every Markdown file under `references/`, in
   `old_skill/` and in `new_skill/`; propose when the new count is below
@@ -192,9 +193,9 @@ When neither holds, propose nothing: the rule inventory is the check.
 Eval mode needs `skill-creator` among the session's skills and subagents to
 run the two versions apart, as in Claude Code. In claude.ai `skill-creator`
 skips its baseline runs, so there is nothing to compare. When either is
-missing, run no behavior check: print the note below, put it in the pull
-request body of step 8, and go on to step 8 with the rule inventory as the
-only check.
+missing, run no behavior check: print the note below, carry it into what
+step 8 delivers (the pull request body in a repository), and go on to step 8
+with the rule inventory as the only check.
 
 ```markdown
 Behavior not checked: eval mode needs skill-creator and subagents, which this
@@ -209,10 +210,10 @@ case for improving an existing skill, set up as follows:
   written beside the skill folder.
 - The with-skill runs use `new_skill/`. The baseline runs use `old_skill/`:
   the snapshot of step 1 is the `skill-creator` snapshot, so skip its copy.
-- Prompts: those of `evals/evals.json` with its expectations as assertions;
-  else every `should_trigger` prompt of `evals.json` with assertions drafted
-  from `expected_behavior`; else two or three prompts the author confirms
-  that exercise the touched rules.
+- Prompts: those of `old_skill/evals/evals.json` with its expectations as
+  assertions; else every `should_trigger` prompt of `old_skill/evals.json`,
+  with assertions drafted from `expected_behavior`; else two or three
+  prompts the author confirms that exercise the touched rules.
 - Grade every run with its grader and aggregate the benchmark. Skip its
   viewer and its iteration loop; the comparison below replaces them.
 
@@ -229,8 +230,8 @@ inventory again, and rerun only the deviating prompts on `new_skill/`.
 An assertion that failed for `old_skill` and passes for `new_skill` is a gain:
 report it, it does not block.
 
-Done when no deviation is open. Carry the tables into the output of step 8
-and the pull request body.
+Done when no deviation is open. Carry the tables into what step 8 prints and
+delivers (the pull request body in a repository).
 
 ## 8. Deliver
 
