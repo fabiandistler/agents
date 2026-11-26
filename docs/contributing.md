@@ -162,8 +162,11 @@ exits 3, so a skipped gate never reads as green. Its last lines name the
 missing tools and the command that installs each, because `git push` shows a
 failed pre-push hook only as `failed to push some refs`. The checks need Python 3.11 or
 later (CI uses 3.12); if `python3` on `PATH` is older, point `PYTHON=` at a
-newer interpreter. The mermaid check also needs Node.js (`npx`). The bats check
-runs the shell script tests in `test/` with the bats-core, bats-support and
+newer interpreter. Setting `PYTHON` alone is enough: `check_all.sh` puts a
+temporary `python3` shim for it first on `PATH`, so the bare `python3` a
+test starts is the same interpreter, and its scripts directory last, so the
+zizmor and prek its pip installed are found. The mermaid check also needs Node.js
+(`npx`). The bats check runs the shell script tests in `test/` with the bats-core, bats-support and
 bats-assert submodules pinned under `test/bats/`; fetch them once per clone and
 per worktree (`git worktree add` does not) with `git submodule update --init`
 (installing the catalogue does not need them).
