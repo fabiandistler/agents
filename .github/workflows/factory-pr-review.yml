@@ -12,8 +12,10 @@
 #
 # A fourth, model-free job, hold, disables the bot's auto-merge on every push
 # before the new head is reviewed (GitHub keeps auto-merge on when someone with
-# write access pushes), and any auto-merge when do-not-merge is added. A label
-# event runs only the hold: it never re-runs the review.
+# write access pushes), and any auto-merge when do-not-merge is added. A push
+# also removes the review:* label, so the verdict label is absent until publish
+# labels the new head. A label event runs only the hold: it never re-runs the
+# review.
 #
 # Publish also sets the commit status pr-review/verdict on the reviewed head:
 # green for any verdict, so a merge that requires it waits for the review
@@ -135,9 +137,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           PR_SKIP_HEAD_PREFIXES: ${{ inputs.skip_head_prefixes }}
+          EVENT: ${{ github.event.action }}
         run: |
           python3 "$RUNNER_TEMP/factory/scripts/pr_publish.py" --hold --live \
-            --repo "${{ github.repository }}" --pr "$PR" --write
+            --repo "${{ github.repository }}" --pr "$PR" --event "$EVENT" --write
 
   assess:
     # A label event only needs the hold; skipping the assessment also skips the
