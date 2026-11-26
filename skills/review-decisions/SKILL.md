@@ -146,14 +146,16 @@ your output. Give each run two more values:
   quotes the diff, and a quoted line equal to a guessable delimiter would end
   the heredoc early and run the rest as shell.
 
-Nothing confines the classifier's shell to that file, so check what changed.
-Before the first run and again after the last run returns, record
-`find <scratch> -type f -exec cksum {} + | sort -k3` and, in the repository,
+Nothing confines the classifier's shell to that file. The check below
+detects a stray write after the fact; it prevents nothing, and a write
+outside `<scratch>` and the repository stays unseen. Before the first run and
+again after the last run returns, record
+`find <scratch> -type f -exec cksum {} + | sort` and, in the repository,
 `git status --porcelain --ignored`. The only difference is the new answer
-files you passed. A missing or empty answer file is a failed run (see Large
-diffs). Any other new or changed file means a run was steered: count every
-run as failed and name the path to the reviewer before the first card. A write
-outside both places stays unseen. Then merge the answers (see Large diffs).
+files you passed. For a missing or empty answer file, write that run's
+`batch-<k>.failed` (see Large diffs). Any other new or changed file means a
+run was steered: write `batch-<k>.failed` for every run and name the path to
+the reviewer before the first card. Then merge the answers (see Large diffs).
 
 On a runtime without that subagent, start a fresh agent with no session
 history and give it the instructions from the classifier's definition and the
