@@ -223,3 +223,141 @@ def test_comment_leaves_out_a_draft_whose_answer_changed_to_ok(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.splitlines()[0] == "1. `a.py:1`: rename the flag."
     assert "drop the new key" not in proc.stdout
+
+
+def initialize(tmp_path: Path, cards: list[dict]) -> Path:
+    repo = git_repo(tmp_path / "demo")
+    git(
+        "-C",
+        str(repo),
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "--allow-empty",
+        "-qm",
+        "Start",
+    )
+    queue = tmp_path / "queue.json"
+    queue.write_text(json.dumps({"cards": cards, "files": ["docs.md", "src.py"]}))
+    command = run(
+        "init",
+        "--repo",
+        str(repo),
+        "--base",
+        "main",
+        "--cards",
+        str(queue),
+        "--header-line",
+        "inputs: inputs.json",
+        env=state_env(tmp_path),
+    )
+    assert command.returncode == 0, command.stderr
+    path = Path(command.stdout.strip())
+    assert f"- Head: {git('-C', str(repo), 'rev-parse', 'HEAD').strip()}" in path.read_text()
+    return path
+
+
+def test_write_protocol_and_render_both_comment_formats(tmp_path):
+    path = initialize(
+        tmp_path,
+        [
+            {
+                "location": "src.py:4",
+                "location_path": "src.py",
+                "location_line": 4,
+                "location_verified": True,
+                "location_changed": True,
+                "chosen": "Use a cache.",
+            },
+            {
+                "location": "src.py:7",
+                "location_path": "src.py",
+                "location_line": 7,
+                "location_verified": True,
+                "location_changed": False,
+            },
+            {
+                "location": "docs.md:900",
+                "location_path": "docs.md",
+                "location_line": 900,
+                "location_verified": False,
+                "location_reason": "line outside every hunk",
+            },
+        ],
+    )
+    path_arg = str(path)
+    draft = "Keep the key.\n\n  Retain the original default."
+    for args in (
+        ("answer", path_arg, "--card", "1", "--question", "Why cache?", "--reply", "Read cost."),
+        ("answer", path_arg, "--card", "1", "later"),
+        ("answer", path_arg, "--card", "2", "ok"),
+        ("answer", path_arg, "--card", "3", "change", "--draft", "Document this."),
+        ("answer", path_arg, "--card", "1", "change", "--draft", draft),
+        ("answer", path_arg, "--card", "1", "change", "--draft", draft),
+        ("close", path_arg),
+    ):
+        proc = run(*args)
+        assert proc.returncode == 0, proc.stderr
+
+    assert json.loads(run("resume", path_arg).stdout) == {
+        "cards": 3,
+        "next": None,
+        "later": [],
+        "closed": True,
+    }
+    text = path.read_text()
+    assert "Files:\n- docs.md\n- src.py" in text
+    assert "- Question: Why cache?\n- Reply: Read cost." in text
+    assert text.count("- Draft comment: Keep the key.") == 1
+    assert text.splitlines()[-1] == "Review decisions settled, no defect review."
+    plain = run("comment", path_arg)
+    assert plain.returncode == 0, plain.stderr
+    assert plain.stdout.startswith(
+        "1. Keep the key.\n   \n     Retain the original default.\n2. Document this."
+    )
+    structured = run("comment", path_arg, "--json")
+    assert structured.returncode == 0, structured.stderr
+    assert json.loads(structured.stdout) == {
+        "comments": [{"path": "src.py", "line": 4, "body": draft}],
+        "summary": (
+            "1. Document this.\n\n"
+            "This comment covers review decisions only; no defect review was done.\n"
+        ),
+    }
+
+
+def test_answer_requires_draft_and_refuses_a_different_final_answer(tmp_path):
+    path = initialize(tmp_path, [{"location": "-"}])
+    assert run("answer", str(path), "--card", "1", "change").returncode == 3
+    assert run("answer", str(path), "--card", "1", "ok").returncode == 0
+    saved = path.read_bytes()
+    assert run("answer", str(path), "--card", "1", "change", "--draft", "Fix.").returncode == 3
+    assert path.read_bytes() == saved
+    assert run("comment", str(path), "--json").returncode == 5
+
+
+def test_answer_repairs_a_legacy_change_without_a_draft(tmp_path):
+    path = protocol(tmp_path, ["- Answer: change", "- Answer: ok", "- Answer: ok"], closing=True)
+    updated = run("answer", str(path), "--card", "1", "change", "--draft", "Keep the key.")
+    assert updated.returncode == 0, updated.stderr
+    assert path.read_text().count("- Answer: change") == 1
+    assert json.loads(run("resume", str(path)).stdout)["closed"] is True
+    structured = json.loads(run("comment", str(path), "--json").stdout)
+    assert structured["comments"] == []
+    assert structured["summary"].startswith("1. Keep the key.")
+
+
+def test_close_requires_open_cards_to_be_settled_or_marked_moot(tmp_path):
+    path = initialize(tmp_path, [{"location": "-"}, {"location": "src.py"}])
+    assert run("answer", str(path), "--card", "1", "later").returncode == 0
+    assert run("close", str(path)).returncode == 3
+    assert run("close", str(path), "--moot-remaining").returncode == 0
+    assert path.read_text().count("- Not reviewed: moot") == 2
+    assert json.loads(run("resume", str(path)).stdout) == {
+        "cards": 2,
+        "next": None,
+        "later": [],
+        "closed": True,
+    }
