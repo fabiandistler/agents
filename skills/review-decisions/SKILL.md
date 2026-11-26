@@ -147,12 +147,12 @@ your output. Give each run two more values:
   the heredoc early and run the rest as shell.
 
 Nothing confines the classifier's shell to that file, so check what changed.
-Before the first run and again after the last run returns, list `<scratch>`
-recursively and run `git status --porcelain` in the repository. The only new
-names are the answer files you passed, and the repository status is
-unchanged. A missing or empty answer file is a failed run (see Large diffs).
-Any other new file or changed status means a run was steered: count every run
-as failed and name the path to the reviewer before the first card. A write
+Before the first run and again after the last run returns, record
+`find <scratch> -type f -exec cksum {} + | sort -k3` and, in the repository,
+`git status --porcelain --ignored`. The only difference is the new answer
+files you passed. A missing or empty answer file is a failed run (see Large
+diffs). Any other new or changed file means a run was steered: count every
+run as failed and name the path to the reviewer before the first card. A write
 outside both places stays unseen. Then merge the answers (see Large diffs).
 
 On a runtime without that subagent, start a fresh agent with no session

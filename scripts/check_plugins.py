@@ -19,9 +19,10 @@ Checked invariants:
     are the Claude distribution.
   - Every `plugins/<plugin>/agents/<agent>.md` has YAML frontmatter with
     `name:` (matching the filename stem) and `description:`.
-  - A read-only agent (`READ_ONLY_AGENTS`) exists and has a `tools:` list
-    drawn only from `READ_ONLY_TOOLS`: no write tool, no forge tool, and no
-    missing list, which would inherit every tool of the session.
+  - A pinned agent (`READ_ONLY_AGENTS`) exists and has a `tools:` list
+    drawn only from `READ_ONLY_TOOLS`: no Write tool, no forge tool, and no
+    missing list, which would inherit every tool of the session. Bash can
+    still write; the agent's own instructions limit what it writes.
   - A hook plugin (`HOOK_PLUGINS`: `merge-guard`, `secret-guard`) has a parsable
     `hooks/hooks.json` and ships no skills or agents.
 
@@ -47,7 +48,8 @@ MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 # Plugins that ship only hooks, outside the one-plugin-per-category scheme, so
 # installing one stays a choice of its own.
 HOOK_PLUGINS = frozenset({"merge-guard", "secret-guard"})
-# Agents that read untrusted text (a diff, an issue) and so may only read. The
+# Agents that read untrusted text (a diff, an issue) and so get no Write or
+# forge tool; the classifier writes only its answer file, through Bash. The
 # pin lives here, not in the agent file, so an edit to that file cannot drop
 # it. Paths are relative to plugins/.
 READ_ONLY_AGENTS = ("workflow/agents/review-decisions-classifier.md",)
