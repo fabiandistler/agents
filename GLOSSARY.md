@@ -216,6 +216,16 @@ describe structure, not vocabulary, so they apply to a skill in any language.
 Not a synonym for a finding: a slop signal is a pattern in the rubric, a
 candidate or finding is one place in one skill that matches it.
 
+## Candidate
+
+One place in one skill that `improve-skill` proposes to change: a numbered
+entry citing a slop-signal or checklist ID, its `path:line`, the quoted text
+and a proposed action. The author records each as accepted, rejected or
+load-bearing before the rewrite.
+
+Not a synonym for a finding: a finding is a defect an audit reports, a
+candidate is a proposal awaiting the author's decision.
+
 ## Rule inventory
 
 The list of every rule and branch in a skill before a rewrite, each mapped
@@ -229,8 +239,10 @@ diff compares runs.
 ## Behavior diff
 
 Running a skill's old snapshot and its rewritten version against the same
-prompts and comparing the transcripts. A deviation names the prompt and the
-section whose candidates caused it.
+prompts, grading each run's assertions, and comparing the results per
+prompt. A deviation is an assertion that passed for the old version and
+failed for the new one; it names the prompt and the section whose candidates
+caused it.
 
 Not a synonym for a rule inventory: the behavior diff spends model runs and
 catches shifted emphasis the inventory misses.
