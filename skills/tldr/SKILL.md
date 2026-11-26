@@ -14,10 +14,6 @@ metadata:
 
 # TL;DR
 
-Something got too long to read. The user calls this instead of reading it, so
-hand back the **cliffs**: the few facts that let them decide or act, and an
-honest line about what those facts leave out.
-
 ## What to summarize
 
 | Argument | Target |
@@ -54,7 +50,7 @@ Luis: rate limiting is untested, keep it out of this PR.
 Mara: agreed, rate limiting waits; `GATEWAY_JWT_KEY` must exist first.
 ```
 
-Cliffs:
+Summary:
 
 ```markdown
 **Bottom line.** Mergeable once the secret exists; rate-limit timing is settled.
@@ -80,7 +76,7 @@ Three things stay load-bearing however long the source is:
   contents. Say what it *says*: "auth moves to the gateway, caching is
   unchanged, deploy needs a new secret."
 - **The disagreement.** An unresolved thread or two conflicting sources stay two
-  positions in the cliffs. Collapsing them into one confident answer is the most
+  positions in the summary. Collapsing them into one confident answer is the most
   expensive error this skill can make.
 - **The gaps.** "I could not read section 4" and "section 4 does not matter" are
   different sentences; write the true one. Mark inference as inference:
@@ -88,19 +84,17 @@ Three things stay load-bearing however long the source is:
 
 ## Plain on first read
 
-The user did not read the source, so the cliffs get one pass and no premises
-from it. Write them so that one pass is enough:
+The user did not read the source. Make the summary understandable in one pass
+without relying on premises from it:
 
 - Context first: the bottom line says where things stand and why it matters
   before it says what follows.
 - Short sentences in the active voice, one thought each.
 - One word, one meaning: name the same thing the same way every time.
 
-Prose follows the conversation, terms follow the source. The cliffs are written
-in the language the chat is in — an English PR summarised into a German thread
-comes back German. What stays in the source's own words are the terms
-themselves: identifiers, error strings, and a repo's `GLOSSARY.md` ubiquitous
-language (with several glossaries, `GLOSSARY-MAP.md` names the right one).
+Write the summary in the language of the conversation. Keep source identifiers,
+error strings, and the terms from the repo's `GLOSSARY.md` verbatim. When
+there are several glossaries, use `GLOSSARY-MAP.md` to find the right one.
 Translating those, or inventing a cleaner label, makes the reader translate
 back.
 

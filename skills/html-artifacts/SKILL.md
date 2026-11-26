@@ -40,9 +40,7 @@ Markdown still wins for:
 - Code-only outputs (a function, a config block, a one-liner).
 - Terminal/command-flavored answers ("run this, then that").
 - Quick three-bullet summaries the reader will scan once and discard.
-- Files that need to be diffed in version control regularly. HTML diffs are noisy. If the artifact will live in git and be reviewed in PRs over time, markdown is friendlier — though even then, *generating* an HTML view alongside is often worth it for review.
-
-If the artifact is going to be edited by hand by a human afterward, markdown is also friendlier. But increasingly artifacts are edited by re-prompting the agent, which removes that advantage.
+- Prefer Markdown for files that will be hand-edited or regularly diffed in version control. Generate a companion HTML view if it helps review.
 
 ## Universal rules for every HTML artifact
 
@@ -87,8 +85,6 @@ If the request asks for several deliverables (e.g., "implementation plan with mo
 
 ## Output mechanics
 
-Two delivery modes, slightly different mechanics. Which one applies depends on the runtime, not on the content. A third destination, the learning gallery, applies only when the user asks for it.
-
 ### Writing a file to disk
 
 Save to the working directory with a descriptive `kebab-case` name and a `.html` extension. Examples: `onboarding-design-explorations.html`, `pr-streaming-review.html`, `cycle-14-triage.html`. After saving, tell the user the path and offer to open it in their default browser (`open <file>` on macOS, `xdg-open <file>` on Linux). The user may want to upload it somewhere shareable — that's their call, but mention the option once.
@@ -113,10 +109,6 @@ The learning gallery is the user's public repository `fabiandistler/tools`, serv
 ## A note on token cost and time
 
 HTML artifacts cost roughly 2–4× the tokens of a markdown equivalent and take longer to generate. Account for that cost when deciding whether a deliverable warrants HTML; a disposable iteration such as "summarize this file" usually does not.
-
-## A note on taste
-
-Bad-looking HTML is worse than good markdown. If the artifact would render as a wall of generic Tailwind cards with emoji headers, slow down. That is why `references/matching-your-style.md` is read for every artifact, alongside its category reference (see the Category index). If the user has a design-system skill or design system file in the repo, lean on it. If not, default to a calm typographic layout — system serif body, restrained palette, real structure — rather than a busy "dashboard" look.
 
 ## Credits
 

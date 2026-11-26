@@ -50,7 +50,6 @@ For "I want to play with this animation/transition before wiring it in."
 
 **Common mistakes**
 - Building a generic "animation playground" instead of prototyping the specific animation the user asked about. Stay scoped to the one transition.
-- No way to copy the result. The artifact then can't graduate into the real code.
 
 ## Clickable interaction flow
 
@@ -59,12 +58,11 @@ For "let me feel whether this multi-screen flow works."
 **Layout**
 - 3–6 screens linked together in their natural order.
 - Real (enough) buttons: clicking "next" actually advances. Clicking "back" actually goes back.
-- A "screen tray" thumbnail strip showing all screens, current one highlighted — so you can jump anywhere.
+- Show all screens in a thumbnail strip, highlight the current screen, and make every thumbnail jump directly to its screen.
 - Just enough fidelity to test the *shape* of the flow. Don't render every form field; render the ones the flow turns on.
 
 **Common mistakes**
 - Trying to make it pixel-perfect. That's a different artifact. This is for "does the sequence feel right."
-- No way to jump between screens. Users want to compare screen 1 to screen 4 directly.
 
 ## Example sketch — animation prototype
 

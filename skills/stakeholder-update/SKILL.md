@@ -43,16 +43,10 @@ Infer the audience from the request; ask only if ambiguous. Default to leadershi
 
 ### 3. Gather the evidence
 
-Two things decide how well this step goes.
-
-**Take stock before you ask.** What is reachable differs sharply by where this
-runs. A coding environment usually gives you the repository, its history, and
-pipeline logs, but no email and no team chat. A chat environment usually gives
-you email, chat, and documents, but no repository. Use what you can actually
-read here, and only then ask for the rest.
-
-Note that source control is not always a "connector". In a coding environment
-the repository is simply present — read its history directly.
+**Take stock before you ask.** Use the sources available in this session.
+Inside a coding environment, read the repository and its history directly,
+and check pipeline logs when available. In chat, look for connected email,
+messages and documents. Ask only for what is missing.
 
 **Evidence sets the altitude, not the wording.** Commits, pull requests, and
 pipeline runs establish what actually happened. They are input, never output.
@@ -76,8 +70,8 @@ copied into someone else's slides and outlives the update.
 ### 4. Generate the Update
 
 Draft from the template below matching the audience and update type. Keep
-executive versions under 200 words; derive the status color from evidence
-against the committed baseline and confirm it with the user before sending.
+executive versions under 200 words. Follow the Status Reporting Framework
+to choose and confirm the status color.
 
 ### Worked example
 
@@ -154,7 +148,6 @@ Next milestones:
 
 **Tips for executive updates**:
 - Lead with the conclusion, not the journey.
-- Derive the status color from evidence, not optimism. Green without supporting evidence is watermelon reporting.
 - Asks must be specific: "Decision on X by Friday" not "support needed."
 
 ### Engineering Team Update
@@ -248,9 +241,10 @@ Feedback: [Channel for feedback or issues]
 
 ## Status Reporting Framework
 
-Derive the color from evidence against the committed baseline: milestone slip,
-red pipeline, reverts, blocked items. State a one-line reason and what changed
-since the last update, and confirm the color with the user before sending.
+Derive the color from evidence against the committed baseline, such as a
+milestone slip, a red pipeline, a revert or a blocked item. Give a one-line
+reason and say what changed since the last update. Confirm the color with
+the user before sending.
 
 - **Green** (On Track): progressing as planned, no significant risks. Use Green only when things are genuinely going well.
 - **Yellow** (At Risk): slower than planned or a risk materialized; mitigation underway. Move to Yellow at the first sign of risk.

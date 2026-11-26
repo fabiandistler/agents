@@ -42,7 +42,6 @@ If the task is one-off and the input is structured, this pattern fits.
 
 ## What's load-bearing
 
-- **The export, again.** Without it, nothing else matters.
 - **Pre-filled data.** The user already gave you the data in the prompt. Don't make them type it twice.
 - **Constraints visible.** If toggling flag A requires flag B, show the warning at the moment of the conflict, not as a footer disclaimer.
 - **State persistence within the session.** If the user accidentally refreshes, they shouldn't lose 30 minutes of triage. Guard storage with try/catch and an in-memory fallback: sandboxed preview panes may block it, while a local `.html` file can use `localStorage`.
@@ -51,7 +50,6 @@ If the task is one-off and the input is structured, this pattern fits.
 ## Common mistakes
 
 - **Making it generic.** This is a *throwaway* tool for *this* task. Don't build a "task management system" — build the triage board for *cycle 14's* 24 specific tickets.
-- **Skipping the export.** Already mentioned. Skipping it again because it's the most common failure mode.
 - **Adding settings.** Settings are for products. This isn't a product, it's a tool.
 - **Server-style state.** No backend, no API, no auth. Everything in one file, everything in memory.
 - **Pretty over usable.** A custom editor is judged by whether the user can finish their task and leave. Make it fast and direct.
@@ -133,5 +131,3 @@ Editable template on the left with `{{variable}}` slots highlighted; sample inpu
   </section>
 </main>
 ```
-
-In all three: pre-filled, focused, exportable. That's the pattern.

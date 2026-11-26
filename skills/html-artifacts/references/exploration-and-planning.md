@@ -4,8 +4,6 @@ For when the user is trying to *decide* something and needs to weigh options, or
 
 ## Side-by-side option comparison
 
-The single biggest win HTML has over markdown. Three approaches in markdown is three sequential sections the reader has to hold in their head simultaneously. Three approaches in HTML is three columns next to each other.
-
 **Layout**
 - One column per option (or one card per option in a responsive grid for 4+ options).
 - Each column has the same internal structure — same heading order, same sub-sections — so the reader can scan horizontally to compare.
@@ -19,7 +17,6 @@ The single biggest win HTML has over markdown. Three approaches in markdown is t
 
 **Common mistakes**
 - Putting all the code in one block at the top and the comparison underneath. The whole point is that the code is *part* of the comparison.
-- Refusing to recommend. If the request was "show me three ways," the user wants to pick one — help them.
 - Three approaches that are actually one approach with minor variations. If they share 80% of the code, it's one approach with parameters.
 
 ## Visual design exploration
@@ -46,12 +43,11 @@ When the user has decided what to build and needs a plan dense enough to hand to
 - Inline mockups for any UI being touched.
 - The "risky code" — the 2–3 snippets that are load-bearing, with annotations on the tricky lines.
 - A risk table: risk / likelihood / mitigation.
-- A "what we're explicitly not doing" section. Equally important.
+- List what the plan excludes to prevent scope creep.
 
 **What's load-bearing**
 - The data-flow diagram. Don't skip it. If the system has more than two components, the reader cannot hold the topology in their head from prose alone.
 - The risk table. Risks expressed as paragraphs disappear; risks in a table get addressed.
-- The "not doing" section. It prevents scope creep before it starts.
 
 **Common mistakes**
 - Treating this as a markdown plan with HTML wrapping. Use the format. Render the timeline as a timeline; render the data flow as a diagram.
