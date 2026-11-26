@@ -24,7 +24,11 @@ REVIEW_STATUSES = ("ok", "unavailable", "skipped")
 VERDICTS = ("pass", "concerns", "block")
 SEVERITIES = ("info", "warning", "blocker")
 
-_TRIM_CHARS = "*_`\"'.,;:"
+# Markdown emphasis and quotes a model wraps a value in, and the punctuation
+# that can follow it. A path only loses the punctuation at its end: a leading
+# "." belongs to a dotfile such as .github/.
+_WRAPPER_CHARS = "*_`\"'"
+_TRAILING_PUNCTUATION = ".,;:"
 
 _LEAD = r"[ \t*_#>\-]*"
 _VALUE_START = r"[ \t*_`\"']*"
@@ -35,7 +39,7 @@ _FINDINGS_RE = re.compile(rf"(?im)^{_LEAD}FINDINGS[ \t]*:[ \t]*$")
 _END_RE = re.compile(r"(?im)^[ \t]*END[ \t]*$")
 _BULLET_RE = re.compile(r"^[ \t]*[-*][ \t]+(?P<body>.+)$")
 _FINDING_RE = re.compile(
-    r"^(?P<path>.*?)[ \t]*(?::(?P<line>\d+))?[ \t]*"
+    r"^(?P<path>.*?)[ \t]*(?::(?P<line>\d+))?[*_`\"' \t]*:?[ \t]*"
     r"\[(?P<severity>[A-Za-z]+)\][ \t]*(?P<message>.*)$"
 )
 _FIX_RE = re.compile(r"\s*\|\s*fix\s*:\s*", re.IGNORECASE)
@@ -102,14 +106,15 @@ def _header_value(pattern: re.Pattern[str], text: str) -> str | None:
     match = pattern.search(text)
     if match is None:
         return None
-    return match.group(1).strip().strip(_TRIM_CHARS).lower()
+    return match.group(1).strip().strip(_WRAPPER_CHARS + _TRAILING_PUNCTUATION).lower()
 
 
 def _parse_finding(body: str) -> dict | None:
     match = _FINDING_RE.match(body.strip())
     if match is None:
         return None
-    path = match.group("path").strip().strip(_TRIM_CHARS)
+    path = match.group("path").strip().lstrip(_WRAPPER_CHARS)
+    path = path.rstrip(_WRAPPER_CHARS + _TRAILING_PUNCTUATION).removeprefix("./")
     line = int(match.group("line")) if match.group("line") else None
     severity = match.group("severity").lower()
     message = match.group("message").strip()
