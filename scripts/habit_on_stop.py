@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -48,7 +49,10 @@ SMELL_OF_CODE = {
     "BLE001": "swallowed-exception",
 }
 DEFAULT_BRANCH_REFS = ("origin/HEAD", "origin/main", "main")
-INSTALL_HINT = "python3 -m pip install -r scripts/check_all.requirements.txt"
+REQUIREMENTS = Path(__file__).resolve().parent / "check_all.requirements.txt"
+PIP_INSTALL_HINT = "python3 -m pip install -r scripts/check_all.requirements.txt"
+# Tool -> the requirement whose `uv tool install` puts that tool on PATH.
+REQUIREMENT_OF_TOOL = {"ruff": "ruff", "habit-mapper": "habit-hooks[python]"}
 
 
 class HookError(Exception):
@@ -216,6 +220,27 @@ def coaching(repo: Path, findings: list[dict]) -> str | None:
     raise HookError(f"habit-mapper failed: {completed.stderr.strip() or completed.stdout.strip()}")
 
 
+def install_hint(missing: list[str]) -> str:
+    """A command that puts the missing tools on the PATH this hook searches.
+
+    A pip install lands in whatever interpreter python3 is, whose scripts
+    directory may not be on PATH; `uv tool install` puts each tool in uv's
+    bin directory. The pins come from the requirements file, so the hint
+    follows its updates.
+    """
+    if shutil.which("uv") is None:
+        return PIP_INSTALL_HINT
+    requirements = REQUIREMENTS.read_text(encoding="utf-8").splitlines()
+    installs = []
+    for tool in missing:
+        requirement = REQUIREMENT_OF_TOOL[tool]
+        pins = [line for line in requirements if line.startswith(f"{requirement}==")]
+        if len(pins) != 1:
+            raise HookError(f"{REQUIREMENTS.name} has no single {requirement}== pin")
+        installs.append(f"uv tool install {shlex.quote(pins[0])}")
+    return " && ".join(installs)
+
+
 def run(event: dict, repo: Path) -> tuple[int, str]:
     if event.get("stop_hook_active"):
         return EXIT_PASS, ""
@@ -224,9 +249,12 @@ def run(event: dict, repo: Path) -> tuple[int, str]:
         changed = changed_python_files(repo, base)
         if not changed:
             return EXIT_PASS, ""
-        missing = [tool for tool in ("ruff", "habit-mapper") if shutil.which(tool) is None]
+        missing = [tool for tool in REQUIREMENT_OF_TOOL if shutil.which(tool) is None]
         if missing:
-            return EXIT_COACH, f"habit-on-stop: MISSING {', '.join(missing)}: {INSTALL_HINT}"
+            return (
+                EXIT_COACH,
+                f"habit-on-stop: MISSING {', '.join(missing)}: {install_hint(missing)}",
+            )
         findings = new_findings(repo, base, changed)
         guides = coaching(repo, findings) if findings else None
     except NoForkPoint as error:
