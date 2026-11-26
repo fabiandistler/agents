@@ -12,11 +12,10 @@ usage: batches.py split DIFF --out DIR | batches.py merge DIR
                         its own with "oversize": true.
   merge DIR             Read the classifier's answer per batch from
                         DIR/batch-<k>.answer.md and print one queue as JSON:
-                        {"boundaries", "deviation", "cards", "unclassified"}.
-                        Cards keep the category order; each carries "batch" and
-                        "unchecked_across_batches". The files of a batch without
-                        a readable answer are listed in "unclassified" with a
-                        reason: the line in DIR/batch-<k>.failed, or the size.
+                        {"boundaries", "deviation", "files", "cards", "unclassified"}.
+                        Cards keep the category order, batch and diff location.
+                        "unclassified" lists files without readable answers
+                        and why: the line in DIR/batch-<k>.failed, or the size.
 
 exit codes: 0 ok; 1 usage error; 2 DIFF or DIR/batches.json missing;
 3 DIFF is not a git diff.
@@ -28,6 +27,7 @@ examples:
 
 from __future__ import annotations
 
+import codecs
 import json
 import re
 import sys
@@ -39,7 +39,9 @@ from cli import ScriptError
 
 MAX_BYTES = 200_000
 FILE_HEADER = "diff --git "
-HEADER_PATHS = re.compile(r"^diff --git a/(.*) b/(.*)$")
+HEADER_PATHS = re.compile(r'^diff --git (?:a/.*|"a/(?:[^"\\]|\\.)*") (b/.*|"b/(?:[^"\\]|\\.)*")$')
+HUNK_HEADER = re.compile(r"^@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@")
+LOCATION_LINE = re.compile(r"^(.+):([0-9]+)$")
 
 # Cost-of-reversal order, the classifier's categories.
 CATEGORIES = ["deviation", "public surface", "schema and data", "behaviour", "tests"]
@@ -52,7 +54,6 @@ FIELDS = {
     "Location": "location",
     "Criterion": "criterion",
     "Chosen": "chosen",
-    "Alternatives": "alternatives",
     "Cost to undo": "cost_to_undo",
     "Lean": "lean",
     "Depends on": "depends_on",
@@ -72,19 +73,30 @@ def file_chunks(diff: str) -> list[tuple[str, str]]:
 
 
 def chunk_path(chunk: str) -> str:
-    lines = chunk.splitlines()
-    for line in lines:
-        if line.startswith("+++ b/"):
-            return line[len("+++ b/") :]
+    header, *metadata = chunk.split("\n")
+    old_path = None
+    for line in metadata:
+        if line.startswith("@@"):
+            break
+        if line.startswith(("+++ b/", '+++ "b/')):
+            return unquote_path(line[4:])[2:]
         if line.startswith("rename to "):
-            return line[len("rename to ") :]
-    for line in lines:
-        if line.startswith("--- a/"):
-            return line[len("--- a/") :]
-    header = HEADER_PATHS.match(lines[0])
-    if header is None:
+            return unquote_path(line[len("rename to ") :])
+        if line.startswith(("--- a/", '--- "a/')):
+            old_path = unquote_path(line[4:])[2:]
+    if old_path is not None:
+        return old_path
+    paths = HEADER_PATHS.match(header)
+    if paths is None:
         raise ScriptError(3, "a `diff --git` header names no a/ and b/ path")
-    return header.group(2)
+    return unquote_path(paths.group(1))[2:]
+
+
+def unquote_path(path: str) -> str:
+    path = path.removesuffix("\t")
+    if path.startswith('"') and path.endswith('"'):
+        return codecs.escape_decode(path[1:-1].encode())[0].decode()
+    return path
 
 
 def pack(chunks: list[tuple[str, str]]) -> list[list[tuple[str, str]]]:
@@ -133,12 +145,17 @@ class Decision:
     location: str = ""
     criterion: str = ""
     chosen: str = ""
-    alternatives: str = ""
     cost_to_undo: str = ""
     lean: str = ""
     depends_on: str | None = None
     batch: int = field(default=0, init=False)
     unchecked_across_batches: bool = field(default=False, init=False)
+    location_path: str | None = field(default=None, init=False)
+    location_line: int | None = field(default=None, init=False)
+    location_verified: bool = field(default=False, init=False)
+    location_changed: bool = field(default=False, init=False)
+    location_reason: str | None = field(default=None, init=False)
+    nearest_line: int | None = field(default=None, init=False)
 
     @property
     def kind(self) -> str:
@@ -155,6 +172,34 @@ class Decision:
         if self.depends_on is None:
             return False
         return batch_of.get(location_file(self.depends_on), self.batch) != self.batch
+
+    def verify_location(self, diff_lines: dict[str, dict[int, bool]] | None) -> None:
+        location = self.location.strip()
+        if location == "-":
+            self.location_reason = "omission has no location"
+            return
+        self.location_path = location_file(location)
+        match = LOCATION_LINE.fullmatch(location)
+        location_line = (int(match.group(2)) or None) if match else None
+        self.location_line = location_line
+        if diff_lines is None:
+            self.location_reason = "batch diff unavailable"
+        elif self.location_path not in diff_lines:
+            self.location_reason = "file not in diff"
+        elif location_line is None:
+            self.location_reason = "location has no line"
+        else:
+            new_side = diff_lines[self.location_path]
+            if location_line in new_side:
+                self.location_verified = True
+                self.location_changed = new_side[location_line]
+            else:
+                self.location_reason = "line outside every hunk"
+                self.nearest_line = min(
+                    (line for line, added in new_side.items() if added),
+                    key=lambda line: (abs(line - location_line), line),
+                    default=None,
+                )
 
     def as_json(self) -> dict:
         fields = asdict(self)
@@ -190,10 +235,16 @@ def answer_blocks(text: str) -> list[list[str]]:
 def parse_decision(lines: list[str]) -> Decision:
     fields: dict[str, str] = {}
     key: str | None = None
+    discarding_alternatives = False
     for line in lines:
         if field_line := FIELD_LINE.match(line):
+            discarding_alternatives = False
             key = FIELDS[field_line.group(1)]
             fields[key] = field_line.group(2)
+        elif line.startswith("Alternatives:"):
+            discarding_alternatives = True
+        elif discarding_alternatives:
+            continue
         elif key is None:
             raise UnclassifiedBatchError(
                 "classifier answer malformed: text outside a decision block"
@@ -221,7 +272,22 @@ def parse_answer(text: str) -> tuple[list[Decision], bool]:
 
 
 def location_file(location: str) -> str:
-    return re.sub(r":\d+$", "", location.strip())
+    match = LOCATION_LINE.fullmatch(location.strip())
+    return match.group(1) if match else location.strip()
+
+
+def new_side_lines(chunk: str) -> dict[int, bool]:
+    """Map right-side hunk lines to whether they were added."""
+    lines: dict[int, bool] = {}
+    end = number = 0
+    for line in chunk.split("\n"):
+        if hunk := HUNK_HEADER.match(line):
+            number = int(hunk.group(1))
+            end = number + int(hunk.group(2) or "1")
+        elif number < end and line.startswith((" ", "+")):
+            lines[number] = line.startswith("+")
+            number += 1
+    return lines
 
 
 def read_batch_answer(out: Path, batch: dict, max_bytes: int) -> tuple[list[Decision], bool]:
@@ -266,13 +332,24 @@ def merge(out: Path) -> dict:
             continue
         if unchecked:
             deviation = "unchecked"
+        if not found:
+            continue
+        diff_file = out / batch["file"]
+        diff_lines = None
+        if diff_file.is_file():
+            diff_lines = {
+                path: new_side_lines(chunk)
+                for path, chunk in file_chunks(diff_file.read_text(encoding="utf-8"))
+            }
         for decision in found:
+            decision.verify_location(diff_lines)
             decision.unchecked_across_batches = total > 1 and decision.may_span(batch_of)
         decisions += found
     decisions.sort(key=Decision.queue_key)
     return {
         "boundaries": [f"Batch {b['batch']} of {total}: {', '.join(b['paths'])}" for b in batches],
         "deviation": deviation,
+        "files": list(batch_of),
         "cards": [decision.as_json() for decision in decisions],
         "unclassified": unclassified,
     }

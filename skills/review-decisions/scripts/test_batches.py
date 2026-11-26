@@ -131,7 +131,6 @@ def block(
         f"Location: {location}\n"
         f"Criterion: {criterion}\n"
         "Chosen: one option\n"
-        "Alternatives: another option; a third option\n"
         "Cost to undo: callers would break.\n"
         "Lean: ask the author\n"
     )
@@ -312,3 +311,97 @@ def test_merge_records_why_a_classifier_run_failed(tmp_path):
             "reason": "classifier run failed: context window exceeded",
         }
     ]
+
+
+def test_merge_verifies_only_the_new_side_and_suggests_the_nearest_addition(tmp_path):
+    diff = tmp_path / "diff.patch"
+    diff.write_text(
+        "diff --git a/old.py b/new name.py\n"
+        "similarity index 50%\n"
+        "rename from old.py\n"
+        "rename to new name.py\n"
+        "--- a/old.py\n"
+        "+++ b/new name.py\t\n"
+        "@@ -1,2 +1,2 @@\n"
+        " context\n"
+        "-old\n"
+        "+new\n"
+        "@@ -8 +8 @@\n"
+        "-old\n"
+        "+new\n"
+        "\\ No newline at end of file\n"
+        "diff --git a/gone.py b/gone.py\n"
+        "deleted file mode 100644\n"
+        "--- a/gone.py\n"
+        "+++ /dev/null\n"
+        "@@ -1 +0,0 @@\n"
+        "-deleted\n",
+        encoding="utf-8",
+    )
+    manifest = split(tmp_path, diff)
+    out = tmp_path / "batches"
+    expected = {
+        "new name.py:1": (True, False, None, None, "new name.py", 1),
+        "new name.py:2": (True, True, None, None, "new name.py", 2),
+        "new name.py:8": (True, True, None, None, "new name.py", 8),
+        "new name.py:5": (False, False, "line outside every hunk", 2, "new name.py", 5),
+        "new name.py:9": (False, False, "line outside every hunk", 8, "new name.py", 9),
+        "old.py:2": (False, False, "file not in diff", None, "old.py", 2),
+        "gone.py:1": (False, False, "line outside every hunk", None, "gone.py", 1),
+        "gone.py": (False, False, "location has no line", None, "gone.py", None),
+        "-": (False, False, "omission has no location", None, None, None),
+    }
+    answer(out, 1, *(block("Behaviour", location) for location in expected))
+
+    merged = merge(out)
+
+    assert merged["files"] == manifest["batches"][0]["paths"] == ["new name.py", "gone.py"]
+    assert {
+        card["location"]: (
+            card["location_verified"],
+            card["location_changed"],
+            card["location_reason"],
+            card["nearest_line"],
+            card["location_path"],
+            card["location_line"],
+        )
+        for card in merged["cards"]
+    } == expected
+
+
+def test_merge_verifies_a_quoted_git_path(tmp_path):
+    diff = tmp_path / "diff.patch"
+    diff.write_text(
+        r'diff --git "a/\303\244.py" "b/\303\244.py"'
+        + "\n"
+        + r'--- "a/\303\244.py"'
+        + "\n"
+        + r'+++ "b/\303\244.py"'
+        + "\n"
+        + "@@ -1 +1 @@\n-old\n+new\n",
+        encoding="utf-8",
+    )
+    split(tmp_path, diff)
+    out = tmp_path / "batches"
+    answer(out, 1, block("Behaviour", "ä.py:1"))
+
+    merged = merge(out)
+
+    assert merged["files"] == ["ä.py"]
+    assert merged["cards"][0]["location_changed"] is True
+
+
+def test_merge_ignores_legacy_alternatives_without_changing_chosen(tmp_path):
+    diff = write_diff(tmp_path, ("api.py", 1))
+    split(tmp_path, diff)
+    out = tmp_path / "batches"
+    legacy = block("Behaviour", "api.py:1").replace(
+        "Cost to undo:", "Alternatives: one guess\n- another guess\nCost to undo:"
+    )
+    answer(out, 1, legacy)
+
+    card = merge(out)["cards"][0]
+
+    assert "alternatives" not in card
+    assert card["chosen"] == "one option"
+    assert card["cost_to_undo"] == "callers would break."
