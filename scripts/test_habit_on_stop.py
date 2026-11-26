@@ -268,19 +268,76 @@ def test_missing_tools_do_not_block_a_branch_without_python_changes(repo, tmp_pa
     assert (completed.returncode, completed.stderr) == (0, "")
 
 
-def test_a_missing_mapper_is_reported_with_the_install_line(repo, tmp_path):
-    ruff_only = tmp_path / "ruff-only"
-    ruff_only.mkdir()
-    (ruff_only / "ruff").symlink_to(shutil.which("ruff"))
+def pinned(package: str) -> str:
+    """The version scripts/check_all.requirements.txt pins package to."""
+    requirements = (REPO_ROOT / "scripts" / "check_all.requirements.txt").read_text("utf-8")
+    match = re.search(rf"^{re.escape(package)}==(\S+)$", requirements, re.MULTILINE)
+    assert match, f"no {package} pin"
+    return match.group(1)
+
+
+def tool_path(tmp_path: Path, *tools: str) -> str:
+    """A PATH with git and only the named tools: the real ruff, a uv stub the hook never runs.
+
+    /usr/bin may hold uv, so the hook's PATH leaves the system directories out.
+    """
+    tool_bin = tmp_path / "tool-bin"
+    tool_bin.mkdir()
+    for real_tool in ("git", "ruff") if "ruff" in tools else ("git",):
+        real_path = shutil.which(real_tool)
+        assert real_path, f"{real_tool} is not on PATH"
+        (tool_bin / real_tool).symlink_to(real_path)
+    if "uv" in tools:
+        (tool_bin / "uv").write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+        (tool_bin / "uv").chmod(0o755)
+    return str(tool_bin)
+
+
+def test_a_missing_mapper_without_uv_is_reported_with_the_pip_line(repo, tmp_path):
     (repo / "new.py").write_text(MANY_PARAMETERS, encoding="utf-8")
 
-    completed = run_hook(repo, path=f"{ruff_only}{os.pathsep}/usr/bin{os.pathsep}/bin")
+    completed = run_hook(repo, path=tool_path(tmp_path, "ruff"))
 
     assert completed.returncode == 2
     assert completed.stderr.strip() == (
         "habit-on-stop: MISSING habit-mapper: "
         "python3 -m pip install -r scripts/check_all.requirements.txt"
     )
+
+
+def test_a_missing_mapper_with_uv_is_reported_with_its_pinned_tool_install(repo, tmp_path):
+    (repo / "new.py").write_text(MANY_PARAMETERS, encoding="utf-8")
+
+    completed = run_hook(repo, path=tool_path(tmp_path, "ruff", "uv"))
+
+    assert completed.returncode == 2
+    assert completed.stderr.strip() == (
+        "habit-on-stop: MISSING habit-mapper: "
+        f"uv tool install 'habit-hooks[python]=={pinned('habit-hooks[python]')}'"
+    )
+
+
+def test_both_missing_tools_with_uv_are_reported_with_both_pinned_installs(repo, tmp_path):
+    (repo / "new.py").write_text(MANY_PARAMETERS, encoding="utf-8")
+
+    completed = run_hook(repo, path=tool_path(tmp_path, "uv"))
+
+    assert completed.returncode == 2
+    assert completed.stderr.strip() == (
+        "habit-on-stop: MISSING ruff, habit-mapper: "
+        f"uv tool install ruff=={pinned('ruff')} && "
+        f"uv tool install 'habit-hooks[python]=={pinned('habit-hooks[python]')}'"
+    )
+
+
+def test_a_requirements_file_without_the_pin_is_reported(tmp_path, monkeypatch):
+    unpinned = tmp_path / "check_all.requirements.txt"
+    unpinned.write_text("ruff>=0.17\n", encoding="utf-8")
+    monkeypatch.setattr(habit_on_stop, "REQUIREMENTS", unpinned)
+    monkeypatch.setenv("PATH", tool_path(tmp_path, "uv"))
+
+    with pytest.raises(habit_on_stop.HookError, match="has no single ruff== pin"):
+        habit_on_stop.install_hint(["ruff"])
 
 
 def test_a_checkout_without_a_default_branch_is_skipped_without_blocking(tmp_path, mapper):
@@ -360,15 +417,11 @@ def test_the_committed_settings_run_the_hook_once_on_stop():
 
 def test_the_ruff_pin_matches_the_pre_commit_pin():
     """The hook's ruff and the commit hooks' ruff are one version, pinned twice."""
-    requirements_path = REPO_ROOT / "scripts" / "check_all.requirements.txt"
-    requirements = requirements_path.read_text(encoding="utf-8")
     pre_commit = yaml.safe_load((REPO_ROOT / ".pre-commit-config.yaml").read_text("utf-8"))
 
-    pinned = re.search(r"^ruff==(\S+)$", requirements, re.MULTILINE)
     (rev,) = [
         entry["rev"]
         for entry in pre_commit["repos"]
         if entry["repo"] == "https://github.com/astral-sh/ruff-pre-commit"
     ]
-    assert pinned
-    assert f"v{pinned.group(1)}" == rev
+    assert f"v{pinned('ruff')}" == rev
