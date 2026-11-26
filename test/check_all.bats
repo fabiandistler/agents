@@ -239,6 +239,20 @@ EOF
   grep -q '^prefix=' "$bare_checkout/full.log"
 }
 
+# The MISSING line's fix installs zizmor with PYTHON's pip, into PYTHON's
+# scripts directory, which need not be on PATH.
+@test "a tool that PYTHON's pip installed runs without a PATH change" {
+  bare_checkout="$(make_bare_checkout)"
+  "$PYTHON" -m venv --without-pip "$BATS_TEST_TMPDIR/venv"
+  printf '#!/usr/bin/env bash\necho "zizmor from the venv"\n' >"$BATS_TEST_TMPDIR/venv/bin/zizmor"
+  chmod +x "$BATS_TEST_TMPDIR/venv/bin/zizmor"
+  run env PATH="$(path_without zizmor)" PYTHON="$BATS_TEST_TMPDIR/venv/bin/python" \
+    "$bare_checkout/scripts/check_all.sh" --only zizmor --output "$bare_checkout/full.log"
+  assert_success
+  assert_line --regexp '^PASS zizmor \([0-9]+s\)$'
+  grep -qxF 'zizmor from the venv' "$bare_checkout/full.log"
+}
+
 @test "without PYTHON the checks get PATH unchanged" {
   make_checkout_with_bare_python3_check
   # The gate needs a python3 of 3.11 or newer on PATH.

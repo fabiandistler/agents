@@ -39,7 +39,8 @@ Runs every CI check from the repo root; one PASS/FAIL/MISSING line per check.
   --list         print the check names with the tools each needs, then exit
   -h, --help     show this help
 Env: PYTHON (default python3, must be 3.11 or newer). When set, it is also the
-python3 on PATH for every check. The prek check runs ruff, ty, shellcheck, shfmt
+python3 on PATH for every check, and tools its pip installed (zizmor, prek)
+are found without a PATH change. The prek check runs ruff, ty, shellcheck, shfmt
 and the secret scan at the versions pinned in .pre-commit-config.yaml; its
 hooks may rewrite files (ruff --fix, shfmt, whitespace). A failing prek check
 prints each hook's result, then `git diff --stat` of the work tree (up to 10
@@ -345,14 +346,18 @@ log="$run_dir/log"
 # an older one. The shim execs PYTHON instead of linking to it, because a
 # symlink outside a venv starts the venv's base interpreter without its
 # packages. PYTHON is resolved first, so PYTHON=python3 does not exec itself.
+# PYTHON's scripts directory goes last on PATH: fix_for installs zizmor and
+# prek with PYTHON's pip, which puts them there, off PATH for a venv. Last,
+# so a tool the caller's PATH already has still wins.
 if [ -n "${PYTHON:-}" ]; then
   require_python check_all.sh "$PY" || exit 4
   py_path="$(command -v "$PY")"
   case "$py_path" in /*) ;; *) py_path="$PWD/$py_path" ;; esac
+  py_scripts="$("$PY" -c 'import sysconfig; print(sysconfig.get_path("scripts"))')" || exit 4
   mkdir "$run_dir/bin"
   printf '#!/usr/bin/env bash\nexec %q "$@"\n' "$py_path" >"$run_dir/bin/python3"
   chmod +x "$run_dir/bin/python3"
-  PATH="$run_dir/bin:$PATH"
+  PATH="$run_dir/bin:$PATH:$py_scripts"
 fi
 
 failed=() missing=() missing_tools=""
