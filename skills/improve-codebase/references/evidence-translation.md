@@ -60,8 +60,7 @@ carries: quote it on the card, do not let it decide.
 
 ## Writing the evidence line
 
-Every finding carries at least one of:
-
+Format the required evidence as follows:
 - `path:line` for a claim about code (the leaking call, the duplicated rule,
   the pass-through method).
 - A metric value quoted as the instrument printed it: `groups=2 [LCOM=7]`,

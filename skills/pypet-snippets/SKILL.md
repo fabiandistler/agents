@@ -16,8 +16,8 @@ metadata:
 Curate [pypet](https://github.com/fabiandistler/pypet) command snippets
 through its CLI. pypet is a small snippet manager: it stores named
 shell commands with descriptions, tags and parameters as plain TOML. The CLI
-installs as `pypet-cli`, not `pypet`. Only call its CLI — never modify its package and never hand-edit
-its store.
+installs as `pypet-cli`. Use the CLI for all changes, leaving the package
+and `~/.config/pypet/snippets.toml` untouched.
 
 ## When to use
 
@@ -37,8 +37,8 @@ its store.
    lowercase comma-separated tags, and parameters with defaults where the
    command varies (ports, paths, image names). Redact literal tokens,
    passwords or keys into a `{{param}}` with no default or an `$ENV_VAR`
-   and call this out in the proposal. Do nothing until the person
-   confirms — this holds for edits too.
+   and flag the redaction in the proposal. The store is plaintext and can be
+   shared over Git. Wait for confirmation before creating or editing snippets.
 4. **Mutate on yes only**:
    `pypet new "<command>" -d "<description>" -t "<tag1,tag2>" -p "name=default:description,..." -a <alias>`
    The `-d`, `-t`, `-p` and `-a` flags are all optional. Use `{{name}}` for
@@ -60,9 +60,9 @@ its store.
   update only after a confirmed proposal, same as creation. Never prompts,
   except `edit -f`, which opens `$EDITOR` — never use it.
 - `pypet exec <id> [-p] [-c] [-e] [-P name=value ...]` — always pass
-  `<id>`; without one it opens a picker. Always confirms before running
-  (prints `Aborted!` and exits 0 with stdin closed); `-p` only prints the
-  resolved command, `-c` copies it instead of running, `-e` edits first
+  `<id>`; without one it opens a picker. Warns on shell operators and confirms
+  before running (prints `Aborted!` and exits 0 with stdin closed); `-p` only
+  prints the resolved command, `-c` copies it instead of running, `-e` edits first
   (never use it), `-P` fills a parameter without prompting (pass one per parameter).
 - `pypet copy <id> [-P ...]` — always pass `<id>`; without one it opens a
   picker. Copies the resolved command to the clipboard instead of running
@@ -85,13 +85,6 @@ to run `history -a` in their own shell if a fresh command is missing),
 
 ## Safety
 
-- Never store literal tokens, passwords or keys — replace them with a
-  `{{param}}` with no default or an `$ENV_VAR` (see step 3). Snippets are
-  plaintext TOML that can be pushed to Git with `pypet sync`.
-- Never hand-edit `~/.config/pypet/snippets.toml`; always go through
-  `pypet new` / `pypet edit`.
-- Never execute a command automatically; `pypet exec` asks before running
-  and warns on shell operators.
 - Pass the snippet command as one quoted argument so pipes and redirects
   survive intact.
 

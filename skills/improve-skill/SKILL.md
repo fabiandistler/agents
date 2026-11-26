@@ -21,16 +21,14 @@ attention without changing what it does.
 The frontmatter, description included, stays byte for byte as it was, because
 a changed trigger would blur whether the rest of the skill still behaves the
 same. A finding in it (SL6, any D item, a packager validation failure) is a
-**D-finding**: reported with the proposal "Not rewritten here: take it to
-`skill-creator`" (for a description, to its description optimisation), never
-asked about and never applied.
+**D-finding**. Use "Not rewritten here: take it to `skill-creator`" as its
+proposed action, and direct description findings to that skill's description
+optimisation. D-findings stay out of the interview and rewrite.
 
 ## When to use
 
-- One skill folder whose body reads bloated: definitions of known things,
-  repeated rules, shouted warnings, option menus, decorative sections. The
-  run lists numbered **candidates**, each citing a slop-signal or checklist
-  ID, and rewrites once after the author's answers.
+- One skill folder whose body reads bloated: redundant rules, excessive
+  emphasis, needless choices, decorative sections or explanations of familiar concepts.
 - A skill in a repository (delivered as a branch and pull request), or an
   unpacked claude.ai skill ZIP outside any repository (delivered as a
   re-packed archive beside the old ZIP).
@@ -48,8 +46,8 @@ and ask for the skill folder.
 Before reading any file in it, create the **run directory**
 `<tmpdir>/improve-skill-<name>-<timestamp>/` in the OS temp directory, copy the
 whole folder into it as `old_skill/`, and print that path. Every file the run
-writes before delivery goes into the run directory. The snapshot is the
-baseline for the check and the way back.
+writes before delivery goes into the run directory. Use the snapshot as the
+checking baseline and rollback copy.
 
 Done when `diff -r <folder> <snapshot>` prints nothing.
 
@@ -92,7 +90,7 @@ Use this shape:
    Keep the rule, state it plainly, add the failure it prevents.
 ```
 
-A D-finding carries its "Not rewritten here" proposal in place of an action.
+For a D-finding, use the proposal defined above.
 
 ## 4. Inventory the rules
 
@@ -127,9 +125,8 @@ written:
    repeated rule to keep, go into the next round.
 3. Record each candidate as **accepted** (apply the proposed action),
    **rejected** (leave the text as it is) or **load-bearing** (keep its rule,
-   change only its form). Record an `R` item as **struck by author** only
-   when an answer strikes it, together with that answer's number. Only an
-   interview answer strikes a rule.
+   change only its form). Mark an `R` item **struck by author** only on a
+   numbered interview answer that strikes it. Cite that answer.
 
 Done when every candidate has a recorded decision and the author has
 confirmed the printed record.
@@ -219,4 +216,4 @@ on "yes":
   `new_skill/` over the folder; the run creates no repository. Then pack it
   for claude.ai as `references/claude-ai-zip.md` describes.
 
-Print the snapshot path last: it is the way back.
+Print the snapshot path last.

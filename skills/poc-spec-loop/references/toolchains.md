@@ -24,8 +24,6 @@ Re-verify the versions below before each real run; `ruff` in particular moves fa
   - Required on PATH: `bats`, `shellcheck`, `shfmt`
   - Install line if missing: `apt install bats shellcheck shfmt` (or brew)
 
-Greenfield: nothing matches → Phase 1 asks once.
-
 ## Scaffold (prd item 1)
 
 ### Python — uv 0.12 · pytest 9 · ruff 0.16 · ty 0.0.x

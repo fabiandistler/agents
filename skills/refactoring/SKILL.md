@@ -9,8 +9,6 @@ metadata:
 
 # Refactoring targets
 
-One job: answer "where should we start?" with evidence instead of a guess.
-
 ## When to use
 
 - The user asks which files or modules are worth refactoring first, where the
@@ -66,9 +64,6 @@ Skip the script, or discount its output, in these cases:
 - **The user already named the target.** Ranking is then noise; go read the target.
 
 ## Two disciplines once a target is chosen
-
-Reasoned, not measured: these are kept because the failure mode is discipline
-under pressure, not missing knowledge.
 
 - **Refactor or change behavior, never in the same step.** A green suite is
   evidence only while external behavior is meant to stay identical. Mix a fix
