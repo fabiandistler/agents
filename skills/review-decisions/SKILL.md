@@ -156,8 +156,10 @@ your output. Give each run two more values:
 
 Nothing confines the classifier's shell to that file. The check below
 detects a stray write after the fact; it prevents nothing, and a write
-outside `<scratch>` and the repository stays unseen. Before the first run and
-again after the last run returns, record
+outside `<scratch>` and the repository stays unseen. Delete
+`batch-<k>.answer.md` before each run of batch `k`, so a rerun that writes
+nothing fails as missing instead of passing the old answer. Before the first
+run and again after the last run returns, record
 `find <scratch> -type f -exec cksum {} + | sort` and, in the repository,
 `git status --porcelain --ignored`. The only difference is the new answer
 files you passed. For a missing or empty answer file, write that run's
