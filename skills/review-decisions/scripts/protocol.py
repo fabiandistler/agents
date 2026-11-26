@@ -14,7 +14,7 @@ usage: protocol.py {path,init,add-card,answer,resume,close,comment,record-post} 
   close FILE [--moot-remaining]
                    Mark the review settled. Use the flag after confirmed early stop.
   comment FILE [--json]
-                   Print combined text or JSON with line comments and a summary.
+                   Print combined text, or JSON with line comments, summary and footer.
   record-post FILE --target URL
                    Record a successful posting on the closed protocol.
 
@@ -39,6 +39,7 @@ from tempfile import NamedTemporaryFile
 from urllib.parse import urlsplit
 
 import cli
+import comments
 from cli import ScriptError, git
 
 ANSWERS = {"ok", "change", "later"}
@@ -50,7 +51,6 @@ MOOT = re.compile(r"^- Not reviewed:[ \t]*moot\b")
 CONTINUATION = re.compile(r"^[ \t]+(\S.*?)[ \t]*$")
 ANCHOR = "- Anchor: "
 POSTED = "- Posted: "
-COMMENT_FOOTER = "This comment covers review decisions only; no defect review was done."
 
 
 def state_home() -> Path:
@@ -147,22 +147,6 @@ def resume_state(text: str) -> dict:
         ],
         "closed": is_closed(text),
     }
-
-
-def combined_comment(text: str) -> str:
-    """Join the drafts of the cards answered `change`, in card order, into one comment."""
-    return numbered_comment([card.draft for card in change_cards(text)])
-
-
-def review_comment(text: str) -> dict:
-    comments, summary = [], []
-    for card in change_cards(text):
-        if card.anchor is None:
-            summary.append(card.draft)
-        else:
-            path, line = card.anchor
-            comments.append({"path": path, "line": line, "body": "\n".join(card.draft)})
-    return {"comments": comments, "summary": numbered_comment(summary)}
 
 
 def init_protocol(
@@ -413,17 +397,6 @@ def change_cards(text: str) -> list[Card]:
     return cards
 
 
-def numbered_comment(items: list[list[str]]) -> str:
-    lines = []
-    for index, draft in enumerate(items, start=1):
-        marker = f"{index}. "
-        lines.append(marker + draft[0])
-        lines.extend(" " * len(marker) + rest for rest in draft[1:])
-    if lines:
-        lines.append("")
-    return "\n".join([*lines, COMMENT_FOOTER]) + "\n"
-
-
 def update_protocol(path: Path, text: str) -> None:
     # Atomic replacement keeps readers from seeing a partly written card.
     with NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as changed:
@@ -452,7 +425,9 @@ def command(args) -> None:
             return
         case "comment":
             print(
-                json.dumps(review_comment(text)) if args.json else combined_comment(text),
+                json.dumps(comments.review_comment(change_cards(text)))
+                if args.json
+                else comments.combined_comment(change_cards(text)),
                 end="\n" if args.json else "",
             )
             return

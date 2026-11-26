@@ -116,10 +116,10 @@ Its `cards` are already in the Queue order. With more than one batch:
   `batches.json`, and queue each part the issue asks for that no batch
   touches as a deviation card.
 - On each card with `unchecked_across_batches: true`, add the line
-  `- Unchecked across batches: yes` and show it on the card under
-  `Why queued`. These are deviations, public surface, schema and data, and
-  decisions that depend on a file in another batch: their other half may sit
-  in a batch the classifier did not see.
+  `- Unchecked across batches: yes` and show it on the card as the bullet
+  `**Unchecked across batches:** yes`. These are deviations, public surface,
+  schema and data, and decisions that depend on a file in another batch:
+  their other half may sit in a batch the classifier did not see.
 - Name every file in `unclassified` with its reason before the first card, and
   list them in the protocol header as `Not classified: <file>: <reason>`. Never
   drop a file without saying so. The reviewer reads these files in the PR or
@@ -238,23 +238,47 @@ Exit 3 means the file is not a protocol this skill wrote; say so and stop.
 
 ## Cards
 
-Show one card per turn and wait for the answer. Keep it short enough to read
-on a phone screen without scrolling far:
+Show one card per turn and wait for the answer. Render it as Markdown, never
+inside a code block, so labels stay bold and lines wrap in the reader's
+window:
 
-```text
-Card <n> of <total>: <file>:<line>
-Why queued: <category>: <the criterion that put it in the queue>
-Chosen: <what the author chose>
-Cost to undo after merge: <one sentence>
+```markdown
+### Card <n> of <total> · `<file>:<line>`
+**<Category>:** <headline: the decision in the change's own terms>
 
-Lean: <the skill's lean, and why, in one line>
+- **Chosen:** <what the author chose>
+- **<Other fact>:** <for example the other pattern in the repo, with file:line>
+- **Cost to undo:** <what breaks if it is undone after the merge>
+- **Depends on:** card <m>
 
-Answer: ok / change / question / later
+> **Lean:** <the skill's lean, and why>
+
+`ok` · `change` · `question` · `later`
 ```
 
-When `location_verified` is false, label the location `Location (unverified)`
-and give the reason. Read `nearest_line` in the diff before suggesting it to
-the reviewer. Keep the lean below the finding.
+Keep to this budget, so a card fits in about 15 rendered lines:
+
+- **Headline**: under 8 words. It replaces the criterion: name the thing
+  (`names of new exports`), not the definition (`names of exported
+  functions`).
+- **Bullets**: one fact each, under 20 words, at most five. Leave out
+  `Depends on` when there is none, and the other-fact bullet when there is
+  no second fact.
+- **Lean**: under 25 words.
+
+Shorten a classifier field that runs over its budget instead of wrapping it:
+the full text stays in the protocol, and a `question` brings it out.
+
+When `location_verified` is false, write `(location unverified)` after the
+`<file>` in the heading and add the bullet `**Location (unverified):**` with
+the reason. Read `nearest_line` in the diff before suggesting it to the
+reviewer. Keep the lean below the finding.
+
+The overview before the first card follows the same layout and budget: a
+`### Overview · <total> cards` heading, one bullet per unchecked input,
+deviation status, batch note and unclassified file, then a `**Files**` label
+and one bullet per file label. Files with the same label and reason share a
+bullet.
 
 The reviewer answers with one word, or a word and a note:
 
@@ -286,34 +310,60 @@ protocol has a `change` without a draft, use `answer FILE --card N change
 
 ### Publish on request
 
-On GitHub, `python3 scripts/protocol.py comment FILE --json` supplies the
-summary and one entry with `path`, `line` and `body` for each draft on an
-added line. Drafts without an anchor and the protocol footer appear in the
-summary. Use a single GitHub review when there are anchors and the forge
-tool supports them. Use a plain combined comment on Azure DevOps, when the
-preview has no anchors, or when the forge tool lacks line-comment support.
+`python3 scripts/protocol.py comment FILE --json` splits the drafts for line
+comments. `comments` holds one entry with `path`, `line` and `body` for each
+draft on an added line; `summary` numbers the drafts without an anchor, or is
+null when there are none; `footer` is the protocol footer. A body drops a
+leading `path:line` that repeats its anchor and turns a `(topic)` after it
+into a bold heading. Post line comments when `comments` is not empty and the
+forge transport below is available; otherwise post the plain combined comment.
 
 Show the reviewer the PR target and exact text in its intended placement
-before posting. Append only the attribution the harness requires. Post only
+before posting; for line comments, show each comment or thread with its file,
+line and text. Append only the attribution the harness requires. Post only
 after the reviewer explicitly asks you to post that preview in the current
 session. A card answer of `change` authorizes the draft only. If a target,
 placement or text changes, show the updated preview and obtain a new request.
 
-- **GitHub review.** Verify the live PR head matches the protocol's `Head:`
-  and each anchor is an added line in the live PR diff. Keep the draft if
-  either check fails. Use the GitHub MCP tools if the session has them;
-  otherwise `gh api --method POST
-  repos/{owner}/{repo}/pulls/{number}/reviews --input <review.json>`. The
-  request JSON uses `event: "COMMENT"`, the verified head as `commit_id`,
-  the summary as `body`, and each comment with `side: "RIGHT"`.
+- **Line comments.** Verify the live PR head matches the protocol's `Head:`
+  and each anchor is an added line in the live PR diff. Keep a draft back if
+  either check fails. Then post through the forge:
+  - GitHub: one review. Use the GitHub MCP tools if the session has them;
+    otherwise `gh api --method POST
+    repos/{owner}/{repo}/pulls/{number}/reviews --input <review.json>`. The
+    request JSON uses `event: "COMMENT"`, the verified head as `commit_id`,
+    `summary` and `footer` joined by a blank line (`footer` alone when
+    `summary` is null) as `body`, and each comment with `side: "RIGHT"`.
+  - Azure DevOps: one thread per entry in `comments`, active (`status: 1`),
+    with a `threadContext` of `filePath` `/<path>` and `rightFileStart` and
+    `rightFileEnd` both `{"line": <line>, "offset": 1}`; then one active
+    PR-level thread with `summary` when it is not null; then the `footer` as
+    its own PR-level thread, created closed (`status: 4`), so a policy that
+    requires resolved comments does not block the merge on it. Each thread's
+    JSON holds one comment: `{"parentCommentId": 0, "content": <text>,
+    "commentType": 1}`. Take the project name, the repository ID and the live
+    head (`repository.project.name`, `repository.id`,
+    `lastMergeSourceCommit.commitId`) from `az repos pr show --id <number>
+    --detect true --output json`, then post one thread per call:
+
+    ```bash
+    az devops invoke --area git --resource pullRequestThreads \
+      --route-parameters project=<project> repositoryId=<repository-id> pullRequestId=<number> \
+      --api-version 7.1 --http-method POST --in-file <thread.json> --detect true --output json
+    ```
+
+    `az` uses its own login. Stop at the first non-zero exit, and never post
+    a thread that was already created a second time.
 - **Plain comment.** On GitHub, use the GitHub MCP tools if the session has
   them; otherwise `gh api --method POST
   repos/{owner}/{repo}/issues/{number}/comments -F body=@<comment-file>`.
-  On Azure DevOps, use the available forge comment tool. Send the previewed
-  combined text.
+  On Azure DevOps, post one active PR-level thread with the same
+  `az devops invoke` call. Send the previewed combined text.
 
-After the forge confirms the write, run `python3 scripts/protocol.py
-record-post FILE --target <url>` with the resulting comment or review URL.
+After the forge confirms each write, run `python3 scripts/protocol.py
+record-post FILE --target <url>` with the resulting comment or review URL; on
+Azure DevOps once per thread, with the PR's web URL plus
+`?discussionId=<id>`, where `id` comes from the thread in the response.
 Report a failed write and keep the selected posting mode until the reviewer
 authorizes a different preview. Approving, requesting changes and merging
 are forbidden.
