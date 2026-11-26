@@ -14,15 +14,6 @@ metadata:
 
 # poc-spec-loop
 
-Two parameters, both asked at the start of Phase 1 and written into `plans/SPEC.md`:
-
-| Parameter | Type | Written to |
-|---|---|---|
-| **Project goal** | free text, one paragraph | `SPEC.md` `## Goal` |
-| **Deployment target** | enum: `package` · `http-service` · `mcp-server` · `cli` · `other:<text>` | `SPEC.md` frontmatter `target:` |
-
-Everything else is detected or fixed convention — see [Conventions](#conventions). A value the skill can derive is never asked.
-
 ## When to use
 
 Use this on explicit request to take a greenfield PoC to production readiness through the two gated phases — e.g. "poc-spec-loop", "PoC-Loop starten", "Spec-Loop für das neue Repo", or "Loop freigegeben, weiter".
@@ -44,7 +35,7 @@ Phase 1 only:
 Phase 2 only:
 
 5. `plans/prd.json` has `approved: true` (see Dispatch).
-6. The **loop runner** is chosen: `claude`, `codex`, or `opencode` — the agent CLI that runs each task headlessly. Default to the runtime you are running in; ask only if that is none of the three. Its CLI, `gh`, `jq`, and GNU `timeout` are on `PATH`, and its non-interactive permission flags match the installed version (see `assets/loop.sh` header). Without them, headless tool calls are denied and every task fails its check.
+6. The **loop runner** is chosen: `claude`, `codex`, or `opencode` — the agent CLI that runs each task headlessly. Default to the runtime you are running in; ask only if that is none of the three. Its CLI, the forge CLI (`gh` for GitHub or `az` with the `azure-devops` extension for Azure DevOps Services), `jq`, and GNU `timeout` are on `PATH`. Check that the non-interactive permission flags match the installed runner version (see `assets/loop.sh` header). Without them, headless tool calls are denied and every task fails its check.
 7. The `tdd` and `code-review` skills are visible to a headless run only if they are installed for the runner's CLI on this machine. Check by asking the runner, headless, to list its available skills. If missing, the loop still runs — the task prompt spells out red-green-refactor itself, and the checkpoint falls back to a plain review against `SPEC.md` — but say so to the user before starting.
 
 ## Dispatch — the state machine
@@ -62,7 +53,11 @@ The human releases the loop by editing the flag and committing — the marker li
 ## Phase 1 — Spec (interactive)
 
 1. **Language.** Detect from `pyproject.toml` / `DESCRIPTION` / `*.sh`+shebang. Greenfield has nothing to detect → ask once: R, Python, or bash.
-2. **Parameters.** Ask project goal and deployment target (table above).
+2. **Parameters.** Ask for the project goal (one free-text paragraph for
+   `SPEC.md` `## Goal`) and deployment target (`package`, `http-service`,
+   `mcp-server`, `cli`, or `other:<text>`, for its `target:` frontmatter).
+   Derive the remaining values where possible and use the fixed conventions
+   below.
 3. **Questions.** Four mandatory, then up to four adaptive — eight total, hard cap:
    - Users and how they invoke the thing
    - Non-goals
@@ -80,13 +75,13 @@ The skill's only action here is:
 POC_AGENT=<runner> bash <skill-dir>/assets/loop.sh
 ```
 
-`POC_AGENT` is required (`claude`, `codex`, or `opencode`); `loop.sh` exits 2 without it rather than guess. With `codex`, the runner gets full filesystem access — its `workspace-write` sandbox keeps `.git` read-only, and every task must commit — so run the loop in a separately provisioned container or VM whose parent process permits that access. KVM alone does not establish this: an already restricted session keeps its restrictions. See [Runner environment and recovery](references/runner-recovery.md).
+`POC_AGENT` is required (`claude`, `codex`, or `opencode`); `loop.sh` exits 2 without it rather than guess. Use the same runner for tasks and checkpoints. With `codex`, the runner gets full filesystem access — its `workspace-write` sandbox keeps `.git` read-only, and every task must commit — so run the loop in a separately provisioned container or VM whose parent process permits that access. KVM alone does not establish this: an already restricted session keeps its restrictions. See [Runner environment and recovery](references/runner-recovery.md).
 
 `loop.sh` owns the loop; each task runs in a **fresh** runner context that sees only `SPEC.md`, the one prd item, and [assets/task-prompt.md](assets/task-prompt.md).
 
 **Enforced by `loop.sh`** (mechanically, independent of model behaviour):
 
-- Before branch creation or task selection, a 45-second runner preflight must execute a shell command and write a fresh proof file. The same command checks Git metadata writes in the driver and runner. Infrastructure failures, including the driver's own Git metadata writes before the runner starts, exit 4 with a bounded diagnosis and a copyable restart command, and leave task attempts untouched. A model exit code or printed success alone is insufficient. Mid-run, an agent call that exits non-zero on an item whose check then fails is also exit 4: the item keeps its attempts and is not blocked. If the check passes anyway, the item passes with a warning on stderr; a `BLOCKED:` line blocks the item whatever the exit status.
+- [Runner environment and recovery](references/runner-recovery.md) defines the preflight and mid-run failure rules. An infrastructure stop exits 4 and preserves task attempts. An explicit `BLOCKED:` line still takes precedence.
 - Branch `poc/<YYYY-MM-DD>`, created from `main` on first run; the loop itself only commits on that branch. A restart (from `main` or the branch) resumes the newest existing `poc/*` branch.
 - `deps` naming an id that does not exist abort the run before it starts.
 - Run logs and the last failure output live under `.git/poc-loop/`, never in the working tree, so a stopped run restarts without cleanup.
@@ -109,12 +104,10 @@ Completion criterion for the skill: PR URL printed, and every item in `prd.json`
 | Concern | Fixed to | Source of truth |
 |---|---|---|
 | Branch | `poc/<YYYY-MM-DD>` | `loop.sh` |
-| Loop runner | `POC_AGENT=claude\|codex\|opencode`, required; one runner for tasks and checkpoints | `loop.sh` |
 | State | `plans/SPEC.md`, `plans/prd.json`, `plans/BLOCKED.md`, `plans/REVIEW.md`, `plans/PR.md` (full PR body) — committed, CI ignores `plans/**` | this file |
 | Toolchain per language | detect / scaffold / test / lint / typecheck commands | `references/toolchains.md` |
 | Definition of Done per target | smoke command, required artefact, non-goal | `references/deploy-targets.md` |
 | Forge | detected from `origin`: GitHub → REST pulls endpoint via `gh api` (a headless script cannot call MCP tools, and GraphQL-backed `gh pr create` fails in sessions where GitHub's GraphQL endpoint is blocked); Azure DevOps Services → `az repos pr create`, description cut to the checklist plus a pointer to `plans/PR.md` (4,000-character cap) | `loop.sh` |
-| No placeholders, no mocks in production code | hard rule (prompt-level) | `assets/task-prompt.md` |
 
 ## Provenance
 

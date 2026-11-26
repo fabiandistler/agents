@@ -8,11 +8,6 @@ The signals describe structure, not vocabulary: each one applies to a skill in
 any language. The marker words in the examples are illustrations, not a word
 list to search for.
 
-Each signal names the checklist item it maps to, the shape to look for, and the
-test that separates slop from a line that carries a rule. A line that passes
-the test is load-bearing: it stays a candidate only for a change of form (a
-reason added, a duplicate merged), never for removal.
-
 ## SL1 Explaining known things
 
 Checklist: B2.

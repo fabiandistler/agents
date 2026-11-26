@@ -15,8 +15,8 @@ metadata:
 
 # OSS Scouting
 
-One run = one library. The result is analysis and drafts in a local folder that
-the user fully understands, tests themselves, and submits under their own name.
+Leave the user local drafts they can understand, test, and submit under
+their own name.
 
 ## When to use
 
@@ -38,13 +38,11 @@ job.
    result and is reported as one. The `good first issue` label is neutral, not
    a filter. Respect reservations: where the project assigns such issues on
    request, ask to be assigned before working one up.
-4. **The repro must run.** A candidate without a reproduction confirmed on
-   the current default branch is not worked up. No "probably reproducible".
+4. **The repro must run.** See step 3 for the reproduction gate.
 5. **Invent nothing.** Unclear cause → mark it open, don't fill it in
    plausibly. No policy statement found → "no explicit policy found", not
    "allowed".
-6. **No sign-off by the agent.** Drafts never contain `Signed-off-by` or a
-   CLA acceptance; the user adds them under their own name on submission.
+6. **No sign-off by the agent.** See the submit checklist.
 
 ## Procedure
 
@@ -243,9 +241,10 @@ status (reproduced or dropped, with the finding), the files it wrote, and the
 risk rating. Without subagents, work the candidates up one after another in
 one clone, resetting it between candidates.
 
-1. **repro**: minimal, runnable, with version information, expected vs. actual
-   output as a comment. Run it. If it doesn't reproduce → drop the candidate and
-   record it in README under "rejected after repro" with the finding.
+1. **repro**: minimal, runnable, with version information and expected vs.
+   actual output as a comment. Run it on the current default branch. If it
+   does not reproduce, drop the candidate and record the finding in README
+   under "rejected after repro".
 2. **analysis.md**: cause with `path:line` references; the call path from user
    code to the faulty spot; why exactly there; what the author probably
    intended; related spots with the same pattern (a note, not a scope
@@ -312,8 +311,7 @@ source — curl shut its paid bug bounty
 (<https://github.com/ghostty-org/ghostty/blob/main/CONTRIBUTING.md>), tldraw
 auto-closed external pull requests
 (<https://github.com/tldraw/tldraw/issues/7695>): unreviewed
-machine-generated contributions cost maintainers more than they give, so this
-skill produces material for the user to verify and submit, never a submission.
+machine-generated contributions cost maintainers more than they give.
 
 Teardown: delete the read-only clone when the run ends (`rm -rf` the cache
 path from step 3). The artifact tree under

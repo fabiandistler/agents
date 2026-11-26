@@ -28,8 +28,9 @@ command applies: the deletion test, "the interface is the test surface", and
 terms exactly in every suggestion; do not drift into "component", "service",
 "API", or "boundary".
 
-The project's own domain language in `GLOSSARY.md` names the good seams, and
-the ADRs in `docs/adr/` record decisions this command does not re-litigate.
+Use the project's `GLOSSARY.md` terms for the domain and the design vocabulary
+above for the architecture. If the glossary defines "Order", write "the Order
+intake module". Read applicable ADRs in `docs/adr/` before reopening a decision.
 
 ## Process
 
@@ -69,8 +70,7 @@ Do not follow rigid heuristics; explore and note where friction shows up:
 
 - Where does understanding one concept require bouncing between many small
   modules?
-- Where are modules **shallow**, with an interface nearly as complex as the
-  implementation?
+- Which modules are shallow under the definition in the vocabulary?
 - Where have pure functions been extracted only for testability, while the real
   bugs hide in how they are called (no **locality**)?
 - Where do tightly coupled modules leak across their seams?
@@ -92,10 +92,9 @@ Back the two structural suspicions with `coupling-cohesion`, read via the
   brittle is the whole codebase", not "where does deepening pay off"; they
   would be noise in the report.
 
-If the agent can start subagents, give Mode A to `cohesion-analyst` and
-Mode C to `coupling-analyst`, telling the latter to assess the one named
-dependency with Mode C and not to run its codebase-wide metrics. Each returns
-its verdict and evidence lines, never file bodies. Without those subagents,
+If subagents are available, give the scoped Mode A check to `cohesion-analyst`
+and the scoped Mode C check to `coupling-analyst`. Each returns its verdict
+and evidence lines without file bodies. Without those subagents,
 follow the member file's Mode A or C workflow directly and run its bundled
 scripts (`scripts/lcom.py`, `scripts/balance_check.py`, relative to the
 `coupling-cohesion` skill directory) inline, writing any input JSON to the OS
@@ -105,10 +104,9 @@ Mode A's LCOM for R is a heuristic: one-line functions, long signatures,
 handler closures and package-global state defined in another file skew it.
 Read the code before a group count from it supports a split or shallow claim.
 
-Translate the result before it reaches a card: `coupling-cohesion` speaks of
-boundaries, integration strength and distance; the report speaks only the
-vocabulary file's terms. `references/evidence-translation.md` maps one to the
-other. A "leave" verdict drops the finding unless other evidence carries it.
+Before writing the report or interview, use `references/evidence-translation.md`
+to express measurements in the design vocabulary while keeping metric values
+verbatim. A "leave" verdict drops the finding unless other evidence carries it.
 
 Record evidence for every finding as `path:line` or a metric value (churn
 count, group count, sharing level), so the user can verify it. A finding with
@@ -120,24 +118,17 @@ Write one self-contained HTML file to the OS temp directory as
 `<tmpdir>/architecture-review-<timestamp>.html` and open it for the user; in a
 headless session, print the absolute path instead.
 
-For each candidate, render one card per `references/html-report.md` — its
-candidate-card section is the single spec for the fields, the badge, and the
-diagram placement.
+Before writing, read `references/html-report.md` for the scaffold, diagram and
+style guidance. Render each card to its Candidate card specification, including
+fields, badge and diagram placement.
 
 End the report with a **Top recommendation** section: the one candidate to
 tackle first, and why.
-
-Use `GLOSSARY.md` terms for the domain and the vocabulary file's terms for the
-architecture. If the glossary defines "Order", write "the Order intake module",
-not "the FooBarHandler" and not "the Order service".
 
 **ADR conflicts**: surface a candidate that contradicts an existing ADR only
 when the friction is real enough to warrant reopening it. Mark it in the card
 (for example, "contradicts ADR-0007, but worth reopening because ..."). Do not
 list every theoretical refactor an ADR forbids.
-
-`references/html-report.md` has the scaffold, the diagram patterns, and the
-style and tone rules. Read it before writing the file.
 
 Do not propose interfaces yet. Once the file is written, ask the user which
 candidate they want to explore.
@@ -153,12 +144,10 @@ behind the seam, and which tests survive.
 
 Work in **rounds**:
 
-1. The **frontier** is every decision whose prerequisites are already settled.
-   Ask the whole frontier in one round. Number each question and give a
-   recommended answer, worded so that "yes" accepts it.
-2. Wait for the answers. Settled decisions push the frontier outward; recompute
-   it and ask the next round. A question that depends on another question still
-   open in the same round belongs to a later round.
+1. The **frontier** contains exactly the decisions whose prerequisites are
+   settled. Ask the whole frontier in one round. Number each question and give
+   a recommended answer that "yes" accepts.
+2. Wait for the answers, recompute the frontier and ask the next round.
 3. Facts are the agent's job, decisions are the user's. Look up anything the
    code, history, or tools can answer instead of asking. A lookup still running
    blocks only the questions downstream of it; ask the rest of the frontier now.
