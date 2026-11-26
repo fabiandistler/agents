@@ -225,6 +225,107 @@ def test_comment_leaves_out_a_draft_whose_answer_changed_to_ok(tmp_path):
     assert "drop the new key" not in proc.stdout
 
 
+def anchored(tmp_path: Path, drafts: list[tuple[str, int, str]]) -> Path:
+    """Write a closed protocol with one anchored `change` card per (path, line, draft)."""
+    sections = []
+    for number, (path, line, draft) in enumerate(drafts, start=1):
+        first, *rest = draft.splitlines()
+        sections.append(
+            f"## Card {number} of {len(drafts)}\n\n"
+            f"- Location: `{path}:{line}`\n"
+            f"- Anchor: {json.dumps({'path': path, 'line': line})}\n"
+            "- Answer: change\n"
+            f"- Draft comment: {first}\n" + "".join(f"  {more}\n" for more in rest)
+        )
+    protocol_file = tmp_path / "p.md"
+    protocol_file.write_text(
+        "# Review decisions protocol\n\n"
+        + "\n".join(sections)
+        + "\nReview decisions settled, no defect review.\n"
+    )
+    return protocol_file
+
+
+def test_comment_json_turns_a_repeated_anchor_with_topic_into_a_bold_heading(tmp_path):
+    path = anchored(
+        tmp_path,
+        [
+            ("src/config.py", 12, "`src/config.py:12` (timeout unit): keep `timeout` in seconds."),
+            ("src/app.py", 40, "`src/app.py:40 (retry)`\nRestore the retry loop.\nIt was removed."),
+            ("src/app.py", 41, "src/app.py:41 (flag name)"),
+        ],
+    )
+
+    proc = run("comment", str(path), "--json")
+
+    assert proc.returncode == 0, proc.stderr
+    assert [entry["body"] for entry in json.loads(proc.stdout)["comments"]] == [
+        "**timeout unit**\n\nkeep `timeout` in seconds.",
+        "**retry**\n\nRestore the retry loop.\nIt was removed.",
+        "**flag name**",
+    ]
+
+
+def test_comment_json_drops_a_repeated_anchor_without_topic(tmp_path):
+    path = anchored(
+        tmp_path,
+        [
+            (
+                "src/config.py",
+                12,
+                "`src/config.py:12`: keep `timeout` in seconds;\nthe new key breaks.",
+            ),
+            ("src/app.py", 40, "src/app.py:40\n\nRestore the retry loop."),
+        ],
+    )
+
+    proc = run("comment", str(path), "--json")
+
+    assert proc.returncode == 0, proc.stderr
+    assert [entry["body"] for entry in json.loads(proc.stdout)["comments"]] == [
+        "keep `timeout` in seconds;\nthe new key breaks.",
+        "Restore the retry loop.",
+    ]
+
+
+def test_comment_json_keeps_a_draft_that_does_not_open_with_its_anchor(tmp_path):
+    drafts = [
+        ("src/app.py", 4, "src/app.py:40 (other line): rename the flag."),
+        ("src/app.py", 5, "Rename the flag; see src/app.py:5."),
+        ("src/app.py", 6, "`src/app.py:6`"),
+    ]
+    path = anchored(tmp_path, drafts)
+
+    proc = run("comment", str(path), "--json")
+
+    assert proc.returncode == 0, proc.stderr
+    assert [entry["body"] for entry in json.loads(proc.stdout)["comments"]] == [
+        draft for _, _, draft in drafts
+    ]
+
+
+def test_comment_json_keeps_the_footer_apart_from_an_empty_summary(tmp_path):
+    path = anchored(tmp_path, [("src/app.py", 4, "Rename the flag.")])
+
+    proc = run("comment", str(path), "--json")
+
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout) == {
+        "comments": [{"path": "src/app.py", "line": 4, "body": "Rename the flag."}],
+        "summary": None,
+        "footer": "This comment covers review decisions only; no defect review was done.",
+    }
+
+
+def test_plain_comment_keeps_the_anchor_in_the_draft(tmp_path):
+    path = anchored(tmp_path, [("src/app.py", 4, "`src/app.py:4` (flag): rename it.")])
+
+    proc = run("comment", str(path))
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.startswith("1. `src/app.py:4` (flag): rename it.\n")
+
+
 def initialize(tmp_path: Path, cards: list[dict]) -> Path:
     repo = git_repo(tmp_path / "demo")
     git(
@@ -321,10 +422,8 @@ def test_write_protocol_and_render_both_comment_formats(tmp_path):
     assert structured.returncode == 0, structured.stderr
     assert json.loads(structured.stdout) == {
         "comments": [{"path": "src.py", "line": 4, "body": draft}],
-        "summary": (
-            "1. Document this.\n\n"
-            "This comment covers review decisions only; no defect review was done.\n"
-        ),
+        "summary": "1. Document this.\n",
+        "footer": "This comment covers review decisions only; no defect review was done.",
     }
 
 

@@ -14,7 +14,7 @@ usage: protocol.py {path,init,add-card,answer,resume,close,comment,record-post} 
   close FILE [--moot-remaining]
                    Mark the review settled. Use the flag after confirmed early stop.
   comment FILE [--json]
-                   Print combined text or JSON with line comments and a summary.
+                   Print combined text, or JSON with line comments, summary and footer.
   record-post FILE --target URL
                    Record a successful posting on the closed protocol.
 

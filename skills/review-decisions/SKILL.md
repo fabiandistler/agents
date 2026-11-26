@@ -286,34 +286,60 @@ protocol has a `change` without a draft, use `answer FILE --card N change
 
 ### Publish on request
 
-On GitHub, `python3 scripts/protocol.py comment FILE --json` supplies the
-summary and one entry with `path`, `line` and `body` for each draft on an
-added line. Drafts without an anchor and the protocol footer appear in the
-summary. Use a single GitHub review when there are anchors and the forge
-tool supports them. Use a plain combined comment on Azure DevOps, when the
-preview has no anchors, or when the forge tool lacks line-comment support.
+`python3 scripts/protocol.py comment FILE --json` splits the drafts for line
+comments. `comments` holds one entry with `path`, `line` and `body` for each
+draft on an added line; `summary` numbers the drafts without an anchor, or is
+null when there are none; `footer` is the protocol footer. A body drops a
+leading `path:line` that repeats its anchor and turns a `(topic)` after it
+into a bold heading. Post line comments when `comments` is not empty and the
+forge transport below is available; otherwise post the plain combined comment.
 
 Show the reviewer the PR target and exact text in its intended placement
-before posting. Append only the attribution the harness requires. Post only
+before posting; for line comments, show each comment or thread with its file,
+line and text. Append only the attribution the harness requires. Post only
 after the reviewer explicitly asks you to post that preview in the current
 session. A card answer of `change` authorizes the draft only. If a target,
 placement or text changes, show the updated preview and obtain a new request.
 
-- **GitHub review.** Verify the live PR head matches the protocol's `Head:`
-  and each anchor is an added line in the live PR diff. Keep the draft if
-  either check fails. Use the GitHub MCP tools if the session has them;
-  otherwise `gh api --method POST
-  repos/{owner}/{repo}/pulls/{number}/reviews --input <review.json>`. The
-  request JSON uses `event: "COMMENT"`, the verified head as `commit_id`,
-  the summary as `body`, and each comment with `side: "RIGHT"`.
+- **Line comments.** Verify the live PR head matches the protocol's `Head:`
+  and each anchor is an added line in the live PR diff. Keep a draft back if
+  either check fails. Then post through the forge:
+  - GitHub: one review. Use the GitHub MCP tools if the session has them;
+    otherwise `gh api --method POST
+    repos/{owner}/{repo}/pulls/{number}/reviews --input <review.json>`. The
+    request JSON uses `event: "COMMENT"`, the verified head as `commit_id`,
+    `summary` and `footer` joined by a blank line (`footer` alone when
+    `summary` is null) as `body`, and each comment with `side: "RIGHT"`.
+  - Azure DevOps: one thread per entry in `comments`, active (`status: 1`),
+    with a `threadContext` of `filePath` `/<path>` and `rightFileStart` and
+    `rightFileEnd` both `{"line": <line>, "offset": 1}`; then one active
+    PR-level thread with `summary` when it is not null; then the `footer` as
+    its own PR-level thread, created closed (`status: 4`), so a policy that
+    requires resolved comments does not block the merge on it. Each thread's
+    JSON holds one comment: `{"parentCommentId": 0, "content": <text>,
+    "commentType": 1}`. Take the project name, the repository ID and the live
+    head (`repository.project.name`, `repository.id`,
+    `lastMergeSourceCommit.commitId`) from `az repos pr show --id <number>
+    --detect true --output json`, then post one thread per call:
+
+    ```bash
+    az devops invoke --area git --resource pullRequestThreads \
+      --route-parameters project=<project> repositoryId=<repository-id> pullRequestId=<number> \
+      --api-version 7.1 --http-method POST --in-file <thread.json> --detect true --output json
+    ```
+
+    `az` uses its own login. Stop at the first non-zero exit, and never post
+    a thread that was already created a second time.
 - **Plain comment.** On GitHub, use the GitHub MCP tools if the session has
   them; otherwise `gh api --method POST
   repos/{owner}/{repo}/issues/{number}/comments -F body=@<comment-file>`.
-  On Azure DevOps, use the available forge comment tool. Send the previewed
-  combined text.
+  On Azure DevOps, post one active PR-level thread with the same
+  `az devops invoke` call. Send the previewed combined text.
 
-After the forge confirms the write, run `python3 scripts/protocol.py
-record-post FILE --target <url>` with the resulting comment or review URL.
+After the forge confirms each write, run `python3 scripts/protocol.py
+record-post FILE --target <url>` with the resulting comment or review URL; on
+Azure DevOps once per thread, with the PR's web URL plus
+`?discussionId=<id>`, where `id` comes from the thread in the response.
 Report a failed write and keep the selected posting mode until the reviewer
 authorizes a different preview. Approving, requesting changes and merging
 are forbidden.
