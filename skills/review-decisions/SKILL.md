@@ -5,7 +5,7 @@ activation: command
 disable-model-invocation: true
 environments: coding
 argument-hint: "[<base-ref> | <protocol-file>]"
-description: Walks a reviewer through the review decisions in an agent-generated pull request, the choices only a human can settle, one card per turn, using its PR text, issue and CI on GitHub or Azure DevOps. Never posts, approves or merges.
+description: Walks a reviewer through the review decisions in an agent-generated pull request, the choices only a human can settle, one card per turn, using its PR text, issue and CI on GitHub or Azure DevOps.
 metadata:
   opencode/slash: "true"
   opencode/autoinvoke: "false"
@@ -20,9 +20,8 @@ the merge is costly. A deviation from the issue counts as one too. What a
 linter catches, what follows an existing pattern, and what the issue states
 literally do not.
 
-This is not a defect review and not a tour of the diff. It never says a change
-is correct, and it never posts, approves or merges: the reviewer stays the one
-who publishes.
+This workflow covers review decisions only. Offer a comment preview at the
+end, with publication available on explicit request under Close.
 
 ## When to use
 
@@ -59,9 +58,18 @@ reviewer pastes one, do not repeat it.
 
 ### Fallback
 
-When the manifest lists an input under `unchecked` (the CLI is missing, a
-call failed, the remote is neither GitHub nor Azure DevOps, or the PR names
-no issue), carry on with the local diff and what the reviewer supplies:
+When the manifest lists inputs under `unchecked` and a forge tool can read
+the GitHub PR, issues or checks, save the data without editing its text.
+Follow the GitHub REST JSON envelope in `gather_inputs.py --help`. Use a
+separate output directory so evidence gathered by the CLI remains available:
+
+```bash
+python3 scripts/gather_inputs.py --repo <repo-root> --out <scratch-dir>/forge --from-json <forge.json>
+```
+
+Use the new manifest if it keeps every input the CLI gathered and adds
+evidence for at least one unchecked input. Otherwise keep the CLI manifest.
+For any input still unchecked:
 
 - **pr** or **issue**: ask the reviewer once for the text and write it to
   `pr.md` or `issue.md`. If they have none, write no file.
@@ -92,10 +100,10 @@ over the size limit: classify it anyway. When a run fails, save no answer for
 it; write the failure in one line, without quoting the diff, to
 `<scratch>/batches/batch-<k>.failed`.
 
-Then merge the answers into one queue:
+Then merge the answers into one queue and save it as JSON:
 
 ```bash
-python3 scripts/batches.py merge <scratch>/batches
+python3 scripts/batches.py merge <scratch>/batches > <scratch>/cards.json
 ```
 
 Its `cards` are already in the Queue order. With more than one batch:
@@ -117,7 +125,9 @@ Its `cards` are already in the Queue order. With more than one batch:
   drop a file without saying so. The reviewer reads these files in the PR or
   asks to classify them again.
 
-Use `deviation` from the merge for the No-issue rule in Queue.
+Use `deviation` from the merge for the No-issue rule in Queue. Keep the
+merge's location fields when reordering cards. For manually queued omissions
+without a location, use `location: "-"` and `location_verified: false`.
 
 ## Classify
 
@@ -194,35 +204,36 @@ The script never decides that a file is queued, and its proof never takes a
 file out of the queue. When unsure whether a file holds a review decision,
 queue it rather than label it "skim is enough".
 
-Show the list before the first card and write it to the protocol header
-under `Files:`, one line each: `- <path>: <label>: <reason>`. When the
-reviewer asks to look at a named file, add it to the queue as a new card at
-the end, change its line to queued, and keep going.
+Show the list before the first card. Pass each entry to `protocol.py init`
+with `--file-line "<path>: <label>: <reason>"`. If the queue is empty, show
+the file list and say there are no decisions to review.
+
+When the reviewer asks to look at a named file, save the new card as a JSON
+object with the same fields as a merged card, including `location_path`. Run
+`protocol.py add-card FILE --card-json <card.json> --file-line "<path>:
+queued: <reason>"`. If this is the first card, run `init` with the new queue.
+Only carry over anchor fields verified by the merge against the reviewed diff.
 
 ## Protocol
 
-Every answer goes into a protocol file outside the repository, so no verdict
-lands in the working tree. Before the first card, get its path from
-`python3 scripts/protocol.py path --repo <repo-root>` (exit 4: the state
-directory lies inside the repository; set `XDG_STATE_HOME` elsewhere) and
-print the full path to the reviewer.
+Before showing the first card, save `cards.json` in final queue order and
+run `python3 scripts/protocol.py init --repo <repo-root> --base <base-ref>
+--cards <cards.json>`. Repeat `--file-line` for the file labels and
+`--header-line` for the input files (including `inputs.json`), unchecked
+inputs and reasons, deviation status, and batch notes. Print the path it
+returns. On exit 4 set `XDG_STATE_HOME` outside the repository and retry.
 
-Write the protocol before showing the first card: a header with the
-repository, the base ref, the input files (with `inputs.json`), each
-unchecked input and its reason (without an issue: `deviation: unchecked`, so
-deviations were not checked), the line "A defect review was not run." and the
-line "The code-review skill was not run; this review does not depend on it.",
-then one section per card in queue order, each starting
-`## Card <n> of <total>` and holding the card's fields. Record each answer the
-turn it is given, as `- Answer: ok`, `- Answer: change` or `- Answer: later`;
-add `- Draft comment:` after a `change`, and `- Question:` and `- Reply:`
-lines for each question.
+Record each answer as it is given with `python3 scripts/protocol.py answer
+FILE --card N ok|change|later`. Supply the draft as one `--draft` argument
+for a `change`, preserving newlines. Record a question with `answer FILE
+--card N --question TEXT --reply TEXT`, leaving the card's answer open.
 
 To resume, the reviewer passes a protocol file instead of a base ref. Run
 `python3 scripts/protocol.py resume <protocol-file>`: its JSON names the first
 card without an answer (`next`) and the cards set aside (`later`). Skip
-gathering inputs and classifying; continue at `next` with the cards as the
-protocol holds them.
+gathering and classifying. If `closed` is true, use the preview and publication
+steps under Close with a fresh preview in this session. Otherwise continue at
+`next` with the cards as the protocol holds them.
 Exit 3 means the file is not a protocol this skill wrote; say so and stop.
 
 ## Cards
@@ -234,9 +245,6 @@ on a phone screen without scrolling far:
 Card <n> of <total>: <file>:<line>
 Why queued: <category>: <the criterion that put it in the queue>
 Chosen: <what the author chose>
-Alternatives (reconstructed, not what the author considered):
-- <alternative>
-- <alternative>
 Cost to undo after merge: <one sentence>
 
 Lean: <the skill's lean, and why, in one line>
@@ -244,9 +252,9 @@ Lean: <the skill's lean, and why, in one line>
 Answer: ok / change / question / later
 ```
 
-The alternatives are the classifier's guesses. Never word them as options the
-author weighed or rejected: you cannot see what the author considered. Keep
-the lean below the finding, so an opinion never reads as a fact.
+When `location_verified` is false, label the location `Location (unverified)`
+and give the reason. Read `nearest_line` in the diff before suggesting it to
+the reviewer. Keep the lean below the finding.
 
 The reviewer answers with one word, or a word and a note:
 
@@ -264,24 +272,48 @@ Any other reply is a question about the card.
 
 ## Close
 
-When every card has `ok` or `change`, or the reviewer stops, end the protocol
-with the line `Review decisions settled, no defect review.` and print its full
-path again. It stays the last line: anything added later, such as a note on
-unchecked inputs, goes into the header, or resuming reads the protocol as
-open. If the reviewer stops with cards still open, write the line only when
-they confirm; otherwise leave the protocol open for a later run to resume.
+Run `python3 scripts/protocol.py close FILE` when every card has a final
+answer or is moot, then print the full path again. On an early stop, name the
+remaining cards and wait for the reviewer to confirm closure. Then use
+`close FILE --moot-remaining`. Without confirmation, leave the file open for
+resuming.
 
-After an early stop, mark each card not shown with `- Not reviewed: moot after
-card <n>` and close the protocol the same way.
+Run `python3 scripts/protocol.py comment FILE` and offer its combined output
+for copy and paste. Exit 5 means there is no comment to post. If an older
+protocol has a `change` without a draft, use `answer FILE --card N change
+--draft TEXT` to record the missing draft, then preview again. For other exit
+3 errors, report the malformed protocol and stop publication.
 
-Then offer the combined review comment: run
-`python3 scripts/protocol.py comment <protocol-file>` and show its output in
-one fenced block for the reviewer to copy. It joins the drafts of the `change`
-cards in card order. Exit 5 means no card asked for a change: say there is no
-comment to post. Exit 3 names a `change` card without a draft: write the
-draft, record it, and run the command again.
+### Publish on request
 
-The reviewer posts the comment. Never post it, approve or merge, on any forge,
-with any tool, even when asked to: hand the text over and stop.
+On GitHub, `python3 scripts/protocol.py comment FILE --json` supplies the
+summary and one entry with `path`, `line` and `body` for each draft on an
+added line. Drafts without an anchor and the protocol footer appear in the
+summary. Use a single GitHub review when there are anchors and the forge
+tool supports them. Use a plain combined comment on Azure DevOps, when the
+preview has no anchors, or when the forge tool lacks line-comment support.
 
-Nothing else: no verdict on the change and no claim that it is correct.
+Show the reviewer the PR target and exact text in its intended placement
+before posting. Append only the attribution the harness requires. Post only
+after the reviewer explicitly asks you to post that preview in the current
+session. A card answer of `change` authorizes the draft only. If a target,
+placement or text changes, show the updated preview and obtain a new request.
+
+- **GitHub review.** Verify the live PR head matches the protocol's `Head:`
+  and each anchor is an added line in the live PR diff. Keep the draft if
+  either check fails. Use the GitHub MCP tools if the session has them;
+  otherwise `gh api --method POST
+  repos/{owner}/{repo}/pulls/{number}/reviews --input <review.json>`. The
+  request JSON uses `event: "COMMENT"`, the verified head as `commit_id`,
+  the summary as `body`, and each comment with `side: "RIGHT"`.
+- **Plain comment.** On GitHub, use the GitHub MCP tools if the session has
+  them; otherwise `gh api --method POST
+  repos/{owner}/{repo}/issues/{number}/comments -F body=@<comment-file>`.
+  On Azure DevOps, use the available forge comment tool. Send the previewed
+  combined text.
+
+After the forge confirms the write, run `python3 scripts/protocol.py
+record-post FILE --target <url>` with the resulting comment or review URL.
+Report a failed write and keep the selected posting mode until the reviewer
+authorizes a different preview. Approving, requesting changes and merging
+are forbidden.

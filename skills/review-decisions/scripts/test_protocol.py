@@ -361,3 +361,42 @@ def test_close_requires_open_cards_to_be_settled_or_marked_moot(tmp_path):
         "later": [],
         "closed": True,
     }
+
+
+def test_add_card_updates_files_and_is_safe_to_retry(tmp_path):
+    path = initialize(tmp_path, [{"location": "src.py"}])
+    added = tmp_path / "card.json"
+    added.write_text(json.dumps({"location": "docs.md", "location_path": "docs.md"}))
+    args = (
+        "add-card",
+        str(path),
+        "--card-json",
+        str(added),
+        "--file-line",
+        "docs.md: queued: requested",
+    )
+    assert run(*args).returncode == 0
+    saved = path.read_text()
+    assert "## Card 1 of 2" in saved
+    assert "## Card 2 of 2" in saved
+    assert "- docs.md: queued: requested" in saved
+    assert "- docs.md\n" not in saved
+    assert run(*args).returncode == 0
+    assert path.read_text() == saved
+
+
+def test_post_record_preserves_closing_line_and_is_safe_to_retry(tmp_path):
+    path = tmp_path / "p.md"
+    path.write_text(ANSWERED)
+    url = "https://github.com/example/my-app/pull/1#pullrequestreview-2"
+
+    for _ in range(2):
+        proc = run("record-post", str(path), "--target", url)
+        assert proc.returncode == 0, proc.stderr
+
+    lines = path.read_text().splitlines()
+    posted = [line for line in lines if line.startswith("- Posted:")]
+    assert len(posted) == 1
+    assert posted[0].endswith(url)
+    assert lines[-1] == "Review decisions settled, no defect review."
+    assert json.loads(run("resume", str(path)).stdout)["closed"] is True

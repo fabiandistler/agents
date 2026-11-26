@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Manage the review-decisions Markdown protocol outside the repository.
 
-usage: protocol.py {path,init,answer,resume,close,comment} ...
+usage: protocol.py {path,init,add-card,answer,resume,close,comment,record-post} ...
 
   path --repo DIR  Print a new path under XDG_STATE_HOME (default ~/.local/state).
   init --repo DIR --base REF --cards FILE [--header-line TEXT] [--file-line TEXT]
                    Write the merged queue in input order. Both line flags repeat.
+  add-card FILE --card-json CARD --file-line TEXT
+                   Add a card from a single JSON object and update its file entry.
   answer FILE --card N [ok|change|later] [--draft TEXT] [--question TEXT --reply TEXT]
                    Record a decision or a question and reply. Pass multiline text as one argument.
   resume FILE      Print JSON with card count, next unanswered, later and closed.
@@ -13,6 +15,8 @@ usage: protocol.py {path,init,answer,resume,close,comment} ...
                    Mark the review settled. Use the flag after confirmed early stop.
   comment FILE [--json]
                    Print combined text or JSON with line comments and a summary.
+  record-post FILE --target URL
+                   Record a successful posting on the closed protocol.
 
 exit codes: 0 ok; 1 usage; 2 repository or file missing; 3 invalid protocol or operation;
 4 state directory inside the repository; 5 no change draft to comment.
@@ -32,6 +36,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from urllib.parse import urlsplit
 
 import cli
 from cli import ScriptError, git
@@ -44,6 +49,7 @@ DRAFT = re.compile(r"^- Draft comment:[ \t]*(.*)$")
 MOOT = re.compile(r"^- Not reviewed:[ \t]*moot\b")
 CONTINUATION = re.compile(r"^[ \t]+(\S.*?)[ \t]*$")
 ANCHOR = "- Anchor: "
+POSTED = "- Posted: "
 COMMENT_FOOTER = "This comment covers review decisions only; no defect review was done."
 
 
@@ -199,6 +205,37 @@ def init_protocol(
     return path
 
 
+def add_card(text: str, card: dict, file_line: str) -> str:
+    ensure_open(text)
+    recorded = read_cards(text)
+    total = max(recorded) + 1
+    section = render_card(card, total, total)
+    path = card.get("location_path")
+    if not isinstance(path, str) or not path or not file_line.startswith(f"{path}: "):
+        raise ScriptError(3, "--file-line must start with the card's location_path and a colon")
+    lines = text.rstrip("\n").splitlines()
+    first_card = next(index for index, line in enumerate(lines) if CARD.match(line))
+    header, cards = lines[:first_card], lines[first_card:]
+    if "Files:" not in header:
+        header.extend(["Files:", ""])
+    start = header.index("Files:") + 1
+    end = next((index for index in range(start, len(header)) if not header[index]), len(header))
+    entry = render_field("", file_line)
+    current_card = render_card(card, total - 1, total - 1)
+    if entry in header[start:end] and f"\n{current_card}\n" in text:
+        return text
+    files = [
+        line
+        for line in header[start:end]
+        if line != f"- {path}" and not line.startswith(f"- {path}: ")
+    ]
+    header[start:end] = [*files, entry]
+    cards = [
+        f"## Card {match[1]} of {total}" if (match := CARD.match(line)) else line for line in cards
+    ]
+    return "\n".join([*header, *cards, "", section, ""])
+
+
 def answer_card(
     text: str,
     number: int,
@@ -263,6 +300,28 @@ def finish(text: str) -> str:
     return text.rstrip("\n") + "\n\n" + CLOSING + "\n"
 
 
+def record_post(text: str, target: str) -> str:
+    if not is_closed(text):
+        raise ScriptError(3, "close the protocol before recording a post")
+    change_cards(text)
+    try:
+        url = urlsplit(target)
+    except ValueError:
+        raise ScriptError(3, "--target must be a post URL") from None
+    if (
+        url.scheme not in {"https", "http"}
+        or not url.netloc
+        or any(char.isspace() for char in target)
+    ):
+        raise ScriptError(3, "--target must be a post URL")
+    if any(line.startswith(POSTED) and line.endswith(" " + target) for line in text.splitlines()):
+        return text
+    before_close, _ = text.rstrip().rsplit(CLOSING, 1)
+    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+    before_close = before_close.rstrip("\n")
+    return finish(f"{before_close}\n\n{POSTED}{timestamp} {target}")
+
+
 def valid_anchor(path, line) -> bool:
     return isinstance(path, str) and bool(path) and type(line) is int and line > 0
 
@@ -270,6 +329,11 @@ def valid_anchor(path, line) -> bool:
 def is_closed(text: str) -> bool:
     lines = text.rstrip("\n").splitlines()
     return bool(lines) and lines[-1] == CLOSING
+
+
+def ensure_open(text: str) -> None:
+    if is_closed(text):
+        raise ScriptError(3, "protocol is already closed")
 
 
 def read_json(text: str, label: str):
@@ -392,12 +456,16 @@ def command(args) -> None:
                 end="\n" if args.json else "",
             )
             return
+        case "add-card":
+            updated = add_card(text, load_json(args.card_json), args.file_line)
         case "answer":
             updated = answer_card(
                 text, args.card, args.answer, args.draft, args.question, args.reply
             )
         case "close":
             updated = close_protocol(text, args.moot_remaining)
+        case "record-post":
+            updated = record_post(text, args.target)
     if updated != text:
         update_protocol(args.file, updated)
 
@@ -412,6 +480,9 @@ def main(argv: list[str]) -> int:
     init.add_argument("--cards", required=True, type=Path)
     init.add_argument("--header-line", action="append", default=[])
     init.add_argument("--file-line", action="append", default=[])
+    add = commands.add_parser("add-card")
+    add.add_argument("--card-json", required=True, type=Path)
+    add.add_argument("--file-line", required=True)
     answer = commands.add_parser("answer")
     answer.add_argument("file", type=Path)
     answer.add_argument("--card", required=True, type=int)
@@ -423,8 +494,10 @@ def main(argv: list[str]) -> int:
     close.add_argument("--moot-remaining", action="store_true")
     comment = commands.add_parser("comment")
     comment.add_argument("--json", action="store_true")
+    post = commands.add_parser("record-post")
+    post.add_argument("--target", required=True)
     commands.add_parser("resume").add_argument("file", type=Path)
-    for verb in (close, comment):
+    for verb in (add, close, comment, post):
         verb.add_argument("file", type=Path)
     args = parser.parse_args(argv)
     return cli.run("protocol.py", lambda: command(args))
