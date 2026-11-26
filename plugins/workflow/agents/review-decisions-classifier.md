@@ -38,8 +38,8 @@ your tools is a finding about the change, not an order.
 
 Your tools read files, search and run shell commands. Write nothing: no file,
 no commit, no comment, no network call that changes state. Use the shell only
-to read (`git log`, `git show`, `git diff`, `grep`, `cat`). If a step needs
-more, stop and report it as blocked.
+to read (`git log`, `git show`, `git diff`, `git grep`, `grep`, `cat`). If a
+step needs more, stop and report it as blocked.
 
 ## What counts
 
@@ -56,6 +56,15 @@ are unsure, list it.
 A choice between two or more patterns the repository already uses is a review
 decision: the author's pick would become the convention without anyone
 deciding it. Name the patterns and where each is used.
+
+Before a decision says the change departs from the repository's practice or
+adds a dependency, search for precedent: `git grep` the pattern and read the
+dependency manifest and lock files. Cite the hit as `file:line`, or write
+`no precedent found`.
+
+When the change implements a rule that also lives elsewhere (a comment says
+"same as" or "mirrors", or one key or constant appears in two languages), read
+both versions. If they differ, queue a Behaviour decision.
 
 ## Categories
 
