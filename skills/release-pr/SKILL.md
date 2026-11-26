@@ -15,21 +15,14 @@ metadata:
 
 # Release PR
 
-One run = one package, one version. The default mode makes the current branch's
-pull request *the* release of that version: version set, changelog finalized,
-checks run, PR body written. The `tag` mode runs on the default branch after that PR merged
-and turns the merge commit into a tag and a release — a GitHub or GitLab
-release, or on Azure Repos an annotated tag carrying the notes. Publishing to CRAN
-or PyPI is never this skill's job; the reference pages say where it belongs.
+One run covers one package and one version. In the default prepare mode, turn
+the current branch into its release PR when it is ready to ship. After merge,
+use `tag` on the default branch to tag the merge commit and create the GitHub or GitLab release.
+Azure Repos and unknown hosts use an annotated tag with the release notes.
 
-## When to use
-
-Use this when a branch is ready to become a release ("make this the 0.4.0
-release", "cut a release from this branch", "release-pr minor") or right after
-such a PR merged ("tag the release", "release-pr tag").
-
-Not for writing the feature itself, not for hotfixing CI, and not for
-submitting to CRAN or uploading to PyPI.
+Feature implementation and standalone CI fixes are outside this workflow.
+Package registry uploads belong to CI with trusted publishing or to the
+user. Leave `devtools::submit_cran()`, `uv publish`, and `twine upload` to them.
 
 ## The version model
 
@@ -43,44 +36,11 @@ PR". So on the default branch:
 - A tag `<tag_prefix>X.Y.Z` points at a commit whose declared version is `X.Y.Z`.
 - Every merge of a release PR is followed by exactly one `tag` run.
 
-A repository still on the development-suffix model (`0.3.1.9000`, a
-`(development version)` or `[Unreleased]` heading) is handled by the same
-steps: the release step replaces the development heading with the concrete
-version. A repository whose last PR opened an empty heading ahead of its
-entries is in state `open-heading` (see below): adopt that heading instead of
-bumping again, and re-set the version if the evidence calls for a larger bump.
-
-## Non-negotiable rules
-
-1. **Confirm the version before writing it.** Show the evidence (commits,
-   changelog sections, removed exports) and the proposed number; wait for a yes.
-   If the argument asks for a smaller bump than the evidence supports, stop and
-   say why before proceeding.
-2. **Never edit a version by hand when a tool exists.** R: `usethis::use_version()`.
-   Python: `uv version`. They keep `DESCRIPTION` / `pyproject.toml` and the
-   lockfile in step; the changelog section is still written by hand (step 3).
-3. **Checks run before the push, and their results go into the PR body
-   verbatim.** A failing check is fixed if it is in the PR's own scope,
-   otherwise the run stops and reports. Never skip, disable, or loosen a test
-   or a lint threshold to get a release green.
-4. **Outward actions get an explicit confirmation each**: pushing the branch,
-   opening or editing the PR, pushing the tag, publishing the release.
-5. **No publish.** No `devtools::submit_cran()`, no `uv publish`, no
-   `twine upload`. Those belong to CI with trusted publishing or to the user.
-6. **Never move or delete a tag, never force-push**, never re-run a
-   release on a version that already has a tag.
+Never move or delete a tag, force-push, or release a tagged version again.
 
 ## Procedure: prepare (default)
 
-Copy the checklist and work through it:
-
-- [ ] 0 State: run `scripts/release_state.py`, read the JSON
-- [ ] 1 Derive the bump, confirm the version
-- [ ] 2 Set the version with the language's tool
-- [ ] 3 Write or finalize the changelog section
-- [ ] 4 Update other version-bearing files
-- [ ] 5 Run the checks, record results
-- [ ] 6 Commit, push, write the PR body
+Use the numbered steps below as your working checklist.
 
 ### 0 State
 
@@ -95,6 +55,8 @@ git fetch origin
 python3 scripts/release_state.py --repo <package-root>  # from the skill directory
 ```
 
+Run `scripts/release_state.py --help` for the script's options.
+
 The script prints JSON to stdout. It detects the language (`DESCRIPTION` → R, `pyproject.toml` →
 Python), reports the declared version, the top changelog heading and whether it
 has entries, the last version tag, a bump suggestion from the commits since
@@ -105,17 +67,16 @@ changelog that mention the current version, the `forge` hosting the remote
 | State | Meaning in this mode |
 |---|---|
 | `released` | current version already tagged: bump (the normal case) |
-| `development` | dev suffix or Unreleased heading: bump replaces it |
-| `open-heading` | empty heading from a bump that ran ahead: adopt it |
+| `development` | bump the version and replace any development heading (`(development version)` or `[Unreleased]`) with the concrete version |
+| `open-heading` | adopt the empty heading and reset the version only if the evidence calls for a larger bump |
 | `consistent` | this branch already bumped and wrote entries: verify only |
 | `mismatch` | version and heading disagree, or no changelog: fix first |
 
 Only `mismatch` exits non-zero (3), with the reason in `problems`: it stops the
 run. `open-heading` exits 0 and lists the empty heading in `problems`.
-Read the language page now: `references/r.md` or `references/python.md`.
-Unless `forge` is `github`, also read `references/forges.md`: the PR,
-CI, and release commands below are GitHub's, and that page has the
-equivalents.
+Read `references/r.md` for R versioning, NEWS and checks, or
+`references/python.md` for uv, CHANGELOG and checks. For a forge other than
+`github`, read `references/forges.md` for PR, CI and release commands.
 
 ### 1 Derive the bump
 
@@ -130,21 +91,21 @@ Three sources, in this order of authority:
    nothing; if most are unconventional, the diff is the evidence, not the log.
 3. **Removed exports** (R, from `NAMESPACE`) → breaking.
 
-Below 1.0.0 a breaking change bumps minor, not major (the release-please and
-python-semantic-release convention; SemVer itself only says "anything may
-change"). An explicit `X.Y.Z` argument wins over all of this, but a number
-below what the evidence supports is queried, not silently accepted.
+Below 1.0.0 a breaking change bumps minor. An explicit `X.Y.Z` takes
+precedence. If the requested bump or version falls below what the evidence
+supports, stop, explain why, and ask which version to use.
 
-Show the user: the evidence in three lines, the proposed version, the last
-tag. Wait for confirmation.
+Show the evidence in three lines, the proposed version, and the last tag.
+Wait for an explicit yes before writing the version.
 
 ### 2 Set the version
 
-Run the language's tool, never a text edit — the exact commands are on the
-language page. Order matters: **bump first, then write the entries** under
-the heading the bump created. That is the correction to a bump-last habit,
-which leaves an empty heading on the default branch and a tag that disagrees with the
-declared version.
+Use the version tool from the language reference. For R, use
+`usethis::use_version()` for a bump. For Python, use `uv version`. Follow
+the language reference for an explicit R version or a dynamic Python version.
+The tools keep package metadata and the lockfile in step where applicable.
+Set the version before writing the changelog entries so the default branch
+lands with a populated release heading matching the declared version.
 
 ### 3 Write or finalize the changelog section
 
@@ -171,12 +132,13 @@ be `consistent`.
 
 ### 5 Run the checks
 
-The repository's own gate first (a `Makefile` target, `pre-commit`, a
-`justfile`), then the language's standard set from the language page. Run
-what CI runs, locally, so the PR does not turn red on push. Keep every
-command and its one-line outcome for the PR body. What was *not* run (the
-CI-only OS matrix, CRAN incoming checks) is listed too — reviewers need the
-gap named, not implied.
+Run the repository's own gate first (e.g. `make check`, `pre-commit run -a`,
+or a justfile target), then the language checks. Run CI checks locally
+before pushing. Fix failures in the PR's scope and stop and report others.
+Keep tests and lint thresholds in force throughout the checks.
+
+Record every command and its one-line outcome verbatim for the PR body.
+List the checks you could not run, such as the CI-only OS matrix.
 
 ### 6 Commit, push, PR body
 
@@ -184,11 +146,12 @@ Commit the version bump and the changelog together, separate from the
 feature commits, as `Increment version number to X.Y.Z` (usethis's own
 message; used for Python too so both languages read the same in `git log`).
 
-Push after confirmation. Find the branch's open PR. If it has one, update
-its body; otherwise open one, titled `<package> X.Y.Z`. On GitHub, use the
-GitHub MCP tools if the session has them; otherwise `gh` (`gh pr view`,
-`gh pr edit`, `gh pr create`). Other forges use their CLI; the commands per
-forge are in `references/forges.md`. Write the body to `<run>/pr-body.md` first, where
+Get explicit confirmation, push the branch, and find its open PR. Prepare
+the body to update it or open a new PR titled `<package> X.Y.Z`. Get separate
+explicit confirmation before opening or editing the PR.
+For the GitHub PR, use the GitHub MCP tools if the session has them; otherwise
+`gh` (`gh pr view`, `gh pr edit`, `gh pr create`). For other forges, use
+`references/forges.md`. Write the body to `<run>/pr-body.md` first, where
 `<run>` is the directory a fresh `mktemp -d /tmp/release-pr-XXXXXX` printed,
 and pass that path to the CLI. The body, in this order:
 
@@ -220,7 +183,12 @@ Then stop. Merging is the user's decision.
 
 ## Procedure: tag
 
-Runs on the default branch after the release PR merged.
+Run on the default branch after the release PR merges. Read
+`references/r.md` for the CRAN and r-universe cases, or
+`references/python.md` for Python prereleases and PyPI. For a forge other
+than GitHub, read `references/forges.md` for CI and release commands.
+If tag steps 5–6 use a single annotated tag with notes, confirm its push
+before running the forge command.
 
 The commands use placeholders: `<default-branch>` from step 0, `<tag>` for
 `<tag_prefix>X.Y.Z`, and `<run>` for the directory a fresh
@@ -235,20 +203,21 @@ Each step may run in a new shell, so shell variables do not carry over.
       other forges in `references/forges.md`); a red, pending, or missing
       run is not tagged without the user's say-so
 - [ ] 3 `release_state.py --section X.Y.Z > <run>/notes.md`; the file is not empty
-- [ ] 4 Show tag name (`<tag>`), commit, and the notes; confirm
+- [ ] 4 Show the tag name (`<tag>`), commit, and notes. Get explicit
+      confirmation before creating and pushing the tag.
 - [ ] 5 `git tag -a <tag> -m "<package> X.Y.Z" && git push origin <tag>`
-- [ ] 6 Create the GitHub release from the pushed tag, title `<package> X.Y.Z`,
-      notes from `<run>/notes.md`. The GitHub MCP tools read releases but cannot
-      create one, so use `gh`:
-      `gh release create <tag> --verify-tag --title "<package> X.Y.Z" --notes-file <run>/notes.md`
-      (`--prerelease` for a Python `a`/`b`/`rc` version), or its REST form
+- [ ] 6 Get separate explicit confirmation before publishing the release. On GitHub,
+      create it from the pushed tag with
+      `gh release create <tag> --verify-tag --title "<package> X.Y.Z" --notes-file <run>/notes.md`.
+      Use `--prerelease` for a Python `a`/`b`/`rc` version. The GitHub MCP
+      tools only read releases. Use `gh` to create one. If you need REST, run
       `gh api -X POST 'repos/{owner}/{repo}/releases' -f tag_name=<tag> -f name="<package> X.Y.Z" -F body=@<run>/notes.md`
-      (`-F prerelease=true` likewise). The REST call has no `--verify-tag`: it
-      creates a missing tag from the default branch, so run it only after step 5
-      pushed the tag. When the release attaches binary assets, create it as a draft first and publish only after the assets are up, so no partial release is ever public. GitLab:
-      `glab release create`. Azure Repos and unknown hosts have no release
-      object, so steps 5–6 become one annotated tag carrying the notes
-      (`references/forges.md`)
+      with `-F prerelease=true` for those prereleases. REST creates a missing
+      tag from the default branch, so run it only after step 5 pushed the tag.
+      If the release has binary assets, create a draft first and publish
+      after all assets are uploaded. For GitLab use `glab release create`.
+      Azure Repos and unknown hosts use the single annotated tag with notes
+      described in `references/forges.md` in place of steps 5–6.
 - [ ] 7 Report the release URL and what happens next per the language page
       (r-universe rebuild, a tag-triggered PyPI workflow, or nothing)
 
@@ -256,17 +225,3 @@ If `release_state.py` says `released`, the version is already tagged: stop,
 nothing to do. If it says anything else, the merge did not leave the default branch
 consistent; report the `problems` line and stop — fixing the default branch is a new PR,
 not a tag.
-
-## References
-
-- `references/r.md` — `usethis::use_version()` under Rscript, tidyverse
-  NEWS.md style, the check set, `use_github_release()`, r-universe, and the
-  CRAN-only material (`use_release_issue()`, `cran-comments.md`,
-  `check_win_devel()`, rhub v2, revdepcheck).
-- `references/python.md` — `uv version` semantics, Keep a Changelog, towncrier
-  and git-cliff when the repo uses them, the check set, tag conventions and
-  PEP 440, and the PyPI-only material (trusted publishing, attestations).
-- `references/forges.md` — PR, CI-status, and release commands for Azure
-  Repos (`az repos`, `az pipelines`, the 4,000-character description cap,
-  work-item links), GitLab (`glab`), and the git-only fallback.
-- `scripts/release_state.py --help` — the state report used above.

@@ -43,8 +43,6 @@ X.Y.postN`. Tags may carry a leading `v`; PEP 440 normalizes it away.
 
 ## CHANGELOG.md house style (Keep a Changelog)
 
-Keep a Changelog 2.0.0 (June 2026) changed guidance, not format. Shape:
-
 ```markdown
 # Changelog
 
@@ -88,15 +86,12 @@ editing by hand, then proofread the result:
 
 ## Checks
 
-The repository's own gate first (`pre-commit run -a`, a `Makefile` or
-`justfile` target). Then:
-
 | Check | Command |
 |---|---|
 | Lockfile current | `uv lock --check` |
 | Lint | `uv run ruff check .` |
 | Format | `uv run ruff format --check .` |
-| Types (only if the repo already runs one) | `uv run mypy .` / `uv run pyright` — `ty` is still 0.0.x beta, run it only where the repo does |
+| Types (only if the repo already runs a checker) | Run the configured checker, for example `uv run mypy .` or `uv run pyright`. Run `ty` only where the repo already does. |
 | Tests | `uv run pytest` |
 | Build | `uv build --no-sources` |
 | Metadata | `uvx --from twine==7.0.0 twine check --strict dist/*` |
@@ -120,8 +115,7 @@ Tag `vX.Y.Z` — the default of release-please (`include-v-in-tag`),
 python-semantic-release, and uv's reference workflow (glob
 `v[0-9]+.[0-9]+.[0-9]+`); match the repo's existing prefix, which
 `release_state.py` reports as `tag_prefix`. A pre-release version (`a`,
-`b`, `rc`) gets `gh release create --prerelease`. On another forge, see
-`forges.md`.
+`b`, `rc`) gets `gh release create --prerelease`.
 
 ## PyPI (only when the project publishes, or the user says PyPI)
 
