@@ -64,7 +64,7 @@ A serious technical plan, not marketing: no hero, no value props, no giant headi
 
 Copy the scaffold `assets/scaffold.html` verbatim; change only `<title>` and the `<!-- CONTENT HERE -->` spot.
 
-Everything static is plain HTML with these classes; code blocks are JSON in `<script type="application/json" data-block="…">` and the scaffold renders them (no HTML escaping needed, only valid JSON with `\n` for line breaks).
+Everything static is plain HTML with these classes; code blocks are JSON in `<script type="application/json" data-block="…">` and the scaffold renders them (no HTML escaping needed, only valid JSON with `\n` for line breaks). One exception: inside the JSON, write `</script` as `<\/script` and `<!--` as `\u003c!--`, because the browser would otherwise end or garble the script block early.
 
 | Block | Markup |
 |---|---|
