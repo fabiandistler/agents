@@ -74,6 +74,10 @@ assumption that naming paths explicitly is the stronger signal:
     */node_modules/*  */vendor/*  */dist/*  */build/*  */.venv/*  */venv/*
     *.min.js  *.min.css  *.lock  *-lock.json  *.sum  *.map  *.snap
 
+PATH may also be a single file: the report then holds that file's row and its
+co-changers only, which is what a user who already named the target needs.
+History under the file's earlier names is not followed in this mode.
+
 Usage:
     python churn.py [PATH] [--since '12 months ago'] [--top N] [--min-commits N]
                     [--include GLOB]... [--exclude GLOB]... [--json] [--output FILE]
@@ -295,7 +299,11 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "path", nargs="?", default=".", type=Path, help="repo or subdir to rank (default: .)"
+        "path",
+        nargs="?",
+        default=".",
+        type=Path,
+        help="repo or subdir to rank, or one file to report with its co-changers (default: .)",
     )
     parser.add_argument(
         "--since",
@@ -348,7 +356,8 @@ def main(argv: list[str] | None = None) -> int:
         pathspec = None
         if target != root:
             pathspec = target.relative_to(root).as_posix()
-        files, change_sets = collect(root, args.since, pathspec)
+        focus = pathspec if target.is_file() else None
+        files, change_sets = collect(root, args.since, pathspec, full_diff=focus is not None)
     except GitError as exc:
         sys.stderr.write(f"error: {exc}\n")
         return 1
@@ -379,6 +388,12 @@ def main(argv: list[str] | None = None) -> int:
     ranked_input = [e for e in alive if e.commits >= args.min_commits]
     dropped_min = len(alive) - len(ranked_input)
     entries = rank(ranked_input)
+    if focus is not None:
+        # A named file is reported whatever its commit count. Its co-changers stay
+        # in `alive` as candidates but are not rows, so the drop counts would only
+        # describe them.
+        entries = [e for e in alive if e.path == focus]
+        dropped_missing = dropped_unreadable = dropped_min = 0
     shown = entries if args.top <= 0 else entries[: args.top]
     # Lock files and deleted paths stay out: they co-change with everything.
     candidates = {e.path for e in alive}

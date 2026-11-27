@@ -274,6 +274,16 @@ class TestCoChanges(unittest.TestCase):
             by_path["pair_a.py"]["co_changes"], [{"path": "renamed_b.py", "commits": 3}]
         )
 
+    def test_file_target_reports_that_file_and_its_co_changers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_coupled_repo(tmp)
+            report = json.loads(
+                run("--since", "2020-01-01", "--json", str(repo / "pair_a.py")).stdout
+            )
+        self.assertEqual([f["path"] for f in report["files"]], ["pair_a.py"])
+        self.assertEqual(report["files"][0]["commits"], 4)
+        self.assertEqual(report["files"][0]["co_changes"], [{"path": "pair_b.py", "commits": 3}])
+
     def test_text_output_has_a_co_change_section(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = make_coupled_repo(tmp)

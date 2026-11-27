@@ -129,12 +129,13 @@ def valid_since(value: str) -> bool:
 
 
 def collect(
-    root: Path, since: str, pathspec: str | None
+    root: Path, since: str, pathspec: str | None, *, full_diff: bool = False
 ) -> tuple[dict[str, FileChurn], list[set[str]]]:
     """One `git log` pass over the window.
 
     Returns churn by path and, per commit, the set of paths it touched; both use
-    current paths, with rename chains resolved.
+    current paths, with rename chains resolved. `full_diff` keeps every path of
+    a commit that touched `pathspec`, not only the matching ones.
     """
     args = [
         "log",
@@ -145,6 +146,8 @@ def collect(
         "--name-status",
         f"--pretty=format:{COMMIT_SEP}%H{FIELD_SEP}%an{FIELD_SEP}%aI",
     ]
+    if full_diff:
+        args.append("--full-diff")
     if pathspec:
         args += ["--", pathspec]
 
