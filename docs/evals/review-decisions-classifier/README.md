@@ -119,7 +119,26 @@ Add a dated section below, newest first, with the commit of the classifier
 prompt, the model and runtime, and per case the matched runs (`2/3`) and any
 extra cards. Keep the answer files of a failed run until the prompt is fixed.
 
-No run is recorded yet.
+### 2026-11-27: baseline
+
+- Classifier prompt: `plugins/workflow/agents/review-decisions-classifier.md`
+  at `29c0d07`.
+- Runtime: Claude Code 2.1.331, `review-decisions-classifier` subagent with
+  no model override, so it ran on the session model, Claude Opus 5.5
+  (`claude-opus-5-5`).
+- Result: the eval passes. All 12 runs replied `Wrote <answer-file>.`, and
+  every answer parsed (`unclassified` 0, `deviation` checked).
+
+| Case | Matched | Extra cards |
+| --- | --- | --- |
+| `precedent` | 3/3 | every run: a Deviation card (only `OSError` failures are logged), a second Public surface card (event names), a Behaviour card (log and re-raise), a Tests card |
+| `rule-twice` | 2/3 | run 2 filed the 30-vs-32 card as Deviation, not Behaviour, so it missed; every run: a Behaviour card on the copied rule and a Tests card |
+| `deviation` | 3/3 | run 1: a Public surface card on the dry-run output; runs 2 and 3: a Tests card |
+| `no-decision` | 3/3 | none |
+
+Every `precedent` run named `log.py` and called the PR's "no log format"
+claim false. A Tests card showed up in 8 of the 9 runs that returned cards,
+though no fixture has tests; that is the noise most worth trimming.
 
 ## Limits
 
