@@ -173,7 +173,7 @@ still listed here.
 | `skills/red-team/` | Attacking a finished or near-finished artefact or decision — ADR, proposal, LinkedIn post, application, career move — through a fresh-context critic, a materiality gate, stakeholder lenses, and a categorical verdict. |
 | `skills/stakeholder-update/` | Writing a status update for readers outside the immediate working group — weekly/monthly leadership status, launch announcement, risk escalation, or the same progress retold for partners and customers. |
 | `skills/tldr/` | Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread. |
-| `skills/was/` | Re-pitching a short message that was read but not understood, in plain German — the missing context added first instead of shortening, short active sentences, the repo's glossary terms kept verbatim. |
+| `skills/was/` | Re-pitching a short message that was read but not understood, in plain German — only the context the point needs, in a fixed three-part shape, glossary terms kept verbatim. |
 
 ### Personal & knowledge (`personal`)
 
