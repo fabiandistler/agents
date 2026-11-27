@@ -25,6 +25,10 @@ from pr_github import comment_entry
 from pr_github_client import FetchError, GitHubClient, ReadClient, Response, paginate
 from rework_policy import HEAD_SHA, linked_issue
 
+EXIT_OK = 0
+EXIT_FAILED = 1
+EXIT_USAGE = 2  # argparse's own exit code
+
 _HEADING = re.compile(r"^#{1,2}(?:[ \t]+|$)")
 _FENCE = re.compile(r"^ {0,3}((?:[-+*]|[0-9]{1,9}[.)])[ \t]+)?(`{3,}|~{3,})(.*)$")
 _HTML_COMMENT = re.compile(r"<!--.*?(?:-->|$)")
@@ -115,7 +119,8 @@ def main(argv: list[str] | None = None, client: FollowUpClient | None = None) ->
             "Examples:\n"
             "  hand_part_follow_up.py --repo owner/repo --event merge.json --dry-run\n"
             "  hand_part_follow_up.py --repo owner/repo --event merge.json --write\n"
-            "Exit: 0 success | 1 invalid event or failed GitHub request | 2 usage error"
+            f"Exit: {EXIT_OK} success | {EXIT_FAILED} invalid event or failed GitHub request"
+            f" | {EXIT_USAGE} usage error"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -140,8 +145,8 @@ def main(argv: list[str] | None = None, client: FollowUpClient | None = None) ->
             print(json.dumps({"titles": [follow_up.title for follow_up in plan.follow_ups]}))
     except (FetchError, ValueError) as error:
         print(str(error), file=sys.stderr)
-        return 1
-    return 0
+        return EXIT_FAILED
+    return EXIT_OK
 
 
 def _follow_up(pr: int, source: int, sha: str, index: int, title: str, text: str) -> FollowUp:

@@ -40,6 +40,7 @@ FAILED = "failed"
 
 EXIT_OK = 0
 EXIT_FAILED = 1
+EXIT_USAGE = 2  # argparse's own exit code
 
 PIN_COMMENT = """\
 {marker}
@@ -61,6 +62,7 @@ outcomes:
 exit codes:
   {EXIT_OK}  one of the outcomes above
   {EXIT_FAILED}  a GitHub API call failed or GITHUB_TOKEN is unset ("outcome": "{FAILED}")
+  {EXIT_USAGE}  usage error, such as an --issue below 1
 environment:
   GITHUB_TOKEN  the workflow bot's token, with issues: write
 """
