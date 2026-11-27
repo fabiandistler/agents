@@ -1,1 +1,17 @@
-{"expected_behavior": "Rank files by git churn with the bundled script, read the top hits before proposing any work, and keep restructuring separate from behavior change.", "should_not_trigger": ["How do I extract this method?", "Is this dependency healthy?"], "should_trigger": ["Which files should we refactor first in this legacy repo?", "Where are the hotspots in this codebase?", "Where do we start cleaning up a repo nobody knows?"]}
+{
+  "expected_behavior": "Rank files by git churn with the bundled script (or pass a named file to get its co-changers), read the top hits before proposing any work, report a short ranked list that names dismissed hits, and keep restructuring separate from behavior change.",
+  "should_not_trigger": [
+    "How do I extract this method?",
+    "Is this dependency healthy?",
+    "write characterization tests for parse_job_titles() before I change its regex",
+    "this function is 400 lines long and does five things. how should I split it?"
+  ],
+  "should_trigger": [
+    "Which files should we refactor first in this legacy repo?",
+    "Where are the hotspots in this codebase?",
+    "Where do we start cleaning up a repo nobody knows?",
+    "Ich übernehme ab Montag ein sechs Jahre altes R-Paket vom Pricing-Team. Wo sollte ich mit dem Aufräumen anfangen?",
+    "where's the technical debt concentrated in this repo? need it for the quarterly planning doc",
+    "Gib mir eine priorisierte Liste der Dateien, wo sich Refactoring am meisten lohnt, basierend auf der Git-Historie."
+  ]
+}

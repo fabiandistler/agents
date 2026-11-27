@@ -265,7 +265,7 @@
     },
     {
       "name": "refactoring",
-      "summary": "Finds where refactoring is worth starting in an unfamiliar codebase by ranking files by git churn (hotspots) and explaining the ranking.",
+      "summary": "Finds where refactoring or cleanup pays off first in an unfamiliar or inherited codebase — ranks files by git churn (hotspots), reads the top ones and shows where technical debt concentrates.",
       "category": "refactoring",
       "path": "skills/refactoring/SKILL.md",
       "environments": [

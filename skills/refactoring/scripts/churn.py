@@ -34,6 +34,13 @@ Each surviving file gets five numbers and one derived score:
     ranking, never as a percentage of some ideal. The raw columns are what you
     actually reason about -- a 0.31 and a 0.29 are the same answer.
 
+Below the table, CO-CHANGES lists for the top hits the files most often
+committed together with them, as "path shared/commits": how many of the hit's
+commits in the window also touched that path. Only files still in the tree and
+not excluded count, and a pair needs at least two shared commits -- one is
+coincidence. Files that keep changing together are one change spread over
+several files; JSON carries the same list per file as `co_changes`.
+
 This script is a reducer, not a judge. It sorts what git already recorded; it
 has no idea whether any of it should change. High churn is often perfectly
 healthy -- a config file, a route table, a well-tested integration point that
@@ -67,6 +74,10 @@ assumption that naming paths explicitly is the stronger signal:
     */node_modules/*  */vendor/*  */dist/*  */build/*  */.venv/*  */venv/*
     *.min.js  *.min.css  *.lock  *-lock.json  *.sum  *.map  *.snap
 
+PATH may also be a single file: the report then holds that file's row and its
+co-changers only, which is what a user who already named the target needs.
+History under the file's earlier names is not followed in this mode.
+
 Usage:
     python churn.py [PATH] [--since '12 months ago'] [--top N] [--min-commits N]
                     [--include GLOB]... [--exclude GLOB]... [--json] [--output FILE]
@@ -83,6 +94,7 @@ import argparse
 import fnmatch
 import json
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -113,6 +125,11 @@ DEFAULT_EXCLUDES = (
 )
 
 BINARY_SNIFF_BYTES = 8192
+
+# One shared commit is coincidence (a sweep, a drive-by fix); two is a pattern.
+MIN_SHARED_COMMITS = 2
+CO_CHANGERS_PER_FILE = 3
+CO_CHANGE_ROWS_IN_TABLE = 5
 
 
 def matches(path: str, globs: list[str]) -> bool:
@@ -160,6 +177,18 @@ def rank(entries: list[FileChurn]) -> list[FileChurn]:
     return sorted(entries, key=lambda e: (-e.score, -e.commits, e.path))
 
 
+def co_changers(
+    path: str, change_sets: list[set[str]], candidates: set[str]
+) -> list[tuple[str, int]]:
+    """Candidates committed together with `path` at least MIN_SHARED_COMMITS times."""
+    shared: Counter[str] = Counter()
+    for touched in change_sets:
+        if path in touched:
+            shared.update(touched & candidates - {path})
+    ranked = sorted(shared.items(), key=lambda item: (-item[1], item[0]))
+    return [(other, n) for other, n in ranked if n >= MIN_SHARED_COMMITS][:CO_CHANGERS_PER_FILE]
+
+
 def ago(when: datetime | None, now: datetime) -> str:
     if when is None:
         return "-"
@@ -188,6 +217,7 @@ def render(
     dropped_missing: int,
     dropped_unreadable: int,
     dropped_min: int,
+    co_changes: dict[str, list[tuple[str, int]]],
     now: datetime,
 ) -> str:
     shown = entries[:top] if top > 0 else entries
@@ -219,11 +249,19 @@ def render(
     if top > 0 and len(entries) > top:
         lines.append(f"... {len(entries) - top} more (raise --top or use --json)")
     lines.append("")
+    lines.append(
+        f"CO-CHANGES (top {CO_CHANGE_ROWS_IN_TABLE}; shared commits / commits of the hit, "
+        f"at least {MIN_SHARED_COMMITS} shared)"
+    )
+    for e in shown[:CO_CHANGE_ROWS_IN_TABLE]:
+        partners = ", ".join(f"{p} {n}/{e.commits}" for p, n in co_changes[e.path]) or "-"
+        lines.append(f"  {e.path}: {partners}")
+    lines.append("")
     lines.append("Hotspots are places to read, not verdicts. See the skill body.")
     return "\n".join(lines)
 
 
-def to_dict(entry: FileChurn) -> dict:
+def to_dict(entry: FileChurn, co_changes: list[tuple[str, int]]) -> dict:
     return {
         "path": entry.path,
         "commits": entry.commits,
@@ -233,6 +271,7 @@ def to_dict(entry: FileChurn) -> dict:
         "binary": entry.binary,
         "last_commit": entry.last_commit.isoformat() if entry.last_commit else None,
         "score": round(entry.score, 4),
+        "co_changes": [{"path": p, "commits": n} for p, n in co_changes],
     }
 
 
@@ -260,7 +299,11 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "path", nargs="?", default=".", type=Path, help="repo or subdir to rank (default: .)"
+        "path",
+        nargs="?",
+        default=".",
+        type=Path,
+        help="repo or subdir to rank, or one file to report with its co-changers (default: .)",
     )
     parser.add_argument(
         "--since",
@@ -313,7 +356,8 @@ def main(argv: list[str] | None = None) -> int:
         pathspec = None
         if target != root:
             pathspec = target.relative_to(root).as_posix()
-        files, commit_count = collect(root, args.since, pathspec)
+        focus = pathspec if target.is_file() else None
+        files, change_sets = collect(root, args.since, pathspec, full_diff=focus is not None)
     except GitError as exc:
         sys.stderr.write(f"error: {exc}\n")
         return 1
@@ -344,22 +388,31 @@ def main(argv: list[str] | None = None) -> int:
     ranked_input = [e for e in alive if e.commits >= args.min_commits]
     dropped_min = len(alive) - len(ranked_input)
     entries = rank(ranked_input)
+    if focus is not None:
+        # A named file is reported whatever its commit count. Its co-changers stay
+        # in `alive` as candidates but are not rows, so the drop counts would only
+        # describe them.
+        entries = [e for e in alive if e.path == focus]
+        dropped_missing = dropped_unreadable = dropped_min = 0
+    shown = entries if args.top <= 0 else entries[: args.top]
+    # Lock files and deleted paths stay out: they co-change with everything.
+    candidates = {e.path for e in alive}
+    co_changes = {e.path: co_changers(e.path, change_sets, candidates) for e in shown}
 
     if args.json:
-        page = entries if args.top <= 0 else entries[: args.top]
         return emit(
             json.dumps(
                 {
                     "root": str(root),
                     "since": args.since,
                     "shallow": shallow,
-                    "commits_scanned": commit_count,
+                    "commits_scanned": len(change_sets),
                     "files_seen": len(files),
                     "files_ranked": len(entries),
                     "dropped_missing": dropped_missing,
                     "dropped_unreadable": dropped_unreadable,
                     "dropped_below_min_commits": dropped_min,
-                    "files": [to_dict(e) for e in page],
+                    "files": [to_dict(e, co_changes[e.path]) for e in shown],
                 },
                 indent=2,
             ),
@@ -383,6 +436,7 @@ def main(argv: list[str] | None = None) -> int:
             dropped_missing=dropped_missing,
             dropped_unreadable=dropped_unreadable,
             dropped_min=dropped_min,
+            co_changes=co_changes,
             now=datetime.now(timezone.utc),
         ),
         args.output,

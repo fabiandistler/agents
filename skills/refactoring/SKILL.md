@@ -2,7 +2,7 @@
 name: refactoring
 category: refactoring
 environments: coding
-description: Finds where refactoring is worth starting in an unfamiliar codebase by ranking files by git churn (hotspots) and explaining the ranking. Use when deciding which code to refactor first or where to start cleaning up a legacy repository.
+description: Finds where refactoring or cleanup pays off first in an unfamiliar or inherited codebase — ranks files by git churn (hotspots), reads the top ones and shows where technical debt concentrates. Use when deciding what to refactor or clean up first.
 metadata:
   version: "4.1"
 ---
@@ -12,58 +12,75 @@ metadata:
 ## When to use
 
 - The user asks which files or modules are worth refactoring first, where the
-  hotspots are, or where to begin cleaning up a repo nobody in the conversation
-  knows well.
+  hotspots or the technical debt are, or where to begin cleaning up a repo
+  nobody in the conversation knows well.
 - Not for: how to perform a particular refactoring (technique names and
   mechanics need no help), whether one module or dependency is healthy (that is
   `members/coupling-cohesion/SKILL.md`, read via the `architecture` router),
   staging a risky migration, or test-first development.
 
-## Rank by churn, then read
+## 1. Check that history can answer
 
-The bundled script ranks files by their git history, the one source of
-evidence every repo already has:
+The ranking comes from git history, and it lies in four cases. Check them
+before running anything:
+
+- **The user already named the target.** Ranking is noise. Pass the file
+  itself as `<repo-path>` in step 2 to get only its row and co-changers, then
+  read it.
+- **Repo younger than the window.** Everything looks hot because everything is
+  new; shorten `--since` or rank by size alone.
+- **Bulk reformat or license sweep inside the window.** One commit touching
+  every file flattens the ranking; narrow `--since` to exclude it.
+- **Shallow clone.** History is cut at the clone depth; the script warns when
+  it detects one.
+
+## 2. Rank by churn
 
 ```
 python3 scripts/churn.py <repo-path> [--since '12 months ago'] [--json]
 ```
 
 Run it from this skill's directory; `<repo-path>` is the repository to rank.
-
 Per file it reports commits in the window, distinct authors, current size,
 recency, and one composite score (change frequency × size, Tornhill's hotspot
-heuristic). The docstring explains each column and its limits; read it before
-interpreting a number.
+heuristic). Below the table it lists, for the top hits, the files most often
+committed together with them. The docstring explains each column and its
+limits; read it before interpreting a number.
 
-Treat the output as a reading list, not a work queue. Churn on its own is not
-a defect: config files, route tables, and well-tested integration points churn
-because the system is alive. A candidate is a file that changes often *and* is
-hard to change safely, and only opening it shows which. For each top hit, open
-it and say concretely what makes it expensive to change, or that nothing does,
-before proposing any work. Pair the history signal with a structural one where
-it matters: `members/coupling-cohesion/SKILL.md`, read via the `architecture`
-router, measures how tangled a module is, and a file that scores high on both is the strongest candidate. For each top hit, list its co-changers with the same `--since` window (`--name-only` with a path shows only that path, so expand the commits first):
-`for c in $(git log --since '<window>' --pretty=%H -- <file>); do git show --name-only --pretty=format: $c; done | grep . | sort | uniq -c | sort -rn | head`
-Files that co-change are one change, not two: refactor them together, or say why not.
+## 3. Read the top hits
+
+Treat the output as a reading list, not a work queue. Churn alone is not a
+defect: config files, route tables, generated manifests and well-tested
+integration points churn because the system is alive. A candidate is a file
+that changes often *and* is hard to change safely, and only opening it shows
+which. For each top hit, answer two questions:
+
+- **What makes it expensive to change?** Name it concretely with `path:line`
+  evidence (a 300-line function, state shared across callers, no tests), or
+  say that nothing does.
+- **What does it co-change with?** The CO-CHANGES rows answer this. Files that
+  keep changing together are one change spread over several files: refactor
+  them together, or say why not.
+
+Where structure matters, pair the history signal with a structural one:
+`members/coupling-cohesion/SKILL.md`, read via the `architecture` router,
+measures how tangled a module is; a file that scores high on both is the
+strongest candidate.
 
 **If you can start subagents**, read the top hits in parallel: one subagent per
-hit, given the repo path, the file, the `--since` window, and the two questions
-above (what makes it expensive to change, which files co-change with it). Each
-returns a few lines — its verdict with `path:line` evidence and the top
-co-changers with counts — never the file body. Merge co-changer groups that
-overlap across hits, then rank the candidates yourself; the comparison needs
-all verdicts side by side. Without subagents, read the hits one by one.
+hit, given the repo path, the file, its co-changers, and the first question.
+Each returns a few lines (its verdict with `path:line` evidence), never the
+file body. Then rank the candidates yourself; the comparison needs all
+verdicts side by side. Without subagents, read the hits one by one.
 
-## When the ranking lies
+## 4. Report
 
-Skip the script, or discount its output, in these cases:
+Give a short ranked list of candidates, each with the verdict, the evidence,
+and the files that change with it. Name the hits you dismissed and why, so the
+user can see the ranking was read and not just copied. End with the first
+concrete step for the top candidate.
 
-- **Repo younger than the window.** Everything looks hot because everything is new.
-- **Bulk reformat or license sweep inside the window.** One commit touching every file flattens the ranking; narrow `--since` to exclude it.
-- **Shallow clone.** History is cut at the clone depth; the script warns when it detects one.
-- **The user already named the target.** Ranking is then noise; go read the target.
-
-## Two disciplines once a target is chosen
+## Once a target is chosen
 
 - **Refactor or change behavior, never in the same step.** A green suite is
   evidence only while external behavior is meant to stay identical. Mix a fix

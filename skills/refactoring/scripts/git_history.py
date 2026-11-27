@@ -1,7 +1,8 @@
 """Read a repository's git history into per-file churn records for churn.py.
 
 `collect` makes one `git log -M --name-status` pass over the window and folds
-rename chains onto the current path; the other helpers locate the work tree,
+rename chains onto the current path, also in the per-commit change sets that
+co-change counting reads; the other helpers locate the work tree,
 detect unborn or shallow history, and accept only the --since forms churn.py
 documents. Every git failure surfaces as `GitError`.
 """
@@ -127,8 +128,15 @@ def valid_since(value: str) -> bool:
     return len(words) == 3 and words[0].isdigit() and words[1] in units and words[2] == "ago"
 
 
-def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, FileChurn], int]:
-    """One `git log` pass over the window. Returns (churn by path, commit count)."""
+def collect(
+    root: Path, since: str, pathspec: str | None, *, full_diff: bool = False
+) -> tuple[dict[str, FileChurn], list[set[str]]]:
+    """One `git log` pass over the window.
+
+    Returns churn by path and, per commit, the set of paths it touched; both use
+    current paths, with rename chains resolved. `full_diff` keeps every path of
+    a commit that touched `pathspec`, not only the matching ones.
+    """
     args = [
         "log",
         f"--since={since}",
@@ -138,13 +146,15 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
         "--name-status",
         f"--pretty=format:{COMMIT_SEP}%H{FIELD_SEP}%an{FIELD_SEP}%aI",
     ]
+    if full_diff:
+        args.append("--full-diff")
     if pathspec:
         args += ["--", pathspec]
 
     out = run_git(root, args)
     files: dict[str, FileChurn] = {}
     renames: dict[str, str] = {}
-    commits = 0
+    touched_by_commit: list[list[str]] = []
 
     for chunk in out.split(COMMIT_SEP):
         if not chunk.strip("\0\n"):
@@ -153,7 +163,8 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
         parts = header.split(FIELD_SEP)
         if len(parts) < 3:
             continue
-        commits += 1
+        touched: list[str] = []
+        touched_by_commit.append(touched)
         author, when = parts[1], parse_iso(parts[2])
         tokens = body.replace("\n", "\0").split("\0")
         idx = 0
@@ -170,6 +181,7 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
                     if old and new:
                         renames[old] = new
                         files.setdefault(new, FileChurn(new)).record(author, when)
+                        touched.append(new)
                 continue
             if len(status_entry) > 1 and status_entry[0] == "C" and status_entry[1:].isdigit():
                 if idx + 1 < len(tokens):
@@ -177,6 +189,7 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
                     idx += 2
                     if new:
                         files.setdefault(new, FileChurn(new)).record(author, when)
+                        touched.append(new)
                 continue
             if len(status_entry) == 1 and status_entry in "ADMRTUXB":
                 if idx < len(tokens):
@@ -184,8 +197,10 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
                     idx += 1
                     if name:
                         files.setdefault(name, FileChurn(name)).record(author, when)
+                        touched.append(name)
                 continue
             files.setdefault(status_entry, FileChurn(status_entry)).record(author, when)
+            touched.append(status_entry)
 
     def resolve(path: str) -> str:
         seen: set[str] = set()
@@ -207,4 +222,5 @@ def collect(root: Path, since: str, pathspec: str | None) -> tuple[dict[str, Fil
         ):
             dest.last_commit = entry.last_commit
 
-    return merged, commits
+    change_sets = [{resolve(path) for path in touched} for touched in touched_by_commit]
+    return merged, change_sets
