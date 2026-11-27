@@ -7,7 +7,7 @@ environments: coding, chat
 argument-hint: "[file | PR | URL | topic — empty means the last message]"
 description: Compressing something too long to read into the few facts needed to decide or act, read instead of the source — the last message and the work behind it, or a named file, PR, document, or thread.
 metadata:
-  version: "1.3"
+  version: "1.4"
   opencode/slash: "true"
   opencode/autoinvoke: "false"
 ---
@@ -33,16 +33,28 @@ picked in one clause. Answer rather than ask.
 ## The shape
 
 ```markdown
-**Bottom line.** [One sentence. What survives if they read nothing else.]
+**Your move.** [The decision waiting on them, or the next step. Bold, first line.]
 
-**Your move.** [The decision waiting on them, the next step, or "nothing — FYI".]
+**Why.** [One sentence: where things stand, so the move makes sense.]
 
-- [Load-bearing fact]
-- [Load-bearing fact]
-- [3–5, ordered by what the decision turns on, not by source order]
+- [Only if the decision turns on it: the options, a deadline, two positions]
 ```
 
-Source:
+**Lead with the decision.** The user usually opens a TL;DR to learn what they
+have to decide or do; everything else is detail they can read in the source.
+Put the move on the first line so it is visible without reading further.
+When nothing waits on the user, lead with **Bottom line.** instead and write
+"FYI — nothing to decide" in the second line.
+
+**Budget: about 50 words.** The user asked for a TL;DR because the source was
+too long; when they want detail, they read the source. The budget scales with
+the number of open decisions, not with the length of the source: a 400-line
+runbook with one next step gets zero bullets, not one bullet per section.
+Default to zero bullets. Add one only when the user would decide wrongly
+without it — the options to choose between, a deadline, a cost, or two
+conflicting positions. Each bullet is one line.
+
+Source (a 40-message thread, excerpt):
 
 ```markdown
 Mara: gateway migration ships Friday, I own the rollout.
@@ -53,13 +65,10 @@ Mara: agreed, rate limiting waits; `GATEWAY_JWT_KEY` must exist first.
 Summary:
 
 ```markdown
-**Bottom line.** Mergeable once the secret exists; rate-limit timing is settled.
+**Your move.** Create `GATEWAY_JWT_KEY` in staging and prod before Friday.
 
-**Your move.** Create `GATEWAY_JWT_KEY`, then confirm Friday with Mara.
-
-- Auth checks move to the gateway; Mara owns the Friday rollout.
-- Deploy fails without `GATEWAY_JWT_KEY` in staging and prod.
-- Rate limiting ships next week (inferred — agreed as follow-up, no date given).
+**Why.** The gateway migration is mergeable once the secret exists; Mara ships
+it Friday, rate limiting follows later.
 ```
 
 ## Load-bearing
@@ -79,16 +88,16 @@ Three things stay load-bearing however long the source is:
   positions in the summary. Collapsing them into one confident answer is the most
   expensive error this skill can make.
 - **The gaps.** "I could not read section 4" and "section 4 does not matter" are
-  different sentences; write the true one. Mark inference as inference:
-  "(inferred — the doc never says)".
+  different sentences; write the true one, but only when the gap could change
+  the decision. Mark inference with "(inferred)".
 
 ## Plain on first read
 
 The user did not read the source. Make the summary understandable in one pass
 without relying on premises from it:
 
-- Context first: the bottom line says where things stand and why it matters
-  before it says what follows.
+- The "Why" line gives the one piece of context the move needs, in words a
+  reader who skipped the source understands.
 - Short sentences in the active voice, one thought each.
 - One word, one meaning: name the same thing the same way every time.
 
@@ -100,5 +109,15 @@ back.
 
 ## Before sending
 
-Point each bullet at its source line or passage. A bullet with no source
-goes out or goes marked "(inferred)".
+Run two passes over the draft:
+
+1. **Cut.** For each bullet ask: would the user decide differently without it?
+   If not, delete it. Delete bullets that restate the first two lines,
+   setup steps the source spells out, background the user already
+   knows from the session, and "also mentioned" items. Shorten what is left
+   to one line.
+2. **Source.** Point each remaining bullet at its source line or passage. A
+   bullet with no source goes out or goes marked "(inferred)".
+
+Send only the summary — no preamble ("Here is the TL;DR"), no closing offer
+to expand. The user can ask for more.
