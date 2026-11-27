@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import cli
 import pytest
 
 SCRIPTS = ["batches.py", "gather_inputs.py", "protocol.py", "skim_proof.py"]
@@ -32,9 +33,8 @@ def test_help_fits_in_25_lines_with_exit_codes_and_examples(script):
 
 
 @pytest.mark.parametrize("script", SCRIPTS)
-def test_a_usage_error_exits_1_and_names_the_script(script):
-    proc = run(script, "--no-such-flag")
+def test_a_usage_error_exits_1_and_names_the_script(script, assert_exit_cause):
+    _, stderr = assert_exit_cause(run(script, "--no-such-flag"), cli.EXIT_USAGE)
 
-    assert proc.returncode == 1
-    assert proc.stderr.startswith("usage:")
-    assert f"{script}:" in proc.stderr
+    assert stderr.startswith("usage:")
+    assert f"{script}:" in stderr

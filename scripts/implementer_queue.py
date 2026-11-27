@@ -78,6 +78,7 @@ FAILED = "failed"
 
 EXIT_OK = 0
 EXIT_FAILED = 1
+EXIT_USAGE = 2  # argparse's own exit code
 
 # The conclusions of a latest run after which an issue may be dispatched: the run
 # ended normally (a stop at capacity or a blocked ticket), or its job was skipped
@@ -100,6 +101,7 @@ outcomes (exit 0 unless failed):
   busy        an implementer run is working; nothing dispatched, nothing else read
   empty       no issue waits, or every waiting one was skipped
   failed      an API error (exit 1); nothing more dispatched
+usage error: exit 2, no JSON.
 skip reasons: run-active, run-failed, branch, pull-request, no-contract, blocked.
 order: lowest issue number first.
 env: GH_TOKEN (needs Actions write to dispatch; read access to issues, pulls, contents, Actions).

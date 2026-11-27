@@ -7,7 +7,13 @@ from pathlib import Path
 
 import pytest
 import yaml
-from hand_part_follow_up import main, plan_follow_ups, publish_follow_ups
+from hand_part_follow_up import (
+    EXIT_FAILED,
+    EXIT_USAGE,
+    main,
+    plan_follow_ups,
+    publish_follow_ups,
+)
 from pr_github_client import FetchError
 from pr_github_fake import json_response
 
@@ -210,3 +216,22 @@ def test_workflow_uses_only_closed_events_and_the_trusted_default_branch():
         "persist-credentials": False,
     }
     assert "${{ github.event.pull_request" not in job["steps"][-1]["run"]
+
+
+def test_an_event_that_is_no_json_object_names_the_flag(tmp_path, assert_exit_cause):
+    event_path = tmp_path / "merge.json"
+    event_path.write_text("[]", encoding="utf-8")
+
+    exit_code = main(["--repo", REPO, "--event", str(event_path)], GitHub())
+
+    stdout, stderr = assert_exit_cause(exit_code, EXIT_FAILED)
+    assert "--event must contain a JSON object" in stderr
+    assert stdout == ""
+
+
+def test_a_missing_flag_is_a_usage_error(assert_exit_cause):
+    with pytest.raises(SystemExit) as usage_exit:
+        main(["--event", "merge.json"])
+
+    _, stderr = assert_exit_cause(usage_exit.value.code, EXIT_USAGE)
+    assert "--repo" in stderr

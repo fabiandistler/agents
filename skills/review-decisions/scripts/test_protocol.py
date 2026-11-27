@@ -55,24 +55,26 @@ def test_path_lies_outside_the_repo_and_leaves_the_working_tree_clean(tmp_path):
     assert git("-C", str(repo), "status", "--porcelain", "--ignored") == ""
 
 
-def test_path_refuses_a_state_directory_inside_the_repo(tmp_path):
+def test_path_refuses_a_state_directory_inside_the_repo(tmp_path, assert_exit_cause):
     repo = git_repo(tmp_path / "demo")
     env = state_env(tmp_path)
     env["XDG_STATE_HOME"] = str(repo / ".state")
 
     proc = run("path", "--repo", str(repo), env=env)
 
-    assert proc.returncode == 4
+    _, stderr = assert_exit_cause(proc, 4)
+    assert "state directory lies inside the repository" in stderr
     assert not (repo / ".state").exists()
 
 
-def test_path_rejects_a_directory_that_is_not_a_repo(tmp_path):
+def test_path_rejects_a_directory_that_is_not_a_repo(tmp_path, assert_exit_cause):
     plain = tmp_path / "plain"
     plain.mkdir()
 
     proc = run("path", "--repo", str(plain), env=state_env(tmp_path))
 
-    assert proc.returncode == 2
+    _, stderr = assert_exit_cause(proc, 2)
+    assert "--repo is not inside a git repository" in stderr
 
 
 CARD = """\
@@ -129,13 +131,12 @@ def test_resume_never_picks_a_card_made_moot_by_an_early_stop(tmp_path):
     assert json.loads(proc.stdout)["next"] is None
 
 
-def test_resume_rejects_an_unknown_answer(tmp_path):
+def test_resume_rejects_an_unknown_answer(tmp_path, assert_exit_cause):
     path = protocol(tmp_path, ["- Answer: ok", "- Answer: maybe", "- Answer:"])
 
-    proc = run("resume", str(path))
+    _, stderr = assert_exit_cause(run("resume", str(path)), 3)
 
-    assert proc.returncode == 3
-    assert "card 2" in proc.stderr
+    assert "card 2" in stderr
 
 
 def test_resume_rejects_a_missing_protocol(tmp_path):
@@ -199,13 +200,13 @@ def test_comment_rejects_a_change_without_a_draft(tmp_path):
     assert proc.stdout == ""
 
 
-def test_comment_reports_when_no_card_asks_for_a_change(tmp_path):
+def test_comment_reports_when_no_card_asks_for_a_change(tmp_path, assert_exit_cause):
     path = protocol(tmp_path, ["- Answer: ok", "- Answer: later", "- Answer: ok"])
 
-    proc = run("comment", str(path))
+    stdout, stderr = assert_exit_cause(run("comment", str(path)), 5)
 
-    assert proc.returncode == 5
-    assert proc.stdout == ""
+    assert "no card is answered change" in stderr
+    assert stdout == ""
 
 
 def test_comment_leaves_out_a_draft_whose_answer_changed_to_ok(tmp_path):

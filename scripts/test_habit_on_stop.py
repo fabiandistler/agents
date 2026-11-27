@@ -141,16 +141,15 @@ def test_old_debt_stays_quiet_when_the_function_moves_down(repo, mapper):
     assert (completed.returncode, completed.stderr) == (0, "")
 
 
-def test_a_new_function_with_too_many_parameters_is_coached(repo, mapper):
+def test_a_new_function_with_too_many_parameters_is_coached(repo, mapper, assert_exit_cause):
     legacy = repo / "legacy.py"
     legacy.write_text(legacy.read_text(encoding="utf-8") + "\n\n" + MANY_PARAMETERS)
     commit_all(repo, "add bill")
 
-    completed = run_hook(repo)
+    _, stderr = assert_exit_cause(run_hook(repo), habit_on_stop.EXIT_COACH)
 
-    assert completed.returncode == 2
-    assert f"GUIDE for {repo}" in completed.stderr
-    assert "do not silence the rule with noqa" in completed.stderr
+    assert f"GUIDE for {repo}" in stderr
+    assert "do not silence the rule with noqa" in stderr
     (issue,) = mapper_smells(mapper)["too-many-parameters"]
     assert issue["details"]["file"] == "legacy.py"
     assert issue["details"]["source"] == "ruff:PLR0913"
@@ -340,7 +339,9 @@ def test_a_requirements_file_without_the_pin_is_reported(tmp_path, monkeypatch):
         habit_on_stop.install_hint(["ruff"])
 
 
-def test_a_checkout_without_a_default_branch_is_skipped_without_blocking(tmp_path, mapper):
+def test_a_checkout_without_a_default_branch_is_skipped_without_blocking(
+    tmp_path, mapper, assert_exit_cause
+):
     """Like the factory's depth-1 rework checkout of agent/issue-<n> alone."""
     lonely = tmp_path / "lonely"
     lonely.mkdir()
@@ -348,10 +349,9 @@ def test_a_checkout_without_a_default_branch_is_skipped_without_blocking(tmp_pat
     (lonely / "a.py").write_text(MANY_PARAMETERS, encoding="utf-8")
     commit_all(lonely, "base")
 
-    completed = run_hook(lonely)
+    _, stderr = assert_exit_cause(run_hook(lonely), habit_on_stop.EXIT_SKIP)
 
-    assert completed.returncode == 1
-    assert "habit-on-stop: skipped: no default branch to compare against" in completed.stderr
+    assert "habit-on-stop: skipped: no default branch to compare against" in stderr
     assert not mapper.exists()
 
 

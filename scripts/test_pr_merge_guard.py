@@ -171,12 +171,12 @@ def test_graphql_query_from_file_is_read(tmp_path: Path) -> None:
     assert guard.check_shell("gh api graphql -F query=@v.graphql", tmp_path) is None
 
 
-def test_cli_blocks_with_reason_per_harness() -> None:
+def test_cli_blocks_with_reason_per_harness(assert_exit_cause) -> None:
     for harness, event in EVENTS.items():
         run = run_guard(harness, event("gh pr merge 7 --squash"))
-        assert run.returncode == guard.EXIT_BLOCK, harness
-        assert "ask the user" in run.stderr
-        assert run.stdout == ""
+        stdout, stderr = assert_exit_cause(run, guard.EXIT_BLOCK)
+        assert "ask the user" in stderr, harness
+        assert stdout == ""
 
 
 def test_cli_allows_per_harness() -> None:
@@ -195,15 +195,15 @@ def test_allows_other_tools() -> None:
         assert run_guard(harness, event).returncode == guard.EXIT_ALLOW, event
 
 
-def test_bad_input_exits_3() -> None:
+def test_bad_input_exits_3(assert_exit_cause) -> None:
     for harness, stdin in [("claude", "not json"), ("claude", "[]"), ("opencode", "{}")]:
-        run = run_guard(harness, stdin)
-        assert run.returncode == guard.EXIT_BAD_INPUT, stdin
-        assert "stdin is not" in run.stderr
+        _, stderr = assert_exit_cause(run_guard(harness, stdin), guard.EXIT_BAD_INPUT)
+        assert "stdin is not" in stderr, stdin
 
 
-def test_usage_error_does_not_look_like_a_block() -> None:
-    assert run_guard("cursor", claude_event("ls")).returncode == guard.EXIT_USAGE
+def test_usage_error_does_not_look_like_a_block(assert_exit_cause) -> None:
+    _, stderr = assert_exit_cause(run_guard("cursor", claude_event("ls")), guard.EXIT_USAGE)
+    assert "invalid choice" in stderr
 
 
 def test_help_is_short_and_names_exit_codes() -> None:

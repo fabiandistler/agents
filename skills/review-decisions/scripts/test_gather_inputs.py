@@ -343,13 +343,14 @@ def test_the_forge_is_always_read_from_origin(tmp_path, repo):
     assert "--remote" in result.stderr
 
 
-def test_a_directory_outside_git_exits_2(tmp_path):
+def test_a_directory_outside_git_exits_2(tmp_path, assert_exit_cause):
     plain = tmp_path / "plain"
     plain.mkdir()
 
     result = Forge(tmp_path).run(plain, tmp_path / "out")
 
-    assert result.returncode == 2
+    _, stderr = assert_exit_cause(result, 2)
+    assert "--repo is not inside a git repository" in stderr
     assert not (tmp_path / "out" / "inputs.json").exists()
 
 
