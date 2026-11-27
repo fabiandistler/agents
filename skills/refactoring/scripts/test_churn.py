@@ -230,5 +230,57 @@ class TestDroppedFiles(unittest.TestCase):
         self.assertNotIn("unreadable", text)
 
 
+def make_coupled_repo(parent):
+    """pair_a.py and pair_b.py change together three times; solo.py changes alone."""
+    repo = Path(parent) / "repo"
+    repo.mkdir()
+    git(repo, "init", "-q")
+    git(repo, "config", "user.email", "test@example.com")
+    git(repo, "config", "user.name", "test")
+
+    def commit(names, message):
+        for name in names:
+            with open(repo / name, "a", encoding="utf-8") as handle:
+                handle.write(f"# {message}\n")
+        git(repo, "add", ".")
+        git(repo, "-c", "commit.gpgsign=false", "commit", "-qm", message)
+
+    for n in range(3):
+        commit(["pair_a.py", "pair_b.py"], f"pair {n}")
+        commit(["solo.py"], f"solo {n}")
+    commit(["pair_a.py", "solo.py"], "once together")
+    return repo
+
+
+class TestCoChanges(unittest.TestCase):
+    """Files committed together at least twice are listed per hit."""
+
+    def test_json_lists_repeated_co_changers_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_coupled_repo(tmp)
+            report = json.loads(run("--since", "2020-01-01", "--json", str(repo)).stdout)
+        by_path = {f["path"]: f for f in report["files"]}
+        self.assertEqual(by_path["pair_a.py"]["co_changes"], [{"path": "pair_b.py", "commits": 3}])
+        self.assertEqual(by_path["solo.py"]["co_changes"], [])
+
+    def test_co_changes_follow_renames(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_coupled_repo(tmp)
+            git(repo, "mv", "pair_b.py", "renamed_b.py")
+            git(repo, "-c", "commit.gpgsign=false", "commit", "-qm", "rename")
+            report = json.loads(run("--since", "2020-01-01", "--json", str(repo)).stdout)
+        by_path = {f["path"]: f for f in report["files"]}
+        self.assertEqual(
+            by_path["pair_a.py"]["co_changes"], [{"path": "renamed_b.py", "commits": 3}]
+        )
+
+    def test_text_output_has_a_co_change_section(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = make_coupled_repo(tmp)
+            text = run("--since", "2020-01-01", str(repo)).stdout
+        self.assertIn("CO-CHANGES", text)
+        self.assertIn("pair_a.py: pair_b.py 3/4", text)
+
+
 if __name__ == "__main__":
     unittest.main()
