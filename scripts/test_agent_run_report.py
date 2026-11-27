@@ -132,7 +132,9 @@ def test_main_fails_without_a_summary_file(tmp_path):
 
 
 @pytest.mark.parametrize("missing_flag", ["--summary", "--output"])
-def test_main_rejects_a_missing_required_flag_and_writes_nothing(tmp_path, capsys, missing_flag):
+def test_main_rejects_a_missing_required_flag_and_writes_nothing(
+    tmp_path, assert_exit_cause, missing_flag
+):
     summary = tmp_path / "run-summary.md"
     summary.write_text("Audit done: 0 error\n", encoding="utf-8")
     output = tmp_path / "step-summary.md"
@@ -144,12 +146,11 @@ def test_main_rejects_a_missing_required_flag_and_writes_nothing(tmp_path, capsy
     with pytest.raises(SystemExit) as exit_info:
         report.main(argv)
 
-    assert exit_info.value.code == report.EXIT_USAGE
+    stdout, stderr = assert_exit_cause(exit_info.value.code, report.EXIT_USAGE)
+    assert stdout == ""
+    assert missing_flag in stderr
     assert output.read_text(encoding="utf-8") == "earlier step\n"
     assert sorted(path.name for path in tmp_path.iterdir()) == ["run-summary.md", "step-summary.md"]
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert missing_flag in captured.err
 
 
 @pytest.mark.parametrize(
@@ -195,6 +196,8 @@ def test_main_prints_exactly_one_error_line_only_for_a_failed_run(
 
     assert report.main(argv) == code
 
+    # EXIT_RUN_FAILED is exempt from the stderr cause: its ::error:: line on
+    # stdout becomes a check annotation that factory_failure.py reads (ADR-0016).
     stdout = capsys.readouterr().out.splitlines()
     assert stdout == error_lines
     assert "::error::" not in output.read_text(encoding="utf-8")

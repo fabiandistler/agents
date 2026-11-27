@@ -481,7 +481,7 @@ def test_cli_without_a_token_fails(monkeypatch, capsys):
 def test_cli_rejects_a_bad_repo_as_usage(assert_exit_cause):
     with pytest.raises(SystemExit) as stopped:
         implementer_queue.main(["--repo", "not a repo"])
-    _, stderr = assert_exit_cause(stopped.value.code, 2)
+    _, stderr = assert_exit_cause(stopped.value.code, implementer_queue.EXIT_USAGE)
     assert "--repo" in stderr
 
 

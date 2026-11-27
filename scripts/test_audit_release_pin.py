@@ -170,7 +170,7 @@ def test_cli_rejects_a_bad_issue_as_usage(assert_exit_cause):
     with pytest.raises(SystemExit) as stopped:
         audit_release_pin.main(["--repo", REPO, "--issue", "0"])
 
-    _, stderr = assert_exit_cause(stopped.value.code, 2)
+    _, stderr = assert_exit_cause(stopped.value.code, audit_release_pin.EXIT_USAGE)
     assert "--issue" in stderr
 
 

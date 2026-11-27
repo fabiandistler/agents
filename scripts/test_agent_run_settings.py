@@ -92,12 +92,17 @@ def test_cli_writes_the_settings_file(factory: Path, tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("factory_dir", "branch"), [("relative/factory", "main"), ("/abs/factory", "")]
+    ("factory_dir", "branch", "cause"),
+    [
+        ("relative/factory", "main", "--factory-dir must be an absolute path"),
+        ("/abs/factory", "", "--default-branch must not be empty"),
+    ],
 )
 def test_cli_rejects_a_relative_factory_dir_or_an_empty_branch(
-    factory_dir: str, branch: str, tmp_path: Path
+    factory_dir: str, branch: str, cause: str, tmp_path: Path, assert_exit_cause
 ) -> None:
     output = tmp_path / "settings.json"
     run = run_cli("--factory-dir", factory_dir, "--default-branch", branch, "--output", str(output))
-    assert run.returncode == agent_run_settings.EXIT_USAGE
+    _, stderr = assert_exit_cause(run, agent_run_settings.EXIT_USAGE)
+    assert cause in stderr
     assert not output.exists()

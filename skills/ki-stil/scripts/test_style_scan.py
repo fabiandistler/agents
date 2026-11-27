@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).with_name("style_scan.py")
 MARKERS = Path(__file__).resolve().parent.parent / "assets" / "marker_lists.json"
 
@@ -250,16 +252,35 @@ class TestCli(unittest.TestCase):
             self.assertEqual(proc.stdout, "")
             self.assertEqual(json.loads(out.read_text())["text"]["words"], 47)
 
-    def test_exit_codes(self):
-        self.assertEqual(run("/nope/missing.txt").returncode, 1)
-        self.assertEqual(run("-", "--max-positions", "-1").returncode, 2)
-        self.assertEqual(run("-", stdin="  ...  \n").returncode, 3)
-
     def test_help_is_short(self):
         proc = run("--help")
         self.assertEqual(proc.returncode, 0)
         self.assertLessEqual(len(proc.stdout.splitlines()), 25)
         self.assertIn("exit codes", proc.stdout)
+
+
+@pytest.mark.parametrize(
+    ("args", "stdin", "code", "cause"),
+    [
+        (["/nope/missing.txt"], "", style_scan.EXIT_IO, "cannot read input as UTF-8 text"),
+        (["-", "--max-positions", "-1"], "", style_scan.EXIT_USAGE, "--max-positions"),
+        (["-"], "  ...  \n", style_scan.EXIT_EMPTY, "no words to scan"),
+    ],
+)
+def test_each_exit_code_names_its_cause(args, stdin, code, cause, assert_exit_cause):
+    _, stderr = assert_exit_cause(run(*args, stdin=stdin), code)
+    assert cause in stderr
+
+
+def test_a_malformed_marker_list_names_its_cause(tmp_path, monkeypatch, assert_exit_cause):
+    bad = tmp_path / "m.json"
+    bad.write_text('{"kategorien": {"x": {"stufe": "huge", "eintraege": []}}}', encoding="utf-8")
+    monkeypatch.setattr(style_scan, "MARKER_FILE", bad)
+
+    stdout, stderr = assert_exit_cause(style_scan.main(["-"]), style_scan.EXIT_MARKERS)
+
+    assert stderr.startswith("error: ")
+    assert stdout == ""
 
 
 if __name__ == "__main__":

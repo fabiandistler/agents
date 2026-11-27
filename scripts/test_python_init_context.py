@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 from typing import Any
 
 import build_project_claude
+import pytest
 import python_init_context as hook
+
+UV_INIT_EVENT = json.dumps({"tool_name": "Bash", "tool_input": {"command": "uv init demo"}})
 
 
 def test_context_injects_project_baseline_without_frontmatter_or_check_markers(
@@ -83,3 +87,36 @@ def test_project_mirror_contains_uv_init_hook_for_cloud_sessions() -> None:
     assert generated_settings == committed_settings
     assert "scripts/python_init_context.py" in python_hook["command"]
     assert "instructions/30-python.md" in python_hook["command"]
+
+
+@pytest.mark.parametrize(
+    ("stdin", "cause"),
+    [
+        ("not json", "event stdin must be valid JSON"),
+        ('{"tool_name": "Bash", "tool_input": []}', "event field 'tool_input' must be an object"),
+    ],
+)
+def test_main_names_an_invalid_event(monkeypatch, assert_exit_cause, stdin, cause) -> None:
+    monkeypatch.setattr("sys.stdin", io.StringIO(stdin))
+
+    stdout, stderr = assert_exit_cause(hook.main([]), hook.EXIT_BAD_INPUT)
+
+    assert cause in stderr
+    assert stdout == ""
+
+
+def test_main_names_a_missing_baseline(tmp_path: Path, monkeypatch, assert_exit_cause) -> None:
+    monkeypatch.setattr("sys.stdin", io.StringIO(UV_INIT_EVENT))
+
+    exit_code = hook.main(["--baseline", str(tmp_path / "missing.md")])
+
+    _, stderr = assert_exit_cause(exit_code, hook.EXIT_MISSING_BASELINE)
+    assert "installed Python baseline is missing or unreadable" in stderr
+
+
+def test_main_names_a_usage_error(assert_exit_cause) -> None:
+    with pytest.raises(SystemExit) as usage_exit:
+        hook.main(["--unknown"])
+
+    _, stderr = assert_exit_cause(usage_exit.value.code, hook.EXIT_USAGE)
+    assert "unrecognized arguments: --unknown" in stderr
