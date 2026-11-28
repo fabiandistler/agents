@@ -1,28 +1,18 @@
+# pr-issue-links - this repository's caller of the factory's PR issue-link
+# check, .github/workflows/factory-pr-issue-links.yml (ADR-0018). A local `./`
+# call runs the called workflow from the same commit as this file.
 name: PR issue links
 
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   issue-links:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-      - name: Check current closing references
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: >-
-          python3 scripts/check_pr_issue_links.py
-          --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" --expected-head "$PR_HEAD"
+    # These cap the called job's permissions, which asks for exactly these.
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/factory-pr-issue-links.yml
