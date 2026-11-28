@@ -15,6 +15,17 @@
 
 opencode_skills_dir() { target_dir_for opencode; }
 
+# True when the opencode skills dir and the codex skills root are one physical
+# directory (for example ~/.config/opencode/skills symlinked to
+# ~/.agents/skills). Its links are then codex's links: opencode needs none of
+# its own, and removing one through the opencode path removes codex's.
+opencode_root_is_codex_root() {
+  local opencode_dir codex_dir
+  opencode_dir="$(cd "$(opencode_skills_dir)" 2>/dev/null && pwd -P)" || return 1
+  codex_dir="$(cd "$(target_dir_for codex)" 2>/dev/null && pwd -P)" || return 1
+  [[ "$opencode_dir" == "$codex_dir" ]]
+}
+
 # Print the codex skills root if it holds our link to src; fail otherwise.
 opencode_shared_root_for() {
   local src="$1" root
@@ -26,6 +37,7 @@ opencode_shared_root_for() {
 # Remove our opencode link to src, if any: opencode reads src from `root`.
 drop_opencode_duplicate() {
   local src="$1" root="$2" dest
+  opencode_root_is_codex_root && return 0
   dest="$(opencode_skills_dir)/${src##*/}"
   [[ "$(readlink "$dest" 2>/dev/null)" == "$src" ]] || return 0
   check_record opencode skill-link "$dest" duplicate
@@ -205,7 +217,7 @@ cleanup_codex_prompts_legacy() {
 # prune links to skills the repo no longer ships.
 sync_skill_links() {
   local target="$1" skills="$2" routed="$3"
-  local dest_dir shared_root
+  local dest_dir shared_root shared_note_printed=0 shared_warned=0
   dest_dir="$(target_dir_for "$target")"
   if ((UNINSTALL == 0)); then
     ensure_parent "$dest_dir"
@@ -239,11 +251,35 @@ sync_skill_links() {
     # here; unlinking instead keeps the tree self-healing when the field is
     # added to a skill that was already installed.
     if ((UNINSTALL)) || ! skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" "$target"; then
+      if opencode_root_is_codex_root; then
+        if [[ "$target" == "opencode" ]] && ((UNINSTALL)); then
+          # The links in this directory belong to codex.
+          if ((! shared_note_printed)); then
+            printf '  note      %s is the codex skills root; its links stay for codex (--target=codex --uninstall removes them)\n' \
+              "$dest_dir" >&2
+            shared_note_printed=1
+          fi
+          continue
+        fi
+        if [[ "$target" == "codex" ]] && ((! UNINSTALL)) &&
+          skill_matches_target "$REPO_ROOT/skills/$skill/SKILL.md" opencode &&
+          [[ "$(resolve_targets)" == *opencode* ]]; then
+          # The skill excludes codex but opencode still selects it, and this
+          # layout gives opencode no directory of its own to link it in.
+          if ((! shared_warned)); then
+            printf '  WARN      %s is also the opencode skills dir (symlink); skills that exclude codex, such as %s, get no opencode link (skipping)\n' \
+              "$dest_dir" "$skill" >&2
+            shared_warned=1
+          fi
+          continue
+        fi
+      fi
       unlink_one "$src" "$dest"
     elif [[ "$target" == "opencode" && "$dest" == "$dest_dir/"* ]] &&
       shared_root="$(opencode_shared_root_for "$src")"; then
       drop_opencode_duplicate "$src" "$shared_root"
-      if ((DRY_RUN)) && [[ "$(readlink "$dest" 2>/dev/null)" == "$src" ]]; then
+      if ((DRY_RUN)) && ! opencode_root_is_codex_root &&
+        [[ "$(readlink "$dest" 2>/dev/null)" == "$src" ]]; then
         continue
       fi
       printf '  shared    %s (opencode reads it from %s)\n' "$dest" "$shared_root"

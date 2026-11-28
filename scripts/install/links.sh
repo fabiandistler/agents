@@ -60,12 +60,19 @@ HOOK
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
 [ "$(cd "$repo_root" && pwd -P)" = "$install_root" ] || exit 0
 cd "$install_root" || exit 1
-if ./install.sh --update --check; then
+drift_report="$(mktemp)" || exit 1
+trap 'rm -f "$drift_report"' EXIT
+if ./install.sh --update --check --output "$drift_report"; then
   exit 0
 else
   check_status=$?
   [ "$check_status" -eq 3 ] || exit "$check_status"
 fi
+# --update cannot repair an untrusted Codex hook (Codex /hooks does); replay
+# only when the report holds another kind of drift.
+awk -F '\t' 'NR > 1 && $4 != "untrusted-hook" { found = 1 } END { exit !found }' \
+  "$drift_report" || exit 0
+rm -f "$drift_report"
 exec ./install.sh --update
 HOOK
 }

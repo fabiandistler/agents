@@ -319,6 +319,46 @@ PY
   [[ "$got" -eq $((OPENCODE_EXPECTED + 1)) ]] || fail "opencode re-run: expected all links back, got $got"
 }
 
+# A temp $HOME where ~/.config/opencode/skills is a symlink to ~/.agents/skills
+# (one directory, two names).
+symlinked_root_home() {
+  HOME_SYM="$(mktemp -d)"
+  mkdir -p "$HOME_SYM/.agents/skills" "$HOME_SYM/.config/opencode"
+  ln -s "$HOME_SYM/.agents/skills" "$HOME_SYM/.config/opencode/skills"
+}
+
+@test "an opencode skills dir symlinked to the codex root keeps one link per skill" {
+  symlinked_root_home
+  first="$(HOME="$HOME_SYM" "$INSTALL" --target=all 2>&1)"
+  expected="$(count_links "$HOME_SYM/.agents/skills")"
+  [[ "$expected" -gt 0 ]] || fail "codex linked no skills: $first"
+  [[ "$first" != *removed* ]] || fail "first run removed a link: $first"
+  [[ "$(grep -c 'linked .*/.config/opencode/skills/' <<<"$first")" -eq 0 ]] ||
+    fail "first run linked through the opencode path as well: $first"
+  second="$(HOME="$HOME_SYM" "$INSTALL" --target=all 2>&1)"
+  [[ "$second" != *removed* && "$second" != *linked\ * ]] ||
+    fail "second run changed links: $second"
+  [[ "$(count_links "$HOME_SYM/.agents/skills")" -eq "$expected" ]] ||
+    fail "second run changed the link count"
+  run env HOME="$HOME_SYM" "$INSTALL" --target=all --check
+  [[ "$status" -eq 0 ]] || fail "--check not clean (exit $status): $output"
+}
+
+@test "in a symlinked opencode root, --target=codex keeps links and opencode uninstall removes none" {
+  symlinked_root_home
+  HOME="$HOME_SYM" "$INSTALL" --target=all >/dev/null
+  expected="$(count_links "$HOME_SYM/.agents/skills")"
+  out="$(HOME="$HOME_SYM" "$INSTALL" --target=codex 2>&1)"
+  [[ "$out" != *removed* ]] || fail "--target=codex removed a link: $out"
+  [[ "$(count_links "$HOME_SYM/.agents/skills")" -eq "$expected" ]] ||
+    fail "--target=codex changed the link count"
+  out="$(HOME="$HOME_SYM" "$INSTALL" --target=opencode --uninstall 2>&1)"
+  [[ "$out" != *'removed   '*'/skills/'* ]] || fail "opencode uninstall removed a codex link: $out"
+  grep -q 'note .*codex skills root' <<<"$out" || fail "opencode uninstall gave no note: $out"
+  [[ "$(count_links "$HOME_SYM/.agents/skills")" -eq "$expected" ]] ||
+    fail "opencode uninstall removed codex links"
+}
+
 @test "opencode links what codex lacks, and dry-run plans the shared state" {
   # a narrower --env for codex leaves the rest to opencode's own links, and
   # a whole-tree dry-run plans exactly what the real run does.
