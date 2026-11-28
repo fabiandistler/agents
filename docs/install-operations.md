@@ -83,7 +83,9 @@ right before writing and leaves it alone if it changed in between.
 
 `--git-hook` installs marker-owned `post-merge` and `post-rewrite` hooks in this
 clone's Git hooks directory. They check the saved install first and run
-`--update` only when the check finds drift. `post-rewrite` also consumes Git's
+`--update` only when the check finds drift `--update` can repair; a report whose
+only rows are `untrusted-hook` does not replay it, because that state is fixed in
+Codex `/hooks`, not by `--update`. `post-rewrite` also consumes Git's
 rewrite list, so it works after `git pull --rebase`. Hook setup is opt-in and
 does not add a CI or prek stage:
 

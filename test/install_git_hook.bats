@@ -118,6 +118,44 @@ assert check < update
 PY
 }
 
+@test "post-merge does not replay --update when only untrusted-hook drift remains" {
+  hook_home="$(mktemp -d)"
+  state_home="$hook_home/xdg-state"
+  git_home="$(mktemp -d)"
+  git -C "$git_home" init -q
+  git_dir="$git_home/.git"
+  post_merge="$git_dir/hooks/post-merge"
+  run_hook_install "$hook_home" "$state_home" "$git_dir" \
+    --target=codex --category=communication --merge-guard --secret-guard --git-hook
+  [[ "$status" -eq 0 ]] || fail "--git-hook install failed: $output"
+  config="$hook_home/.codex/config.toml"
+  cat >>"$config" <<'TOML'
+
+[hooks.state]
+TOML
+  "$PYTHON" - "$config" <<'PY'
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+config = tomllib.loads(text)
+lines = []
+for group_index, group in enumerate(config["hooks"]["PreToolUse"]):
+    for handler_index, _ in enumerate(group["hooks"]):
+        key = f"{path.absolute()}:pre_tool_use:{group_index}:{handler_index}"
+        lines += ["", f"[hooks.state.{json.dumps(key)}]", 'trusted_hash = "sha256:fixture-mismatch"']
+path.write_text(text + "\n".join(lines) + "\n", encoding="utf-8")
+PY
+  run hook_run "$post_merge" "$hook_home" "$state_home" "$git_dir" ""
+  [[ "$status" -eq 0 ]] || fail "hook failed: $output"
+  [[ "$output" == *'untrusted-hook=2'* ]] || fail "fixture left no untrusted-hook drift: $output"
+  [[ "$output" != *'ok        '* && "$output" != *'linked    '* && "$output" != *'updated'* ]] ||
+    fail "post-merge replayed --update for untrusted-hook drift only: $output"
+}
+
 @test "post-rewrite consumes rewrite input and checks before updating" {
   install_git_hook_clone
   run hook_run "$post_rewrite" "$hook_home" "$state_home" "$git_dir" "old new\n"

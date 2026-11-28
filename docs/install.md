@@ -112,7 +112,10 @@ removes one an earlier run created. Run order does not matter. opencode still
 links a skill itself when codex lacks it: the skill's `targets` field excludes
 codex, or codex was installed with a narrower `--env` or `--category`. After
 `--uninstall` of codex alone, re-run `--target=opencode` so opencode gets its
-own links back; the uninstall prints a reminder. opencode reads
+own links back; the uninstall prints a reminder. When
+`~/.config/opencode/skills` is a symlink to `~/.agents/skills`, both names are
+one directory: codex's links are the only links, nothing is removed or relinked,
+and `--target=opencode --uninstall` leaves them for codex. opencode reads
 `~/.claude/skills/` as well, but `install.sh` no longer links there; when the
 Claude migration removes an old link, an installed opencode gets its own link
 to that skill in its place.
