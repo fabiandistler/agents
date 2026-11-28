@@ -11,6 +11,9 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 RUNBOOK = (ROOT / "docs" / "agents" / "factory-onboarding.md").read_text(encoding="utf-8")
+OPTIONAL_RUNBOOK = (ROOT / "docs" / "agents" / "factory-onboarding-optional.md").read_text(
+    encoding="utf-8"
+)
 INPUTS = (ROOT / "docs" / "agents" / "factory-inputs.md").read_text(encoding="utf-8")
 FACTORY_FILES = (
     "factory-implementer.yml",
@@ -21,6 +24,13 @@ FACTORY_FILES = (
     "factory-rework.yml",
     "factory-fix-task.yml",
 )
+# Called by a target that wants it; the onboarding check does not require it.
+OPTIONAL_FACTORY_FILES = (
+    "factory-retro.yml",
+    "factory-pr-issue-links.yml",
+    "factory-hand-part-follow-up.yml",
+)
+TEMPLATE_FILES = FACTORY_FILES + OPTIONAL_FACTORY_FILES
 
 
 def workflow_call(name: str) -> dict:
@@ -34,7 +44,7 @@ def required(block: dict | None) -> tuple[str, ...]:
     return tuple(name for name, spec in (block or {}).items() if (spec or {}).get("required"))
 
 
-@pytest.mark.parametrize("name", FACTORY_FILES)
+@pytest.mark.parametrize("name", TEMPLATE_FILES)
 def test_inputs_page_names_every_input_and_secret(name):
     call = workflow_call(name)
     names = [*(call.get("inputs") or {}), *(call.get("secrets") or {})]
@@ -87,19 +97,19 @@ def template_blocks() -> list[str]:
     # A filled-in template pins a real SHA; `<SHA>` is the placeholder.
     return [
         block.split("```", 1)[0].replace("<SHA>", "a" * 40)
-        for block in RUNBOOK.split("```yaml\n")[1:]
+        for block in (RUNBOOK + OPTIONAL_RUNBOOK).split("```yaml\n")[1:]
     ]
 
 
 def test_runbook_templates_pin_and_pass_the_secret_by_name():
-    for name in FACTORY_FILES:
+    for name in TEMPLATE_FILES:
         assert (
             f"fabiandistler/agents/.github/workflows/{name}@<SHA> # agents main, <date>\n"
-            in RUNBOOK
+            in RUNBOOK + OPTIONAL_RUNBOOK
         )
     assert "secrets: inherit`" in RUNBOOK
     assert "\n    secrets: inherit" not in RUNBOOK
-    assert RUNBOOK.count("\npermissions: {}\n") == len(FACTORY_FILES)
+    assert (RUNBOOK + OPTIONAL_RUNBOOK).count("\npermissions: {}\n") == len(TEMPLATE_FILES)
     assert "statuses: write" in RUNBOOK
 
 
@@ -113,7 +123,7 @@ def test_no_template_pin_has_a_one_word_comment():
         if factory_onboarding_check.USES_LINE.match(line)
     ]
 
-    assert len(pins) == len(FACTORY_FILES)
+    assert len(pins) == len(TEMPLATE_FILES)
     for line in pins:
         _, _, comment = line.partition(" # ")
         assert len(comment.split()) > 1, line
@@ -139,8 +149,8 @@ def test_runbook_templates_pass_the_check():
                     path, match["ref"], template
                 )
 
-    assert sorted(callers) == sorted(FACTORY_FILES)
-    for name in callers:
+    assert sorted(callers) == sorted(TEMPLATE_FILES)
+    for name in FACTORY_FILES:
         status, _, detail = factory_onboarding_check.caller_line(name, callers, "main")
         assert status == "OK", detail
 

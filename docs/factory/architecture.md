@@ -80,14 +80,15 @@ flowchart LR
         im["factory-implementer.yml<br/>[reusable]<br/>claim, build, open PR"]
         rw["rework.yml<br/>[agents only]<br/>gate, model round"]
         fx["fix-task.yml<br/>[agents only]<br/>model-free"]
-        rt["retro.yml<br/>[agents only]<br/>gate, model"]
+        rt["factory-retro.yml<br/>[reusable]<br/>gate, model"]
         sa["skill-audit.yml<br/>[agents only]<br/>model"]
         scripts[("scripts/<br/>[Python, stdlib]<br/>gates, policies, guards")]
     end
     callers -- "uses: …@SHA" --> tl & it & prr & im
     tl & it & prr & im -- "anonymous fetch at job.workflow_sha" --> scripts
     prr -- "completed run [workflow_run]" --> rw
-    rw & fx & rt & sa -- "run from the checkout" --> scripts
+    rw & fx & rt -- "anonymous fetch at job.workflow_sha" --> scripts
+    sa -- "runs from the checkout" --> scripts
     fx -. "watches failed runs of" .-> callers
     classDef system fill:#1168bd,color:#fff
     classDef external fill:#999999,color:#fff
@@ -108,8 +109,9 @@ issues), **`factory-pr-review.yml`** (`hold`, `assess`, `review` with the
 model and no write scope, `publish` with write scopes and no model token) and
 **`factory-implementer.yml`** (one model step with the App token, then a
 model-free `follow-up` job). **`rework.yml`,
-`fix-task.yml`, `retro.yml` and `skill-audit.yml`** run in agents only and
-read `scripts/` from their own checkout; Fix watches seven workflows by name
+`fix-task.yml` and `retro.yml`** call the reusable `factory-rework.yml`, `factory-fix-task.yml` and
+`factory-retro.yml` (Retro since 2026-11-28); **`skill-audit.yml`** runs in agents only and
+reads `scripts/` from its own checkout; Fix watches seven workflows by name
 (`fix-task.yml`, trigger `workflow_run`). **`scripts/`** holds the
 model-free logic: the claim,
 `pr_risk.py`, `pr_publish.py`, the gates and the two guards.

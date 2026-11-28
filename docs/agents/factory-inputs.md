@@ -66,12 +66,31 @@ targets (fabiandistler/dotfiles#61 and fabiandistler/repo-maintenance#153).
 | `model` | `sonnet` | `${{ vars.REWORK_MODEL \|\| 'sonnet' }}` |
 | secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
 
+`factory-retro.yml`; the repository variables `RETRO_EVERY` (pending merges per
+retro, empty means 10) and `RETRO_MODEL` (empty means `sonnet`) are the
+caller's:
+
+| Name | Default | Example |
+| --- | --- | --- |
+| `check_command` | required | `scripts/maintenance-baseline.sh` |
+| `editable_paths` | required | one path per line, a trailing `/` for a directory: `AGENTS.md`, `docs/agents/` |
+| `setup_command` | `""` | the implementer caller's value |
+| `submodules` | `false` | `true` |
+| `python_version` | `"3.12"` | `"3.12"` |
+| secret `CLAUDE_CODE_OAUTH_TOKEN` | required | `${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` |
+
 `factory-fix-task.yml`:
 
 | Name | Default | Example |
 | --- | --- | --- |
 | `run_id` | `""` | `${{ inputs.run_id }}` |
 | `dry_run` | `true` | `${{ inputs.dry_run != false }}` |
+
+`factory-pr-issue-links.yml` and `factory-hand-part-follow-up.yml` take no secret:
+
+| Name | Default | Example |
+| --- | --- | --- |
+| `python_version` | `"3.12"` | `"3.12"` |
 
 `factory-triage-label.yml` takes no input and no secret.
 
