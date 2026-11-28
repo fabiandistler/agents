@@ -28,7 +28,8 @@ FACTORY_IMPLEMENTER = WORKFLOWS / "factory-implementer.yml"
 SKILL_AUDIT = WORKFLOWS / "skill-audit.yml"
 # The Rework jobs live in the reusable file; rework.yml is its thin caller.
 REWORK = WORKFLOWS / "factory-rework.yml"
-RETRO = WORKFLOWS / "retro.yml"
+# Likewise: factory-retro.yml holds the Retro jobs, retro.yml is its thin caller.
+RETRO = WORKFLOWS / "factory-retro.yml"
 
 ACTION = "anthropics/claude-code-action@"
 SHA_PIN = re.compile(r"^anthropics/claude-code-action@[0-9a-f]{40}$")

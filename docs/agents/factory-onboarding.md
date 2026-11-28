@@ -318,14 +318,19 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
 
+`retro.yml`, `pr-issue-links.yml` and `hand-part-follow-up.yml` are optional
+last stages, with their own page: [Optional callers](factory-onboarding-optional.md).
+Add `retro` to the Fix caller's `workflow_run` list below only when the target
+has it.
+
 `.github/workflows/fix-task.yml`. The `workflow_run` list names this
 repository's own caller workflows by their `name:`, never `fix-task` itself
 and never a `factory-*.yml` file: a called workflow fails inside its caller's
 run. List only callers the target has. Each caller's path must be in
 `WATCHED_WORKFLOWS` of `scripts/factory_failure_policy.py`
 (`implementer.yml`, `implementer-queue.yml`, `issue-triage.yml`,
-`pr-review.yml`, `rework.yml`, and this repository's `skill-audit.yml` and
-`retro.yml`); a run of any other path
+`pr-review.yml`, `rework.yml`, `retro.yml`, and this repository's
+`skill-audit.yml`); a run of any other path
 is not filed. The triage label caller is not watched. Fix is model-free and
 needs no secret.
 

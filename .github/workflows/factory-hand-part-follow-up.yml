@@ -1,0 +1,71 @@
+# factory-hand-part-follow-up - files a ready-for-human issue for each
+# "to add by hand" section of a merged implementer pull request, as a reusable
+# workflow (ADR-0018). An implementer run cannot write .github/workflows/,
+# .claude/ or .pre-commit-config.yaml (docs/wiki/problems/implementer-write-limits.md),
+# so its pull request body carries that part as a top-level `##` section. This
+# repository's hand-part-follow-up.yml calls it with `./`; another repository
+# calls it pinned to a full commit SHA and needs no secret.
+#
+# Model-free, GITHUB_TOKEN only. The `github` context, the event included, is
+# the caller's: the caller starts it on `pull_request: closed`, and the
+# filter below keeps only merged pull requests by the Claude GitHub App from an
+# `agent/issue-` head of the same repository into the default branch. The
+# script runs from the factory checkout; the job checks out nothing of the
+# caller, so no pull request text becomes code.
+name: factory-hand-part-follow-up
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: Python for the factory script
+        type: string
+        default: "3.12"
+
+# No scope by default; the job below opts in to exactly what it needs. The
+# calling job's permissions cap these.
+permissions: {}
+
+jobs:
+  file-follow-up:
+    if: >-
+      github.event.pull_request.merged &&
+      github.event.pull_request.user.login == 'claude[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'agent/issue-') &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch
+    concurrency:
+      group: hand-part-follow-up-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch the factory scripts
+        id: factory
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/factory"
+          git init --quiet "$dir"
+          git -C "$dir" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$dir" checkout --quiet --detach FETCH_HEAD
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: File hand-applied follow-ups
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FACTORY_DIR: ${{ steps.factory.outputs.dir }}
+        run: >-
+          python3 "$FACTORY_DIR/scripts/hand_part_follow_up.py"
+          --repo "$GITHUB_REPOSITORY" --event "$GITHUB_EVENT_PATH" --write

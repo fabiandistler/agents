@@ -1,15 +1,24 @@
-"""Guardrails for .github/workflows/retro.yml and the implementer's Retro hooks (ADR-0017)."""
+"""Guardrails for the Retro task: factory-retro.yml, its caller retro.yml, the implementer hooks.
 
+The reusable factory-retro.yml holds both jobs (ADR-0017, ADR-0018); this repository's
+retro.yml is its thin caller and the gate's eligibility floor.
+"""
+
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
+import pytest
 import retro_counter
 import retro_gate
 import yaml
 from factory_handoff import implementer_run_name
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RETRO = REPO_ROOT / ".github" / "workflows" / "retro.yml"
+CALLER = REPO_ROOT / ".github" / "workflows" / "retro.yml"
+RETRO = REPO_ROOT / ".github" / "workflows" / "factory-retro.yml"
 IMPLEMENTER = REPO_ROOT / ".github" / "workflows" / "implementer.yml"
 # implementer.yml calls it; the called job's artifacts belong to the caller's run.
 FACTORY_IMPLEMENTER = REPO_ROOT / ".github" / "workflows" / "factory-implementer.yml"
@@ -42,11 +51,11 @@ def _prompt() -> str:
 
 
 def test_gate_names_this_workflow_file():
-    assert REPO_ROOT / retro_counter.RETRO_WORKFLOW == RETRO
+    assert REPO_ROOT / retro_counter.RETRO_WORKFLOW == CALLER
 
 
 def test_triggers_are_a_daily_schedule_off_the_hour_and_a_manual_run():
-    triggers = _workflow(RETRO)[True]
+    triggers = _workflow(CALLER)[True]
     assert set(triggers) == {"schedule", "workflow_dispatch"}, "no merge trigger (ADR-0017)"
     (entry,) = triggers["schedule"]
     minute, _hour, day, month, weekday = entry["cron"].split()
@@ -54,8 +63,35 @@ def test_triggers_are_a_daily_schedule_off_the_hour_and_a_manual_run():
     assert (day, month, weekday) == ("*", "*", "*")
 
 
-def test_runs_are_serialised_without_cancelling():
-    assert _workflow(RETRO)["concurrency"] == {"group": "retro", "cancel-in-progress": False}
+def test_the_reusable_workflow_is_called_not_triggered():
+    assert set(_workflow(RETRO)[True]) == {"workflow_call"}
+
+
+def test_gate_and_model_runs_are_serialised_without_cancelling():
+    jobs = _jobs()
+    assert jobs["gate"]["concurrency"] == {"group": "retro-gate", "cancel-in-progress": False}
+
+
+def test_caller_calls_the_reusable_workflow_with_the_secret_by_name():
+    (job,) = _workflow(CALLER)["jobs"].values()
+    assert job["uses"] == f"./.github/workflows/{RETRO.name}"
+    assert job["secrets"] == {"CLAUDE_CODE_OAUTH_TOKEN": "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"}
+    assert job["with"]["check_command"] == "scripts/check_all.sh"
+    assert job["with"]["submodules"] is True
+    assert job["with"]["editable_paths"].split() == [
+        "scripts/pr_review_prompt.md",
+        "scripts/issue_triage_prompt.md",
+        "docs/agents/",
+        "AGENTS.md",
+    ]
+
+
+def test_caller_caps_the_called_jobs_scopes():
+    (job,) = _workflow(CALLER)["jobs"].values()
+    assert _workflow(CALLER)["permissions"] == {}
+    called = _jobs()
+    union = {**called["gate"]["permissions"], **called["retro"]["permissions"]}
+    assert job["permissions"] == union
 
 
 def test_permissions_are_empty_by_default_and_narrow_per_job():
@@ -74,8 +110,8 @@ def test_gate_is_model_free_and_labels_before_the_model_job():
     gate = _jobs()["gate"]
     assert not any(ACTION in step.get("uses", "") for step in gate["steps"])
     runs = [step.get("run", "") for step in gate["steps"]]
-    select = next(i for i, run in enumerate(runs) if "retro_gate.py select" in run)
-    context = next(i for i, run in enumerate(runs) if "retro_gate.py context" in run)
+    select = next(i for i, run in enumerate(runs) if 'retro_gate.py" select' in run)
+    context = next(i for i, run in enumerate(runs) if 'retro_gate.py" context' in run)
     assert select < context
     assert _jobs()["retro"]["needs"] == "gate"
     assert _jobs()["retro"]["if"] == "needs.gate.outputs.selected != ''"
@@ -94,6 +130,7 @@ def test_action_is_sha_pinned_uses_the_app_token_and_the_model_variable():
     assert SHA_PIN.match(step["uses"])
     assert "github_token" not in step["with"]
     assert "--model ${{ vars.RETRO_MODEL || 'sonnet' }}" in step["with"]["claude_args"]
+    assert step["with"]["settings"] == "${{ runner.temp }}/agent-run-settings.json", "guards"
 
 
 def test_model_default_is_the_skill_audits():
@@ -109,19 +146,82 @@ def test_prompt_interpolates_no_event_text():
     assert used <= PROMPT_EXPRESSIONS, f"unexpected expressions in the prompt: {used}"
 
 
-def test_prompt_states_the_path_allowlist_and_the_vendored_exclusion():
+def test_prompt_names_the_validated_path_file_and_the_vendored_exclusion():
     prompt = _prompt()
-    for path in (
-        "scripts/pr_review_prompt.md",
-        "scripts/issue_triage_prompt.md",
-        "docs/agents/",
-        "AGENTS.md",
-    ):
-        assert path in prompt
+    assert '"$RUNNER_TEMP/editable-paths.txt"' in prompt
     assert "linguist-vendored" in prompt
-    assert ".claude/skills/triage/AGENT-BRIEF.md" in prompt
-    assert "docs/agents/retro.md" in prompt
+    assert "factory/docs/agents/retro.md" in prompt
     assert "No issue: <reason>. Refs #" in prompt
+
+
+def _validation_step() -> dict:
+    return _step(_jobs()["retro"], lambda step: step.get("name") == "Validate the caller's inputs")
+
+
+def _validate(tmp_path, paths: str, command: str = "scripts/check_all.sh"):
+    env = {
+        **os.environ,
+        "CHECK_COMMAND": command,
+        "EDITABLE_PATHS": paths,
+        "RUNNER_TEMP": str(tmp_path),
+    }
+    return subprocess.run(  # noqa: S603
+        [shutil.which("bash") or "bash", "-c", _validation_step()["run"]],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_validation_step_takes_inputs_through_env_only():
+    step = _validation_step()
+    assert "${{" not in step["run"]
+    assert set(step["env"]) == {"CHECK_COMMAND", "EDITABLE_PATHS"}
+
+
+def test_editable_paths_are_written_one_per_line(tmp_path):
+    done = _validate(tmp_path, "AGENTS.md\n\ndocs/agents/\ninstructions/review-standards.md\n")
+    assert done.returncode == 0, done.stderr
+    assert (tmp_path / "editable-paths.txt").read_text().splitlines() == [
+        "AGENTS.md",
+        "docs/agents/",
+        "instructions/review-standards.md",
+    ]
+    assert (tmp_path / "check-command.sh").read_text() == "scripts/check_all.sh\n"
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [
+        "",
+        "   \n",
+        "../etc/passwd",
+        "docs/../.github/workflows/x.yml",
+        "/etc/passwd",
+        ".github/workflows/ci.yml",
+        ".claude/settings.json",
+        ".git/config",
+        "./.github/workflows/ci.yml",
+        "./.claude/settings.json",
+        "docs/./.git/config",
+        ".GitHub/workflows/ci.yml",
+        "docs//x.md",
+        "docs/./x.md",
+        "docs/$(id)",
+        "docs/a b.md",
+    ],
+)
+def test_an_unusable_editable_path_fails_the_job(tmp_path, paths):
+    done = _validate(tmp_path, paths)
+    assert done.returncode != 0
+    assert "::error::editable_paths" in done.stdout
+
+
+def test_an_empty_check_command_fails_the_job(tmp_path):
+    done = _validate(tmp_path, "AGENTS.md", command="  ")
+    assert done.returncode != 0
+    assert "::error::check_command" in done.stdout
 
 
 def test_prompt_keeps_the_hard_limits():

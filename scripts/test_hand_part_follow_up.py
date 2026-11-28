@@ -200,21 +200,29 @@ def test_dry_run_prints_the_plan_without_any_github_calls(tmp_path, capsys):
     assert client.posts == []
 
 
+WORKFLOWS = Path(__file__).resolve().parents[1] / ".github/workflows"
+
+
 def test_workflow_uses_only_closed_events_and_the_trusted_default_branch():
-    path = Path(__file__).resolve().parents[1] / ".github/workflows/hand-part-follow-up.yml"
-    source = path.read_text(encoding="utf-8")
-    workflow = yaml.safe_load(source)
+    caller = yaml.safe_load((WORKFLOWS / "hand-part-follow-up.yml").read_text(encoding="utf-8"))
+    assert caller[True] == {"pull_request": {"types": ["closed"]}}
+    assert caller["permissions"] == {}
+    (call,) = caller["jobs"].values()
+    assert call["uses"] == "./.github/workflows/factory-hand-part-follow-up.yml"
+    assert call["permissions"] == {"contents": "read", "issues": "write"}
+
+    workflow = yaml.safe_load(
+        (WORKFLOWS / "factory-hand-part-follow-up.yml").read_text(encoding="utf-8")
+    )
     job = workflow["jobs"]["file-follow-up"]
-    assert workflow[True] == {"pull_request": {"types": ["closed"]}}
+    assert set(workflow[True]) == {"workflow_call"}
     assert workflow["permissions"] == {}
     assert "github.event.pull_request.merged" in job["if"]
-    assert job["permissions"] == {"contents": "read", "issues": "write"}
+    assert job["permissions"] == call["permissions"]
     assert job["concurrency"]["group"].endswith("${{ github.event.pull_request.number }}")
     assert job["concurrency"]["cancel-in-progress"] is False
-    assert job["steps"][0]["with"] == {
-        "ref": "${{ github.event.repository.default_branch }}",
-        "persist-credentials": False,
-    }
+    # Nothing of the caller is checked out: no pull request text becomes code.
+    assert not any("actions/checkout@" in step.get("uses", "") for step in job["steps"])
     assert "${{ github.event.pull_request" not in job["steps"][-1]["run"]
 
 

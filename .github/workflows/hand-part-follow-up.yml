@@ -1,3 +1,7 @@
+# hand-part-follow-up - this repository's caller of the factory's follow-up
+# task, .github/workflows/factory-hand-part-follow-up.yml (ADR-0018). A local
+# `./` call runs the called workflow from the same commit as this file; the
+# called job holds the filter on the merged pull request.
 name: Hand-applied follow-up
 
 on:
@@ -8,31 +12,8 @@ permissions: {}
 
 jobs:
   file-follow-up:
-    if: >-
-      github.event.pull_request.merged &&
-      github.event.pull_request.user.login == 'claude[bot]' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.event.pull_request.head.ref, 'agent/issue-') &&
-      github.event.pull_request.base.ref == github.event.repository.default_branch
-    concurrency:
-      group: hand-part-follow-up-${{ github.event.pull_request.number }}
-      cancel-in-progress: false
+    # These cap the called job's permissions, which asks for exactly these.
     permissions:
       contents: read
       issues: write
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-      - name: File hand-applied follow-ups
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          python3 scripts/hand_part_follow_up.py
-          --repo "$GITHUB_REPOSITORY" --event "$GITHUB_EVENT_PATH" --write
+    uses: ./.github/workflows/factory-hand-part-follow-up.yml

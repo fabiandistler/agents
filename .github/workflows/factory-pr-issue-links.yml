@@ -1,0 +1,62 @@
+# factory-pr-issue-links - the PR issue-link check as a reusable workflow
+# (ADR-0018): a pull request body must name its issue with a closing keyword
+# that GitHub resolves, or say `No issue: <reason>`. Model-free, read-only.
+# This repository's pr-issue-links.yml calls it with `./`; another repository
+# calls it pinned to a full commit SHA and needs no secret.
+#
+# The `github` context, the event included, is the caller's. The caller starts
+# it on `pull_request`; scripts/check_pr_issue_links.py reads the pull request
+# through the API (`gh api graphql`), so the job checks out nothing of the
+# caller and runs the factory's script at this workflow's own commit.
+name: factory-pr-issue-links
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: Python for the factory script
+        type: string
+        default: "3.12"
+
+# No scope by default; the job below opts in to exactly what it needs. The
+# calling job's permissions cap these.
+permissions: {}
+
+jobs:
+  issue-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # The factory's scripts at the commit of this workflow file, fetched
+      # anonymously as in factory-fix-task.yml.
+      - name: Fetch the factory scripts
+        id: factory
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          FACTORY_REPOSITORY: ${{ job.workflow_repository }}
+          FACTORY_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/factory"
+          git init --quiet "$dir"
+          git -C "$dir" fetch --quiet --depth 1 --no-tags \
+            "$SERVER_URL/$FACTORY_REPOSITORY" "$FACTORY_SHA"
+          git -C "$dir" checkout --quiet --detach FETCH_HEAD
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Check current closing references
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FACTORY_DIR: ${{ steps.factory.outputs.dir }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: >-
+          python3 "$FACTORY_DIR/scripts/check_pr_issue_links.py"
+          --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" --expected-head "$PR_HEAD"
