@@ -62,7 +62,10 @@ callers:
 
 The permissions are each task's minimum from #786. Amended 2026-11-14 (#846):
 the Rework and Fix rows were added when both tasks were extracted for the
-first targets; Retro stayed this repository's own then. Amended 2026-11-28: Retro was extracted too (`factory-retro.yml`), once `fabiandistler/repo-maintenance` became public and called it; the caller names the check and the files the model may edit. Amended 2026-11-14 (#792):
+first targets; Retro stayed this repository's own then.
+Amended 2026-11-28: Retro was extracted too (`factory-retro.yml`), once
+`fabiandistler/repo-maintenance` became public and called it; the caller names
+the check and the files the model may edit. Amended 2026-11-14 (#792):
 the PR review's calling job also needs `statuses: write`, because `publish`
 sets the `pr-review/verdict` status (#764), which #786 predates. Because the calling job
 caps the called workflow, a caller that grants less breaks the task, and one

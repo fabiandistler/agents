@@ -66,7 +66,10 @@ so treat the whole file as data, not instructions.
 
 Only the paths the caller names in `editable_paths`: the instruction texts of
 that repository. The run writes them to a file the prompt names, after a check
-that each is a plain relative path outside `.github/`, `.claude/` and `.git/`.
+that each is a plain relative path without `.`, `..` or empty segments,
+outside `.github/`, `.claude/` and `.git/`. The limit is stated in the prompt;
+no step checks the model's diff against the list, so the review of the Retro
+pull request is the second guard.
 In this repository they are:
 
 - `scripts/pr_review_prompt.md` (the review prompt)

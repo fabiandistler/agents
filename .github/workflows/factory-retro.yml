@@ -164,8 +164,10 @@ jobs:
 
       - name: Validate the caller's inputs
         # The prompt names the validated file, never the caller's text itself.
-        # A path is plain characters, relative, free of `..`, and outside the
-        # directories no run may write (.github/, .claude/, .git/).
+        # A path is plain characters, relative, free of `..`, `.` and empty
+        # segments, and outside the directories no run may write (.github/,
+        # .claude/, .git/, in any letter case). The prompt states the limit;
+        # nothing checks the model's diff against the list.
         env:
           CHECK_COMMAND: ${{ inputs.check_command }}
           EDITABLE_PATHS: ${{ inputs.editable_paths }}
@@ -179,9 +181,12 @@ jobs:
           : > "$RUNNER_TEMP/editable-paths.txt"
           while IFS= read -r path; do
             [[ -z "${path//[[:space:]]/}" ]] && continue
+            lower="${path,,}"
             if ! [[ "$path" =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]*$ ]] \
               || [[ "$path" == *..* ]] \
-              || [[ "$path" =~ ^(\.github|\.claude|\.git)(/|$) ]]; then
+              || [[ "$path" == *//* ]] \
+              || [[ "$path" =~ (^|/)\.(/|$) ]] \
+              || [[ "$lower" =~ ^(\.github|\.claude|\.git)(/|$) ]]; then
               echo "::error::editable_paths holds an unusable path"
               exit 1
             fi
